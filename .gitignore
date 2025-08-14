@@ -22,3 +22,5 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+nicsan-crm-backend/.env 
+nicsan-crm-backend/.env.backup 
