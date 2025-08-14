@@ -1,6 +1,7 @@
-import React, { useMemo, useState } from "react";
-import { Upload, FileText, CheckCircle2, AlertTriangle, Table2, Settings, LayoutDashboard, Users, BarChart3, BadgeInfo, Filter, Search, Lock, LogOut, Car, SlidersHorizontal, LineChart, TrendingUp } from "lucide-react";
+import React, { useMemo, useState, useRef, useEffect } from "react";
+import { Upload, FileText, CheckCircle2, AlertTriangle, Table2, Settings, LayoutDashboard, Users, BarChart3, BadgeInfo, Filter, Lock, LogOut, Car, SlidersHorizontal, TrendingUp } from "lucide-react";
 import { ResponsiveContainer, CartesianGrid, BarChart, Bar, Legend, Area, AreaChart, XAxis, YAxis, Tooltip } from "recharts";
+import { uploadAPI, policiesAPI, authAPI, authUtils } from './services/api';
 
 // --- Nicsan CRM v1 UI/UX Mock (updated) ---
 // Adds: Password-protected login, optimized Manual Form, Founder filters, KPI dashboard (your new metrics)
@@ -12,29 +13,124 @@ function LoginPage({ onLogin }: { onLogin: (user: { name: string; email: string;
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<"ops"|"founder">("ops");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleLogin = async () => {
+    if (!email || !password) {
+      setError("Please enter both email and password");
+      return;
+    }
+
+    setIsLoading(true);
+    setError("");
+
+    try {
+      // Use real authentication API
+      const response = await authAPI.login({ email, password });
+      
+      console.log('🔍 Full login response:', response);
+      console.log('🔍 Response data:', response.data);
+      console.log('🔍 Token:', response.data?.token);
+      console.log('🔍 User:', response.data?.user);
+      
+      if (response.success && response.data) {
+        const { token, user: userData } = response.data;
+        
+        console.log('🔍 Extracted token:', token);
+        console.log('🔍 Extracted user:', userData);
+        
+        if (!token) {
+          setError('No token received from server');
+          return;
+        }
+        
+        // Store token and user data
+        console.log('🔍 About to store token...');
+        
+        try {
+          // Try authUtils first
+          console.log('🔍 Calling authUtils.setToken...');
+          authUtils.setToken(token);
+          console.log('🔍 authUtils.setToken completed');
+        } catch (error) {
+          console.error('🔍 authUtils.setToken failed:', error);
+        }
+        
+        try {
+          // Also store directly to verify
+          console.log('🔍 Storing directly to localStorage...');
+          localStorage.setItem('authToken', token);
+          console.log('🔍 Direct localStorage storage completed');
+          console.log('🔍 Verification - token in localStorage:', !!localStorage.getItem('authToken'));
+        } catch (error) {
+          console.error('🔍 Direct localStorage storage failed:', error);
+        }
+        
+        // Call onLogin with real user data
+        onLogin({ 
+          name: userData?.name || email.split('@')[0] || 'User', 
+          email: userData?.email || email, 
+          role: userData?.role || 'ops' 
+        });
+      } else {
+        setError(response.error || 'Login failed');
+      }
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Login failed');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen grid place-items-center bg-zinc-50 p-6">
       <div className="w-full max-w-md bg-white rounded-2xl border border-zinc-100 shadow-sm p-6">
         <div className="flex items-center gap-2 text-lg font-semibold mb-1"><Lock className="w-5 h-5"/> Nicsan CRM v1</div>
-        <div className="text-sm text-zinc-500 mb-6">Password-protected access. Choose your role for this demo.</div>
+        <div className="text-sm text-zinc-500 mb-6">Real authentication with backend API</div>
+        
+        {error && (
+          <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg text-sm">
+            {error}
+          </div>
+        )}
+        
         <label className="block mb-3">
           <div className="text-xs text-zinc-600 mb-1">Email</div>
-          <input value={email} onChange={e=>setEmail(e.target.value)} className="w-full rounded-xl border border-zinc-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200" placeholder="you@nicsan.in"/>
+          <input 
+            value={email} 
+            onChange={e=>setEmail(e.target.value)} 
+            className="w-full rounded-xl border border-zinc-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200" 
+            placeholder="ops@nicsan.in"
+            disabled={isLoading}
+          />
         </label>
         <label className="block mb-4">
           <div className="text-xs text-zinc-600 mb-1">Password</div>
-          <input type="password" value={password} onChange={e=>setPassword(e.target.value)} className="w-full rounded-xl border border-zinc-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200" placeholder="••••••••"/>
+          <input 
+            type="password" 
+            value={password} 
+            onChange={e=>setPassword(e.target.value)} 
+            className="w-full rounded-xl border border-zinc-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200" 
+            placeholder="••••••••"
+            disabled={isLoading}
+          />
         </label>
-        <div className="flex items-center gap-2 mb-6">
-          <label className={`px-3 py-2 rounded-lg border ${role==='ops'?'border-zinc-900':'border-zinc-200'} cursor-pointer`}>
-            <input type="radio" name="role" className="mr-2" checked={role==='ops'} onChange={()=>setRole('ops')}/> Operations
-          </label>
-          <label className={`px-3 py-2 rounded-lg border ${role==='founder'?'border-zinc-900':'border-zinc-200'} cursor-pointer`}>
-            <input type="radio" name="role" className="mr-2" checked={role==='founder'} onChange={()=>setRole('founder')}/> Founder
-          </label>
+        
+        <button 
+          onClick={handleLogin} 
+          disabled={isLoading}
+          className="w-full px-4 py-2 rounded-xl bg-zinc-900 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {isLoading ? 'Signing in...' : 'Sign in'}
+        </button>
+        
+        <div className="text-xs text-zinc-500 mt-3 text-center">
+          Test credentials: ops@nicsan.in / ops123
         </div>
-        <button onClick={()=>onLogin({ name: email.split('@')[0]||'User', email, role })} className="w-full px-4 py-2 rounded-xl bg-zinc-900 text-white">Sign in</button>
-        <div className="text-xs text-zinc-500 mt-3">Forgot password? <span className="text-indigo-600">Reset via email</span></div>
+        <div className="text-xs text-zinc-500 mt-2 text-center">
+          Founder: admin@nicsan.in / admin123
+        </div>
       </div>
     </div>
   )
@@ -119,16 +215,145 @@ function OpsSidebar({ page, setPage }: { page: string; setPage: (p: string) => v
 }
 
 function PageUpload() {
+  const [dragActive, setDragActive] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState<string>('');
+  const [uploadedFiles, setUploadedFiles] = useState<any[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleDrag = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDragIn = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
+      setDragActive(true);
+    }
+  };
+
+  const handleDragOut = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleFiles(e.dataTransfer.files);
+    }
+  };
+
+  const handleFiles = async (files: FileList) => {
+    const file = files[0];
+    
+    // Validate file type
+    if (file.type !== 'application/pdf') {
+      setUploadStatus('Error: Only PDF files are allowed');
+      return;
+    }
+
+    // Validate file size (10MB limit)
+    if (file.size > 10 * 1024 * 1024) {
+      setUploadStatus('Error: File size must be less than 10MB');
+      return;
+    }
+
+    setUploading(true);
+    setUploadStatus('Uploading...');
+
+    try {
+      const result = await uploadAPI.uploadPDF(file);
+      
+      if (result.success) {
+        setUploadStatus('Upload successful! Processing with Textract...');
+        setUploadedFiles(prev => [{
+          id: result.data?.uploadId || Date.now(),
+          filename: file.name,
+          status: 'UPLOADED',
+          time: new Date().toLocaleTimeString(),
+          size: (file.size / 1024 / 1024).toFixed(2) + ' MB'
+        }, ...prev]);
+      } else {
+        setUploadStatus(`Upload failed: ${result.error}`);
+      }
+    } catch (error) {
+      setUploadStatus(`Upload error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      handleFiles(e.target.files);
+    }
+  };
+
+  const openFileDialog = () => {
+    fileInputRef.current?.click();
+  };
+
   return (
     <>
       <Card title="Drag & Drop PDF" desc="(S3 = cloud folder; Textract = PDF reader bot). Tata AIG & Digit only in v1.">
-        <div className="border-2 border-dashed border-zinc-300 rounded-2xl p-10 text-center bg-zinc-50">
-          <Upload className="w-8 h-8 mx-auto text-zinc-500"/>
-          <div className="mt-2 text-sm text-zinc-700">Drop PDF here or <span className="text-indigo-600">browse</span></div>
+        <div 
+          className={`border-2 border-dashed rounded-2xl p-10 text-center transition-colors ${
+            dragActive 
+              ? 'border-indigo-400 bg-indigo-50' 
+              : 'border-zinc-300 bg-zinc-50'
+          }`}
+          onDragEnter={handleDragIn}
+          onDragLeave={handleDragOut}
+          onDragOver={handleDrag}
+          onDrop={handleDrop}
+        >
+          <Upload className={`w-8 h-8 mx-auto ${dragActive ? 'text-indigo-500' : 'text-zinc-500'}`}/>
+          <div className="mt-2 text-sm text-zinc-700">
+            {dragActive ? 'Drop PDF here' : 'Drop PDF here or '}
+            {!dragActive && <span className="text-indigo-600 cursor-pointer" onClick={openFileDialog}>browse</span>}
+          </div>
           <div className="text-xs text-zinc-500 mt-1">We delete the PDF immediately after reading.</div>
+          
+          {/* Hidden file input */}
+          <input 
+            ref={fileInputRef}
+            type="file"
+            accept=".pdf"
+            onChange={handleFileSelect}
+            style={{ display: 'none' }}
+          />
+
+          {/* Upload status */}
+          {uploadStatus && (
+            <div className={`mt-3 text-sm px-3 py-2 rounded-lg ${
+              uploadStatus.includes('Error') 
+                ? 'bg-red-100 text-red-700' 
+                : uploadStatus.includes('successful') 
+                ? 'bg-green-100 text-green-700'
+                : 'bg-blue-100 text-blue-700'
+            }`}>
+              {uploadStatus}
+            </div>
+          )}
+
+          {/* Uploading indicator */}
+          {uploading && (
+            <div className="mt-3 flex items-center justify-center gap-2 text-sm text-blue-600">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+              Processing...
+            </div>
+          )}
         </div>
       </Card>
-      <Card title="Manual extras (from Sales Rep)" desc="Some fields don’t exist in the PDF and must be filled by OPS.">
+
+      <Card title="Manual extras (from Sales Rep)" desc="Some fields don't exist in the PDF and must be filled by OPS.">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <LabeledInput label="Caller Name" placeholder="Telecaller name"/>
           <LabeledInput label="Executive" placeholder="Ops owner"/>
@@ -145,22 +370,44 @@ function PageUpload() {
           <button className="px-4 py-2 rounded-xl bg-zinc-900 text-white">Attach to Parsed Policy</button>
         </div>
       </Card>
+
       <Card title="Recent Uploads" desc="Status = Parsing → Needs Review → Saved">
         <div className="overflow-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-zinc-500">
-                <th className="py-2">Time</th><th>Insurer</th><th>Vehicle No</th><th>Policy No</th><th>Status</th><th>Confidence</th>
+                <th className="py-2">Time</th><th>Filename</th><th>Size</th><th>Status</th>
               </tr>
             </thead>
             <tbody>
-              {[{t:"16:02", ins:"Tata AIG", v:"KA01AB1234", p:"TA-9921", s:"Needs Review", c: "92%"}, {t:"15:54", ins:"Digit", v:"KA05CJ7777", p:"DG-4410", s:"Saved", c:"98%"}].map((r,i)=> (
-                <tr key={i} className="border-t">
-                  <td className="py-2">{r.t}</td><td>{r.ins}</td><td>{r.v}</td><td>{r.p}</td>
-                  <td><span className={`px-2 py-1 rounded-full text-xs ${r.s==="Saved"?"bg-emerald-100 text-emerald-700":"bg-amber-100 text-amber-700"}`}>{r.s}</span></td>
-                  <td>{r.c}</td>
+              {uploadedFiles.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="py-4 text-center text-zinc-500">
+                    No uploads yet. Drag and drop a PDF to get started.
+                  </td>
                 </tr>
-              ))}
+              ) : (
+                uploadedFiles.map((file, i) => (
+                  <tr key={i} className="border-t">
+                    <td className="py-2">{file.time}</td>
+                    <td className="py-2">{file.filename}</td>
+                    <td className="py-2">{file.size}</td>
+                    <td>
+                      <span className={`px-2 py-1 rounded-full text-xs ${
+                        file.status === 'UPLOADED' 
+                          ? 'bg-blue-100 text-blue-700'
+                          : file.status === 'PROCESSING'
+                          ? 'bg-yellow-100 text-yellow-700'
+                          : file.status === 'COMPLETED'
+                          ? 'bg-green-100 text-green-700'
+                          : 'bg-gray-100 text-gray-700'
+                      }`}>
+                        {file.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -196,6 +443,7 @@ function PageManualForm() {
     productType: "",
     vehicleType: "",
     make: "",
+    model: "",
     cc: "",
     manufacturingYear: "",
     policyNumber: "",
@@ -220,7 +468,11 @@ function PageManualForm() {
     mobile: "",
     rollover: "",
     remark: "",
+    brokerage: "",
+    cashback: "",
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitMessage, setSubmitMessage] = useState<{type: 'success' | 'error', message: string} | null>(null);
   const set = (k:string,v:any)=> setForm((f:any)=>({ ...f, [k]: v }));
   const number = (v:any)=> (v===''||v===null)?0:parseFloat(v.toString().replace(/[^0-9.]/g,''))||0;
 
@@ -244,9 +496,10 @@ function PageManualForm() {
     // Demo: pretend we fetched last year policy by vehicle no
     setForm((f:any)=> ({ ...f,
       insurer: f.insurer || "Tata AIG",
-      productType: f.productType || "Comprehensive",
+      productType: f.productType || "Private Car",
       vehicleType: f.vehicleType || "Private Car",
       make: f.make || "Maruti",
+      model: f.model || "Swift",
       cc: f.cc || "1197",
       manufacturingYear: f.manufacturingYear || "2021",
       idv: f.idv || "495000",
@@ -257,8 +510,147 @@ function PageManualForm() {
       totalOd: f.totalOd || "7200",
       netPremium: f.netPremium || "10800",
       totalPremium: f.totalPremium || "12150",
+      brokerage: f.brokerage || "500",
+      cashback: f.cashback || "600",
     }))
   }
+
+  // Form submission handlers
+  const handleSave = async () => {
+    await submitForm(false);
+  };
+
+  const handleSaveAndNew = async () => {
+    await submitForm(true);
+  };
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.key === 's') {
+        e.preventDefault();
+        handleSave();
+      } else if (e.ctrlKey && e.key === 'Enter') {
+        e.preventDefault();
+        handleSaveAndNew();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  const submitForm = async (clearAfterSave: boolean) => {
+    // Clear previous messages
+    setSubmitMessage(null);
+    
+    // Validate form
+    if (errors.length > 0) {
+      setSubmitMessage({ type: 'error', message: 'Please fix the errors before saving' });
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      // Prepare data for API - including all fields
+      const policyData = {
+        policy_number: form.policyNumber,
+        vehicle_number: form.vehicleNumber,
+        insurer: form.insurer,
+        product_type: form.productType || 'Private Car',
+        vehicle_type: form.vehicleType || 'Private Car',
+        make: form.make || 'Unknown',
+        model: form.model || '',
+        cc: form.cc || '',
+        manufacturing_year: form.manufacturingYear || '',
+        issue_date: form.issueDate || new Date().toISOString().split('T')[0],
+        expiry_date: form.expiryDate || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        idv: parseFloat(form.idv) || 0,
+        ncb: parseFloat(form.ncb) || 0,
+        discount: parseFloat(form.discount) || 0,
+        net_od: parseFloat(form.netOd) || 0,
+        ref: form.ref || '',
+        total_od: parseFloat(form.totalOd) || 0,
+        net_premium: parseFloat(form.netPremium) || 0,
+        total_premium: parseFloat(form.totalPremium),
+        cashback_percentage: parseFloat(form.cashbackPct) || 0,
+        cashback_amount: parseFloat(form.cashbackAmt) || 0,
+        customer_paid: parseFloat(form.customerPaid) || 0,
+        customer_cheque_no: form.customerChequeNo || '',
+        our_cheque_no: form.ourChequeNo || '',
+        executive: form.executive || 'Unknown',
+        caller_name: form.callerName || 'Unknown',
+        mobile: form.mobile || '0000000000',
+        rollover: form.rollover || '',
+        remark: form.remark || '',
+        brokerage: parseFloat(form.brokerage) || 0,
+        cashback: parseFloat(form.cashback) || 0,
+        source: 'MANUAL_FORM'
+      };
+
+      // Submit to API
+      console.log('🔍 Submitting policy data:', policyData);
+      const response = await policiesAPI.create(policyData);
+      console.log('🔍 API response:', response);
+      
+      if (response.success) {
+        setSubmitMessage({ 
+          type: 'success', 
+          message: `Policy saved successfully! Policy ID: ${response.data?.id || 'N/A'}` 
+        });
+        
+        if (clearAfterSave) {
+          // Reset form for new entry
+          setForm({
+            insurer: "",
+            productType: "",
+            vehicleType: "",
+            make: "",
+            model: "",
+            cc: "",
+            manufacturingYear: "",
+            policyNumber: "",
+            vehicleNumber: "",
+            issueDate: "",
+            expiryDate: "",
+            idv: "",
+            ncb: "",
+            discount: "",
+            netOd: "",
+            ref: "",
+            totalOd: "",
+            netPremium: "",
+            totalPremium: "",
+            cashbackPct: "",
+            cashbackAmt: "",
+            customerPaid: "",
+            customerChequeNo: "",
+            ourChequeNo: "",
+            executive: "",
+            callerName: "",
+            mobile: "",
+            rollover: "",
+            remark: "",
+            brokerage: "",
+            cashback: "",
+          });
+        }
+      } else {
+        setSubmitMessage({ 
+          type: 'error', 
+          message: response.error || 'Failed to save policy' 
+        });
+      }
+    } catch (error) {
+      setSubmitMessage({ 
+        type: 'error', 
+        message: error instanceof Error ? error.message : 'Unknown error occurred' 
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const errors = useMemo(()=> {
     const e:string[] = [];
@@ -272,6 +664,17 @@ function PageManualForm() {
   return (
     <>
       <Card title="Manual Entry — Speed Mode" desc="All required columns. QuickFill; Required-first; two-way cashback; sticky save bar">
+        {/* Success/Error Messages */}
+        {submitMessage && (
+          <div className={`mb-4 p-3 rounded-xl text-sm ${
+            submitMessage.type === 'success' 
+              ? 'bg-green-100 text-green-800 border border-green-200' 
+              : 'bg-red-100 text-red-800 border border-red-200'
+          }`}>
+            {submitMessage.message}
+          </div>
+        )}
+        
         {/* Top row: Vehicle + QuickFill */}
         <div className="flex flex-col md:flex-row gap-3 mb-4">
           <LabeledInput label="Vehicle Number" required placeholder="KA01AB1234" value={form.vehicleNumber} onChange={v=>set('vehicleNumber', v)}/>
@@ -283,8 +686,10 @@ function PageManualForm() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <LabeledInput label="Policy Number" required value={form.policyNumber} onChange={v=>set('policyNumber', v)}/>
           <LabeledInput label="Insurer (Company)" required placeholder="e.g., Tata AIG" value={form.insurer} onChange={v=>set('insurer', v)}/>
-          <LabeledSelect label="Vehicle Type" value={form.vehicleType} onChange={v=>set('vehicleType', v)} options={["Private Car","GCV"]}/>
+          <LabeledSelect label="Product Type" value={form.productType} onChange={v=>set('productType', v)} options={["Private Car", "Commercial", "Two Wheeler", "Three Wheeler", "Bus", "Truck"]}/>
+          <LabeledSelect label="Vehicle Type" value={form.vehicleType} onChange={v=>set('vehicleType', v)} options={["Private Car","GCV", "LCV", "MCV", "HCV"]}/>
           <LabeledInput label="Make" placeholder="Maruti / Hyundai / …" value={form.make} onChange={v=>set('make', v)}/>
+          <LabeledInput label="Model" placeholder="Swift / i20 / …" value={form.model} onChange={v=>set('model', v)}/>
           <LabeledInput label="CC" hint="engine size" value={form.cc} onChange={v=>set('cc', v)}/>
           <LabeledInput label="MFG Year" value={form.manufacturingYear} onChange={v=>set('manufacturingYear', v)}/>
         </div>
@@ -316,6 +721,12 @@ function PageManualForm() {
           <LabeledInput label="Our Cheque No" value={form.ourChequeNo} onChange={v=>set('ourChequeNo', v)}/>
         </div>
 
+        {/* Brokerage & Additional */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+          <LabeledInput label="Brokerage (₹)" hint="commission amount" value={form.brokerage} onChange={v=>set('brokerage', v)}/>
+          <LabeledInput label="Cashback (₹)" hint="total cashback amount" value={form.cashback} onChange={v=>set('cashback', v)}/>
+        </div>
+
         {/* People & Notes */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
           <LabeledInput label="Executive" value={form.executive} onChange={v=>set('executive', v)}/>
@@ -343,8 +754,20 @@ function PageManualForm() {
 
         <div className="sticky bottom-4 mt-4 flex gap-3 justify-end bg-white/60 backdrop-blur supports-[backdrop-filter]:bg-white/60 p-2 rounded-xl">
           <button className="px-4 py-2 rounded-xl bg-white border">Save Draft</button>
-          <button className="px-4 py-2 rounded-xl bg-zinc-900 text-white">Save</button>
-          <button className="px-4 py-2 rounded-xl bg-indigo-600 text-white">Save & New</button>
+          <button 
+            onClick={handleSave} 
+            disabled={errors.length > 0 || isSubmitting}
+            className="px-4 py-2 rounded-xl bg-zinc-900 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isSubmitting ? 'Saving...' : 'Save'}
+          </button>
+          <button 
+            onClick={handleSaveAndNew} 
+            disabled={errors.length > 0 || isSubmitting}
+            className="px-4 py-2 rounded-xl bg-indigo-600 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isSubmitting ? 'Saving...' : 'Save & New'}
+          </button>
         </div>
       </Card>
     </>
@@ -486,9 +909,9 @@ const demoSources = [
   { name: "CSV_IMPORT", policies: 200, gwp: 2050000 },
 ]
 const demoReps = [
-  { name: "Asha", leads: 120, converted: 22, gwp: 260000, brokerage: 39000, cashback: 10000, net: 29000, cac: 1800/ (22||1) },
-  { name: "Vikram", leads: 110, converted: 18, gwp: 210000, brokerage: 31500, cashback: 9000, net: 22500, cac: 1800/ (18||1) },
-  { name: "Meera", leads: 90, converted: 20, gwp: 240000, brokerage: 36000, cashback: 8000, net: 28000, cac: 1800/ (20||1) },
+  { name: "Asha", leads: 120, converted: 22, gwp: 260000, brokerage: 39000, cashback: 10000, net: 29000, cac: Math.round(1800 / 22) },
+  { name: "Vikram", leads: 110, converted: 18, gwp: 210000, brokerage: 31500, cashback: 9000, net: 22500, cac: Math.round(1800 / 18) },
+  { name: "Meera", leads: 90, converted: 20, gwp: 240000, brokerage: 36000, cashback: 8000, net: 28000, cac: Math.round(1800 / 20) },
 ]
 const demoPolicies = [
   { rep: 'Asha', make: 'Maruti', model: 'Swift', policies: 12, gwp: 130000, cashbackPctAvg: 2.4, cashback: 3100, net: 16900 },
