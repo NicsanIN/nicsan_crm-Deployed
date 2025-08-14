@@ -8,6 +8,7 @@ import policyRoutes from './routes/policies';
 import userRoutes from './routes/users';
 import uploadRoutes from './routes/upload';
 import dashboardRoutes from './routes/dashboard';
+import settingsRoutes from './routes/settings';
 
 // Load environment variables
 dotenv.config();
@@ -46,6 +47,7 @@ app.use('/api/policies', policyRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/settings', settingsRoutes);
 
 // Error handling middleware
 app.use(notFoundHandler);

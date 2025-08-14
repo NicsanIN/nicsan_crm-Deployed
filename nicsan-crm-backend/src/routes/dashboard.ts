@@ -179,6 +179,45 @@ router.get('/trends', async (req: AuthenticatedRequest, res, next) => {
   }
 });
 
+// Get trends data
+router.get('/trends', async (req: AuthenticatedRequest, res, next) => {
+  try {
+    const { period = '14d' } = req.query;
+    
+    let days = 14;
+    if (period === '30d') days = 30;
+    else if (period === '90d') days = 90;
+
+    const result = await pool.query(
+      `SELECT 
+        DATE(created_at) as date,
+        COUNT(*) as policies,
+        COALESCE(SUM(total_premium), 0) as gwp,
+        COALESCE(SUM(total_premium * 0.15 - cashback_amount), 0) as net_revenue
+      FROM policies
+      WHERE created_at >= CURRENT_DATE - INTERVAL '${days} days'
+      GROUP BY DATE(created_at)
+      ORDER BY date ASC`
+    );
+
+    const trends = result.rows.map((row: any) => ({
+      date: row.date,
+      policies: parseInt(row.policies),
+      gwp: parseFloat(row.gwp),
+      net_revenue: parseFloat(row.net_revenue)
+    }));
+
+    res.json({
+      success: true,
+      message: 'Trends data retrieved successfully',
+      data: trends
+    });
+
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Get data source analysis
 router.get('/data-sources', async (req: AuthenticatedRequest, res, next) => {
   try {

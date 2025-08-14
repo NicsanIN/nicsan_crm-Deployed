@@ -61,10 +61,12 @@ CREATE TABLE pdf_uploads (
     s3_url VARCHAR(500) NOT NULL,
     file_size BIGINT NOT NULL,
     mime_type VARCHAR(100) NOT NULL,
-    status VARCHAR(20) NOT NULL DEFAULT 'UPLOADED' CHECK (status IN ('UPLOADED', 'PROCESSING', 'COMPLETED', 'FAILED')),
+    status VARCHAR(20) NOT NULL DEFAULT 'UPLOADED' CHECK (status IN ('UPLOADED', 'PROCESSING', 'COMPLETED', 'FAILED', 'REVIEW')),
     confidence_score DECIMAL(3,2),
     extracted_data JSONB,
     error_message TEXT,
+    job_id VARCHAR(255),
+    progress INTEGER DEFAULT 0,
     uploaded_by UUID REFERENCES users(id),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP

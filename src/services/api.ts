@@ -187,38 +187,38 @@ export const policiesAPI = {
 
 // PDF Upload API
 export const uploadAPI = {
-  uploadPDF: async (file: File): Promise<ApiResponse<PDFUpload>> => {
-    const formData = new FormData();
-    formData.append('pdf', file);
-
+  uploadPDF: async (formData: FormData): Promise<ApiResponse<PDFUpload>> => {
     try {
       const token = localStorage.getItem('authToken');
-      console.log('🔍 Debug: Token found:', !!token, 'Token length:', token?.length);
-      
       if (!token) {
-        throw new Error('Access token required');
+        throw new Error('No authentication token found');
       }
-      
+
       const response = await fetch(`${API_BASE_URL}/upload/pdf`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
+          // Don't set Content-Type for FormData - let browser set it with boundary
         },
         body: formData,
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
-        throw new Error(data.error || `HTTP ${response.status}: ${response.statusText}`);
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
       }
 
-      return data;
+      const data = await response.json();
+      return {
+        success: true,
+        data: data.data || data,
+        message: data.message || 'PDF uploaded successfully'
+      };
     } catch (error) {
-      console.error('Upload API Error:', error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Upload failed',
+        error: error instanceof Error ? error.message : 'Failed to upload PDF',
+        message: 'Upload failed'
       };
     }
   },
@@ -231,8 +231,74 @@ export const uploadAPI = {
     return apiCall(`/upload/pdf?${params}`);
   },
 
-  getUploadById: async (id: string): Promise<ApiResponse<PDFUpload>> => {
-    return apiCall(`/upload/pdf/${id}`);
+  getUploadById: async (uploadId: string): Promise<ApiResponse<PDFUpload>> => {
+    try {
+      const token = localStorage.getItem('authToken');
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
+      const response = await fetch(`${API_BASE_URL}/upload/${uploadId}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return {
+        success: true,
+        data: data.data || data,
+        message: data.message || 'Upload details retrieved successfully'
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to get upload details',
+        message: 'Retrieval failed'
+      };
+    }
+  },
+
+  getUploadStatus: async (s3Key: string): Promise<ApiResponse<PDFUpload>> => {
+    try {
+      const token = localStorage.getItem('authToken');
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
+      const response = await fetch(`${API_BASE_URL}/upload/internal/by-s3key/${encodeURIComponent(s3Key)}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return {
+        success: true,
+        data: data.data || data,
+        message: data.message || 'Upload status retrieved successfully'
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to get upload status',
+        message: 'Status retrieval failed'
+      };
+    }
   },
 
   retryProcessing: async (id: string): Promise<ApiResponse<any>> => {

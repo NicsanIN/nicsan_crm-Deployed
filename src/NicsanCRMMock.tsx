@@ -215,201 +215,487 @@ function OpsSidebar({ page, setPage }: { page: string; setPage: (p: string) => v
 }
 
 function PageUpload() {
-  const [dragActive, setDragActive] = useState(false);
-  const [uploading, setUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<string>('');
   const [uploadedFiles, setUploadedFiles] = useState<any[]>([]);
+  const [selectedInsurer, setSelectedInsurer] = useState<'TATA_AIG' | 'DIGIT'>('TATA_AIG');
+  const [manualExtras, setManualExtras] = useState({
+    executive: '',
+    callerName: '',
+    mobile: '',
+    rollover: '',
+    remark: '',
+    brokerage: '',
+    cashback: '',
+    customerPaid: '',
+    customerChequeNo: '',
+    ourChequeNo: ''
+  });
+  const [manualExtrasSaved, setManualExtrasSaved] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const handleDrag = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-  };
-
-  const handleDragIn = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
-      setDragActive(true);
-    }
-  };
-
-  const handleDragOut = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      handleFiles(e.dataTransfer.files);
-    }
-  };
 
   const handleFiles = async (files: FileList) => {
     const file = files[0];
+    if (!file) return;
     
-    // Validate file type
-    if (file.type !== 'application/pdf') {
-      setUploadStatus('Error: Only PDF files are allowed');
+    if (!selectedInsurer) {
+      setUploadStatus('Please select an insurer first');
       return;
     }
 
-    // Validate file size (10MB limit)
-    if (file.size > 10 * 1024 * 1024) {
-      setUploadStatus('Error: File size must be less than 10MB');
+    if (!manualExtrasSaved) {
+      setUploadStatus('⚠️ Please save your manual extras first before uploading PDF');
       return;
     }
 
-    setUploading(true);
     setUploadStatus('Uploading...');
 
     try {
-      const result = await uploadAPI.uploadPDF(file);
+      // Create FormData with insurer and manual extras
+      const formData = new FormData();
+      formData.append('pdf', file);
+      formData.append('insurer', selectedInsurer);
+      
+      // Add manual extras to FormData
+      Object.entries(manualExtras).forEach(([key, value]) => {
+        if (value) {
+          formData.append(`manual_${key}`, value);
+        }
+      });
+      
+      const result = await uploadAPI.uploadPDF(formData);
       
       if (result.success) {
         setUploadStatus('Upload successful! Processing with Textract...');
-        setUploadedFiles(prev => [{
+        const newFile = {
           id: result.data?.uploadId || Date.now(),
           filename: file.name,
           status: 'UPLOADED',
+          insurer: selectedInsurer,
+          s3_key: `uploads/${Date.now()}_${file.name}`,
           time: new Date().toLocaleTimeString(),
-          size: (file.size / 1024 / 1024).toFixed(2) + ' MB'
-        }, ...prev]);
+          size: (file.size / 1024 / 1024).toFixed(2) + ' MB',
+          // Structure that matches Review page expectations
+          extracted_data: {
+            insurer: selectedInsurer,
+            status: 'UPLOADED',
+            manual_extras: { ...manualExtras },
+            extracted_data: {
+              // Mock PDF data for demo (in real app, this comes from Textract)
+              policy_number: "TA-" + Math.floor(Math.random() * 10000),
+              vehicle_number: "KA01AB" + Math.floor(Math.random() * 1000),
+              insurer: selectedInsurer === 'TATA_AIG' ? 'Tata AIG' : 'Digit',
+              product_type: "Private Car",
+              vehicle_type: "Private Car",
+              make: "Maruti",
+              model: "Swift",
+              cc: "1197",
+              manufacturing_year: "2021",
+              issue_date: new Date().toISOString().split('T')[0],
+              expiry_date: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+              idv: 495000,
+              ncb: 20,
+              discount: 0,
+              net_od: 5400,
+              ref: "",
+              total_od: 7200,
+              net_premium: 10800,
+              total_premium: 12150,
+              confidence_score: 0.86
+            }
+          }
+        };
+        
+        setUploadedFiles(prev => [newFile, ...prev]);
+        
+        // Save to localStorage so Review page can access it
+        const allUploads = [newFile, ...uploadedFiles];
+        localStorage.setItem('nicsan_crm_uploads', JSON.stringify(allUploads));
+        console.log('💾 Saved uploads to localStorage:', allUploads);
+        
+        // Start polling for status updates
+        pollUploadStatus(result.data?.uploadId);
+        
+        // Clear manual extras after successful upload
+        setManualExtras({
+          executive: '',
+          callerName: '',
+          mobile: '',
+          rollover: '',
+          remark: '',
+          brokerage: '',
+          cashback: '',
+          customerPaid: '',
+          customerChequeNo: '',
+          ourChequeNo: ''
+        });
+        setManualExtrasSaved(false);
       } else {
         setUploadStatus(`Upload failed: ${result.error}`);
       }
     } catch (error) {
       setUploadStatus(`Upload error: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    } finally {
-      setUploading(false);
     }
   };
 
+  const pollUploadStatus = async (uploadId: string) => {
+    const maxAttempts = 30; // 30 seconds max
+    let attempts = 0;
+    
+    const poll = async () => {
+      try {
+        const response = await uploadAPI.getUploadById(uploadId);
+        
+        if (response.success) {
+          const status = response.data.status;
+          
+          // Update local state
+          setUploadedFiles(prev => {
+            const updated = prev.map(f => 
+              f.id === uploadId ? { 
+                ...f, 
+                status,
+                extracted_data: {
+                  ...f.extracted_data,
+                  status
+                }
+              } : f
+            );
+            
+            // Update localStorage with new status
+            localStorage.setItem('nicsan_crm_uploads', JSON.stringify(updated));
+            console.log('🔄 Updated upload status in localStorage:', updated);
+            
+            return updated;
+          });
+          
+          if (status === 'REVIEW' || status === 'COMPLETED') {
+            setUploadStatus('PDF processed successfully! Ready for review.');
+            
+            // Show notification for review
+            if (status === 'REVIEW') {
+              // In a real app, you might want to show a toast notification
+              console.log('🎉 PDF ready for review! Check the Review & Confirm page.');
+              
+              // Show browser notification
+              if ('Notification' in window && Notification.permission === 'granted') {
+                new Notification('PDF Ready for Review!', {
+                  body: 'Your PDF has been processed and is ready for review.',
+                  icon: '📄'
+                });
+              }
+              
+              // Show alert for demo purposes
+              alert('🎉 PDF processed successfully! Ready for review. Go to Review & Confirm page.');
+            }
+            
+            return; // Stop polling
+          } else if (status === 'FAILED') {
+            setUploadStatus('PDF processing failed. Please try again.');
+            return; // Stop polling
+          }
+          
+          // Continue polling if still processing
+          if (attempts < maxAttempts) {
+            attempts++;
+            setTimeout(poll, 2000); // Poll every 2 seconds
+          } else {
+            setUploadStatus('PDF processing timed out. Please check status.');
+          }
+        }
+      } catch (error) {
+        console.error('Status polling failed:', error);
+      }
+    };
+    
+    // Start polling
+    poll();
+  };
+
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
+    if (e.target.files) {
       handleFiles(e.target.files);
     }
   };
 
-  const openFileDialog = () => {
-    fileInputRef.current?.click();
+  const handleManualExtrasChange = (field: string, value: string) => {
+    setManualExtras(prev => ({ ...prev, [field]: value }));
   };
 
   return (
     <>
       <Card title="Drag & Drop PDF" desc="(S3 = cloud folder; Textract = PDF reader bot). Tata AIG & Digit only in v1.">
+        {/* Insurer Selection */}
+        <div className="mb-4">
+          <div className="text-sm font-medium mb-2">Select Insurer</div>
+          <div className="flex gap-4">
+            <label className="flex items-center gap-2">
+              <input 
+                type="radio" 
+                value="TATA_AIG" 
+                checked={selectedInsurer === 'TATA_AIG'}
+                onChange={(e) => setSelectedInsurer(e.target.value as 'TATA_AIG' | 'DIGIT')}
+                className="w-4 h-4 text-indigo-600"
+              />
+              <span className="text-sm">Tata AIG</span>
+            </label>
+            <label className="flex items-center gap-2">
+              <input 
+                type="radio" 
+                value="DIGIT" 
+                checked={selectedInsurer === 'DIGIT'}
+                onChange={(e) => setSelectedInsurer(e.target.value as 'TATA_AIG' | 'DIGIT')}
+                className="w-4 h-4 text-indigo-600"
+              />
+              <span className="text-sm">Digit</span>
+            </label>
+          </div>
+        </div>
+
+        {/* Manual Extras Section */}
+        <div className="mb-6 p-4 bg-blue-50 rounded-xl border border-blue-200">
+          <div className="text-sm font-medium mb-3 text-blue-800">📝 Manual Extras (from Sales Rep)</div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs text-blue-700 mb-1">Executive</label>
+              <input 
+                type="text" 
+                placeholder="Sales rep name"
+                value={manualExtras.executive}
+                onChange={(e) => handleManualExtrasChange('executive', e.target.value)}
+                className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-blue-700 mb-1">Caller Name</label>
+              <input 
+                type="text" 
+                placeholder="Telecaller name"
+                value={manualExtras.callerName}
+                onChange={(e) => handleManualExtrasChange('callerName', e.target.value)}
+                className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-blue-700 mb-1">Mobile Number</label>
+              <input 
+                type="text" 
+                placeholder="9xxxxxxxxx"
+                value={manualExtras.mobile}
+                onChange={(e) => handleManualExtrasChange('mobile', e.target.value)}
+                className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-blue-700 mb-1">Rollover/Renewal</label>
+              <input 
+                type="text" 
+                placeholder="Internal code"
+                value={manualExtras.rollover}
+                onChange={(e) => handleManualExtrasChange('rollover', e.target.value)}
+                className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-blue-700 mb-1">Brokerage (₹)</label>
+              <input 
+                type="number" 
+                placeholder="Commission amount"
+                value={manualExtras.brokerage}
+                onChange={(e) => handleManualExtrasChange('brokerage', e.target.value)}
+                className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-blue-700 mb-1">Cashback (₹)</label>
+              <input 
+                type="number" 
+                placeholder="Total cashback"
+                value={manualExtras.cashback}
+                onChange={(e) => handleManualExtrasChange('cashback', e.target.value)}
+                className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-blue-700 mb-1">Customer Paid (₹)</label>
+              <input 
+                type="number" 
+                placeholder="Amount customer paid"
+                value={manualExtras.customerPaid}
+                onChange={(e) => handleManualExtrasChange('customerPaid', e.target.value)}
+                className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-blue-700 mb-1">Customer Cheque No</label>
+              <input 
+                type="text" 
+                placeholder="Customer's cheque number"
+                value={manualExtras.customerChequeNo}
+                onChange={(e) => handleManualExtrasChange('customerChequeNo', e.target.value)}
+                className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-blue-700 mb-1">Our Cheque No</label>
+              <input 
+                type="text" 
+                placeholder="Your company's cheque number"
+                value={manualExtras.ourChequeNo}
+                onChange={(e) => handleManualExtrasChange('ourChequeNo', e.target.value)}
+                className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+              />
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-xs text-blue-700 mb-1">Remark</label>
+              <textarea 
+                placeholder="Any additional notes or special instructions"
+                value={manualExtras.remark}
+                onChange={(e) => handleManualExtrasChange('remark', e.target.value)}
+                className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                rows={2}
+              />
+            </div>
+          </div>
+          {/* Submit Button for Manual Extras */}
+          <div className="mt-4 flex justify-end">
+            <button
+              onClick={() => {
+                // Show preview of what will be submitted
+                const filledFields = Object.entries(manualExtras).filter(([key, value]) => value.trim() !== '');
+                if (filledFields.length === 0) {
+                  alert('Please fill at least one manual field before proceeding');
+                  return;
+                }
+                
+                setManualExtrasSaved(true);
+                setUploadStatus('✅ Manual extras saved! Now drop your PDF to complete the upload.');
+              }}
+              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+            >
+              💾 Save Manual Extras
+            </button>
+          </div>
+          
+          <div className="text-xs text-blue-600 mt-2">
+            💡 Fill the fields above, click "Save Manual Extras", then drop your PDF. Both will be combined for review!
+          </div>
+        </div>
+
+        {/* Workflow Step Indicator */}
+        <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+          <div className="flex items-center gap-2 text-sm">
+            <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+              manualExtrasSaved ? 'bg-green-500 text-white' : 'bg-gray-300 text-gray-600'
+            }`}>
+              {manualExtrasSaved ? '✓' : '1'}
+            </span>
+            <span className={manualExtrasSaved ? 'text-green-800' : 'text-gray-600'}>
+              {manualExtrasSaved ? 'Manual Extras Saved ✓' : 'Fill Manual Extras above and click "Save Manual Extras"'}
+            </span>
+          </div>
+          <div className="flex items-center gap-2 text-sm mt-2">
+            <span className="w-6 h-6 bg-gray-300 text-gray-600 rounded-full flex items-center justify-center text-xs font-bold">2</span>
+            <span className="text-gray-600">Drop your PDF below to complete the upload</span>
+          </div>
+        </div>
+
         <div 
           className={`border-2 border-dashed rounded-2xl p-10 text-center transition-colors ${
-            dragActive 
-              ? 'border-indigo-400 bg-indigo-50' 
-              : 'border-zinc-300 bg-zinc-50'
+            uploadStatus.includes('Uploading') ? 'border-indigo-400 bg-indigo-50' : 'border-zinc-300 hover:border-zinc-400'
           }`}
-          onDragEnter={handleDragIn}
-          onDragLeave={handleDragOut}
-          onDragOver={handleDrag}
-          onDrop={handleDrop}
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={(e) => {
+            e.preventDefault();
+            if (e.dataTransfer.files) handleFiles(e.dataTransfer.files);
+          }}
         >
-          <Upload className={`w-8 h-8 mx-auto ${dragActive ? 'text-indigo-500' : 'text-zinc-500'}`}/>
-          <div className="mt-2 text-sm text-zinc-700">
-            {dragActive ? 'Drop PDF here' : 'Drop PDF here or '}
-            {!dragActive && <span className="text-indigo-600 cursor-pointer" onClick={openFileDialog}>browse</span>}
-          </div>
-          <div className="text-xs text-zinc-500 mt-1">We delete the PDF immediately after reading.</div>
-          
-          {/* Hidden file input */}
           <input 
             ref={fileInputRef}
-            type="file"
-            accept=".pdf"
+            type="file" 
+            accept=".pdf" 
             onChange={handleFileSelect}
-            style={{ display: 'none' }}
+            className="hidden"
           />
-
-          {/* Upload status */}
-          {uploadStatus && (
-            <div className={`mt-3 text-sm px-3 py-2 rounded-lg ${
-              uploadStatus.includes('Error') 
-                ? 'bg-red-100 text-red-700' 
-                : uploadStatus.includes('successful') 
-                ? 'bg-green-100 text-green-700'
-                : 'bg-blue-100 text-blue-700'
-            }`}>
-              {uploadStatus}
+          <div className="space-y-4">
+            <div className="text-6xl">📄</div>
+            <div>
+              <div className="text-xl font-medium">Drop PDF here or</div>
+              <button 
+                onClick={() => fileInputRef.current?.click()}
+                className="text-indigo-600 hover:text-indigo-700 font-medium"
+              >
+                browse files
+              </button>
             </div>
-          )}
-
-          {/* Uploading indicator */}
-          {uploading && (
-            <div className="mt-3 flex items-center justify-center gap-2 text-sm text-blue-600">
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-              Processing...
-            </div>
-          )}
+            <div className="text-sm text-zinc-500">PDF will be processed with Textract + your manual extras</div>
+            {manualExtrasSaved && (
+              <div className="text-sm text-green-600 font-medium">
+                ✅ Manual extras ready! Drop PDF to continue
+              </div>
+            )}
+          </div>
         </div>
-      </Card>
 
-      <Card title="Manual extras (from Sales Rep)" desc="Some fields don't exist in the PDF and must be filled by OPS.">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <LabeledInput label="Caller Name" placeholder="Telecaller name"/>
-          <LabeledInput label="Executive" placeholder="Ops owner"/>
-          <LabeledInput label="Cashback %"/>
-          <LabeledInput label="Cashback Amount (₹)"/>
-          <LabeledInput label="Customer Paid (₹)"/>
-          <LabeledInput label="Customer Cheque No"/>
-          <LabeledInput label="Our Cheque No"/>
-          <LabeledInput label="Rollover / Renewal" hint="internal code"/>
-          <LabeledInput label="Remark" placeholder="Any note"/>
-        </div>
-        <div className="flex gap-3 mt-4">
-          <button className="px-4 py-2 rounded-xl bg-white border">Save Draft</button>
-          <button className="px-4 py-2 rounded-xl bg-zinc-900 text-white">Attach to Parsed Policy</button>
-        </div>
-      </Card>
+        {uploadStatus && (
+          <div className="mt-4 p-3 rounded-lg bg-zinc-50 text-sm">
+            {uploadStatus}
+          </div>
+        )}
 
-      <Card title="Recent Uploads" desc="Status = Parsing → Needs Review → Saved">
-        <div className="overflow-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-zinc-500">
-                <th className="py-2">Time</th><th>Filename</th><th>Size</th><th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {uploadedFiles.length === 0 ? (
-                <tr>
-                  <td colSpan={4} className="py-4 text-center text-zinc-500">
-                    No uploads yet. Drag and drop a PDF to get started.
-                  </td>
+        <div className="mt-6">
+          <div className="text-sm font-medium mb-3">Upload History</div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-zinc-500">
+                  <th className="py-2">Time</th><th>Filename</th><th>Insurer</th><th>Size</th><th>Status</th>
                 </tr>
-              ) : (
-                uploadedFiles.map((file, i) => (
-                  <tr key={i} className="border-t">
-                    <td className="py-2">{file.time}</td>
-                    <td className="py-2">{file.filename}</td>
-                    <td className="py-2">{file.size}</td>
-                    <td>
-                      <span className={`px-2 py-1 rounded-full text-xs ${
-                        file.status === 'UPLOADED' 
-                          ? 'bg-blue-100 text-blue-700'
-                          : file.status === 'PROCESSING'
-                          ? 'bg-yellow-100 text-yellow-700'
-                          : file.status === 'COMPLETED'
-                          ? 'bg-green-100 text-green-700'
-                          : 'bg-gray-100 text-gray-700'
-                      }`}>
-                        {file.status}
-                      </span>
+              </thead>
+              <tbody>
+                {uploadedFiles.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="py-4 text-center text-zinc-500">
+                      No uploads yet. Drag and drop a PDF to get started.
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : (
+                  uploadedFiles.map((file) => (
+                    <tr key={file.id} className="border-t">
+                      <td className="py-2">{file.time}</td>
+                      <td className="py-2">{file.filename}</td>
+                      <td className="py-2">
+                        <span className={`px-2 py-1 rounded-full text-xs ${
+                          file.insurer === 'TATA_AIG' 
+                            ? 'bg-blue-100 text-blue-700'
+                            : 'bg-green-100 text-green-700'
+                        }`}>
+                          {file.insurer === 'TATA_AIG' ? 'Tata AIG' : 'Digit'}
+                        </span>
+                      </td>
+                      <td className="py-2">{file.size}</td>
+                      <td>
+                        <span className={`px-2 py-1 rounded-full text-xs ${
+                          file.status === 'UPLOADED'
+                            ? 'bg-blue-100 text-blue-700'
+                            : file.status === 'PROCESSING'
+                            ? 'bg-yellow-100 text-yellow-700'
+                            : file.status === 'REVIEW'
+                            ? 'bg-orange-100 text-orange-700'
+                            : file.status === 'COMPLETED'
+                            ? 'bg-green-100 text-green-700'
+                            : file.status === 'FAILED'
+                            ? 'bg-red-100 text-red-700'
+                            : 'bg-gray-100 text-gray-700'
+                        }`}>
+                          {file.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </Card>
     </>
@@ -817,32 +1103,613 @@ function PageManualGrid() {
 }
 
 function PageReview() {
-  const issues = [
-    { field: "Expiry Date", msg: "Low confidence. Please confirm.", conf: 0.61 },
-    { field: "Vehicle Number", msg: "Format check failed. Expected KAxxYYzzzz.", conf: 0.74 },
-  ]
+  const [reviewData, setReviewData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<{type: 'success' | 'error', message: string} | null>(null);
+  const [submitMessage, setSubmitMessage] = useState<{type: 'success' | 'error', message: string} | null>(null);
+  const [availableUploads, setAvailableUploads] = useState<any[]>([]);
+  const [selectedUpload, setSelectedUpload] = useState<string>('');
+
+    // Load available uploads for review
+  useEffect(() => {
+    const loadAvailableUploads = async () => {
+      try {
+        console.log('🔄 Loading available uploads...');
+        
+        // First, try to get real uploads from localStorage (from PDF upload page)
+        const storedUploads = localStorage.getItem('nicsan_crm_uploads');
+        let realUploads = [];
+        
+        if (storedUploads) {
+          try {
+            realUploads = JSON.parse(storedUploads);
+            console.log('📋 Found stored uploads:', realUploads);
+            console.log('📋 Upload count:', realUploads.length);
+            console.log('📋 First upload structure:', realUploads[0]);
+          } catch (e) {
+            console.error('Failed to parse stored uploads:', e);
+          }
+        } else {
+          console.log('📋 No uploads found in localStorage');
+        }
+        
+        // If no real uploads, show mock data for demo
+        if (realUploads.length === 0) {
+          console.log('📋 No real uploads found, showing mock data');
+          setAvailableUploads([
+            { 
+              id: 'mock_1', 
+              filename: 'policy_TA_9921.pdf', 
+              status: 'REVIEW',
+              s3_key: 'uploads/1/1234567890_policy_TA_9921.pdf',
+              extracted_data: {
+                insurer: 'TATA_AIG',
+                status: 'REVIEW',
+                manual_extras: {
+                  executive: "Rahul Kumar",
+                  callerName: "Priya Singh",
+                  mobile: "9876543210",
+                  rollover: "RENEWAL-2025",
+                  remark: "Customer requested early renewal with NCB benefits",
+                  brokerage: 500,
+                  cashback: 600,
+                  customerPaid: 11550,
+                  customerChequeNo: "CHQ-001234",
+                  ourChequeNo: "OUR-567890"
+                },
+                extracted_data: {
+                  policy_number: "TA-9921",
+                  vehicle_number: "KA01AB1234",
+                  insurer: "Tata AIG",
+                  product_type: "Private Car",
+                  vehicle_type: "Private Car",
+                  make: "Maruti",
+                  model: "Swift",
+                  cc: "1197",
+                  manufacturing_year: "2021",
+                  issue_date: "2025-08-10",
+                  expiry_date: "2026-08-09",
+                  idv: 495000,
+                  ncb: 20,
+                  discount: 0,
+                  net_od: 5400,
+                  ref: "",
+                  total_od: 7200,
+                  net_premium: 10800,
+                  total_premium: 12150,
+                  confidence_score: 0.86
+                }
+              }
+            }
+          ]);
+        } else {
+          // Show real uploads
+          console.log('📋 Showing real uploads:', realUploads);
+          setAvailableUploads(realUploads);
+        }
+      } catch (error) {
+        console.error('Failed to load uploads:', error);
+      }
+    };
+    
+    loadAvailableUploads();
+    
+    // Auto-refresh every 5 seconds to check for new uploads
+    const interval = setInterval(loadAvailableUploads, 5000);
+    
+    return () => clearInterval(interval);
+  }, []);
+
+  const loadUploadData = async (uploadId: string) => {
+    try {
+      // In real app, this would fetch the actual upload data from backend
+      const upload = availableUploads.find(u => u.id === uploadId);
+      if (upload) {
+        setReviewData(upload);
+        setSubmitMessage({ 
+          type: 'success', 
+          message: 'Upload data loaded successfully! Please review before saving.' 
+        });
+      }
+    } catch (error) {
+      setSubmitMessage({ 
+        type: 'error', 
+        message: 'Failed to load upload data. Please try again.' 
+      });
+    }
+  };
+
+  const handleConfirmAndSave = async () => {
+    setIsLoading(true);
+    setSaveMessage(null);
+    
+    try {
+      // In real app, this would save the confirmed data to the database
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
+      
+      setSubmitMessage({ 
+        type: 'success', 
+        message: 'Policy confirmed and saved successfully!' 
+      });
+      
+      // Clear form after successful save
+      setTimeout(() => {
+        setReviewData(null);
+        setSaveMessage(null);
+      }, 2000);
+      
+    } catch (error) {
+      setSubmitMessage({ 
+        type: 'error', 
+        message: 'Failed to save policy. Please try again.' 
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleRejectToManual = () => {
+    // In real app, this would redirect to manual form with some pre-filled data
+    setReviewData(null);
+    // You could navigate to manual form here
+  };
+
+  // For demo purposes, show mock data
+  if (!reviewData && availableUploads.length === 0) {
+    return (
+      <Card title="Review & Confirm" desc="Review PDF data + manual extras before saving">
+        <div className="text-center py-8 text-zinc-500">
+          <div className="text-6xl mb-4">📄</div>
+          <div className="text-lg font-medium mb-2">No PDF data to review</div>
+          <div className="text-sm">Upload a PDF with manual extras first to see the review screen.</div>
+          <div className="mt-4 p-3 bg-blue-50 rounded-lg text-blue-700 text-sm">
+            💡 <strong>Workflow:</strong> Go to PDF Upload → Fill Manual Extras → Save → Drop PDF → Come back here to Review
+          </div>
+          
+          {/* Debug Info */}
+          <div className="mt-4 p-3 bg-yellow-50 rounded-lg text-yellow-700 text-sm">
+            🔍 <strong>Debug:</strong> availableUploads.length = {availableUploads.length}
+            <br />
+            🔍 <strong>Debug:</strong> reviewData = {reviewData ? 'exists' : 'null'}
+            <br />
+            🔍 <strong>Debug:</strong> Check browser console for detailed logs
+          </div>
+          
+          {/* Test Button */}
+          <div className="mt-4">
+            <button 
+              onClick={() => {
+                const testUpload = {
+                  id: 'test_' + Date.now(),
+                  filename: 'test_policy.pdf',
+                  status: 'REVIEW',
+                  s3_key: 'uploads/test/test_policy.pdf',
+                  extracted_data: {
+                    insurer: 'TATA_AIG',
+                    status: 'REVIEW',
+                    manual_extras: {
+                      executive: "Test User",
+                      callerName: "Test Caller",
+                      mobile: "9876543210",
+                      rollover: "TEST-2025",
+                      remark: "Test upload for debugging",
+                      brokerage: 500,
+                      cashback: 600,
+                      customerPaid: 11550,
+                      customerChequeNo: "TEST-001",
+                      ourChequeNo: "TEST-002"
+                    },
+                    extracted_data: {
+                      policy_number: "TA-TEST",
+                      vehicle_number: "KA01AB1234",
+                      insurer: "Tata AIG",
+                      product_type: "Private Car",
+                      vehicle_type: "Private Car",
+                      make: "Maruti",
+                      model: "Swift",
+                      cc: "1197",
+                      manufacturing_year: "2021",
+                      issue_date: "2025-08-14",
+                      expiry_date: "2026-08-13",
+                      idv: 495000,
+                      ncb: 20,
+                      discount: 0,
+                      net_od: 5400,
+                      ref: "",
+                      total_od: 7200,
+                      net_premium: 10800,
+                      total_premium: 12150,
+                      confidence_score: 0.86
+                    }
+                  }
+                };
+                
+                localStorage.setItem('nicsan_crm_uploads', JSON.stringify([testUpload]));
+                console.log('🧪 Added test upload:', testUpload);
+                
+                // Force reload
+                window.location.reload();
+              }}
+              className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700"
+            >
+              🧪 Add Test Upload (Debug)
+            </button>
+          </div>
+        </div>
+      </Card>
+    );
+  }
+
+  // Show upload selection if no specific upload is loaded
+  if (!reviewData && availableUploads.length > 0) {
+    return (
+      <Card title="Review & Confirm" desc="Select an upload to review">
+        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="text-sm text-blue-800">
+            💡 <strong>Workflow:</strong> PDF Upload → Manual Extras → Textract Processing → Review & Confirm → Save to Database
+          </div>
+        </div>
+        
+        {/* Debug Info */}
+        <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <div className="text-sm text-yellow-800">
+            🔍 <strong>Debug:</strong> Found {availableUploads.length} upload(s) in localStorage
+            {availableUploads.length > 0 && (
+              <div className="mt-2 text-xs">
+                {availableUploads.map(upload => (
+                  <div key={upload.id}>
+                    • {upload.filename} - Status: {upload.status} - Insurer: {upload.extracted_data?.insurer || 'N/A'}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="mb-6 p-4 bg-zinc-50 rounded-xl">
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-sm font-medium">📄 Select Upload to Review</div>
+            <button 
+              onClick={() => {
+                // Force reload available uploads from localStorage
+                const loadAvailableUploads = async () => {
+                  try {
+                    const storedUploads = localStorage.getItem('nicsan_crm_uploads');
+                    if (storedUploads) {
+                      const realUploads = JSON.parse(storedUploads);
+                      console.log('🔄 Refreshed uploads from localStorage:', realUploads);
+                      setAvailableUploads(realUploads);
+                    } else {
+                      console.log('📋 No uploads found in localStorage');
+                    }
+                  } catch (error) {
+                    console.error('Failed to refresh uploads:', error);
+                  }
+                };
+                loadAvailableUploads();
+              }}
+              className="px-3 py-1 text-xs bg-zinc-200 hover:bg-zinc-300 rounded-lg transition-colors"
+            >
+              🔄 Refresh
+            </button>
+          </div>
+          <div className="flex items-center gap-3">
+            <select 
+              value={selectedUpload} 
+              onChange={(e) => setSelectedUpload(e.target.value)}
+              className="px-3 py-2 border rounded-lg text-sm"
+            >
+              <option value="">Select an upload to review...</option>
+              {availableUploads.map(upload => (
+                <option key={upload.id} value={upload.id}>
+                  {upload.filename} ({upload.extracted_data?.insurer || 'N/A'}) - {upload.status}
+                </option>
+              ))}
+            </select>
+            <button 
+              onClick={() => loadUploadData(selectedUpload)}
+              disabled={!selectedUpload}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Load Upload Data
+            </button>
+          </div>
+        </div>
+      </Card>
+    );
+  }
+
+  const data = reviewData;
+  
+  // Safety check - if no data, show error
+  if (!data || !data.extracted_data) {
+    return (
+      <Card title="Review & Confirm" desc="Review PDF data + manual extras before saving">
+        <div className="text-center py-8 text-red-500">
+          <div className="text-6xl mb-4">⚠️</div>
+          <div className="text-lg font-medium mb-2">Data Error</div>
+          <div className="text-sm">No valid data found for review. Please try selecting an upload again.</div>
+          <div className="mt-4 p-3 bg-red-50 rounded-lg text-red-700 text-sm">
+            🔍 <strong>Debug:</strong> data = {JSON.stringify(data, null, 2)}
+          </div>
+        </div>
+      </Card>
+    );
+  }
+  
+  const pdfData = data.extracted_data.extracted_data;
+  const manualExtras = data.extracted_data.manual_extras;
+
   return (
     <>
-      <Card title="Review & Confirm" desc="(Confidence = how sure the bot is). Low values are highlighted.">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <LabeledInput label="Policy Number" hint="auto-read from PDF"/>
-          <LabeledInput label="Vehicle Number" hint="check format"/>
-          <LabeledInput label="Issue Date"/>
-          <LabeledInput label="Expiry Date"/>
-          <LabeledInput label="IDV (₹)"/>
-          <LabeledInput label="Total Premium (₹)"/>
+      <Card title="Review & Confirm" desc="Review PDF data + manual extras before saving">
+        {/* Success/Error Messages */}
+        {saveMessage && (
+          <div className={`mb-4 p-3 rounded-xl text-sm ${
+            saveMessage.type === 'success' 
+              ? 'bg-green-100 text-green-800 border border-green-200' 
+              : 'bg-red-100 text-red-800 border border-red-200'
+          }`}>
+            {saveMessage.message}
+          </div>
+        )}
+
+        {/* File Info */}
+        <div className="mb-4 p-3 bg-zinc-50 rounded-lg">
+          <div className="flex items-center gap-4 text-sm">
+            <div><span className="font-medium">File:</span> {data.filename}</div>
+            <div><span className="font-medium">Status:</span> {data.status}</div>
+            <div><span className="font-medium">S3 Key:</span> {data.s3_key}</div>
+          </div>
         </div>
-        <div className="mt-4">
-          <div className="text-sm font-medium mb-2">Issues</div>
-          <ul className="space-y-2">
-            {issues.map((i, idx)=> (
-              <li key={idx} className="flex items-center gap-2 text-sm"><AlertTriangle className="w-4 h-4 text-amber-600"/> <span className="font-medium">{i.field}:</span> {i.msg} <span className="text-xs text-zinc-500">(conf {Math.round(i.conf*100)}%)</span></li>
-            ))}
-          </ul>
+
+        {/* Confidence Score */}
+        <div className="mb-4 p-3 rounded-lg bg-zinc-50">
+          <div className="flex items-center gap-2">
+            <div className="text-sm font-medium">AI Confidence Score:</div>
+            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+              pdfData.confidence_score >= 0.8 
+                ? 'bg-green-100 text-green-700'
+                : pdfData.confidence_score >= 0.6
+                ? 'bg-yellow-100 text-yellow-700'
+                : 'bg-red-100 text-red-700'
+            }`}>
+              {Math.round(pdfData.confidence_score * 100)}%
+            </span>
+          </div>
+          <div className="text-xs text-zinc-600 mt-1">
+            {pdfData.confidence_score >= 0.8 
+              ? 'High confidence - data looks good'
+              : pdfData.confidence_score >= 0.6
+              ? 'Medium confidence - please review carefully'
+              : 'Low confidence - manual review required'
+            }
+          </div>
         </div>
-        <div className="flex gap-3 mt-4">
-          <button className="px-4 py-2 rounded-xl bg-zinc-900 text-white">Confirm & Save</button>
-          <button className="px-4 py-2 rounded-xl bg-white border">Reject to Manual</button>
+
+        {/* PDF Extracted Data Section */}
+        <div className="mb-6">
+          <div className="text-sm font-medium mb-3 text-green-700 bg-green-50 px-3 py-2 rounded-lg">
+            📄 PDF Extracted Data (AI Confidence: {Math.round(pdfData.confidence_score * 100)}%)
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <LabeledInput 
+              label="Policy Number" 
+              value={pdfData.policy_number}
+              onChange={() => {}} // Read-only for review
+              hint="auto-read from PDF"
+            />
+            <LabeledInput 
+              label="Vehicle Number" 
+              value={pdfData.vehicle_number}
+              onChange={() => {}} // Read-only for review
+              hint="check format"
+            />
+            <LabeledInput 
+              label="Insurer" 
+              value={pdfData.insurer}
+              onChange={() => {}} // Read-only for review
+            />
+            <LabeledInput 
+              label="Product Type" 
+              value={pdfData.product_type}
+              onChange={() => {}} // Read-only for review
+            />
+            <LabeledInput 
+              label="Make" 
+              value={pdfData.make}
+              onChange={() => {}} // Read-only for review
+            />
+            <LabeledInput 
+              label="Model" 
+              value={pdfData.model}
+              onChange={() => {}} // Read-only for review
+            />
+            <LabeledInput 
+              label="CC" 
+              value={pdfData.cc}
+              onChange={() => {}} // Read-only for review
+              hint="engine size"
+            />
+            <LabeledInput 
+              label="Manufacturing Year" 
+              value={pdfData.manufacturing_year}
+              onChange={() => {}} // Read-only for review
+            />
+            <LabeledInput 
+              label="Issue Date" 
+              value={pdfData.issue_date}
+              onChange={() => {}} // Read-only for review
+            />
+            <LabeledInput 
+              label="Expiry Date" 
+              value={pdfData.expiry_date}
+              onChange={() => {}} // Read-only for review
+            />
+            <LabeledInput 
+              label="IDV (₹)" 
+              value={pdfData.idv}
+              onChange={() => {}} // Read-only for review
+            />
+            <LabeledInput 
+              label="NCB (%)" 
+              value={pdfData.ncb}
+              onChange={() => {}} // Read-only for review
+            />
+            <LabeledInput 
+              label="Discount (%)" 
+              value={pdfData.discount}
+              onChange={() => {}} // Read-only for review
+            />
+            <LabeledInput 
+              label="Net OD (₹)" 
+              value={pdfData.net_od}
+              onChange={() => {}} // Read-only for review
+              hint="Own Damage"
+            />
+            <LabeledInput 
+              label="Total OD (₹)" 
+              value={pdfData.total_od}
+              onChange={() => {}} // Read-only for review
+            />
+            <LabeledInput 
+              label="Net Premium (₹)" 
+              value={pdfData.net_premium}
+              onChange={() => {}} // Read-only for review
+            />
+            <LabeledInput 
+              label="Total Premium (₹)" 
+              value={pdfData.total_premium}
+              onChange={() => {}} // Read-only for review
+            />
+          </div>
+        </div>
+
+        {/* Manual Extras Section */}
+        <div className="mb-6">
+          <div className="text-sm font-medium mb-3 text-blue-700 bg-blue-50 px-3 py-2 rounded-lg">
+            ✏️ Manual Extras (from Sales Rep)
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <LabeledInput 
+              label="Executive" 
+              value={manualExtras.executive}
+              onChange={() => {}} // Read-only for review
+              hint="sales rep name"
+            />
+            <LabeledInput 
+              label="Caller Name" 
+              value={manualExtras.callerName}
+              onChange={() => {}} // Read-only for review
+              hint="telecaller name"
+            />
+            <LabeledInput 
+              label="Mobile Number" 
+              value={manualExtras.mobile}
+              onChange={() => {}} // Read-only for review
+            />
+            <LabeledInput 
+              label="Rollover/Renewal" 
+              value={manualExtras.rollover}
+              onChange={() => {}} // Read-only for review
+              hint="internal code"
+            />
+            <LabeledInput 
+              label="Brokerage (₹)" 
+              value={manualExtras.brokerage}
+              onChange={() => {}} // Read-only for review
+              hint="commission amount"
+            />
+            <LabeledInput 
+              label="Cashback (₹)" 
+              value={manualExtras.cashback}
+              onChange={() => {}} // Read-only for review
+              hint="total cashback"
+            />
+            <LabeledInput 
+              label="Customer Paid (₹)" 
+              value={manualExtras.customerPaid}
+              onChange={() => {}} // Read-only for review
+            />
+            <LabeledInput 
+              label="Customer Cheque No" 
+              value={manualExtras.customerChequeNo}
+              onChange={() => {}} // Read-only for review
+            />
+            <LabeledInput 
+              label="Our Cheque No" 
+              value={manualExtras.ourChequeNo}
+              onChange={() => {}} // Read-only for review
+            />
+            <div className="md:col-span-2">
+              <LabeledInput 
+                label="Remark" 
+                value={manualExtras.remark}
+                onChange={() => {}} // Read-only for review
+                hint="additional notes"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Issues Section */}
+        <div className="mb-6">
+          <div className="text-sm font-medium mb-2">Issues & Warnings</div>
+          <div className="space-y-2">
+            {pdfData.confidence_score < 0.8 && (
+              <div className="flex items-center gap-2 text-sm text-amber-700 bg-amber-50 p-2 rounded-lg">
+                <AlertTriangle className="w-4 h-4 text-amber-600"/> 
+                <span>Low confidence score. Please verify all extracted data.</span>
+              </div>
+            )}
+            {!pdfData.issue_date && (
+              <div className="flex items-center gap-2 text-sm text-amber-700 bg-amber-50 p-2 rounded-lg">
+                <AlertTriangle className="w-4 h-4 text-amber-600"/> 
+                <span>Issue Date missing. Please add manually.</span>
+              </div>
+            )}
+            {!pdfData.expiry_date && (
+              <div className="flex items-center gap-2 text-sm text-amber-700 bg-amber-50 p-2 rounded-lg">
+                <AlertTriangle className="w-4 h-4 text-amber-600"/> 
+                <span>Expiry Date missing. Please add manually.</span>
+              </div>
+            )}
+            {!manualExtras.executive && (
+              <div className="flex items-center gap-2 text-sm text-amber-700 bg-amber-50 p-2 rounded-lg">
+                <AlertTriangle className="w-4 h-4 text-amber-600"/> 
+                <span>Executive name missing. Please add manually.</span>
+              </div>
+            )}
+            {!manualExtras.mobile && (
+              <div className="flex items-center gap-2 text-sm text-amber-700 bg-amber-50 p-2 rounded-lg">
+                <AlertTriangle className="w-4 h-4 text-amber-600"/> 
+                <span>Mobile number missing. Please add manually.</span>
+              </div>
+            )}
+            {pdfData.confidence_score >= 0.8 && manualExtras.executive && manualExtras.mobile && (
+              <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 p-2 rounded-lg">
+                <CheckCircle2 className="w-4 h-4 text-green-600"/> 
+                <span>Data looks good! High confidence extraction + complete manual extras.</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex gap-3">
+          <button 
+            onClick={handleConfirmAndSave} 
+            disabled={isLoading}
+            className="px-4 py-2 rounded-xl bg-zinc-900 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isLoading ? 'Saving...' : 'Confirm & Save'}
+          </button>
+          <button 
+            onClick={handleRejectToManual} 
+            disabled={isLoading}
+            className="px-4 py-2 rounded-xl bg-white border disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Reject to Manual
+          </button>
         </div>
       </Card>
     </>
@@ -1052,7 +1919,7 @@ function PageExplorer() {
             </tbody>
           </table>
         </div>
-        <div className="text-xs text-zinc-600 mt-2">Tip: Sort by <b>Net per ₹ Cashback</b> to find “most sales with least cashback”.</div>
+        <div className="text-xs text-zinc-600 mt-2">Tip: Sort by <b>Net per ₹ Cashback</b> to find "most sales with least cashback".</div>
       </Card>
     </>
   )
