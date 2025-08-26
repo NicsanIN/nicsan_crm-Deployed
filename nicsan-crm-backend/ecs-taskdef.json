@@ -1,0 +1,37 @@
+{
+  "family": "nicsan-crm-api",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "1024",
+  "executionRoleArn": "arn:aws:iam::132418765186:role/NicsanCrmExecutionRole",
+  "taskRoleArn": "arn:aws:iam::132418765186:role/NicsanCrmTaskRole",
+  "containerDefinitions": [
+    {
+      "name": "nicsan-crm-api",
+      "image": "132418765186.dkr.ecr.ap-south-1.amazonaws.com/nicsan-crm-api:latest",
+      "portMappings": [{ "containerPort": 5173, "protocol": "tcp" }],
+      "essential": true,
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "ecs/nicsan-crm-api",
+          "awslogs-region": "ap-south-1",
+          "awslogs-stream-prefix": "ecs"
+        }
+      },
+      "secrets": [
+        { "name": "DB_HOST", "valueFrom": "nicsan/crm/backend/prod:DB_HOST" },
+        { "name": "DB_PORT", "valueFrom": "nicsan/crm/backend/prod:DB_PORT" },
+        { "name": "DB_NAME", "valueFrom": "nicsan/crm/backend/prod:DB_NAME" },
+        { "name": "DB_USER", "valueFrom": "nicsan/crm/backend/prod:DB_USER" },
+        { "name": "DB_PASSWORD", "valueFrom": "nicsan/crm/backend/prod:DB_PASSWORD" },
+        { "name": "JWT_SECRET", "valueFrom": "nicsan/crm/backend/prod:JWT_SECRET" },
+        { "name": "S3_BUCKET_PDFS", "valueFrom": "nicsan/crm/backend/prod:S3_BUCKET_PDFS" },
+        { "name": "S3_BUCKET_STORAGE", "valueFrom": "nicsan/crm/backend/prod:S3_BUCKET_STORAGE" },
+        { "name": "CORS_ORIGIN", "valueFrom": "nicsan/crm/backend/prod:CORS_ORIGIN" },
+        { "name": "PORT", "valueFrom": "nicsan/crm/backend/prod:PORT" }
+      ]
+    }
+  ]
+}
