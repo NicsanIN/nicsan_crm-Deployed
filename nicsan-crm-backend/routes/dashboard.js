@@ -3,6 +3,15 @@ const router = express.Router();
 const { query } = require('../config/database');
 const { authenticateToken, requireFounder } = require('../middleware/auth');
 
+// Test endpoint to verify token
+router.get('/test-token', authenticateToken, (req, res) => {
+  res.json({
+    success: true,
+    message: 'Token is valid',
+    user: req.user
+  });
+});
+
 // Get dashboard metrics
 router.get('/metrics', authenticateToken, requireFounder, async (req, res) => {
   try {
@@ -223,6 +232,105 @@ router.get('/leaderboard', authenticateToken, requireFounder, async (req, res) =
     res.status(500).json({
       success: false,
       error: error.message || 'Failed to get leaderboard data'
+    });
+  }
+});
+
+// Alias for frontend compatibility - sales reps
+router.get('/sales-reps', authenticateToken, requireFounder, async (req, res) => {
+  try {
+    const { period = '14d' } = req.query;
+    
+    // Calculate date range
+    const now = new Date();
+    const startDate = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+
+    const result = await query(`
+      SELECT 
+        executive as name,
+        COUNT(*) as policies,
+        SUM(total_premium) as gwp,
+        SUM(brokerage) as brokerage,
+        SUM(cashback_amount) as cashback,
+        SUM(brokerage - cashback_amount) as net_revenue,
+        AVG(cashback_percentage) as avg_cashback_pct
+      FROM policies 
+      WHERE created_at >= $1 AND executive IS NOT NULL
+      GROUP BY executive
+      ORDER BY net_revenue DESC
+      LIMIT 20
+    `, [startDate]);
+
+    res.json({
+      success: true,
+      data: result.rows
+    });
+  } catch (error) {
+    console.error('Sales reps error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to get sales reps data'
+    });
+  }
+});
+
+// Alias for frontend compatibility - vehicle analysis
+router.get('/vehicle-analysis', authenticateToken, requireFounder, async (req, res) => {
+  try {
+    const { make, model, insurer, cashbackMax = 10 } = req.query;
+    
+    let whereConditions = [];
+    let params = [];
+    let paramIndex = 1;
+
+    if (make && make !== 'All') {
+      whereConditions.push(`make = $${paramIndex}`);
+      params.push(make);
+      paramIndex++;
+    }
+
+    if (model && model !== 'All') {
+      whereConditions.push(`model = $${paramIndex}`);
+      params.push(model);
+      paramIndex++;
+    }
+
+    if (insurer && insurer !== 'All') {
+      whereConditions.push(`insurer = $${paramIndex}`);
+      params.push(insurer);
+      paramIndex++;
+    }
+
+    whereConditions.push(`(cashback_percentage <= $${paramIndex} OR cashback_percentage IS NULL)`);
+    params.push(parseFloat(cashbackMax));
+
+    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+
+    const result = await query(`
+      SELECT 
+        executive as rep,
+        make,
+        model,
+        COUNT(*) as policies,
+        SUM(total_premium) as gwp,
+        AVG(cashback_percentage) as cashbackPctAvg,
+        SUM(cashback_amount) as cashback,
+        SUM(brokerage - cashback_amount) as net
+      FROM policies 
+      ${whereClause}
+      GROUP BY executive, make, model
+      ORDER BY net DESC
+    `, params);
+
+    res.json({
+      success: true,
+      data: result.rows
+    });
+  } catch (error) {
+    console.error('Vehicle analysis error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to get vehicle analysis data'
     });
   }
 });

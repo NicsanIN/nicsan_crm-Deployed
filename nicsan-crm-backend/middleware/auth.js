@@ -47,8 +47,8 @@ const requireRole = (roles) => {
   };
 };
 
-// Middleware to check if user is founder
-const requireFounder = requireRole(['founder']);
+// Middleware to check if user is founder (allow ops access too)
+const requireFounder = requireRole(['founder', 'ops']);
 
 // Middleware to check if user is ops or founder
 const requireOps = requireRole(['ops', 'founder']);

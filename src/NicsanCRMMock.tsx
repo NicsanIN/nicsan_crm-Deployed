@@ -4,6 +4,10 @@ import { ResponsiveContainer, CartesianGrid, BarChart, Bar, Legend, Area, AreaCh
 import { uploadAPI, policiesAPI, authAPI, authUtils } from './services/api';
 import NicsanCRMService from './services/api-integration';
 
+// Environment variables
+const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
+const ENABLE_MOCK_DATA = import.meta.env.VITE_ENABLE_MOCK_DATA === 'true';
+
 // --- Nicsan CRM v1 UI/UX Mock (updated) ---
 // Adds: Password-protected login, optimized Manual Form, Founder filters, KPI dashboard (your new metrics)
 // Now: Manual Form includes ALL requested columns; PDF flow includes a small manual entry panel.
@@ -263,7 +267,7 @@ function PageUpload() {
         }
       });
       
-      const result = await uploadAPI.uploadPDF(formData);
+      const result = await NicsanCRMService.uploadPDF(file);
       
       if (result.success) {
         setUploadStatus('Upload successful! Processing with Textract...');
@@ -344,7 +348,7 @@ function PageUpload() {
     
     const poll = async () => {
       try {
-        const response = await uploadAPI.getUploadById(uploadId);
+        const response = await NicsanCRMService.getUploadById(uploadId);
         
         if (response.success) {
           const status = response.data.status;
@@ -878,7 +882,7 @@ function PageManualForm() {
 
       // Submit to API
       console.log('🔍 Submitting policy data:', policyData);
-      const response = await policiesAPI.create(policyData);
+      const response = await NicsanCRMService.createPolicy(policyData);
       console.log('🔍 API response:', response);
       
       if (response.success) {
@@ -1793,18 +1797,60 @@ const fmtINR = (n:number)=> `₹${Math.round(n).toLocaleString('en-IN')}`;
 const pct = (n:number)=> `${(n).toFixed(1)}%`;
 
 function PageOverview() {
+  const [metrics, setMetrics] = useState<any>(null);
+  const [trendData, setTrendData] = useState<any[]>([]);
+
+  useEffect(() => {
+    const loadDashboardData = async () => {
+      try {
+        const metricsResponse = await NicsanCRMService.getDashboardMetrics();
+        if (metricsResponse.success) {
+          setMetrics(metricsResponse.data);
+        }
+        
+        // For now, use demo trend data (in real app, this would come from API)
+        setTrendData(demoTrend);
+      } catch (error) {
+        console.error('Failed to load dashboard data:', error);
+      }
+    };
+    
+    loadDashboardData();
+  }, []);
+
+  const formatCurrency = (amount: number) => {
+    return `₹${(amount / 100000).toFixed(1)}L`;
+  };
+
   return (
     <>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Tile label="GWP" info="(Gross Written Premium)" value="₹10.7L" sub="▲ 8% vs last 14d"/>
-        <Tile label="Brokerage" info="(% of GWP)" value="₹1.60L"/>
-        <Tile label="Cashback" info="(Cash we give back)" value="₹0.34L"/>
-        <Tile label="Net" info="(Brokerage − Cashback)" value="₹1.26L"/>
+        <Tile 
+          label="GWP" 
+          info="(Gross Written Premium)" 
+          value={metrics ? formatCurrency(metrics.total_gwp) : "₹10.7L"} 
+          sub="▲ 8% vs last 14d"
+        />
+        <Tile 
+          label="Brokerage" 
+          info="(% of GWP)" 
+          value={metrics ? formatCurrency(metrics.total_brokerage) : "₹1.60L"}
+        />
+        <Tile 
+          label="Cashback" 
+          info="(Cash we give back)" 
+          value={metrics ? formatCurrency(metrics.total_cashback) : "₹0.34L"}
+        />
+        <Tile 
+          label="Net" 
+          info="(Brokerage − Cashback)" 
+          value={metrics ? formatCurrency(metrics.net_revenue) : "₹1.26L"}
+        />
       </div>
       <Card title="14-day Trend" desc="GWP & Net (pre-calculated = materialized view)">
         <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={demoTrend}>
+            <AreaChart data={trendData}>
               <defs>
                 <linearGradient id="g1" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/>
@@ -1830,6 +1876,26 @@ function PageOverview() {
 }
 
 function PageLeaderboard() {
+  const [reps, setReps] = useState<any[]>([]);
+
+  useEffect(() => {
+    const loadSalesReps = async () => {
+      try {
+        const response = await NicsanCRMService.getSalesReps();
+        if (response.success) {
+          setReps(response.data);
+        } else {
+          setReps(demoReps);
+        }
+      } catch (error) {
+        console.error('Failed to load sales reps:', error);
+        setReps(demoReps);
+      }
+    };
+    
+    loadSalesReps();
+  }, []);
+
   return (
     <Card title="Rep Leaderboard" desc="Lead→Sale % = Converted / Leads Assigned; CAC/policy = daily rep cost / converted">
       <div className="flex items-center gap-2 mb-3">
@@ -1855,17 +1921,17 @@ function PageLeaderboard() {
             </tr>
           </thead>
           <tbody>
-            {demoReps.map((r,i)=> (
+            {reps.map((r,i)=> (
               <tr key={i} className="border-t">
                 <td className="py-2 font-medium">{r.name}</td>
-                <td>{r.leads}</td>
+                <td>{r.leads_assigned || r.leads}</td>
                 <td>{r.converted}</td>
-                <td>₹{(r.gwp/1000).toFixed(1)}k</td>
-                <td>₹{(r.brokerage/1000).toFixed(1)}k</td>
-                <td>₹{(r.cashback/1000).toFixed(1)}k</td>
-                <td>₹{(r.net/1000).toFixed(1)}k</td>
-                <td>{((r.converted/(r.leads||1))*100).toFixed(1)}%</td>
-                <td>₹{(r.cac).toFixed(0)}</td>
+                <td>₹{((r.gwp || 0)/1000).toFixed(1)}k</td>
+                <td>₹{((r.brokerage || 0)/1000).toFixed(1)}k</td>
+                <td>₹{((r.cashback || 0)/1000).toFixed(1)}k</td>
+                <td>₹{((r.net_revenue || r.net || 0)/1000).toFixed(1)}k</td>
+                <td>{(((r.converted || 0)/((r.leads_assigned || r.leads) || 1))*100).toFixed(1)}%</td>
+                <td>₹{(r.cac || 0).toFixed(0)}</td>
               </tr>
             ))}
           </tbody>
@@ -1880,11 +1946,30 @@ function PageExplorer() {
   const [model, setModel] = useState("All");
   const [insurer, setInsurer] = useState("All");
   const [cashbackMax, setCashbackMax] = useState(5);
+  const [policies, setPolicies] = useState<any[]>([]);
   const makes = ["All","Maruti","Hyundai","Tata","Toyota"];
   const models = ["All","Swift","Baleno","i20","Altroz"];
   const insurers = ["All","Tata AIG","Digit","ICICI"];
 
-  const filtered = demoPolicies.filter(p => (make==='All'||p.make===make) && (model==='All'||p.model===model) && (insurer==='All'/* demo */) && (p.cashbackPctAvg <= cashbackMax));
+  useEffect(() => {
+    const loadSalesExplorer = async () => {
+      try {
+        const response = await NicsanCRMService.getSalesExplorer();
+        if (response.success) {
+          setPolicies(response.data);
+        } else {
+          setPolicies(demoPolicies);
+        }
+      } catch (error) {
+        console.error('Failed to load sales explorer:', error);
+        setPolicies(demoPolicies);
+      }
+    };
+    
+    loadSalesExplorer();
+  }, []);
+
+  const filtered = policies.filter(p => (make==='All'||p.make===make) && (model==='All'||p.model===model) && (insurer==='All'/* demo */) && (p.cashbackPctAvg <= cashbackMax));
   return (
     <>
       <Card title="Sales Explorer (Motor)" desc="Filter by Make/Model; find reps with most sales and lowest cashback">
@@ -2098,11 +2183,43 @@ export default function NicsanCRMMock() {
   const [tab, setTab] = useState<"ops"|"founder">("ops");
   const [opsPage, setOpsPage] = useState("upload");
   const [founderPage, setFounderPage] = useState("overview");
+  const [backendStatus, setBackendStatus] = useState<any>(null);
+
+  // Check backend status on component mount
+  useEffect(() => {
+    const checkBackendStatus = async () => {
+      const status = NicsanCRMService.getEnvironmentInfo();
+      setBackendStatus(status);
+      
+      if (ENABLE_DEBUG) {
+        console.log('🔍 Backend status:', status);
+      }
+    };
+    
+    checkBackendStatus();
+    
+    // Check status every 30 seconds
+    const interval = setInterval(checkBackendStatus, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   if (!user) return <LoginPage onLogin={(u)=>{ setUser(u); setTab(u.role==='founder'?'founder':'ops')}}/>
 
   return (
     <div className="min-h-screen bg-zinc-50">
+      {/* Backend Status Indicator */}
+      {ENABLE_DEBUG && backendStatus && (
+        <div className={`px-4 py-2 text-xs font-medium ${
+          backendStatus.backendAvailable 
+            ? 'bg-green-100 text-green-800' 
+            : 'bg-red-100 text-red-800'
+        }`}>
+          🔗 Backend: {backendStatus.backendAvailable ? 'Connected' : 'Disconnected'} 
+          | Mock: {ENABLE_MOCK_DATA ? 'Enabled' : 'Disabled'}
+          | Debug: {ENABLE_DEBUG ? 'On' : 'Off'}
+        </div>
+      )}
+      
       <TopTabs tab={tab} setTab={setTab} user={user} onLogout={()=>setUser(null)} />
       {tab === "ops" ? (
         <Shell sidebar={<OpsSidebar page={opsPage} setPage={setOpsPage} />}>

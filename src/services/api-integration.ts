@@ -3,6 +3,12 @@
 
 import { authAPI, policiesAPI, uploadAPI, dashboardAPI, usersAPI } from './api';
 
+// Environment variables
+const HEALTH_URL = import.meta.env.VITE_BACKEND_HEALTH_URL || 'http://localhost:3001/health';
+const CHECK_INTERVAL = parseInt(import.meta.env.VITE_HEALTH_CHECK_INTERVAL || '30000');
+const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
+const ENABLE_MOCK_DATA = import.meta.env.VITE_ENABLE_MOCK_DATA === 'true';
+
 // Mock data fallbacks for development
 const mockData = {
   policies: [
@@ -36,6 +42,11 @@ export class NicsanCRMService {
 
   private constructor() {
     this.checkBackendAvailability();
+    
+    // Set up periodic health checks
+    setInterval(() => {
+      this.checkBackendAvailability();
+    }, CHECK_INTERVAL);
   }
 
   static getInstance(): NicsanCRMService {
@@ -47,50 +58,85 @@ export class NicsanCRMService {
 
   private async checkBackendAvailability(): Promise<void> {
     try {
-      const response = await fetch('http://localhost:3001/health');
+      const response = await fetch(HEALTH_URL, {
+        method: 'GET',
+        mode: 'cors',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      const wasAvailable = this.isBackendAvailable;
       this.isBackendAvailable = response.ok;
-      console.log('✅ Backend is available');
+      
+      if (ENABLE_DEBUG) {
+        if (this.isBackendAvailable && !wasAvailable) {
+          console.log('✅ Backend became available');
+        } else if (!this.isBackendAvailable && wasAvailable) {
+          console.log('⚠️ Backend became unavailable');
+        } else if (this.isBackendAvailable) {
+          console.log('✅ Backend is available');
+        } else {
+          console.log('⚠️ Backend not available, using mock data');
+        }
+      }
     } catch (error) {
+      const wasAvailable = this.isBackendAvailable;
       this.isBackendAvailable = false;
-      console.log('⚠️ Backend not available, using mock data');
+      
+      if (ENABLE_DEBUG && wasAvailable) {
+        console.log('⚠️ Backend connection lost:', error.message);
+      }
     }
   }
 
   // Authentication methods
   async login(credentials: { email: string; password: string }): Promise<any> {
+    // Always check backend availability before login
+    await this.checkBackendAvailability();
+    
     if (this.isBackendAvailable) {
       try {
-        return await authAPI.login(credentials);
+        const response = await authAPI.login(credentials);
+        if (response.success) {
+          // Store user info for potential token refresh
+          localStorage.setItem('user', JSON.stringify(response.data.user));
+        }
+        return response;
       } catch (error) {
-        console.error('Login failed, falling back to mock:', error);
+        if (ENABLE_DEBUG) console.error('Login failed, falling back to mock:', error);
       }
     }
     
-    // Mock login for development
-    if (credentials.email === 'admin@nicsan.in' && credentials.password === 'admin123') {
+    // Mock login for development (only if mock data is enabled)
+    if (ENABLE_MOCK_DATA && credentials.email === 'admin@nicsan.in' && credentials.password === 'admin123') {
+      const mockUser = {
+        id: '1',
+        email: 'admin@nicsan.in',
+        name: 'Admin User',
+        role: 'founder'
+      };
+      localStorage.setItem('user', JSON.stringify(mockUser));
       return {
         success: true,
         data: {
           token: 'mock-token-admin',
-          user: {
-            id: '1',
-            email: 'admin@nicsan.in',
-            name: 'Admin User',
-            role: 'founder'
-          }
+          user: mockUser
         }
       };
-    } else if (credentials.email === 'ops@nicsan.in' && credentials.password === 'ops123') {
+    } else if (ENABLE_MOCK_DATA && credentials.email === 'ops@nicsan.in' && credentials.password === 'ops123') {
+      const mockUser = {
+        id: '2',
+        email: 'ops@nicsan.in',
+        name: 'Ops User',
+        role: 'ops'
+      };
+      localStorage.setItem('user', JSON.stringify(mockUser));
       return {
         success: true,
         data: {
           token: 'mock-token-ops',
-          user: {
-            id: '2',
-            email: 'ops@nicsan.in',
-            name: 'Ops User',
-            role: 'ops'
-          }
+          user: mockUser
         }
       };
     }
@@ -99,11 +145,14 @@ export class NicsanCRMService {
   }
 
   async getProfile(): Promise<any> {
+    // Always check backend availability before profile fetch
+    await this.checkBackendAvailability();
+    
     if (this.isBackendAvailable) {
       try {
         return await authAPI.getProfile();
       } catch (error) {
-        console.error('Profile fetch failed:', error);
+        if (ENABLE_DEBUG) console.error('Profile fetch failed:', error);
       }
     }
     
@@ -136,11 +185,14 @@ export class NicsanCRMService {
 
   // Policy methods
   async getPolicies(page: number = 1, limit: number = 20): Promise<any> {
+    // Always check backend availability before API calls
+    await this.checkBackendAvailability();
+    
     if (this.isBackendAvailable) {
       try {
         return await policiesAPI.getAll(page, limit);
       } catch (error) {
-        console.error('Policies fetch failed:', error);
+        if (ENABLE_DEBUG) console.error('Policies fetch failed:', error);
       }
     }
     
@@ -158,11 +210,14 @@ export class NicsanCRMService {
   }
 
   async createPolicy(policyData: any): Promise<any> {
+    // Always check backend availability before API calls
+    await this.checkBackendAvailability();
+    
     if (this.isBackendAvailable) {
       try {
         return await policiesAPI.create(policyData);
       } catch (error) {
-        console.error('Policy creation failed:', error);
+        if (ENABLE_DEBUG) console.error('Policy creation failed:', error);
       }
     }
     
@@ -185,11 +240,14 @@ export class NicsanCRMService {
 
   // Upload methods
   async getUploads(page: number = 1, limit: number = 20): Promise<any> {
+    // Always check backend availability before API calls
+    await this.checkBackendAvailability();
+    
     if (this.isBackendAvailable) {
       try {
         return await uploadAPI.getUploads(page, limit);
       } catch (error) {
-        console.error('Uploads fetch failed:', error);
+        if (ENABLE_DEBUG) console.error('Uploads fetch failed:', error);
       }
     }
     
@@ -207,11 +265,14 @@ export class NicsanCRMService {
   }
 
   async uploadPDF(file: File): Promise<any> {
+    // Always check backend availability before API calls
+    await this.checkBackendAvailability();
+    
     if (this.isBackendAvailable) {
       try {
         return await uploadAPI.uploadPDF(file);
       } catch (error) {
-        console.error('PDF upload failed:', error);
+        if (ENABLE_DEBUG) console.error('PDF upload failed:', error);
       }
     }
     
@@ -233,13 +294,43 @@ export class NicsanCRMService {
     };
   }
 
+  async getUploadById(uploadId: string): Promise<any> {
+    // Always check backend availability before API calls
+    await this.checkBackendAvailability();
+    
+    if (this.isBackendAvailable) {
+      try {
+        return await uploadAPI.getUploadById(uploadId);
+      } catch (error) {
+        if (ENABLE_DEBUG) console.error('Upload fetch failed:', error);
+      }
+    }
+    
+    // Mock upload data
+    const mockUpload = mockData.uploads.find(u => u.id === uploadId) || {
+      id: uploadId,
+      filename: 'mock_policy.pdf',
+      status: 'COMPLETED',
+      confidence_score: 0.92,
+      created_at: new Date().toISOString()
+    };
+    
+    return {
+      success: true,
+      data: mockUpload
+    };
+  }
+
   // Dashboard methods
   async getDashboardMetrics(): Promise<any> {
+    // Always check backend availability before API calls
+    await this.checkBackendAvailability();
+    
     if (this.isBackendAvailable) {
       try {
         return await dashboardAPI.getMetrics();
       } catch (error) {
-        console.error('Dashboard metrics fetch failed:', error);
+        if (ENABLE_DEBUG) console.error('Dashboard metrics fetch failed:', error);
       }
     }
     
@@ -258,12 +349,37 @@ export class NicsanCRMService {
     };
   }
 
+  async getSalesExplorer(): Promise<any> {
+    // Always check backend availability before API calls
+    await this.checkBackendAvailability();
+    
+    if (this.isBackendAvailable) {
+      try {
+        return await dashboardAPI.getVehicleAnalysis();
+      } catch (error) {
+        if (ENABLE_DEBUG) console.error('Sales explorer fetch failed:', error);
+      }
+    }
+    
+    // Mock sales explorer data
+    return {
+      success: true,
+      data: [
+        { rep: 'Asha', make: 'Maruti', model: 'Swift', policies: 12, gwp: 130000, cashbackPctAvg: 2.4, cashback: 3100, net: 16900 },
+        { rep: 'Vikram', make: 'Hyundai', model: 'i20', policies: 9, gwp: 115000, cashbackPctAvg: 1.1, cashback: 1200, net: 17100 }
+      ]
+    };
+  }
+
   async getSalesReps(): Promise<any> {
+    // Always check backend availability before API calls
+    await this.checkBackendAvailability();
+    
     if (this.isBackendAvailable) {
       try {
         return await dashboardAPI.getSalesReps();
       } catch (error) {
-        console.error('Sales reps fetch failed:', error);
+        if (ENABLE_DEBUG) console.error('Sales reps fetch failed:', error);
       }
     }
     
@@ -306,6 +422,20 @@ export class NicsanCRMService {
 
   async refreshBackendStatus(): Promise<void> {
     await this.checkBackendAvailability();
+    if (ENABLE_DEBUG) {
+      console.log('🔄 Backend status refreshed:', this.isBackendAvailable);
+    }
+  }
+
+  // Get current environment info
+  getEnvironmentInfo(): any {
+    return {
+      backendAvailable: this.isBackendAvailable,
+      healthUrl: HEALTH_URL,
+      checkInterval: CHECK_INTERVAL,
+      enableDebug: ENABLE_DEBUG,
+      enableMockData: ENABLE_MOCK_DATA
+    };
   }
 }
 
