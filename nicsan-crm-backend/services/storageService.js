@@ -1,5 +1,5 @@
 const { query } = require('../config/database');
-const { uploadToS3, deleteFromS3, extractTextFromPDF, generateS3Key } = require('../config/aws');
+const { uploadToS3, deleteFromS3, extractTextFromPDF, generateS3Key, generatePolicyS3Key, uploadJSONToS3, getJSONFromS3 } = require('../config/aws');
 
 class StorageService {
   // Dual Storage: Save to both S3 (primary) and PostgreSQL (secondary)
@@ -9,20 +9,25 @@ class StorageService {
       
       // 1. Save to PostgreSQL (Secondary Storage)
       const pgResult = await this.saveToPostgreSQL(policyData);
+      const policyId = pgResult.rows[0].id;
       
-      // 2. Save to S3 (Primary Storage) - if there's a file
-      let s3Result = null;
-      if (policyData.file) {
-        s3Result = await this.saveToS3(policyData);
-      }
+      // 2. Save to S3 (Primary Storage) - JSON data
+      const s3Key = generatePolicyS3Key(policyId, policyData.source);
+      const s3Result = await uploadJSONToS3(policyData, s3Key);
+      
+      // 3. Update PostgreSQL with S3 key
+      await query(
+        'UPDATE policies SET s3_key = $1 WHERE id = $2',
+        [s3Key, policyId]
+      );
       
       console.log('✅ Policy saved to both storages successfully');
       
       return {
         success: true,
         data: {
-          id: pgResult.rows[0].id,
-          s3_key: s3Result?.Key || null,
+          id: policyId,
+          s3_key: s3Key,
           ...policyData
         }
       };
@@ -67,7 +72,7 @@ class StorageService {
     return await query(queryText, values);
   }
 
-  // Save to S3 (Primary Storage)
+  // Save to S3 (Primary Storage) - for file uploads
   async saveToS3(policyData) {
     if (!policyData.file) return null;
     
@@ -75,11 +80,36 @@ class StorageService {
     return await uploadToS3(policyData.file, s3Key);
   }
 
-  // Get policy from PostgreSQL (for queries)
+  // Get policy from dual storage (try S3 first, fallback to PostgreSQL)
   async getPolicy(id) {
-    const queryText = 'SELECT * FROM policies WHERE id = $1';
-    const result = await query(queryText, [id]);
-    return result.rows[0];
+    try {
+      // First try to get from PostgreSQL to get S3 key
+      const queryText = 'SELECT * FROM policies WHERE id = $1';
+      const result = await query(queryText, [id]);
+      
+      if (!result.rows[0]) {
+        throw new Error('Policy not found');
+      }
+      
+      const policy = result.rows[0];
+      
+      // Try to get from S3 (Primary Storage)
+      if (policy.s3_key) {
+        try {
+          const s3Data = await getJSONFromS3(policy.s3_key);
+          console.log('✅ Retrieved from S3 (Primary)');
+          return { ...policy, s3_data: s3Data };
+        } catch (s3Error) {
+          console.log('⚠️ S3 retrieval failed, using PostgreSQL data (Fallback)');
+          return policy;
+        }
+      }
+      
+      return policy;
+    } catch (error) {
+      console.error('❌ Get policy error:', error);
+      throw error;
+    }
   }
 
   // Get all policies from PostgreSQL
@@ -449,6 +479,17 @@ class StorageService {
       
       // Save to policies table
       const policyResult = await this.saveToPostgreSQL(policyData);
+      const policyId = policyResult.rows[0].id;
+      
+      // Save to S3 (Primary Storage) - JSON data
+      const s3Key = generatePolicyS3Key(policyId, 'PDF_UPLOAD');
+      const s3Result = await uploadJSONToS3(policyData, s3Key);
+      
+      // Update PostgreSQL with S3 key
+      await query(
+        'UPDATE policies SET s3_key = $1 WHERE id = $2',
+        [s3Key, policyId]
+      );
       
       // Update upload status to SAVED
       await query(
@@ -456,13 +497,14 @@ class StorageService {
         ['SAVED', uploadId]
       );
       
-      console.log('✅ Upload confirmed as policy');
+      console.log('✅ Upload confirmed as policy with dual storage');
       
       return {
         success: true,
         data: {
-          policyId: policyResult.rows[0].id,
+          policyId: policyId,
           uploadId: uploadId,
+          s3_key: s3Key,
           status: 'SAVED'
         }
       };
@@ -517,6 +559,117 @@ class StorageService {
       };
     } catch (error) {
       console.error('❌ Get upload for review error:', error);
+      throw error;
+    }
+  }
+
+  // Save manual form with dual storage
+  async saveManualForm(formData) {
+    try {
+      console.log('📝 Saving manual form to dual storage...');
+      
+      // Add source metadata
+      const policyData = {
+        ...formData,
+        source: 'MANUAL_FORM',
+        confidence_score: 100 // Manual entry = 100% confidence
+      };
+      
+      // Save to both storages
+      return await this.savePolicy(policyData);
+    } catch (error) {
+      console.error('❌ Save manual form error:', error);
+      throw error;
+    }
+  }
+
+  // Save grid entries with dual storage
+  async saveGridEntries(entries) {
+    try {
+      console.log('📊 Saving grid entries to dual storage...');
+      
+      const results = [];
+      
+      for (const entry of entries) {
+        // Add source metadata
+        const policyData = {
+          ...entry,
+          source: 'MANUAL_GRID',
+          confidence_score: 100 // Manual entry = 100% confidence
+        };
+        
+        // Save each entry to both storages
+        const result = await this.savePolicy(policyData);
+        results.push(result);
+      }
+      
+      console.log(`✅ Saved ${results.length} grid entries to dual storage`);
+      
+      return {
+        success: true,
+        data: results
+      };
+    } catch (error) {
+      console.error('❌ Save grid entries error:', error);
+      throw error;
+    }
+  }
+
+  // Get policy from dual storage with fallback strategy
+  async getPolicyWithFallback(id) {
+    try {
+      // Try S3 first (Primary Storage)
+      try {
+        const policy = await this.getPolicy(id);
+        if (policy.s3_data) {
+          console.log('✅ Retrieved from S3 (Primary Storage)');
+          return policy;
+        }
+      } catch (s3Error) {
+        console.log('⚠️ S3 retrieval failed, trying PostgreSQL...');
+      }
+      
+      // Fallback to PostgreSQL (Secondary Storage)
+      const queryText = 'SELECT * FROM policies WHERE id = $1';
+      const result = await query(queryText, [id]);
+      
+      if (!result.rows[0]) {
+        throw new Error('Policy not found in either storage');
+      }
+      
+      console.log('✅ Retrieved from PostgreSQL (Fallback Storage)');
+      return result.rows[0];
+    } catch (error) {
+      console.error('❌ Get policy with fallback error:', error);
+      throw error;
+    }
+  }
+
+  // Bulk retrieve policies with dual storage
+  async getPoliciesWithFallback(limit = 100, offset = 0) {
+    try {
+      // Get from PostgreSQL first
+      const policies = await this.getAllPolicies(limit, offset);
+      
+      // Try to enrich with S3 data where available
+      const enrichedPolicies = await Promise.all(
+        policies.map(async (policy) => {
+          if (policy.s3_key) {
+            try {
+              const s3Data = await getJSONFromS3(policy.s3_key);
+              return { ...policy, s3_data: s3Data };
+            } catch (s3Error) {
+              console.log(`⚠️ S3 retrieval failed for policy ${policy.id}, using PostgreSQL data`);
+              return policy;
+            }
+          }
+          return policy;
+        })
+      );
+      
+      return enrichedPolicies;
+    } catch (error) {
+      console.error('❌ Get policies with fallback error:', error);
       throw error;
     }
   }

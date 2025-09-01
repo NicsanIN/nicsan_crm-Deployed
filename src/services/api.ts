@@ -170,7 +170,7 @@ export const authAPI = {
 
 // Policies API
 export const policiesAPI = {
-  getAll: async (page = 1, limit = 50, filters?: any): Promise<ApiResponse<{ policies: Policy[]; total: number }>> => {
+  getAll: async (page: number = 1, limit: number = 20, filters?: any): Promise<ApiResponse<{ policies: Policy[]; total: number }>> => {
     const params = new URLSearchParams({
       page: page.toString(),
       limit: limit.toString(),
@@ -207,6 +207,33 @@ export const policiesAPI = {
     return apiCall('/policies/bulk', {
       method: 'POST',
       body: JSON.stringify({ policies }),
+    });
+  },
+
+  // New dual storage methods
+  getPolicies: async (limit: number = 100, offset: number = 0): Promise<ApiResponse<Policy[]>> => {
+    const params = new URLSearchParams({
+      limit: limit.toString(),
+      offset: offset.toString(),
+    });
+    return apiCall(`/policies?${params}`);
+  },
+
+  getPolicy: async (id: string): Promise<ApiResponse<Policy>> => {
+    return apiCall(`/policies/${id}`);
+  },
+
+  saveManualForm: async (formData: any): Promise<ApiResponse<any>> => {
+    return apiCall('/policies/manual', {
+      method: 'POST',
+      body: JSON.stringify(formData),
+    });
+  },
+
+  saveGridEntries: async (entries: any[]): Promise<ApiResponse<any>> => {
+    return apiCall('/policies/grid', {
+      method: 'POST',
+      body: JSON.stringify({ entries }),
     });
   },
 };

@@ -183,29 +183,76 @@ export class NicsanCRMService {
     return { success: false, error: 'Not authenticated' };
   }
 
-  // Policy methods
-  async getPolicies(page: number = 1, limit: number = 20): Promise<any> {
-    // Always check backend availability before API calls
-    await this.checkBackendAvailability();
-    
+  // Policy methods with dual storage support
+  async getPolicies(limit = 100, offset = 0): Promise<any> {
     if (this.isBackendAvailable) {
       try {
-        return await policiesAPI.getAll(page, limit);
+        const response = await policiesAPI.getPolicies(limit, offset);
+        return response.data;
       } catch (error) {
-        if (ENABLE_DEBUG) console.error('Policies fetch failed:', error);
+        console.error('Get policies error:', error);
+        return mockData.policies;
       }
     }
-    
-    // Mock policies data
+    return mockData.policies;
+  }
+
+  async getPolicy(id: string): Promise<any> {
+    if (this.isBackendAvailable) {
+      try {
+        const response = await policiesAPI.getPolicy(id);
+        return response.data;
+      } catch (error) {
+        console.error('Get policy error:', error);
+        return mockData.policies.find(p => p.id === id);
+      }
+    }
+    return mockData.policies.find(p => p.id === id);
+  }
+
+  // Save manual form with dual storage
+  async saveManualForm(formData: any): Promise<any> {
+    if (this.isBackendAvailable) {
+      try {
+        const response = await policiesAPI.saveManualForm(formData);
+        return response.data;
+      } catch (error) {
+        console.error('Save manual form error:', error);
+        throw error;
+      }
+    }
+    // Mock response for offline mode
     return {
       success: true,
-      data: mockData.policies,
-      pagination: {
-        page,
-        limit,
-        total: mockData.policies.length,
-        totalPages: 1
+      data: {
+        id: Date.now().toString(),
+        ...formData,
+        source: 'MANUAL_FORM',
+        created_at: new Date().toISOString()
       }
+    };
+  }
+
+  // Save grid entries with dual storage
+  async saveGridEntries(entries: any[]): Promise<any> {
+    if (this.isBackendAvailable) {
+      try {
+        const response = await policiesAPI.saveGridEntries(entries);
+        return response.data;
+      } catch (error) {
+        console.error('Save grid entries error:', error);
+        throw error;
+      }
+    }
+    // Mock response for offline mode
+    return {
+      success: true,
+      data: entries.map((entry, index) => ({
+        id: (Date.now() + index).toString(),
+        ...entry,
+        source: 'MANUAL_GRID',
+        created_at: new Date().toISOString()
+      }))
     };
   }
 

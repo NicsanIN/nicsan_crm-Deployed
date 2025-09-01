@@ -22,11 +22,11 @@ router.post('/', authenticateToken, requireOps, async (req, res) => {
   }
 });
 
-// Get all policies
+// Get all policies (with dual storage fallback)
 router.get('/', authenticateToken, requireOps, async (req, res) => {
   try {
     const { limit = 100, offset = 0 } = req.query;
-    const policies = await storageService.getAllPolicies(parseInt(limit), parseInt(offset));
+    const policies = await storageService.getPoliciesWithFallback(parseInt(limit), parseInt(offset));
     
     res.json({
       success: true,
@@ -41,10 +41,10 @@ router.get('/', authenticateToken, requireOps, async (req, res) => {
   }
 });
 
-// Get policy by ID
+// Get policy by ID (with dual storage fallback)
 router.get('/:id', authenticateToken, requireOps, async (req, res) => {
   try {
-    const policy = await storageService.getPolicy(req.params.id);
+    const policy = await storageService.getPolicyWithFallback(req.params.id);
     
     if (!policy) {
       return res.status(404).json({
@@ -66,59 +66,39 @@ router.get('/:id', authenticateToken, requireOps, async (req, res) => {
   }
 });
 
-// Update policy
-router.put('/:id', authenticateToken, requireOps, async (req, res) => {
+// Save manual form (with dual storage)
+router.post('/manual', authenticateToken, requireOps, async (req, res) => {
   try {
-    // For now, we'll implement a simple update
-    // In a real app, you'd want to update both S3 and PostgreSQL
-    const { query } = require('../config/database');
-    
-    const policyId = req.params.id;
-    const updateData = req.body;
-    
-    // Build dynamic update query
-    const fields = Object.keys(updateData).filter(key => key !== 'id');
-    const values = fields.map((field, index) => `$${index + 2}`);
-    
-    const queryText = `
-      UPDATE policies 
-      SET ${fields.map(field => `${field} = $${fields.indexOf(field) + 2}`).join(', ')}, updated_at = CURRENT_TIMESTAMP
-      WHERE id = $1
-      RETURNING *
-    `;
-    
-    const result = await query(queryText, [policyId, ...fields.map(field => updateData[field])]);
-    
-    if (result.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        error: 'Policy not found'
-      });
-    }
-
-    res.json({
-      success: true,
-      data: result.rows[0]
-    });
+    const result = await storageService.saveManualForm(req.body);
+    res.status(201).json(result);
   } catch (error) {
-    console.error('Update policy error:', error);
+    console.error('Save manual form error:', error);
     res.status(400).json({
       success: false,
-      error: error.message || 'Failed to update policy'
+      error: error.message || 'Failed to save manual form'
     });
   }
 });
 
-// Delete policy (from both storages)
-router.delete('/:id', authenticateToken, requireOps, async (req, res) => {
+// Save grid entries (with dual storage)
+router.post('/grid', authenticateToken, requireOps, async (req, res) => {
   try {
-    const result = await storageService.deletePolicy(req.params.id);
-    res.json(result);
+    const { entries } = req.body;
+    
+    if (!Array.isArray(entries)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Entries must be an array'
+      });
+    }
+
+    const result = await storageService.saveGridEntries(entries);
+    res.status(201).json(result);
   } catch (error) {
-    console.error('Delete policy error:', error);
+    console.error('Save grid entries error:', error);
     res.status(400).json({
       success: false,
-      error: error.message || 'Failed to delete policy'
+      error: error.message || 'Failed to save grid entries'
     });
   }
 });
