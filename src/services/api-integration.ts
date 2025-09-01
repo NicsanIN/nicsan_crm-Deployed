@@ -85,7 +85,7 @@ export class NicsanCRMService {
       this.isBackendAvailable = false;
       
       if (ENABLE_DEBUG && wasAvailable) {
-        console.log('⚠️ Backend connection lost:', error.message);
+        console.log('⚠️ Backend connection lost:', (error as any).message);
       }
     }
   }
@@ -98,7 +98,7 @@ export class NicsanCRMService {
     if (this.isBackendAvailable) {
       try {
         const response = await authAPI.login(credentials);
-        if (response.success) {
+        if (response.success && response.data) {
           // Store user info for potential token refresh
           localStorage.setItem('user', JSON.stringify(response.data.user));
         }
@@ -264,14 +264,32 @@ export class NicsanCRMService {
     };
   }
 
-  async uploadPDF(file: File): Promise<any> {
+  async uploadPDF(file: File, manualExtras?: any, insurer?: string): Promise<any> {
     // Always check backend availability before API calls
     await this.checkBackendAvailability();
     
     if (this.isBackendAvailable) {
       try {
-        return await uploadAPI.uploadPDF(file);
-      } catch (error) {
+        // Convert File to FormData for the API
+        const formData = new FormData();
+        formData.append('pdf', file); // Changed from 'file' to 'pdf' to match backend expectation
+        
+        // Add insurer if provided
+        if (insurer) {
+          formData.append('insurer', insurer);
+        }
+        
+        // Add manual extras if provided
+        if (manualExtras) {
+          Object.entries(manualExtras).forEach(([key, value]) => {
+            if (value) {
+              formData.append(`manual_${key}`, value.toString());
+            }
+          });
+        }
+        
+        return await uploadAPI.uploadPDF(formData);
+      } catch (error: any) {
         if (ENABLE_DEBUG) console.error('PDF upload failed:', error);
       }
     }
@@ -307,17 +325,212 @@ export class NicsanCRMService {
     }
     
     // Mock upload data
-    const mockUpload = mockData.uploads.find(u => u.id === uploadId) || {
-      id: uploadId,
-      filename: 'mock_policy.pdf',
-      status: 'COMPLETED',
-      confidence_score: 0.92,
-      created_at: new Date().toISOString()
-    };
-    
     return {
       success: true,
-      data: mockUpload
+      data: {
+        id: uploadId,
+        filename: 'mock_policy.pdf',
+        status: 'REVIEW',
+        s3_key: 'uploads/mock/mock_policy.pdf',
+        extracted_data: {
+          insurer: 'TATA_AIG',
+          status: 'REVIEW',
+          manual_extras: {
+            executive: "Mock User",
+            callerName: "Mock Caller",
+            mobile: "9876543210",
+            rollover: "MOCK-2025",
+            remark: "Mock upload for testing",
+            brokerage: 500,
+            cashback: 600,
+            customerPaid: 11550,
+            customerChequeNo: "MOCK-001",
+            ourChequeNo: "MOCK-002"
+          },
+          extracted_data: {
+            policy_number: "TA-MOCK",
+            vehicle_number: "KA01AB1234",
+            insurer: "Tata AIG",
+            product_type: "Private Car",
+            vehicle_type: "Private Car",
+            make: "Maruti",
+            model: "Swift",
+            cc: "1197",
+            manufacturing_year: "2021",
+            issue_date: "2025-01-30",
+            expiry_date: "2026-01-29",
+            idv: 495000,
+            ncb: 20,
+            discount: 0,
+            net_od: 5400,
+            ref: "",
+            total_od: 7200,
+            net_premium: 10800,
+            total_premium: 12150,
+            confidence_score: 0.86
+          }
+        }
+      }
+    };
+  }
+
+  async confirmUploadAsPolicy(uploadId: string): Promise<any> {
+    // Always check backend availability before API calls
+    await this.checkBackendAvailability();
+    
+    // Check if this is a mock upload ID
+    if (uploadId.startsWith('mock_')) {
+      // Return mock confirmation for mock uploads
+      return {
+        success: true,
+        data: {
+          policyId: Date.now(),
+          uploadId: uploadId,
+          status: 'SAVED'
+        },
+        message: 'Mock policy confirmed and saved successfully! (Demo mode)'
+      };
+    }
+    
+    if (this.isBackendAvailable) {
+      try {
+        const result = await uploadAPI.confirmUploadAsPolicy(uploadId);
+        return result;
+      } catch (error: any) {
+        if (ENABLE_DEBUG) console.error('Policy confirmation failed:', error);
+        return {
+          success: false,
+          error: error.message || 'Policy confirmation failed',
+          message: 'Failed to confirm policy'
+        };
+      }
+    }
+    
+    // Mock confirmation for real uploads when backend is unavailable
+    return {
+      success: true,
+      data: {
+        policyId: Date.now(),
+        uploadId: uploadId,
+        status: 'SAVED'
+      },
+      message: 'Policy confirmed and saved successfully (offline mode)'
+    };
+  }
+
+  async getUploadForReview(uploadId: string): Promise<any> {
+    // Always check backend availability before API calls
+    await this.checkBackendAvailability();
+    
+    // Check if this is a mock upload ID
+    if (uploadId.startsWith('mock_')) {
+      // Return mock data for mock uploads
+      return {
+        success: true,
+        data: {
+          id: uploadId,
+          filename: 'mock_policy.pdf',
+          status: 'REVIEW',
+          s3_key: 'uploads/mock/mock_policy.pdf',
+          insurer: 'TATA_AIG',
+          extracted_data: {
+            insurer: 'TATA_AIG',
+            status: 'REVIEW',
+            manual_extras: {
+              executive: "Mock User",
+              callerName: "Mock Caller",
+              mobile: "9876543210",
+              rollover: "MOCK-2025",
+              remark: "Mock upload for testing",
+              brokerage: 500,
+              cashback: 600,
+              customerPaid: 11550,
+              customerChequeNo: "MOCK-001",
+              ourChequeNo: "MOCK-002"
+            },
+            extracted_data: {
+              policy_number: "TA-MOCK",
+              vehicle_number: "KA01AB1234",
+              insurer: "Tata AIG",
+              product_type: "Private Car",
+              vehicle_type: "Private Car",
+              make: "Maruti",
+              model: "Swift",
+              cc: "1197",
+              manufacturing_year: "2021",
+              issue_date: "2025-01-30",
+              expiry_date: "2026-01-29",
+              idv: 495000,
+              ncb: 20,
+              discount: 0,
+              net_od: 5400,
+              ref: "",
+              total_od: 7200,
+              net_premium: 10800,
+              total_premium: 12150,
+              confidence_score: 0.86
+            }
+          }
+        }
+      };
+    }
+    
+    if (this.isBackendAvailable) {
+      try {
+        return await uploadAPI.getUploadForReview(uploadId);
+      } catch (error: any) {
+        if (ENABLE_DEBUG) console.error('Upload review fetch failed:', error);
+      }
+    }
+    
+    // Fallback mock data for real uploads when backend is unavailable
+    return {
+      success: true,
+      data: {
+        id: uploadId,
+        filename: 'fallback_policy.pdf',
+        status: 'REVIEW',
+        s3_key: 'uploads/fallback/fallback_policy.pdf',
+        insurer: 'TATA_AIG',
+        extracted_data: {
+          insurer: 'TATA_AIG',
+          status: 'REVIEW',
+          manual_extras: {
+            executive: "Fallback User",
+            callerName: "Fallback Caller",
+            mobile: "9876543210",
+            rollover: "FALLBACK-2025",
+            remark: "Fallback upload for testing",
+            brokerage: 500,
+            cashback: 600,
+            customerPaid: 11550,
+            customerChequeNo: "FALLBACK-001",
+            ourChequeNo: "FALLBACK-002"
+          },
+          extracted_data: {
+            policy_number: "TA-FALLBACK",
+            vehicle_number: "KA01AB1234",
+            insurer: "Tata AIG",
+            product_type: "Private Car",
+            vehicle_type: "Private Car",
+            make: "Maruti",
+            model: "Swift",
+            cc: "1197",
+            manufacturing_year: "2021",
+            issue_date: "2025-01-30",
+            expiry_date: "2026-01-29",
+            idv: 495000,
+            ncb: 20,
+            discount: 0,
+            net_od: 5400,
+            ref: "",
+            total_od: 7200,
+            net_premium: 10800,
+            total_premium: 12150,
+            confidence_score: 0.86
+          }
+        }
+      }
     };
   }
 

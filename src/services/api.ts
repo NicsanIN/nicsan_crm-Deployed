@@ -332,6 +332,16 @@ export const uploadAPI = {
       method: 'POST',
     });
   },
+
+  confirmUploadAsPolicy: async (uploadId: string): Promise<ApiResponse<any>> => {
+    return apiCall(`/upload/${uploadId}/confirm`, {
+      method: 'POST',
+    });
+  },
+
+  getUploadForReview: async (uploadId: string): Promise<ApiResponse<any>> => {
+    return apiCall(`/upload/${uploadId}/review`);
+  },
 };
 
 // Dashboard API

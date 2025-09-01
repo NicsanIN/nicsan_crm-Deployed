@@ -267,16 +267,25 @@ function PageUpload() {
         }
       });
       
-      const result = await NicsanCRMService.uploadPDF(file);
+      const result = await NicsanCRMService.uploadPDF(file, manualExtras, selectedInsurer);
       
       if (result.success) {
         setUploadStatus('Upload successful! Processing with Textract...');
+        
+        // Use the real upload ID from backend response
+        const realUploadId = result.data?.uploadId;
+        
+        if (!realUploadId) {
+          setUploadStatus('Error: No upload ID received from server');
+          return;
+        }
+        
         const newFile = {
-          id: result.data?.uploadId || Date.now(),
+          id: realUploadId, // Use real upload ID
           filename: file.name,
           status: 'UPLOADED',
           insurer: selectedInsurer,
-          s3_key: `uploads/${Date.now()}_${file.name}`,
+          s3_key: result.data?.s3Key || `uploads/${Date.now()}_${file.name}`,
           time: new Date().toLocaleTimeString(),
           size: (file.size / 1024 / 1024).toFixed(2) + ' MB',
           // Structure that matches Review page expectations
@@ -318,7 +327,7 @@ function PageUpload() {
         console.log('💾 Saved uploads to localStorage:', allUploads);
         
         // Start polling for status updates
-        pollUploadStatus(result.data?.uploadId);
+        pollUploadStatus(realUploadId);
         
         // Clear manual extras after successful upload
         setManualExtras({
@@ -1114,8 +1123,12 @@ function PageReview() {
   const [submitMessage, setSubmitMessage] = useState<{type: 'success' | 'error', message: string} | null>(null);
   const [availableUploads, setAvailableUploads] = useState<any[]>([]);
   const [selectedUpload, setSelectedUpload] = useState<string>('');
+  const [editableData, setEditableData] = useState<any>({
+    pdfData: {},
+    manualExtras: {}
+  });
 
-    // Load available uploads for review
+  // Load available uploads for review
   useEffect(() => {
     const loadAvailableUploads = async () => {
       try {
@@ -1188,9 +1201,10 @@ function PageReview() {
             }
           ]);
         } else {
-          // Show real uploads
-          console.log('📋 Showing real uploads:', realUploads);
-          setAvailableUploads(realUploads);
+          // Show real uploads - filter out any mock uploads
+          const filteredRealUploads = realUploads.filter((upload: any) => !upload.id.startsWith('mock_'));
+          console.log('📋 Showing real uploads:', filteredRealUploads);
+          setAvailableUploads(filteredRealUploads);
         }
       } catch (error) {
         console.error('Failed to load uploads:', error);
@@ -1207,14 +1221,55 @@ function PageReview() {
 
   const loadUploadData = async (uploadId: string) => {
     try {
-      // In real app, this would fetch the actual upload data from backend
-      const upload = availableUploads.find(u => u.id === uploadId);
-      if (upload) {
+      // Check if this is a mock upload ID
+      if (uploadId.startsWith('mock_')) {
+        // Use mock data directly for mock uploads
+        const upload = availableUploads.find(u => u.id === uploadId);
+        if (upload) {
+          setReviewData(upload);
+          setEditableData({
+            pdfData: { ...upload.extracted_data.extracted_data },
+            manualExtras: { ...upload.extracted_data.manual_extras }
+          });
+          setSubmitMessage({ 
+            type: 'success', 
+            message: 'Mock upload data loaded successfully! Please review before saving.' 
+          });
+        }
+        return;
+      }
+      
+      // Try to get real data from backend for real uploads
+      const response = await NicsanCRMService.getUploadForReview(uploadId);
+      
+      if (response.success) {
+        const upload = response.data;
         setReviewData(upload);
+        
+        // Initialize editable data with current values
+        setEditableData({
+          pdfData: { ...upload.extracted_data.extracted_data },
+          manualExtras: { ...upload.extracted_data.manual_extras }
+        });
+        
         setSubmitMessage({ 
           type: 'success', 
           message: 'Upload data loaded successfully! Please review before saving.' 
         });
+      } else {
+        // Fallback to local data
+        const upload = availableUploads.find(u => u.id === uploadId);
+        if (upload) {
+          setReviewData(upload);
+          setEditableData({
+            pdfData: { ...upload.extracted_data.extracted_data },
+            manualExtras: { ...upload.extracted_data.manual_extras }
+          });
+          setSubmitMessage({ 
+            type: 'success', 
+            message: 'Upload data loaded successfully! Please review before saving.' 
+          });
+        }
       }
     } catch (error) {
       setSubmitMessage({ 
@@ -1224,26 +1279,119 @@ function PageReview() {
     }
   };
 
+  const updatePdfData = (field: string, value: any) => {
+    setEditableData((prev: any) => ({
+      ...prev,
+      pdfData: { ...prev.pdfData, [field]: value }
+    }));
+  };
+
+  const updateManualExtras = (field: string, value: any) => {
+    setEditableData((prev: any) => ({
+      ...prev,
+      manualExtras: { ...prev.manualExtras, [field]: value }
+    }));
+  };
+
+  const validateData = () => {
+    const errors = [];
+    
+    // Required fields validation
+    if (!editableData.pdfData.policy_number) {
+      errors.push('Policy Number is required');
+    }
+    if (!editableData.pdfData.vehicle_number) {
+      errors.push('Vehicle Number is required');
+    }
+    if (!editableData.manualExtras.executive) {
+      errors.push('Executive name is required');
+    }
+    if (!editableData.manualExtras.mobile) {
+      errors.push('Mobile number is required');
+    }
+    
+    // Format validation
+    if (editableData.pdfData.vehicle_number && !/^[A-Z]{2}[0-9]{2}[A-Z]{2}[0-9]{4}$/.test(editableData.pdfData.vehicle_number)) {
+      errors.push('Invalid vehicle number format (e.g., KA01AB1234)');
+    }
+    
+    // Mobile number validation
+    if (editableData.manualExtras.mobile && !/^[6-9]\d{9}$/.test(editableData.manualExtras.mobile)) {
+      errors.push('Invalid mobile number format (10 digits starting with 6-9)');
+    }
+    
+    return errors;
+  };
+
   const handleConfirmAndSave = async () => {
     setIsLoading(true);
     setSaveMessage(null);
     
     try {
-      // In real app, this would save the confirmed data to the database
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
+      console.log('🔍 Starting Confirm & Save process...');
+      console.log('🔍 Review data:', reviewData);
+      console.log('🔍 Upload ID:', reviewData?.id);
       
-      setSubmitMessage({ 
-        type: 'success', 
-        message: 'Policy confirmed and saved successfully!' 
-      });
+      // Validate data before saving
+      const validationErrors = validateData();
+      if (validationErrors.length > 0) {
+        console.log('❌ Validation failed:', validationErrors);
+        setSubmitMessage({ 
+          type: 'error', 
+          message: `Validation failed: ${validationErrors.join(', ')}` 
+        });
+        return;
+      }
       
-      // Clear form after successful save
-      setTimeout(() => {
-        setReviewData(null);
-        setSaveMessage(null);
-      }, 2000);
+      // Check if this is a mock upload
+      if (reviewData.id.startsWith('mock_')) {
+        console.log('🎭 Processing mock upload...');
+        // Simulate successful save for mock data
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API delay
+        
+        setSubmitMessage({ 
+          type: 'success', 
+          message: 'Mock policy confirmed and saved successfully! (Demo mode)' 
+        });
+        
+        // Clear form after successful save
+        setTimeout(() => {
+          setReviewData(null);
+          setSaveMessage(null);
+          setEditableData({ pdfData: {}, manualExtras: {} });
+        }, 2000);
+        
+        return;
+      }
+      
+      console.log('💾 Processing real upload...');
+      // Confirm upload as policy for real uploads
+      const result = await NicsanCRMService.confirmUploadAsPolicy(reviewData.id);
+      console.log('🔍 API result:', result);
+      
+      if (result.success) {
+        console.log('✅ Policy confirmed successfully!');
+        setSubmitMessage({ 
+          type: 'success', 
+          message: 'Policy confirmed and saved successfully!' 
+        });
+        
+        // Clear form after successful save
+        setTimeout(() => {
+          setReviewData(null);
+          setSaveMessage(null);
+          setEditableData({ pdfData: {}, manualExtras: {} });
+        }, 2000);
+      } else {
+        console.log('❌ Policy confirmation failed:', result.error);
+        setSubmitMessage({ 
+          type: 'error', 
+          message: result.error || 'Failed to save policy. Please try again.' 
+        });
+      }
       
     } catch (error) {
+      console.error('❌ Confirm & Save error:', error);
       setSubmitMessage({ 
         type: 'error', 
         message: 'Failed to save policy. Please try again.' 
@@ -1494,97 +1642,97 @@ function PageReview() {
         {/* PDF Extracted Data Section */}
         <div className="mb-6">
           <div className="text-sm font-medium mb-3 text-green-700 bg-green-50 px-3 py-2 rounded-lg">
-            📄 PDF Extracted Data (AI Confidence: {Math.round(pdfData.confidence_score * 100)}%)
+            📄 PDF Extracted Data (AI Confidence: {Math.round((editableData.pdfData.confidence_score || pdfData.confidence_score) * 100)}%)
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <LabeledInput 
               label="Policy Number" 
-              value={pdfData.policy_number}
-              onChange={() => {}} // Read-only for review
-              hint="auto-read from PDF"
+              value={editableData.pdfData.policy_number || pdfData.policy_number}
+              onChange={(value) => updatePdfData('policy_number', value)}
+              hint="auto-read from PDF (editable)"
             />
             <LabeledInput 
               label="Vehicle Number" 
-              value={pdfData.vehicle_number}
-              onChange={() => {}} // Read-only for review
-              hint="check format"
+              value={editableData.pdfData.vehicle_number || pdfData.vehicle_number}
+              onChange={(value) => updatePdfData('vehicle_number', value)}
+              hint="check format (editable)"
             />
             <LabeledInput 
               label="Insurer" 
-              value={pdfData.insurer}
-              onChange={() => {}} // Read-only for review
+              value={editableData.pdfData.insurer || pdfData.insurer}
+              onChange={(value) => updatePdfData('insurer', value)}
             />
             <LabeledInput 
               label="Product Type" 
-              value={pdfData.product_type}
-              onChange={() => {}} // Read-only for review
+              value={editableData.pdfData.product_type || pdfData.product_type}
+              onChange={(value) => updatePdfData('product_type', value)}
             />
             <LabeledInput 
               label="Make" 
-              value={pdfData.make}
-              onChange={() => {}} // Read-only for review
+              value={editableData.pdfData.make || pdfData.make}
+              onChange={(value) => updatePdfData('make', value)}
             />
             <LabeledInput 
               label="Model" 
-              value={pdfData.model}
-              onChange={() => {}} // Read-only for review
+              value={editableData.pdfData.model || pdfData.model}
+              onChange={(value) => updatePdfData('model', value)}
             />
             <LabeledInput 
               label="CC" 
-              value={pdfData.cc}
-              onChange={() => {}} // Read-only for review
+              value={editableData.pdfData.cc || pdfData.cc}
+              onChange={(value) => updatePdfData('cc', value)}
               hint="engine size"
             />
             <LabeledInput 
               label="Manufacturing Year" 
-              value={pdfData.manufacturing_year}
-              onChange={() => {}} // Read-only for review
+              value={editableData.pdfData.manufacturing_year || pdfData.manufacturing_year}
+              onChange={(value) => updatePdfData('manufacturing_year', value)}
             />
             <LabeledInput 
               label="Issue Date" 
-              value={pdfData.issue_date}
-              onChange={() => {}} // Read-only for review
+              value={editableData.pdfData.issue_date || pdfData.issue_date}
+              onChange={(value) => updatePdfData('issue_date', value)}
             />
             <LabeledInput 
               label="Expiry Date" 
-              value={pdfData.expiry_date}
-              onChange={() => {}} // Read-only for review
+              value={editableData.pdfData.expiry_date || pdfData.expiry_date}
+              onChange={(value) => updatePdfData('expiry_date', value)}
             />
             <LabeledInput 
               label="IDV (₹)" 
-              value={pdfData.idv}
-              onChange={() => {}} // Read-only for review
+              value={editableData.pdfData.idv || pdfData.idv}
+              onChange={(value) => updatePdfData('idv', value)}
             />
             <LabeledInput 
               label="NCB (%)" 
-              value={pdfData.ncb}
-              onChange={() => {}} // Read-only for review
+              value={editableData.pdfData.ncb || pdfData.ncb}
+              onChange={(value) => updatePdfData('ncb', value)}
             />
             <LabeledInput 
               label="Discount (%)" 
-              value={pdfData.discount}
-              onChange={() => {}} // Read-only for review
+              value={editableData.pdfData.discount || pdfData.discount}
+              onChange={(value) => updatePdfData('discount', value)}
             />
             <LabeledInput 
               label="Net OD (₹)" 
-              value={pdfData.net_od}
-              onChange={() => {}} // Read-only for review
+              value={editableData.pdfData.net_od || pdfData.net_od}
+              onChange={(value) => updatePdfData('net_od', value)}
               hint="Own Damage"
             />
             <LabeledInput 
               label="Total OD (₹)" 
-              value={pdfData.total_od}
-              onChange={() => {}} // Read-only for review
+              value={editableData.pdfData.total_od || pdfData.total_od}
+              onChange={(value) => updatePdfData('total_od', value)}
             />
             <LabeledInput 
               label="Net Premium (₹)" 
-              value={pdfData.net_premium}
-              onChange={() => {}} // Read-only for review
+              value={editableData.pdfData.net_premium || pdfData.net_premium}
+              onChange={(value) => updatePdfData('net_premium', value)}
             />
             <LabeledInput 
               label="Total Premium (₹)" 
-              value={pdfData.total_premium}
-              onChange={() => {}} // Read-only for review
+              value={editableData.pdfData.total_premium || pdfData.total_premium}
+              onChange={(value) => updatePdfData('total_premium', value)}
             />
           </div>
         </div>
@@ -1597,59 +1745,59 @@ function PageReview() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <LabeledInput 
               label="Executive" 
-              value={manualExtras.executive}
-              onChange={() => {}} // Read-only for review
+              value={editableData.manualExtras.executive || manualExtras.executive}
+              onChange={(value) => updateManualExtras('executive', value)}
               hint="sales rep name"
             />
             <LabeledInput 
               label="Caller Name" 
-              value={manualExtras.callerName}
-              onChange={() => {}} // Read-only for review
+              value={editableData.manualExtras.callerName || manualExtras.callerName}
+              onChange={(value) => updateManualExtras('callerName', value)}
               hint="telecaller name"
             />
             <LabeledInput 
               label="Mobile Number" 
-              value={manualExtras.mobile}
-              onChange={() => {}} // Read-only for review
+              value={editableData.manualExtras.mobile || manualExtras.mobile}
+              onChange={(value) => updateManualExtras('mobile', value)}
             />
             <LabeledInput 
               label="Rollover/Renewal" 
-              value={manualExtras.rollover}
-              onChange={() => {}} // Read-only for review
+              value={editableData.manualExtras.rollover || manualExtras.rollover}
+              onChange={(value) => updateManualExtras('rollover', value)}
               hint="internal code"
             />
             <LabeledInput 
               label="Brokerage (₹)" 
-              value={manualExtras.brokerage}
-              onChange={() => {}} // Read-only for review
+              value={editableData.manualExtras.brokerage || manualExtras.brokerage}
+              onChange={(value) => updateManualExtras('brokerage', value)}
               hint="commission amount"
             />
             <LabeledInput 
               label="Cashback (₹)" 
-              value={manualExtras.cashback}
-              onChange={() => {}} // Read-only for review
+              value={editableData.manualExtras.cashback || manualExtras.cashback}
+              onChange={(value) => updateManualExtras('cashback', value)}
               hint="total cashback"
             />
             <LabeledInput 
               label="Customer Paid (₹)" 
-              value={manualExtras.customerPaid}
-              onChange={() => {}} // Read-only for review
+              value={editableData.manualExtras.customerPaid || manualExtras.customerPaid}
+              onChange={(value) => updateManualExtras('customerPaid', value)}
             />
             <LabeledInput 
               label="Customer Cheque No" 
-              value={manualExtras.customerChequeNo}
-              onChange={() => {}} // Read-only for review
+              value={editableData.manualExtras.customerChequeNo || manualExtras.customerChequeNo}
+              onChange={(value) => updateManualExtras('customerChequeNo', value)}
             />
             <LabeledInput 
               label="Our Cheque No" 
-              value={manualExtras.ourChequeNo}
-              onChange={() => {}} // Read-only for review
+              value={editableData.manualExtras.ourChequeNo || manualExtras.ourChequeNo}
+              onChange={(value) => updateManualExtras('ourChequeNo', value)}
             />
             <div className="md:col-span-2">
               <LabeledInput 
                 label="Remark" 
-                value={manualExtras.remark}
-                onChange={() => {}} // Read-only for review
+                value={editableData.manualExtras.remark || manualExtras.remark}
+                onChange={(value) => updateManualExtras('remark', value)}
                 hint="additional notes"
               />
             </div>
@@ -1660,37 +1808,39 @@ function PageReview() {
         <div className="mb-6">
           <div className="text-sm font-medium mb-2">Issues & Warnings</div>
           <div className="space-y-2">
-            {pdfData.confidence_score < 0.8 && (
+            {(editableData.pdfData.confidence_score || pdfData.confidence_score) < 0.8 && (
               <div className="flex items-center gap-2 text-sm text-amber-700 bg-amber-50 p-2 rounded-lg">
                 <AlertTriangle className="w-4 h-4 text-amber-600"/> 
                 <span>Low confidence score. Please verify all extracted data.</span>
               </div>
             )}
-            {!pdfData.issue_date && (
+            {!(editableData.pdfData.issue_date || pdfData.issue_date) && (
               <div className="flex items-center gap-2 text-sm text-amber-700 bg-amber-50 p-2 rounded-lg">
                 <AlertTriangle className="w-4 h-4 text-amber-600"/> 
                 <span>Issue Date missing. Please add manually.</span>
               </div>
             )}
-            {!pdfData.expiry_date && (
+            {!(editableData.pdfData.expiry_date || pdfData.expiry_date) && (
               <div className="flex items-center gap-2 text-sm text-amber-700 bg-amber-50 p-2 rounded-lg">
                 <AlertTriangle className="w-4 h-4 text-amber-600"/> 
                 <span>Expiry Date missing. Please add manually.</span>
               </div>
             )}
-            {!manualExtras.executive && (
+            {!(editableData.manualExtras.executive || manualExtras.executive) && (
               <div className="flex items-center gap-2 text-sm text-amber-700 bg-amber-50 p-2 rounded-lg">
                 <AlertTriangle className="w-4 h-4 text-amber-600"/> 
                 <span>Executive name missing. Please add manually.</span>
               </div>
             )}
-            {!manualExtras.mobile && (
+            {!(editableData.manualExtras.mobile || manualExtras.mobile) && (
               <div className="flex items-center gap-2 text-sm text-amber-700 bg-amber-50 p-2 rounded-lg">
                 <AlertTriangle className="w-4 h-4 text-amber-600"/> 
                 <span>Mobile number missing. Please add manually.</span>
               </div>
             )}
-            {pdfData.confidence_score >= 0.8 && manualExtras.executive && manualExtras.mobile && (
+            {(editableData.pdfData.confidence_score || pdfData.confidence_score) >= 0.8 && 
+             (editableData.manualExtras.executive || manualExtras.executive) && 
+             (editableData.manualExtras.mobile || manualExtras.mobile) && (
               <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 p-2 rounded-lg">
                 <CheckCircle2 className="w-4 h-4 text-green-600"/> 
                 <span>Data looks good! High confidence extraction + complete manual extras.</span>

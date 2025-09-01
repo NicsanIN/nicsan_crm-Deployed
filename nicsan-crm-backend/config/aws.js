@@ -12,7 +12,7 @@ const s3 = new AWS.S3({
 const textract = new AWS.Textract({
   accessKeyId: process.env.AWS_ACCESS_KEY_ID,
   secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-  region: process.env.TEXTRACT_REGION || 'us-east-1'
+  region: process.env.AWS_REGION || 'us-east-1' // Use same region as S3
 });
 
 // S3 Helper Functions

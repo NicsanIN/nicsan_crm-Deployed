@@ -53,6 +53,19 @@ router.post('/pdf', authenticateToken, requireOps, upload.single('pdf'), async (
     };
 
     const result = await storageService.savePDFUpload(uploadData);
+    
+    // Automatically trigger Textract processing after upload
+    if (result.success) {
+      try {
+        console.log('🔄 Auto-triggering Textract processing...');
+        await storageService.processPDF(result.data.uploadId);
+        console.log('✅ Textract processing completed automatically');
+      } catch (processError) {
+        console.error('⚠️ Auto Textract processing failed:', processError.message);
+        // Don't fail the upload if Textract fails
+      }
+    }
+    
     res.status(201).json(result);
   } catch (error) {
     console.error('PDF upload error:', error);
@@ -147,6 +160,68 @@ router.get('/', authenticateToken, requireOps, async (req, res) => {
     res.status(500).json({
       success: false,
       error: error.message || 'Failed to get uploads'
+    });
+  }
+});
+
+// Confirm upload as policy
+router.post('/:uploadId/confirm', authenticateToken, requireOps, async (req, res) => {
+  try {
+    const uploadId = req.params.uploadId;
+    
+    // Validate upload exists and is in REVIEW status
+    const upload = await storageService.getUploadStatus(uploadId);
+    
+    if (!upload) {
+      return res.status(404).json({
+        success: false,
+        error: 'Upload not found'
+      });
+    }
+    
+    if (upload.status !== 'REVIEW' && upload.status !== 'UPLOADED') {
+      return res.status(400).json({
+        success: false,
+        error: 'Upload must be in REVIEW or UPLOADED status to confirm'
+      });
+    }
+    
+    // Confirm upload as policy
+    const result = await storageService.confirmUploadAsPolicy(uploadId);
+    
+    res.json(result);
+  } catch (error) {
+    console.error('Confirm upload error:', error);
+    res.status(400).json({
+      success: false,
+      error: error.message || 'Failed to confirm upload'
+    });
+  }
+});
+
+// Get upload for review (with proper structure)
+router.get('/:uploadId/review', authenticateToken, requireOps, async (req, res) => {
+  try {
+    const uploadId = req.params.uploadId;
+    
+    const upload = await storageService.getUploadForReview(uploadId);
+    
+    if (!upload) {
+      return res.status(404).json({
+        success: false,
+        error: 'Upload not found'
+      });
+    }
+    
+    res.json({
+      success: true,
+      data: upload
+    });
+  } catch (error) {
+    console.error('Get upload for review error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to get upload for review'
     });
   }
 });
