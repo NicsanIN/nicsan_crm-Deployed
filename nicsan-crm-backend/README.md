@@ -1,249 +1,142 @@
 # Nicsan CRM Backend
 
-A robust, enterprise-grade backend API for the Nicsan CRM insurance operations management system.
-
-## 🚀 Features
-
-- **Authentication & Authorization**: JWT-based auth with role-based access control
-- **Policy Management**: Complete CRUD operations for insurance policies
-- **PDF Processing**: AWS Textract integration for automated data extraction
-- **File Upload**: S3 integration for secure file storage
-- **Analytics Dashboard**: Comprehensive KPI and performance metrics
-- **User Management**: Role-based user administration
-- **Real-time Processing**: Asynchronous PDF processing with status tracking
+A robust backend API for the Nicsan CRM system with **dual storage architecture** - primary storage on AWS S3 and secondary storage on PostgreSQL.
 
 ## 🏗️ Architecture
 
-- **Framework**: Node.js + Express.js
-- **Language**: TypeScript
-- **Database**: PostgreSQL (AWS RDS)
-- **Cloud Services**: AWS S3, AWS Textract
-- **Authentication**: JWT with bcrypt password hashing
-- **File Handling**: Multer for multipart/form-data
+### Dual Storage Strategy
+- **Primary Storage**: AWS S3 (for files, PDFs, and raw data)
+- **Secondary Storage**: PostgreSQL (for structured data and queries)
+- **Sync**: All data is saved to both storages simultaneously
 
-## 📋 Prerequisites
+### Key Features
+- ✅ JWT Authentication with role-based access
+- ✅ PDF upload with AWS Textract processing
+- ✅ Policy management with dual storage
+- ✅ Dashboard metrics and KPI calculations
+- ✅ Sales explorer and leaderboard
+- ✅ File upload with S3 integration
 
-- Node.js 18+ LTS
-- PostgreSQL database (AWS RDS recommended)
-- AWS Account with S3 and Textract access
-- AWS CLI configured (optional, for local development)
+## 🚀 Quick Start
 
-## 🛠️ Installation
+### 1. Install Dependencies
+```bash
+npm install
+```
 
-1. **Clone and install dependencies**
-   ```bash
-   cd nicsan-crm-backend
-   npm install
-   ```
-
-2. **Environment Configuration**
-   ```bash
-   cp env.example .env
-   # Edit .env with your configuration
-   ```
-
-3. **Database Setup**
-   ```bash
-   # Run the schema file in your PostgreSQL database
-   psql -h your-rds-endpoint -U your_username -d your_database -f src/config/schema.sql
-   ```
-
-4. **Build and Run**
-   ```bash
-   # Development
-   npm run dev
-   
-   # Production
-   npm run build
-   npm start
-   ```
-
-## 🔧 Configuration
-
-### Environment Variables
-
+### 2. Environment Setup
+Create `.env` file:
 ```env
 # Server
 PORT=3001
 NODE_ENV=development
 
-# Database (AWS RDS PostgreSQL)
-DB_HOST=your-rds-endpoint.region.rds.amazonaws.com
+# Database (PostgreSQL)
+DB_HOST=localhost
 DB_PORT=5432
 DB_NAME=nicsan_crm
-DB_USER=your_username
+DB_USER=postgres
 DB_PASSWORD=your_password
-DB_SSL=true
+
+# AWS (S3 + Textract)
+AWS_ACCESS_KEY_ID=your_access_key
+AWS_SECRET_ACCESS_KEY=your_secret_key
+AWS_REGION=us-east-1
+AWS_S3_BUCKET=nicsan-crm-uploads
 
 # JWT
-JWT_SECRET=your-super-secret-jwt-key-here
+JWT_SECRET=your_jwt_secret_key
 JWT_EXPIRES_IN=24h
-
-# AWS
-AWS_REGION=ap-south-1
-AWS_ACCESS_KEY_ID=your-access-key
-AWS_SECRET_ACCESS_KEY=your-secret-key
-
-# S3
-S3_BUCKET_NAME=nicsan-crm-pdfs
-S3_REGION=ap-south-1
-
-# CORS
-CORS_ORIGIN=http://localhost:5173
 ```
 
-## 🗄️ Database Schema
+### 3. Database Setup
+```bash
+# Initialize database tables
+npm run init-db
 
-### Core Tables
+# Create default users
+npm run init-users
+```
 
-- **users**: User accounts with role-based access
-- **policies**: Insurance policy data with comprehensive fields
-- **pdf_uploads**: PDF file uploads and processing status
-- **audit_logs**: Complete audit trail for compliance
+### 4. Start Server
+```bash
+# Development mode
+npm run dev
 
-### Key Features
+# Production mode
+npm start
+```
 
-- **UUID primary keys** for security
-- **Automatic timestamps** with triggers
-- **Performance indexes** on frequently queried fields
-- **JSONB storage** for flexible data (extracted PDF content)
-- **Referential integrity** with foreign key constraints
-
-## 🔌 API Endpoints
+## 📊 API Endpoints
 
 ### Authentication
 - `POST /api/auth/login` - User login
-- `POST /api/auth/register` - User registration (Founder only)
-- `GET /api/auth/profile` - Get current user profile
-- `PUT /api/auth/change-password` - Change password
+- `POST /api/auth/register` - User registration
+- `GET /api/auth/profile` - Get user profile
 
 ### Policies
-- `GET /api/policies` - List policies with pagination and filters
+- `POST /api/policies` - Create policy (dual storage)
+- `GET /api/policies` - Get all policies
 - `GET /api/policies/:id` - Get policy by ID
-- `POST /api/policies` - Create new policy
 - `PUT /api/policies/:id` - Update policy
 - `DELETE /api/policies/:id` - Delete policy
-- `POST /api/policies/bulk` - Bulk create policies (grid entry)
 
-### File Upload
-- `POST /api/upload/pdf` - Upload PDF for Textract processing
-- `GET /api/upload/pdf/:id` - Get upload status
-- `GET /api/upload/pdf` - List all uploads
-- `POST /api/upload/pdf/:id/retry` - Retry failed processing
+### PDF Upload
+- `POST /api/upload/pdf` - Upload PDF with manual extras
+- `POST /api/upload/:id/process` - Process PDF with Textract
+- `GET /api/upload/:id/status` - Get upload status
+- `GET /api/upload` - Get all uploads
 
-### Dashboard (Founder only)
-- `GET /api/dashboard/metrics` - Overall metrics
-- `GET /api/dashboard/sales-reps` - Sales representative performance
-- `GET /api/dashboard/trends` - Time-series data for charts
-- `GET /api/dashboard/data-sources` - Data source analysis
-- `GET /api/dashboard/vehicle-analysis` - Vehicle make/model insights
-- `GET /api/dashboard/kpis` - Comprehensive KPI calculations
+### Dashboard
+- `GET /api/dashboard/metrics` - Get KPI metrics
+- `GET /api/dashboard/explorer` - Sales explorer data
+- `GET /api/dashboard/leaderboard` - Rep leaderboard
 
-### User Management (Founder only)
-- `GET /api/users` - List all users
-- `GET /api/users/:id` - Get user by ID
-- `PUT /api/users/:id` - Update user
-- `DELETE /api/users/:id` - Delete user
+## 🔐 Default Users
 
-## 🔐 Security Features
+After running `npm run init-users`, these users are created:
 
-- **JWT Authentication** with configurable expiration
-- **Role-based Access Control** (Ops vs Founder)
-- **Password Hashing** with bcrypt (12 rounds)
-- **Input Validation** and sanitization
-- **CORS Protection** with configurable origins
-- **Helmet.js** for security headers
-- **Rate Limiting** (configurable)
-- **SQL Injection Protection** with parameterized queries
+- **Ops User**: `ops@nicsan.in` / `ops123`
+- **Founder User**: `admin@nicsan.in` / `admin123`
 
-## 📊 PDF Processing Flow
+## 🗄️ Database Schema
 
-1. **Upload**: PDF uploaded via multipart/form-data
-2. **Validation**: File size, type, and metadata validation
-3. **S3 Storage**: File stored in configured S3 bucket
-4. **Database Record**: Upload record created with status 'UPLOADED'
-5. **Textract Processing**: Asynchronous processing with AWS Textract
-6. **Data Extraction**: Key-value pairs and table data extracted
-7. **Confidence Scoring**: AI confidence calculated for extracted data
-8. **Status Update**: Database updated with results or errors
+### Tables
+- `users` - User accounts and authentication
+- `policies` - Policy data with all fields
+- `pdf_uploads` - PDF upload metadata and processing status
 
-## 🚀 Performance Features
-
-- **Connection Pooling** for database efficiency
-- **Asynchronous Processing** for PDF operations
-- **Efficient Queries** with proper indexing
-- **Pagination** for large datasets
-- **Caching Ready** architecture for future Redis integration
-
-## 🧪 Development
+## 🔧 Development
 
 ### Scripts
-```bash
-npm run dev          # Development with nodemon
-npm run build        # TypeScript compilation
-npm run start        # Production server
-npm run dev:build    # Build and run
-```
+- `npm run dev` - Start with nodemon (auto-restart)
+- `npm run init-db` - Initialize database tables
+- `npm run init-users` - Create default users
 
-### Code Quality
-- **TypeScript** with strict mode
-- **ESLint** configuration
-- **Prettier** ready
-- **Error handling** middleware
-- **Request logging** middleware
+### Health Check
+- `GET /health` - Server health status
 
-## 📈 Monitoring & Logging
+## 🌐 Frontend Integration
 
-- **Request Logging** with timestamps
-- **Error Logging** with stack traces
-- **Database Connection** monitoring
-- **File Upload** progress tracking
-- **Textract Processing** status updates
+The backend is designed to work seamlessly with the React frontend:
+- CORS enabled for `localhost:3000`
+- JWT token authentication
+- File upload support
+- Real-time status updates
 
-## 🔄 Deployment
+## 📝 Notes
 
-### Production Checklist
-- [ ] Environment variables configured
-- [ ] Database schema deployed
-- [ ] AWS credentials configured
-- [ ] S3 bucket created and configured
-- [ ] Textract permissions set
-- [ ] SSL certificates configured
-- [ ] Process manager (PM2) configured
-- [ ] Monitoring and alerting set up
+- All data is saved to both S3 and PostgreSQL simultaneously
+- PDFs are processed with AWS Textract for data extraction
+- JWT tokens are used for authentication
+- Role-based access control (ops/founder)
+- File uploads are limited to PDFs only
 
-### Docker Support
-```dockerfile
-# Dockerfile available for containerized deployment
-FROM node:18-alpine
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci --only=production
-COPY . .
-RUN npm run build
-EXPOSE 3001
-CMD ["npm", "start"]
-```
+## 🔒 Security
 
-## 🤝 Contributing
+- Passwords are hashed with bcrypt
+- JWT tokens for authentication
+- Role-based access control
+- Input validation and sanitization
+- CORS configuration for frontend
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
-
-## 📄 License
-
-This project is proprietary software for Nicsan CRM operations.
-
-## 🆘 Support
-
-For technical support or questions:
-- Check the API documentation
-- Review error logs
-- Contact the development team
-
----
-
-**Built with ❤️ for Nicsan CRM Team**

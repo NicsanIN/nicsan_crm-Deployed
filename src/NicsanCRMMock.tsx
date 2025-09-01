@@ -2,6 +2,7 @@ import React, { useMemo, useState, useRef, useEffect } from "react";
 import { Upload, FileText, CheckCircle2, AlertTriangle, Table2, Settings, LayoutDashboard, Users, BarChart3, BadgeInfo, Filter, Lock, LogOut, Car, SlidersHorizontal, TrendingUp } from "lucide-react";
 import { ResponsiveContainer, CartesianGrid, BarChart, Bar, Legend, Area, AreaChart, XAxis, YAxis, Tooltip } from "recharts";
 import { uploadAPI, policiesAPI, authAPI, authUtils } from './services/api';
+import NicsanCRMService from './services/api-integration';
 
 // --- Nicsan CRM v1 UI/UX Mock (updated) ---
 // Adds: Password-protected login, optimized Manual Form, Founder filters, KPI dashboard (your new metrics)
@@ -26,8 +27,8 @@ function LoginPage({ onLogin }: { onLogin: (user: { name: string; email: string;
     setError("");
 
     try {
-      // Use real authentication API
-      const response = await authAPI.login({ email, password });
+      // Use smart API service with mock fallback
+      const response = await NicsanCRMService.login({ email, password });
       
       console.log('🔍 Full login response:', response);
       console.log('🔍 Response data:', response.data);
