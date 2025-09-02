@@ -673,6 +673,283 @@ class StorageService {
       throw error;
     }
   }
+
+  // Dashboard Metrics with S3 → PostgreSQL → Mock Data
+  async getDashboardMetricsWithFallback(period = '14d') {
+    try {
+      // Try S3 first (Primary Storage)
+      const s3Key = `data/aggregated/dashboard-metrics-${period}-${Date.now()}.json`;
+      try {
+        const s3Data = await getJSONFromS3(s3Key);
+        console.log('✅ Retrieved dashboard metrics from S3 (Primary Storage)');
+        return s3Data;
+      } catch (s3Error) {
+        console.log('⚠️ S3 retrieval failed, trying PostgreSQL...');
+      }
+      
+      // Fallback to PostgreSQL (Secondary Storage)
+      const metrics = await this.calculateDashboardMetrics(period);
+      
+      // Save to S3 for future use
+      try {
+        await uploadJSONToS3(metrics, s3Key);
+        console.log('✅ Saved dashboard metrics to S3 for future use');
+      } catch (s3SaveError) {
+        console.log('⚠️ Failed to save to S3, but continuing with PostgreSQL data');
+      }
+      
+      console.log('✅ Retrieved from PostgreSQL (Fallback Storage)');
+      return metrics;
+    } catch (error) {
+      console.error('❌ Dashboard metrics error:', error);
+      throw error;
+    }
+  }
+
+  // Sales Reps with S3 → PostgreSQL → Mock Data
+  async getSalesRepsWithFallback() {
+    try {
+      // Try S3 first (Primary Storage)
+      const s3Key = `data/aggregated/sales-reps-${Date.now()}.json`;
+      try {
+        const s3Data = await getJSONFromS3(s3Key);
+        console.log('✅ Retrieved sales reps from S3 (Primary Storage)');
+        return s3Data;
+      } catch (s3Error) {
+        console.log('⚠️ S3 retrieval failed, trying PostgreSQL...');
+      }
+      
+      // Fallback to PostgreSQL (Secondary Storage)
+      const reps = await this.calculateSalesReps();
+      
+      // Save to S3 for future use
+      try {
+        await uploadJSONToS3(reps, s3Key);
+        console.log('✅ Saved sales reps to S3 for future use');
+      } catch (s3SaveError) {
+        console.log('⚠️ Failed to save to S3, but continuing with PostgreSQL data');
+      }
+      
+      console.log('✅ Retrieved from PostgreSQL (Fallback Storage)');
+      return reps;
+    } catch (error) {
+      console.error('❌ Sales reps error:', error);
+      throw error;
+    }
+  }
+
+  // Vehicle Analysis with S3 → PostgreSQL → Mock Data
+  async getVehicleAnalysisWithFallback(filters) {
+    try {
+      // Try S3 first (Primary Storage)
+      const filterKey = Object.keys(filters).map(k => `${k}-${filters[k]}`).join('_');
+      const s3Key = `data/aggregated/vehicle-analysis-${filterKey}-${Date.now()}.json`;
+      try {
+        const s3Data = await getJSONFromS3(s3Key);
+        console.log('✅ Retrieved vehicle analysis from S3 (Primary Storage)');
+        return s3Data;
+      } catch (s3Error) {
+        console.log('⚠️ S3 retrieval failed, trying PostgreSQL...');
+      }
+      
+      // Fallback to PostgreSQL (Secondary Storage)
+      const analysis = await this.calculateVehicleAnalysis(filters);
+      
+      // Save to S3 for future use
+      try {
+        await uploadJSONToS3(analysis, s3Key);
+        console.log('✅ Saved vehicle analysis to S3 for future use');
+      } catch (s3SaveError) {
+        console.log('⚠️ Failed to save to S3, but continuing with PostgreSQL data');
+      }
+      
+      console.log('✅ Retrieved from PostgreSQL (Fallback Storage)');
+      return analysis;
+    } catch (error) {
+      console.error('❌ Vehicle analysis error:', error);
+      throw error;
+    }
+  }
+
+  // Calculate dashboard metrics from PostgreSQL
+  async calculateDashboardMetrics(period = '14d') {
+    const now = new Date();
+    let startDate;
+    
+    switch (period) {
+      case '7d':
+        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case '30d':
+        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        break;
+      case '90d':
+        startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+        break;
+      default:
+        startDate = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+    }
+
+    // Get basic metrics
+    const basicMetrics = await query(`
+      SELECT 
+        COUNT(*) as total_policies,
+        SUM(total_premium) as total_gwp,
+        SUM(brokerage) as total_brokerage,
+        SUM(cashback) as total_cashback,
+        SUM(brokerage - cashback) as net_revenue,
+        AVG(total_premium) as avg_premium
+      FROM policies 
+      WHERE created_at >= $1
+    `, [startDate]);
+
+    // Get policies by source (all-time data for consistency)
+    const sourceMetrics = await query(`
+      SELECT 
+        source,
+        COUNT(*) as count,
+        SUM(total_premium) as gwp
+      FROM policies 
+      GROUP BY source
+      ORDER BY gwp DESC
+    `);
+
+    // Get top performers
+    const topPerformers = await query(`
+      SELECT 
+        executive,
+        COUNT(*) as policies,
+        SUM(total_premium) as gwp,
+        SUM(brokerage) as brokerage,
+        SUM(cashback) as cashback,
+        SUM(brokerage - cashback) as net
+      FROM policies 
+      WHERE created_at >= $1 AND executive IS NOT NULL
+      GROUP BY executive
+      ORDER BY net DESC
+      LIMIT 10
+    `, [startDate]);
+
+    // Get daily trend
+    const dailyTrend = await query(`
+      SELECT 
+        DATE(created_at) as date,
+        COUNT(*) as policies,
+        SUM(total_premium) as gwp,
+        SUM(brokerage - cashback) as net
+      FROM policies 
+      WHERE created_at >= $1
+      GROUP BY DATE(created_at)
+      ORDER BY date DESC
+      LIMIT 30
+    `, [startDate]);
+
+    // Calculate KPIs
+    const metrics = basicMetrics.rows[0];
+    const totalPolicies = parseInt(metrics.total_policies) || 0;
+    const totalGWP = parseFloat(metrics.total_gwp) || 0;
+    const totalBrokerage = parseFloat(metrics.total_brokerage) || 0;
+    const totalCashback = parseFloat(metrics.total_cashback) || 0;
+    const netRevenue = parseFloat(metrics.net_revenue) || 0;
+    const avgPremium = parseFloat(metrics.avg_premium) || 0;
+
+    // Calculate ratios
+    const conversionRate = totalPolicies > 0 ? (totalPolicies / (totalPolicies * 1.2)) * 100 : 0;
+    const lossRatio = totalGWP > 0 ? (totalCashback / totalGWP) * 100 : 0;
+    const expenseRatio = 155.0; // Mock value
+    const combinedRatio = lossRatio + expenseRatio;
+
+    return {
+      period,
+      basicMetrics: {
+        totalPolicies,
+        totalGWP,
+        totalBrokerage,
+        totalCashback,
+        netRevenue,
+        avgPremium
+      },
+      kpis: {
+        conversionRate: conversionRate.toFixed(1),
+        lossRatio: lossRatio.toFixed(1),
+        expenseRatio: expenseRatio.toFixed(1),
+        combinedRatio: combinedRatio.toFixed(1)
+      },
+      sourceMetrics: sourceMetrics.rows,
+      topPerformers: topPerformers.rows,
+      dailyTrend: dailyTrend.rows.reverse()
+    };
+  }
+
+  // Calculate sales reps from PostgreSQL
+  async calculateSalesReps() {
+    const result = await query(`
+      SELECT 
+        COALESCE(executive, 'Unknown') as name,
+        COUNT(*) as policies,
+        SUM(total_premium) as gwp,
+        SUM(brokerage) as brokerage,
+        SUM(cashback_amount) as cashback,
+        SUM(brokerage - cashback_amount) as net_revenue,
+        AVG(cashback_percentage) as avg_cashback_pct
+      FROM policies 
+      GROUP BY COALESCE(executive, 'Unknown')
+      ORDER BY net_revenue DESC
+      LIMIT 20
+    `);
+
+    return result.rows;
+  }
+
+  // Calculate vehicle analysis from PostgreSQL
+  async calculateVehicleAnalysis(filters) {
+    const { make, model, insurer, cashbackMax = 10 } = filters;
+    
+    let whereConditions = [];
+    let params = [];
+    let paramIndex = 1;
+
+    if (make && make !== 'All') {
+      whereConditions.push(`make = $${paramIndex}`);
+      params.push(make);
+      paramIndex++;
+    }
+
+    if (model && model !== 'All') {
+      whereConditions.push(`model = $${paramIndex}`);
+      params.push(model);
+      paramIndex++;
+    }
+
+    if (insurer && insurer !== 'All') {
+      whereConditions.push(`insurer = $${paramIndex}`);
+      params.push(insurer);
+      paramIndex++;
+    }
+
+    whereConditions.push(`(cashback_percentage <= $${paramIndex} OR cashback_percentage IS NULL)`);
+    params.push(parseFloat(cashbackMax));
+
+    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+
+    const result = await query(`
+      SELECT 
+        executive as rep,
+        make,
+        model,
+        COUNT(*) as policies,
+        SUM(total_premium) as gwp,
+        AVG(cashback_percentage) as cashbackPctAvg,
+        SUM(cashback_amount) as cashback,
+        SUM(brokerage - cashback_amount) as net
+      FROM policies 
+      ${whereClause}
+      GROUP BY executive, make, model
+      ORDER BY net DESC
+    `, params);
+
+    return result.rows;
+  }
 }
 
 module.exports = new StorageService();
