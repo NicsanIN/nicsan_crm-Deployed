@@ -1,9 +1,10 @@
 import React, { useMemo, useState, useRef, useEffect } from "react";
-import { Upload, FileText, CheckCircle2, AlertTriangle, Table2, Settings, LayoutDashboard, Users, BarChart3, BadgeInfo, Filter, Lock, LogOut, Car, SlidersHorizontal, TrendingUp } from "lucide-react";
+import { Upload, FileText, CheckCircle2, AlertTriangle, Table2, Settings, LayoutDashboard, Users, BarChart3, BadgeInfo, Filter, Lock, LogOut, Car, SlidersHorizontal, TrendingUp, RefreshCw } from "lucide-react";
 import { ResponsiveContainer, CartesianGrid, BarChart, Bar, Legend, Area, AreaChart, XAxis, YAxis, Tooltip } from "recharts";
-import { uploadAPI, policiesAPI, authAPI, authUtils } from './services/api';
+import { authUtils } from './services/api';
 import NicsanCRMService from './services/api-integration';
 import DualStorageService from './services/dualStorageService';
+import CrossDeviceSyncDemo from './components/CrossDeviceSyncDemo';
 
 // Environment variables
 const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
@@ -18,7 +19,7 @@ const ENABLE_MOCK_DATA = import.meta.env.VITE_ENABLE_MOCK_DATA === 'true';
 function LoginPage({ onLogin }: { onLogin: (user: { name: string; email: string; role: "ops" | "founder" }) => void }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<"ops"|"founder">("ops");
+
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -204,6 +205,7 @@ function OpsSidebar({ page, setPage }: { page: string; setPage: (p: string) => v
     { id: "manual-form", label: "Manual Form", icon: CheckCircle2 },
     { id: "manual-grid", label: "Grid Entry", icon: Table2 },
     { id: "policy-detail", label: "Policy Detail", icon: FileText },
+    { id: "sync-demo", label: "Cross-Device Sync", icon: RefreshCw },
     { id: "settings", label: "Settings", icon: Settings },
   ]
   return (
@@ -576,7 +578,7 @@ function PageUpload() {
             <button
               onClick={() => {
                 // Show preview of what will be submitted
-                const filledFields = Object.entries(manualExtras).filter(([key, value]) => value.trim() !== '');
+                const filledFields = Object.entries(manualExtras).filter(([, value]) => value.trim() !== '');
                 if (filledFields.length === 0) {
                   alert('Please fill at least one manual field before proceeding');
                   return;
@@ -867,17 +869,17 @@ function PageManualForm() {
         manufacturing_year: form.manufacturingYear || '',
         issue_date: form.issueDate || new Date().toISOString().split('T')[0],
         expiry_date: form.expiryDate || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        idv: parseFloat(form.idv) || 0,
-        ncb: parseFloat(form.ncb) || 0,
-        discount: parseFloat(form.discount) || 0,
-        net_od: parseFloat(form.netOd) || 0,
+        idv: (parseFloat(form.idv) || 0).toString(),
+        ncb: (parseFloat(form.ncb) || 0).toString(),
+        discount: (parseFloat(form.discount) || 0).toString(),
+        net_od: (parseFloat(form.netOd) || 0).toString(),
         ref: form.ref || '',
-        total_od: parseFloat(form.totalOd) || 0,
-        net_premium: parseFloat(form.netPremium) || 0,
-        total_premium: parseFloat(form.totalPremium),
-        cashback_percentage: parseFloat(form.cashbackPct) || 0,
-        cashback_amount: parseFloat(form.cashbackAmt) || 0,
-        customer_paid: parseFloat(form.customerPaid) || 0,
+        total_od: (parseFloat(form.totalOd) || 0).toString(),
+        net_premium: (parseFloat(form.netPremium) || 0).toString(),
+        total_premium: parseFloat(form.totalPremium).toString(),
+        cashback_percentage: (parseFloat(form.cashbackPct) || 0).toString(),
+        cashback_amount: (parseFloat(form.cashbackAmt) || 0).toString(),
+        customer_paid: (parseFloat(form.customerPaid) || 0).toString(),
         customer_cheque_no: form.customerChequeNo || '',
         our_cheque_no: form.ourChequeNo || '',
         executive: form.executive || 'Unknown',
@@ -885,8 +887,8 @@ function PageManualForm() {
         mobile: form.mobile || '0000000000',
         rollover: form.rollover || '',
         remark: form.remark || '',
-        brokerage: parseFloat(form.brokerage) || 0,
-        cashback: parseFloat(form.cashback) || 0,
+        brokerage: (parseFloat(form.brokerage) || 0).toString(),
+        cashback: (parseFloat(form.cashback) || 0).toString(),
         source: 'MANUAL_FORM'
       };
 
@@ -1201,18 +1203,18 @@ function PageManualGrid() {
           expiry_date: row.expiryDate || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
           
           // Financial
-          idv: parseFloat(row.idv) || 0,
-          ncb: parseFloat(row.ncb) || 0,
-          discount: parseFloat(row.discount) || 0,
-          net_od: parseFloat(row.netOd) || 0,
+          idv: (parseFloat(row.idv) || 0).toString(),
+          ncb: (parseFloat(row.ncb) || 0).toString(),
+          discount: (parseFloat(row.discount) || 0).toString(),
+          net_od: (parseFloat(row.netOd) || 0).toString(),
           ref: row.ref || '',
-          total_od: parseFloat(row.totalOd) || 0,
-          net_premium: parseFloat(row.netPremium) || 0,
-          total_premium: parseFloat(row.totalPremium),
-          cashback_percentage: parseFloat(row.cashbackPct) || 0,
-          cashback_amount: parseFloat(row.cashbackAmt) || 0,
-          customer_paid: parseFloat(row.customerPaid) || 0,
-          brokerage: parseFloat(row.brokerage) || 0,
+          total_od: (parseFloat(row.totalOd) || 0).toString(),
+          net_premium: (parseFloat(row.netPremium) || 0).toString(),
+          total_premium: parseFloat(row.totalPremium).toString(),
+          cashback_percentage: (parseFloat(row.cashbackPct) || 0).toString(),
+          cashback_amount: (parseFloat(row.cashbackAmt) || 0).toString(),
+          customer_paid: (parseFloat(row.customerPaid) || 0).toString(),
+          brokerage: (parseFloat(row.brokerage) || 0).toString(),
           
           // Contact Info
           executive: row.executive || 'Unknown',
@@ -1222,7 +1224,7 @@ function PageManualGrid() {
           // Additional
           rollover: row.rollover || '',
           remark: row.remark || '',
-          cashback: parseFloat(row.cashback) || 0,
+          cashback: (parseFloat(row.cashback) || 0).toString(),
           source: 'MANUAL_GRID'
         };
         
@@ -3227,6 +3229,7 @@ export default function NicsanCRMMock() {
           {opsPage === "manual-form" && <PageManualForm/>}
           {opsPage === "manual-grid" && <PageManualGrid/>}
           {opsPage === "policy-detail" && <PagePolicyDetail/>}
+          {opsPage === "sync-demo" && <CrossDeviceSyncDemo/>}
           {opsPage === "settings" && (
             <Card title="Ops Settings" desc="Keyboard shortcuts + defaults (makes data entry faster)">
               <ul className="list-disc pl-5 text-sm space-y-1">

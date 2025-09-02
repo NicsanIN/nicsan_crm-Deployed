@@ -1,5 +1,6 @@
 const { query } = require('../config/database');
 const { uploadToS3, deleteFromS3, extractTextFromPDF, generateS3Key, generatePolicyS3Key, uploadJSONToS3, getJSONFromS3 } = require('../config/aws');
+const websocketService = require('./websocketService');
 
 class StorageService {
   // Dual Storage: Save to both S3 (primary) and PostgreSQL (secondary)
@@ -23,13 +24,22 @@ class StorageService {
       
       console.log('✅ Policy saved to both storages successfully');
       
+      const savedPolicy = {
+        id: policyId,
+        s3_key: s3Key,
+        ...policyData
+      };
+
+      // 4. Notify WebSocket clients of policy creation
+      try {
+        websocketService.notifyPolicyChange(policyData.userId || 'system', 'created', savedPolicy);
+      } catch (wsError) {
+        console.warn('WebSocket notification failed:', wsError.message);
+      }
+      
       return {
         success: true,
-        data: {
-          id: policyId,
-          s3_key: s3Key,
-          ...policyData
-        }
+        data: savedPolicy
       };
     } catch (error) {
       console.error('❌ Dual storage save error:', error);

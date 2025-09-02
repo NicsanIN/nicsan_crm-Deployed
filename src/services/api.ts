@@ -277,11 +277,12 @@ export const uploadAPI = {
   },
 
   getUploads: async (page = 1, limit = 50): Promise<ApiResponse<{ uploads: PDFUpload[]; total: number }>> => {
+    const offset = (page - 1) * limit;
     const params = new URLSearchParams({
-      page: page.toString(),
       limit: limit.toString(),
+      offset: offset.toString(),
     });
-    return apiCall(`/upload/pdf?${params}`);
+    return apiCall(`/upload?${params}`);
   },
 
   getUploadById: async (uploadId: string): Promise<ApiResponse<PDFUpload>> => {

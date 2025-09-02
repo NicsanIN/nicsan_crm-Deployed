@@ -1,12 +1,18 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
+const http = require('http');
 
 // Load environment variables
 dotenv.config();
 
 const app = express();
+const server = http.createServer(app);
 const PORT = process.env.PORT || 3001;
+
+// Initialize WebSocket service
+const websocketService = require('./services/websocketService');
+websocketService.initialize(server);
 
 // Middleware
 app.use(cors());
@@ -47,11 +53,12 @@ app.use('*', (req, res) => {
 });
 
 // Start server
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`🚀 Nicsan CRM Backend running on port ${PORT}`);
   console.log(`📊 Health check: http://localhost:${PORT}/health`);
   console.log(`🔗 API base: http://localhost:${PORT}/api`);
+  console.log(`🔌 WebSocket server: ws://localhost:${PORT}`);
 });
 
-module.exports = app;
+module.exports = { app, server };
 
