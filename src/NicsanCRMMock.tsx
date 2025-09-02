@@ -3,6 +3,7 @@ import { Upload, FileText, CheckCircle2, AlertTriangle, Table2, Settings, Layout
 import { ResponsiveContainer, CartesianGrid, BarChart, Bar, Legend, Area, AreaChart, XAxis, YAxis, Tooltip } from "recharts";
 import { uploadAPI, policiesAPI, authAPI, authUtils } from './services/api';
 import NicsanCRMService from './services/api-integration';
+import DualStorageService from './services/dualStorageService';
 
 // Environment variables
 const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
@@ -1076,8 +1077,94 @@ function PageManualForm() {
 
 function PageManualGrid() {
   const [rows, setRows] = useState([
-    { src: "MANUAL_GRID", policy: "TA-9921", vehicle: "KA01AB1234", make: "Maruti", model: "Swift", insurer: "Tata AIG", total: 12150, cashback: 600, status: "OK" },
-    { src: "MANUAL_GRID", policy: "DG-4410", vehicle: "KA05CJ7777", make: "Hyundai", model: "i20", insurer: "Digit", total: 11500, cashback: 500, status: "Error: Missing Issue Date" },
+    { 
+      // Basic Info
+      src: "MANUAL_GRID", 
+      policy: "TA-9921", 
+      vehicle: "KA01AB1234", 
+      insurer: "Tata AIG",
+      
+      // Vehicle Details
+      productType: "Private Car",
+      vehicleType: "Private Car",
+      make: "Maruti", 
+      model: "Swift",
+      cc: "1200",
+      manufacturingYear: "2020",
+      
+      // Dates
+      issueDate: "2024-01-15",
+      expiryDate: "2025-01-14",
+      
+      // Financial
+      idv: 500000,
+      ncb: 20,
+      discount: 5,
+      netOd: 8000,
+      ref: "REF001",
+      totalOd: 8500,
+      netPremium: 10000,
+      totalPremium: 12150,
+      cashbackPct: 5,
+      cashbackAmt: 600,
+      customerPaid: 11550,
+      brokerage: 500,
+      
+      // Contact Info
+      executive: "John Doe",
+      callerName: "Jane Smith",
+      mobile: "9876543210",
+      
+      // Additional
+      rollover: "RENEWAL",
+      remark: "Customer preferred",
+      cashback: 600, 
+      status: "OK" 
+    },
+    { 
+      // Basic Info
+      src: "MANUAL_GRID", 
+      policy: "DG-4410", 
+      vehicle: "KA05CJ7777", 
+      insurer: "Digit",
+      
+      // Vehicle Details
+      productType: "Private Car",
+      vehicleType: "Private Car",
+      make: "Hyundai", 
+      model: "i20",
+      cc: "1200",
+      manufacturingYear: "2019",
+      
+      // Dates
+      issueDate: "",
+      expiryDate: "2025-02-10",
+      
+      // Financial
+      idv: 450000,
+      ncb: 15,
+      discount: 3,
+      netOd: 7500,
+      ref: "REF002",
+      totalOd: 8000,
+      netPremium: 9500,
+      totalPremium: 11500,
+      cashbackPct: 4,
+      cashbackAmt: 500,
+      customerPaid: 11000,
+      brokerage: 400,
+      
+      // Contact Info
+      executive: "Mike Johnson",
+      callerName: "Sarah Wilson",
+      mobile: "9876543211",
+      
+      // Additional
+      rollover: "NEW",
+      remark: "First time customer",
+      cashback: 500, 
+      status: "Error: Missing Issue Date" 
+    },
   ]);
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<{type: 'success' | 'error', message: string} | null>(null);
@@ -1096,13 +1183,46 @@ function PageManualGrid() {
       // Process each row and save to backend
       for (const row of rows) {
         const policyData = {
+          // Basic Info
           policy_number: row.policy,
           vehicle_number: row.vehicle,
-          make: row.make,
-          model: row.model,
           insurer: row.insurer,
-          total_premium: row.total,
-          cashback: row.cashback,
+          
+          // Vehicle Details
+          product_type: row.productType || 'Private Car',
+          vehicle_type: row.vehicleType || 'Private Car',
+          make: row.make || 'Unknown',
+          model: row.model || '',
+          cc: row.cc || '',
+          manufacturing_year: row.manufacturingYear || '',
+          
+          // Dates
+          issue_date: row.issueDate || new Date().toISOString().split('T')[0],
+          expiry_date: row.expiryDate || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          
+          // Financial
+          idv: parseFloat(row.idv) || 0,
+          ncb: parseFloat(row.ncb) || 0,
+          discount: parseFloat(row.discount) || 0,
+          net_od: parseFloat(row.netOd) || 0,
+          ref: row.ref || '',
+          total_od: parseFloat(row.totalOd) || 0,
+          net_premium: parseFloat(row.netPremium) || 0,
+          total_premium: parseFloat(row.totalPremium),
+          cashback_percentage: parseFloat(row.cashbackPct) || 0,
+          cashback_amount: parseFloat(row.cashbackAmt) || 0,
+          customer_paid: parseFloat(row.customerPaid) || 0,
+          brokerage: parseFloat(row.brokerage) || 0,
+          
+          // Contact Info
+          executive: row.executive || 'Unknown',
+          caller_name: row.callerName || 'Unknown',
+          mobile: row.mobile || '0000000000',
+          
+          // Additional
+          rollover: row.rollover || '',
+          remark: row.remark || '',
+          cashback: parseFloat(row.cashback) || 0,
           source: 'MANUAL_GRID'
         };
         
@@ -1131,17 +1251,45 @@ function PageManualGrid() {
             {saveMessage.message}
           </div>
         )}
-        <div className="overflow-auto">
-          <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm min-w-max">
             <thead>
               <tr className="text-left text-zinc-500">
-                <th className="py-2">Source</th><th>Policy No.</th><th>Vehicle No.</th><th>Make</th><th>Model</th><th>Insurer</th><th>Total Premium</th><th>Cashback</th><th>Status</th>
+                <th className="py-2 px-1">Source</th>
+                <th className="py-2 px-1">Policy No.</th>
+                <th className="py-2 px-1">Vehicle No.</th>
+                <th className="py-2 px-1">Product Type</th>
+                <th className="py-2 px-1">Vehicle Type</th>
+                <th className="py-2 px-1">Make</th>
+                <th className="py-2 px-1">Model</th>
+                <th className="py-2 px-1">CC</th>
+                <th className="py-2 px-1">MFG Year</th>
+                <th className="py-2 px-1">Issue Date</th>
+                <th className="py-2 px-1">Expiry Date</th>
+                <th className="py-2 px-1">IDV (₹)</th>
+                <th className="py-2 px-1">NCB (%)</th>
+                <th className="py-2 px-1">DIS (%)</th>
+                <th className="py-2 px-1">Net OD (₹)</th>
+                <th className="py-2 px-1">REF</th>
+                <th className="py-2 px-1">Total OD (₹)</th>
+                <th className="py-2 px-1">Net Premium (₹)</th>
+                <th className="py-2 px-1">Total Premium (₹)</th>
+                <th className="py-2 px-1">Cashback %</th>
+                <th className="py-2 px-1">Cashback (₹)</th>
+                <th className="py-2 px-1">Customer Paid (₹)</th>
+                <th className="py-2 px-1">Brokerage (₹)</th>
+                <th className="py-2 px-1">Executive</th>
+                <th className="py-2 px-1">Caller Name</th>
+                <th className="py-2 px-1">Mobile</th>
+                <th className="py-2 px-1">Rollover</th>
+                <th className="py-2 px-1">Remark</th>
+                <th className="py-2 px-1">Status</th>
               </tr>
             </thead>
             <tbody>
               {rows.map((r,i)=> (
                 <tr key={i} className="border-t">
-                  <td className="py-2 text-xs text-zinc-500">{r.src}</td>
+                  <td className="py-2 text-xs text-zinc-500 px-1">{r.src}</td>
                   <td className="px-1">
                     <input 
                       value={r.policy} 
@@ -1153,6 +1301,20 @@ function PageManualGrid() {
                     <input 
                       value={r.vehicle} 
                       onChange={(e) => updateRow(i, 'vehicle', e.target.value)}
+                      className="w-full border-none outline-none bg-transparent text-sm"
+                    />
+                  </td>
+                  <td className="px-1">
+                    <input 
+                      value={r.productType} 
+                      onChange={(e) => updateRow(i, 'productType', e.target.value)}
+                      className="w-full border-none outline-none bg-transparent text-sm"
+                    />
+                  </td>
+                  <td className="px-1">
+                    <input 
+                      value={r.vehicleType} 
+                      onChange={(e) => updateRow(i, 'vehicleType', e.target.value)}
                       className="w-full border-none outline-none bg-transparent text-sm"
                     />
                   </td>
@@ -1172,26 +1334,165 @@ function PageManualGrid() {
                   </td>
                   <td className="px-1">
                     <input 
-                      value={r.insurer} 
-                      onChange={(e) => updateRow(i, 'insurer', e.target.value)}
+                      value={r.cc} 
+                      onChange={(e) => updateRow(i, 'cc', e.target.value)}
                       className="w-full border-none outline-none bg-transparent text-sm"
                     />
                   </td>
                   <td className="px-1">
                     <input 
-                      value={r.total} 
-                      onChange={(e) => updateRow(i, 'total', e.target.value)}
+                      value={r.manufacturingYear} 
+                      onChange={(e) => updateRow(i, 'manufacturingYear', e.target.value)}
                       className="w-full border-none outline-none bg-transparent text-sm"
                     />
                   </td>
                   <td className="px-1">
                     <input 
-                      value={r.cashback} 
-                      onChange={(e) => updateRow(i, 'cashback', e.target.value)}
+                      type="date"
+                      value={r.issueDate} 
+                      onChange={(e) => updateRow(i, 'issueDate', e.target.value)}
                       className="w-full border-none outline-none bg-transparent text-sm"
                     />
                   </td>
-                  <td>{r.status.includes("Error") ? <span className="text-amber-700 bg-amber-100 px-2 py-1 rounded-full text-xs">{r.status}</span> : <span className="text-emerald-700 bg-emerald-100 px-2 py-1 rounded-full text-xs">OK</span>}</td>
+                  <td className="px-1">
+                    <input 
+                      type="date"
+                      value={r.expiryDate} 
+                      onChange={(e) => updateRow(i, 'expiryDate', e.target.value)}
+                      className="w-full border-none outline-none bg-transparent text-sm"
+                    />
+                  </td>
+                  <td className="px-1">
+                    <input 
+                      type="number"
+                      value={r.idv} 
+                      onChange={(e) => updateRow(i, 'idv', e.target.value)}
+                      className="w-full border-none outline-none bg-transparent text-sm"
+                    />
+                  </td>
+                  <td className="px-1">
+                    <input 
+                      type="number"
+                      value={r.ncb} 
+                      onChange={(e) => updateRow(i, 'ncb', e.target.value)}
+                      className="w-full border-none outline-none bg-transparent text-sm"
+                    />
+                  </td>
+                  <td className="px-1">
+                    <input 
+                      type="number"
+                      value={r.discount} 
+                      onChange={(e) => updateRow(i, 'discount', e.target.value)}
+                      className="w-full border-none outline-none bg-transparent text-sm"
+                    />
+                  </td>
+                  <td className="px-1">
+                    <input 
+                      type="number"
+                      value={r.netOd} 
+                      onChange={(e) => updateRow(i, 'netOd', e.target.value)}
+                      className="w-full border-none outline-none bg-transparent text-sm"
+                    />
+                  </td>
+                  <td className="px-1">
+                    <input 
+                      value={r.ref} 
+                      onChange={(e) => updateRow(i, 'ref', e.target.value)}
+                      className="w-full border-none outline-none bg-transparent text-sm"
+                    />
+                  </td>
+                  <td className="px-1">
+                    <input 
+                      type="number"
+                      value={r.totalOd} 
+                      onChange={(e) => updateRow(i, 'totalOd', e.target.value)}
+                      className="w-full border-none outline-none bg-transparent text-sm"
+                    />
+                  </td>
+                  <td className="px-1">
+                    <input 
+                      type="number"
+                      value={r.netPremium} 
+                      onChange={(e) => updateRow(i, 'netPremium', e.target.value)}
+                      className="w-full border-none outline-none bg-transparent text-sm"
+                    />
+                  </td>
+                  <td className="px-1">
+                    <input 
+                      type="number"
+                      value={r.totalPremium} 
+                      onChange={(e) => updateRow(i, 'totalPremium', e.target.value)}
+                      className="w-full border-none outline-none bg-transparent text-sm"
+                    />
+                  </td>
+                  <td className="px-1">
+                    <input 
+                      type="number"
+                      value={r.cashbackPct} 
+                      onChange={(e) => updateRow(i, 'cashbackPct', e.target.value)}
+                      className="w-full border-none outline-none bg-transparent text-sm"
+                    />
+                  </td>
+                  <td className="px-1">
+                    <input 
+                      type="number"
+                      value={r.cashbackAmt} 
+                      onChange={(e) => updateRow(i, 'cashbackAmt', e.target.value)}
+                      className="w-full border-none outline-none bg-transparent text-sm"
+                    />
+                  </td>
+                  <td className="px-1">
+                    <input 
+                      type="number"
+                      value={r.customerPaid} 
+                      onChange={(e) => updateRow(i, 'customerPaid', e.target.value)}
+                      className="w-full border-none outline-none bg-transparent text-sm"
+                    />
+                  </td>
+                  <td className="px-1">
+                    <input 
+                      type="number"
+                      value={r.brokerage} 
+                      onChange={(e) => updateRow(i, 'brokerage', e.target.value)}
+                      className="w-full border-none outline-none bg-transparent text-sm"
+                    />
+                  </td>
+                  <td className="px-1">
+                    <input 
+                      value={r.executive} 
+                      onChange={(e) => updateRow(i, 'executive', e.target.value)}
+                      className="w-full border-none outline-none bg-transparent text-sm"
+                    />
+                  </td>
+                  <td className="px-1">
+                    <input 
+                      value={r.callerName} 
+                      onChange={(e) => updateRow(i, 'callerName', e.target.value)}
+                      className="w-full border-none outline-none bg-transparent text-sm"
+                    />
+                  </td>
+                  <td className="px-1">
+                    <input 
+                      value={r.mobile} 
+                      onChange={(e) => updateRow(i, 'mobile', e.target.value)}
+                      className="w-full border-none outline-none bg-transparent text-sm"
+                    />
+                  </td>
+                  <td className="px-1">
+                    <input 
+                      value={r.rollover} 
+                      onChange={(e) => updateRow(i, 'rollover', e.target.value)}
+                      className="w-full border-none outline-none bg-transparent text-sm"
+                    />
+                  </td>
+                  <td className="px-1">
+                    <input 
+                      value={r.remark} 
+                      onChange={(e) => updateRow(i, 'remark', e.target.value)}
+                      className="w-full border-none outline-none bg-transparent text-sm"
+                    />
+                  </td>
+                  <td className="px-1">{r.status.includes("Error") ? <span className="text-amber-700 bg-amber-100 px-2 py-1 rounded-full text-xs">{r.status}</span> : <span className="text-emerald-700 bg-emerald-100 px-2 py-1 rounded-full text-xs">OK</span>}</td>
                 </tr>
               ))}
             </tbody>
@@ -1968,26 +2269,89 @@ function PageReview() {
 }
 
 function PagePolicyDetail() {
+  const [policyData, setPolicyData] = useState<any>(null);
+  const [dataSource, setDataSource] = useState<string>('');
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const loadPolicyDetail = async () => {
+      try {
+        setIsLoading(true);
+        // Use dual storage pattern: S3 → Database → Mock Data
+        const response = await DualStorageService.getPolicyDetail('1'); // Default policy ID
+        
+        if (response.success) {
+          setPolicyData(response.data);
+          setDataSource(response.source);
+          
+          if (ENABLE_DEBUG) {
+            console.log('📋 Policy Detail - Data source:', response.source);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load policy detail:', error);
+        setDataSource('MOCK_DATA');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    loadPolicyDetail();
+  }, []);
+
+  if (isLoading) {
   return (
-    <Card title="Policy Detail — KA01AB1234" desc="(Audit trail = log of changes; RBAC = who can see/do what)">
+      <Card title="Policy Detail — Loading..." desc="Loading policy data...">
+        <div className="flex items-center justify-center h-32">
+          <div className="text-sm text-zinc-600">Loading policy details...</div>
+        </div>
+      </Card>
+    );
+  }
+
+  const policy = policyData || {
+    policy_number: 'TA-9921',
+    vehicle_number: 'KA01AB1234',
+    insurer: 'Tata AIG',
+    issue_date: '2025-08-10',
+    expiry_date: '2026-08-09',
+    total_premium: 12150,
+    ncb: 20,
+    audit_trail: [
+      { timestamp: '2025-08-12T15:54:00Z', action: 'PDF_PARSED', user: 'System', details: 'Parsed PDF (98% confidence)' },
+      { timestamp: '2025-08-12T15:56:00Z', action: 'CONFIRMED', user: 'Priya Singh', details: 'Confirmed by Ops team' },
+      { timestamp: '2025-08-12T15:57:00Z', action: 'AUDIT_SAVED', user: 'System', details: 'Audit log saved' }
+    ]
+  };
+
+  return (
+    <Card title={`Policy Detail — ${policy.vehicle_number || 'KA01AB1234'}`} desc={`(Audit trail = log of changes; RBAC = who can see/do what) (Data Source: ${dataSource || 'Loading...'})`}>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="col-span-2 bg-zinc-50 rounded-xl p-4">
           <div className="text-sm font-medium mb-2">Core Fields</div>
           <div className="grid grid-cols-2 gap-2 text-sm">
-            <div>Policy No.: <b>TA-9921</b></div>
-            <div>Insurer: <b>Tata AIG</b></div>
-            <div>Issue: <b>2025-08-10</b></div>
-            <div>Expiry: <b>2026-08-09</b></div>
-            <div>Total Premium: <b>₹12,150</b></div>
-            <div>NCB: <b>20%</b></div>
+            <div>Policy No.: <b>{policy.policy_number || 'TA-9921'}</b></div>
+            <div>Insurer: <b>{policy.insurer || 'Tata AIG'}</b></div>
+            <div>Issue: <b>{policy.issue_date || '2025-08-10'}</b></div>
+            <div>Expiry: <b>{policy.expiry_date || '2026-08-09'}</b></div>
+            <div>Total Premium: <b>₹{policy.total_premium?.toLocaleString() || '12,150'}</b></div>
+            <div>NCB: <b>{policy.ncb || 20}%</b></div>
           </div>
         </div>
         <div className="bg-zinc-50 rounded-xl p-4">
           <div className="text-sm font-medium mb-2">Activity Timeline</div>
           <ol className="text-sm space-y-2">
+            {policy.audit_trail?.map((entry: any, index: number) => (
+              <li key={index}>
+                {new Date(entry.timestamp).toLocaleString()} — {entry.details}
+              </li>
+            )) || (
+              <>
             <li>2025-08-12 15:54 — Parsed PDF (98%)</li>
             <li>2025-08-12 15:56 — Confirmed by Ops (user: Priya)</li>
             <li>2025-08-12 15:57 — Audit log saved</li>
+              </>
+            )}
           </ol>
         </div>
       </div>
@@ -2045,13 +2409,21 @@ const pct = (n:number)=> `${(n).toFixed(1)}%`;
 function PageOverview() {
   const [metrics, setMetrics] = useState<any>(null);
   const [trendData, setTrendData] = useState<any[]>([]);
+  const [dataSource, setDataSource] = useState<string>('');
 
   useEffect(() => {
     const loadDashboardData = async () => {
       try {
-        const metricsResponse = await NicsanCRMService.getDashboardMetrics();
+        // Use dual storage pattern: S3 → Database → Mock Data
+        const metricsResponse = await DualStorageService.getDashboardMetrics();
+        
         if (metricsResponse.success) {
           setMetrics(metricsResponse.data);
+          setDataSource(metricsResponse.source);
+          
+          if (ENABLE_DEBUG) {
+            console.log('📊 Company Overview - Data source:', metricsResponse.source);
+          }
         }
         
         // For now, use demo trend data (in real app, this would come from API)
@@ -2093,7 +2465,7 @@ function PageOverview() {
           value={metrics ? formatCurrency(metrics.net_revenue) : "₹1.26L"}
         />
       </div>
-      <Card title="14-day Trend" desc="GWP & Net (pre-calculated = materialized view)">
+      <Card title="14-day Trend" desc={`GWP & Net (Data Source: ${dataSource || 'Loading...'})`}>
         <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={trendData}>
@@ -2123,19 +2495,27 @@ function PageOverview() {
 
 function PageLeaderboard() {
   const [reps, setReps] = useState<any[]>([]);
+  const [dataSource, setDataSource] = useState<string>('');
 
   useEffect(() => {
     const loadSalesReps = async () => {
       try {
-        const response = await NicsanCRMService.getSalesReps();
+        // Use dual storage pattern: S3 → Database → Mock Data
+        const response = await DualStorageService.getSalesReps();
+        
         if (response.success) {
-          setReps(response.data);
-        } else {
-          setReps(demoReps);
+          if (ENABLE_DEBUG) {
+            console.log('🏆 Rep Leaderboard - Data source:', response.source);
+            console.log('🏆 Rep Leaderboard - Response data:', response.data);
+            console.log('🏆 Rep Leaderboard - Data type:', typeof response.data, Array.isArray(response.data));
+          }
+          setReps(Array.isArray(response.data) ? response.data : []);
+          setDataSource(response.source);
         }
       } catch (error) {
         console.error('Failed to load sales reps:', error);
         setReps(demoReps);
+        setDataSource('MOCK_DATA');
       }
     };
     
@@ -2143,7 +2523,7 @@ function PageLeaderboard() {
   }, []);
 
   return (
-    <Card title="Rep Leaderboard" desc="Lead→Sale % = Converted / Leads Assigned; CAC/policy = daily rep cost / converted">
+    <Card title="Rep Leaderboard" desc={`Lead→Sale % = Converted / Leads Assigned; CAC/policy = daily rep cost / converted (Data Source: ${dataSource || 'Loading...'})`}>
       <div className="flex items-center gap-2 mb-3">
         <div className="flex items-center gap-2 rounded-xl bg-zinc-100 p-1">
           <button className="px-3 py-1 rounded-lg bg-white shadow text-sm">Last 14d</button>
@@ -2193,6 +2573,7 @@ function PageExplorer() {
   const [insurer, setInsurer] = useState("All");
   const [cashbackMax, setCashbackMax] = useState(5);
   const [policies, setPolicies] = useState<any[]>([]);
+  const [dataSource, setDataSource] = useState<string>('');
   const makes = ["All","Maruti","Hyundai","Tata","Toyota"];
   const models = ["All","Swift","Baleno","i20","Altroz"];
   const insurers = ["All","Tata AIG","Digit","ICICI"];
@@ -2200,25 +2581,62 @@ function PageExplorer() {
   useEffect(() => {
     const loadSalesExplorer = async () => {
       try {
-        const response = await NicsanCRMService.getSalesExplorer();
+        // Use dual storage pattern: S3 → Database → Mock Data
+        const response = await DualStorageService.getSalesExplorer();
+        
         if (response.success) {
-          setPolicies(response.data);
-        } else {
-          setPolicies(demoPolicies);
+          if (ENABLE_DEBUG) {
+            console.log('🔍 Sales Explorer - Data source:', response.source);
+            console.log('🔍 Sales Explorer - Response data:', response.data);
+            console.log('🔍 Sales Explorer - Data type:', typeof response.data, Array.isArray(response.data));
+          }
+          setPolicies(Array.isArray(response.data) ? response.data : []);
+          setDataSource(response.source);
         }
       } catch (error) {
         console.error('Failed to load sales explorer:', error);
         setPolicies(demoPolicies);
+        setDataSource('MOCK_DATA');
       }
     };
     
     loadSalesExplorer();
   }, []);
 
-  const filtered = policies.filter(p => (make==='All'||p.make===make) && (model==='All'||p.model===model) && (insurer==='All'/* demo */) && (p.cashbackPctAvg <= cashbackMax));
+  const filtered = (policies || []).filter(p => {
+    const makeMatch = make === 'All' || p.make === make;
+    const modelMatch = model === 'All' || p.model === model;
+    const insurerMatch = insurer === 'All' || p.insurer === insurer;
+    const cashbackMatch = (p.cashbackPctAvg || 0) <= cashbackMax;
+    
+    if (ENABLE_DEBUG && !makeMatch) {
+      console.log('🔍 Filter failed - Make:', { filter: make, data: p.make, match: makeMatch });
+    }
+    if (ENABLE_DEBUG && !modelMatch) {
+      console.log('🔍 Filter failed - Model:', { filter: model, data: p.model, match: modelMatch });
+    }
+    if (ENABLE_DEBUG && !insurerMatch) {
+      console.log('🔍 Filter failed - Insurer:', { filter: insurer, data: p.insurer, match: insurerMatch });
+    }
+    if (ENABLE_DEBUG && !cashbackMatch) {
+      console.log('🔍 Filter failed - Cashback:', { filter: cashbackMax, data: p.cashbackPctAvg, match: cashbackMatch });
+    }
+    
+    return makeMatch && modelMatch && insurerMatch && cashbackMatch;
+  });
+  
+  if (ENABLE_DEBUG) {
+    console.log('🔍 Sales Explorer - Policies state:', policies);
+    console.log('🔍 Sales Explorer - Filtered data:', filtered);
+    console.log('🔍 Sales Explorer - Filtered count:', filtered.length);
+    console.log('🔍 Sales Explorer - Filter values:', { make, model, insurer, cashbackMax });
+    if (policies.length > 0) {
+      console.log('🔍 Sales Explorer - First policy:', policies[0]);
+    }
+  }
   return (
     <>
-      <Card title="Sales Explorer (Motor)" desc="Filter by Make/Model; find reps with most sales and lowest cashback">
+      <Card title="Sales Explorer (Motor)" desc={`Filter by Make/Model; find reps with most sales and lowest cashback (Data Source: ${dataSource || 'Loading...'})`}>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-3">
           <label className="text-sm">Make<select value={make} onChange={e=>setMake(e.target.value)} className="w-full border rounded-xl px-2 py-2 mt-1">{makes.map(m=><option key={m}>{m}</option>)}</select></label>
           <label className="text-sm">Model<select value={model} onChange={e=>setModel(e.target.value)} className="w-full border rounded-xl px-2 py-2 mt-1">{models.map(m=><option key={m}>{m}</option>)}</select></label>
@@ -2258,11 +2676,57 @@ function PageExplorer() {
 }
 
 function PageSources() {
+  const [dataSources, setDataSources] = useState<any[]>([]);
+  const [dataSource, setDataSource] = useState<string>('');
+
+  useEffect(() => {
+    const loadDataSources = async () => {
+      try {
+        // Use dual storage pattern: S3 → Database → Mock Data
+        const response = await DualStorageService.getDataSources();
+        
+        if (response.success) {
+          if (ENABLE_DEBUG) {
+            console.log('📊 Data Sources - Data source:', response.source);
+            console.log('📊 Data Sources - Response data:', response.data);
+            console.log('📊 Data Sources - Data type:', typeof response.data, Array.isArray(response.data));
+            if (response.data && response.data.length > 0) {
+              console.log('📊 Data Sources - First item:', response.data[0]);
+            }
+          }
+          const newDataSources = Array.isArray(response.data) ? response.data : [];
+          setDataSources(newDataSources);
+          setDataSource(response.source);
+          
+          if (ENABLE_DEBUG) {
+            console.log('📊 Data Sources - Setting dataSources state:', newDataSources);
+            console.log('📊 Data Sources - dataSources.length:', newDataSources.length);
+            console.log('📊 Data Sources - Will use in chart:', newDataSources.length > 0 ? 'REAL DATA' : 'DEMO DATA');
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load data sources:', error);
+        setDataSources(demoSources);
+        setDataSource('MOCK_DATA');
+      }
+    };
+    
+    loadDataSources();
+  }, []);
+
+  // Debug logging for chart data
+  if (ENABLE_DEBUG) {
+    console.log('📊 Data Sources - Chart render - dataSources:', dataSources);
+    console.log('📊 Data Sources - Chart render - dataSources.length:', dataSources.length);
+    console.log('📊 Data Sources - Chart render - demoSources:', demoSources);
+    console.log('📊 Data Sources - Chart render - Final chart data:', dataSources.length > 0 ? dataSources : demoSources);
+  }
+
   return (
-    <Card title="Contribution by Data Source" desc="Compare PDF vs Manual vs CSV (ingestion source = where data came from)">
+    <Card title="Contribution by Data Source" desc={`Compare PDF vs Manual vs CSV (ingestion source = where data came from) (Data Source: ${dataSource || 'Loading...'})`}>
       <div className="h-72">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={demoSources}>
+          <BarChart key={`chart-${dataSources.length}-${dataSource}`} data={dataSources.length > 0 ? dataSources : demoSources}>
             <CartesianGrid strokeDasharray="3 3" stroke="#eee"/>
             <XAxis dataKey="name"/>
             <YAxis/>
@@ -2272,6 +2736,21 @@ function PageSources() {
             <Bar dataKey="gwp" name="GWP" fill="#10b981"/>
           </BarChart>
         </ResponsiveContainer>
+      </div>
+      <div className="text-center text-sm mt-2">
+        {dataSources.length > 0 ? (
+          <span className="text-green-600 font-medium">
+            ✅ Showing {dataSources.length} real data sources from {dataSource}
+          </span>
+        ) : dataSource === 'BACKEND_API' ? (
+          <span className="text-red-500">
+            ❌ No data sources found in backend
+          </span>
+        ) : (
+          <span className="text-blue-500">
+            📊 Showing demo data (fallback)
+          </span>
+        )}
       </div>
     </Card>
   )
@@ -2296,11 +2775,37 @@ function PageFounderSettings() {
 
 // ---------- KPI DASHBOARD ----------
 function PageKPIs() {
-  // Aggregate demo numbers
-  const totalLeads = demoReps.reduce((a,b)=>a+b.leads,0);
-  const totalConverted = demoReps.reduce((a,b)=>a+b.converted,0);
-  const sumGWP = demoReps.reduce((a,b)=>a+b.gwp,0);
-  const sumNet = demoReps.reduce((a,b)=>a+b.net,0);
+  const [kpiData, setKpiData] = useState<any>(null);
+  const [dataSource, setDataSource] = useState<string>('');
+
+  useEffect(() => {
+    const loadKPIData = async () => {
+      try {
+        // Use dual storage pattern: S3 → Database → Mock Data
+        const response = await DualStorageService.getDashboardMetrics();
+        
+        if (response.success) {
+          setKpiData(response.data);
+          setDataSource(response.source);
+          
+          if (ENABLE_DEBUG) {
+            console.log('📈 KPI Dashboard - Data source:', response.source);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load KPI data:', error);
+        setDataSource('MOCK_DATA');
+      }
+    };
+    
+    loadKPIData();
+  }, []);
+
+  // Use real data if available, otherwise fallback to demo calculations
+  const totalLeads = kpiData?.total_leads || demoReps.reduce((a,b)=>a+b.leads,0);
+  const totalConverted = kpiData?.total_converted || demoReps.reduce((a,b)=>a+b.converted,0);
+  const sumGWP = kpiData?.total_gwp || demoReps.reduce((a,b)=>a+b.gwp,0);
+  const sumNet = kpiData?.net_revenue || demoReps.reduce((a,b)=>a+b.net,0);
 
   // Assumptions for demo period (14 days)
   const days = 14;
@@ -2334,7 +2839,7 @@ function PageKPIs() {
     <>
       <div className="grid grid-cols-1 gap-6">
         {/* Acquisition */}
-        <Card title="Acquisition" desc="Conversion, lead cost, CAC, growth">
+        <Card title="Acquisition" desc={`Conversion, lead cost, CAC, growth (Data Source: ${dataSource || 'Loading...'})`}>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
             <Tile label="Conversion Rate" info="(% leads → sales)" value={pct(conversionRate)} sub={`${totalConverted}/${totalLeads} deals`}/>
             <Tile label="Cost per Lead" info="(₹ spend ÷ leads)" value={fmtINR(costPerLead)} sub={`Mktg ₹${marketingSpend.toLocaleString('en-IN')}`}/>

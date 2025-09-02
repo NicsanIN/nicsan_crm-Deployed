@@ -35,6 +35,12 @@ router.get('/metrics', authenticateToken, requireFounder, async (req, res) => {
         startDate = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
     }
 
+    // NOTE: For data consistency across all founder pages:
+    // - Rep Leaderboard: Shows all-time data (no date filter)
+    // - Sales Explorer: Shows all-time data (no date filter)  
+    // - Data Sources: Shows all-time data (no date filter)
+    // - Basic Metrics: Still uses date filter for KPI calculations
+
     // Get basic metrics
     const basicMetrics = await query(`
       SELECT 
@@ -48,17 +54,16 @@ router.get('/metrics', authenticateToken, requireFounder, async (req, res) => {
       WHERE created_at >= $1
     `, [startDate]);
 
-    // Get policies by source
+    // Get policies by source (all-time data for consistency with Rep Leaderboard and Sales Explorer)
     const sourceMetrics = await query(`
       SELECT 
         source,
         COUNT(*) as count,
         SUM(total_premium) as gwp
       FROM policies 
-      WHERE created_at >= $1
       GROUP BY source
       ORDER BY gwp DESC
-    `, [startDate]);
+    `);
 
     // Get top performers
     const topPerformers = await query(`
@@ -201,15 +206,10 @@ router.get('/explorer', authenticateToken, requireFounder, async (req, res) => {
 // Get leaderboard data
 router.get('/leaderboard', authenticateToken, requireFounder, async (req, res) => {
   try {
-    const { period = '14d' } = req.query;
-    
-    // Calculate date range
-    const now = new Date();
-    const startDate = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
-
+    // Removed date filter to show all-time rep performance (consistent with Sales Explorer)
     const result = await query(`
       SELECT 
-        executive,
+        COALESCE(executive, 'Unknown') as executive,
         COUNT(*) as policies,
         SUM(total_premium) as gwp,
         SUM(brokerage) as brokerage,
@@ -217,11 +217,10 @@ router.get('/leaderboard', authenticateToken, requireFounder, async (req, res) =
         SUM(brokerage - cashback_amount) as net,
         AVG(cashback_percentage) as avg_cashback_pct
       FROM policies 
-      WHERE created_at >= $1 AND executive IS NOT NULL
-      GROUP BY executive
+      GROUP BY COALESCE(executive, 'Unknown')
       ORDER BY net DESC
       LIMIT 20
-    `, [startDate]);
+    `);
 
     res.json({
       success: true,
@@ -239,15 +238,10 @@ router.get('/leaderboard', authenticateToken, requireFounder, async (req, res) =
 // Alias for frontend compatibility - sales reps
 router.get('/sales-reps', authenticateToken, requireFounder, async (req, res) => {
   try {
-    const { period = '14d' } = req.query;
-    
-    // Calculate date range
-    const now = new Date();
-    const startDate = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
-
+    // Removed date filter to show all-time rep performance (consistent with Sales Explorer)
     const result = await query(`
       SELECT 
-        executive as name,
+        COALESCE(executive, 'Unknown') as name,
         COUNT(*) as policies,
         SUM(total_premium) as gwp,
         SUM(brokerage) as brokerage,
@@ -255,11 +249,10 @@ router.get('/sales-reps', authenticateToken, requireFounder, async (req, res) =>
         SUM(brokerage - cashback_amount) as net_revenue,
         AVG(cashback_percentage) as avg_cashback_pct
       FROM policies 
-      WHERE created_at >= $1 AND executive IS NOT NULL
-      GROUP BY executive
+      GROUP BY COALESCE(executive, 'Unknown')
       ORDER BY net_revenue DESC
       LIMIT 20
-    `, [startDate]);
+    `);
 
     res.json({
       success: true,
