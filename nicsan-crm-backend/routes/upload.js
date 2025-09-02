@@ -54,15 +54,15 @@ router.post('/pdf', authenticateToken, requireOps, upload.single('pdf'), async (
 
     const result = await storageService.savePDFUpload(uploadData);
     
-    // Automatically trigger Textract processing after upload
+    // Automatically trigger OpenAI processing after upload
     if (result.success) {
       try {
-        console.log('🔄 Auto-triggering Textract processing...');
+        console.log('🔄 Auto-triggering OpenAI processing...');
         await storageService.processPDF(result.data.uploadId);
-        console.log('✅ Textract processing completed automatically');
+        console.log('✅ OpenAI processing completed automatically');
       } catch (processError) {
-        console.error('⚠️ Auto Textract processing failed:', processError.message);
-        // Don't fail the upload if Textract fails
+        console.error('⚠️ Auto OpenAI processing failed:', processError.message);
+        // Don't fail the upload if OpenAI fails
       }
     }
     
@@ -76,7 +76,7 @@ router.post('/pdf', authenticateToken, requireOps, upload.single('pdf'), async (
   }
 });
 
-// Process PDF with Textract
+// Process PDF with OpenAI
 router.post('/:uploadId/process', authenticateToken, requireOps, async (req, res) => {
   try {
     const result = await storageService.processPDF(req.params.uploadId);

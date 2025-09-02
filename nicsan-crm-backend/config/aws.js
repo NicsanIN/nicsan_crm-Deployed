@@ -58,24 +58,15 @@ const getS3Url = (key) => {
   return `https://${process.env.AWS_S3_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
 };
 
-// Textract Helper Functions
-const extractTextFromPDF = async (s3Key) => {
+// OpenAI Helper Functions (replaces Textract)
+const extractTextFromPDF = async (s3Key, insurer = 'TATA_AIG') => {
   try {
-    const params = {
-      Document: {
-        S3Object: {
-          Bucket: process.env.AWS_S3_BUCKET,
-          Name: s3Key
-        }
-      },
-      FeatureTypes: ['FORMS', 'TABLES']
-    };
-
-    const result = await textract.analyzeDocument(params).promise();
-    console.log('✅ Textract analysis completed');
+    const openaiService = require('../services/openaiService');
+    const result = await openaiService.extractTextFromPDF(s3Key, insurer);
+    console.log('✅ OpenAI analysis completed');
     return result;
   } catch (error) {
-    console.error('❌ Textract error:', error);
+    console.error('❌ OpenAI error:', error);
     throw error;
   }
 };

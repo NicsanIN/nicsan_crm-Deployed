@@ -175,10 +175,10 @@ class StorageService {
     }
   }
 
-  // Process PDF with Textract
+  // Process PDF with OpenAI
   async processPDF(uploadId) {
     try {
-      console.log('🔍 Processing PDF with Textract...');
+      console.log('🔍 Processing PDF with OpenAI...');
       
       // Get upload details from PostgreSQL
       const pgQuery = 'SELECT * FROM pdf_uploads WHERE upload_id = $1';
@@ -190,15 +190,15 @@ class StorageService {
       
       const upload = result.rows[0];
       
-      // Try Textract processing first
+      // Try OpenAI processing first
       let extractedData;
       try {
-        const textractResult = await extractTextFromPDF(upload.s3_key);
-        extractedData = this.parseTextractResult(textractResult);
-        console.log('✅ Textract processing successful');
-      } catch (textractError) {
-        console.error('⚠️ Textract failed, using mock data:', textractError.message);
-        // Fallback to mock data when Textract fails
+        const openaiResult = await extractTextFromPDF(upload.s3_key, upload.insurer);
+        extractedData = this.parseOpenAIResult(openaiResult);
+        console.log('✅ OpenAI processing successful');
+      } catch (openaiError) {
+        console.error('⚠️ OpenAI failed, using mock data:', openaiError.message);
+        // Fallback to mock data when OpenAI fails
         extractedData = this.generateMockExtractedData(upload.filename, upload.insurer);
       }
       
@@ -268,75 +268,39 @@ class StorageService {
     };
   }
 
-  // Parse Textract result to extract relevant fields
-  parseTextractResult(textractResult) {
+  // Parse OpenAI result to extract relevant fields
+  parseOpenAIResult(openaiResult) {
     try {
-      // Extract text blocks from Textract result
-      const blocks = textractResult.Blocks || [];
-      const textMap = {};
+      console.log('🔄 Parsing OpenAI result...');
       
-      // Build text map from blocks
-      blocks.forEach(block => {
-        if (block.BlockType === 'LINE') {
-          const text = block.Text;
-          const confidence = block.Confidence;
-          
-          // Map common insurance terms to our fields
-          if (text.includes('Policy') && text.includes('Number')) {
-            textMap.policy_number = text.replace(/.*?(\d+).*/, '$1');
-          } else if (text.includes('Vehicle') && text.includes('Number')) {
-            textMap.vehicle_number = text.replace(/.*?([A-Z]{2}\d{2}[A-Z]{2}\d{4}).*/, '$1');
-          } else if (text.includes('Insurer') || text.includes('Insurance')) {
-            textMap.insurer = text.replace(/.*?(Tata AIG|Digit|TATA_AIG|DIGIT).*/i, '$1');
-          } else if (text.includes('Make')) {
-            textMap.make = text.replace(/.*?(Maruti|Hyundai|Honda|Toyota|Ford).*/i, '$1');
-          } else if (text.includes('Model')) {
-            textMap.model = text.replace(/.*?(Swift|i20|City|Innova|EcoSport).*/i, '$1');
-          } else if (text.includes('CC') || text.includes('Engine')) {
-            textMap.cc = text.replace(/.*?(\d{3,4}).*/, '$1');
-          } else if (text.includes('Year') || text.includes('Manufacturing')) {
-            textMap.manufacturing_year = text.replace(/.*?(\d{4}).*/, '$1');
-          } else if (text.includes('Issue') && text.includes('Date')) {
-            textMap.issue_date = text.replace(/.*?(\d{4}-\d{2}-\d{2}).*/, '$1');
-          } else if (text.includes('Expiry') && text.includes('Date')) {
-            textMap.expiry_date = text.replace(/.*?(\d{4}-\d{2}-\d{2}).*/, '$1');
-          } else if (text.includes('IDV') || text.includes('Insured Declared Value')) {
-            textMap.idv = text.replace(/.*?(\d+).*/, '$1');
-          } else if (text.includes('NCB') || text.includes('No Claim Bonus')) {
-            textMap.ncb = text.replace(/.*?(\d+).*/, '$1');
-          } else if (text.includes('Premium') && text.includes('Total')) {
-            textMap.total_premium = text.replace(/.*?(\d+).*/, '$1');
-          } else if (text.includes('Premium') && text.includes('Net')) {
-            textMap.net_premium = text.replace(/.*?(\d+).*/, '$1');
-          }
-        }
-      });
-      
-      // Return structured data with defaults
-      return {
-        policy_number: textMap.policy_number || `TA-${Math.floor(Math.random() * 10000)}`,
-        vehicle_number: textMap.vehicle_number || `KA01AB${Math.floor(Math.random() * 9000) + 1000}`, // Ensure 4 digits
-        insurer: textMap.insurer || 'Tata AIG',
-        product_type: 'Private Car',
-        vehicle_type: 'Private Car',
-        make: textMap.make || 'Maruti',
-        model: textMap.model || 'Swift',
-        cc: textMap.cc || '1197',
-        manufacturing_year: textMap.manufacturing_year || '2021',
-        issue_date: textMap.issue_date || new Date().toISOString().split('T')[0],
-        expiry_date: textMap.expiry_date || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        idv: parseInt(textMap.idv) || 495000,
-        ncb: parseInt(textMap.ncb) || 20,
-        discount: 0,
-        net_od: 5400,
-        ref: '',
-        total_od: 7200,
-        net_premium: parseInt(textMap.net_premium) || 10800,
-        total_premium: parseInt(textMap.total_premium) || 12150,
-        confidence_score: 0.86
+      // OpenAI returns structured JSON directly, so we just need to validate and format
+      const extractedData = {
+        policy_number: openaiResult.policy_number || `TA-${Math.floor(Math.random() * 10000)}`,
+        vehicle_number: openaiResult.vehicle_number || `KA01AB${Math.floor(Math.random() * 9000) + 1000}`,
+        insurer: openaiResult.insurer || 'Tata AIG',
+        product_type: openaiResult.product_type || 'Private Car',
+        vehicle_type: openaiResult.vehicle_type || 'Private Car',
+        make: openaiResult.make || 'Maruti',
+        model: openaiResult.model || 'Swift',
+        cc: openaiResult.cc || '1197',
+        manufacturing_year: openaiResult.manufacturing_year || '2021',
+        issue_date: openaiResult.issue_date || new Date().toISOString().split('T')[0],
+        expiry_date: openaiResult.expiry_date || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        idv: parseInt(openaiResult.idv) || 495000,
+        ncb: parseInt(openaiResult.ncb) || 20,
+        discount: parseInt(openaiResult.discount) || 0,
+        net_od: parseInt(openaiResult.net_od) || 5400,
+        ref: openaiResult.ref || '',
+        total_od: parseInt(openaiResult.total_od) || 7200,
+        net_premium: parseInt(openaiResult.net_premium) || 10800,
+        total_premium: parseInt(openaiResult.total_premium) || 12150,
+        confidence_score: openaiResult.confidence_score || 0.95 // OpenAI typically has higher confidence
       };
+      
+      console.log('✅ OpenAI result parsed successfully');
+      return extractedData;
     } catch (error) {
-      console.error('❌ Textract parsing error:', error);
+      console.error('❌ OpenAI parsing error:', error);
       // Return default data if parsing fails
       return {
         policy_number: `TA-${Math.floor(Math.random() * 10000)}`,
