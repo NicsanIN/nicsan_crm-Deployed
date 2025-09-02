@@ -1075,14 +1075,62 @@ function PageManualForm() {
 }
 
 function PageManualGrid() {
-  const rows = useMemo(() => [
+  const [rows, setRows] = useState([
     { src: "MANUAL_GRID", policy: "TA-9921", vehicle: "KA01AB1234", make: "Maruti", model: "Swift", insurer: "Tata AIG", total: 12150, cashback: 600, status: "OK" },
     { src: "MANUAL_GRID", policy: "DG-4410", vehicle: "KA05CJ7777", make: "Hyundai", model: "i20", insurer: "Digit", total: 11500, cashback: 500, status: "Error: Missing Issue Date" },
-  ], [])
+  ]);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<{type: 'success' | 'error', message: string} | null>(null);
+
+  const updateRow = (rowIndex: number, field: string, value: string) => {
+    setRows(prev => prev.map((row, i) => 
+      i === rowIndex ? { ...row, [field]: value } : row
+    ));
+  };
+
+  const handleSaveAll = async () => {
+    setIsSaving(true);
+    setSaveMessage(null);
+    
+    try {
+      // Process each row and save to backend
+      for (const row of rows) {
+        const policyData = {
+          policy_number: row.policy,
+          vehicle_number: row.vehicle,
+          make: row.make,
+          model: row.model,
+          insurer: row.insurer,
+          total_premium: row.total,
+          cashback: row.cashback,
+          source: 'MANUAL_GRID'
+        };
+        
+        await NicsanCRMService.createPolicy(policyData);
+      }
+      
+      setSaveMessage({ type: 'success', message: `Successfully saved ${rows.length} policies!` });
+    } catch (error) {
+      console.error('Error saving grid data:', error);
+      setSaveMessage({ type: 'error', message: 'Failed to save policies. Please try again.' });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
     <>
       <Card title="Grid Entry (Excel-like)" desc="Paste multiple rows; fix inline errors. Dedupe on Policy No. + Vehicle No.">
         <div className="mb-3 text-xs text-zinc-600">Tip: Copy from Excel and <b>Ctrl+V</b> directly here. Use <b>Ctrl+S</b> to save all.</div>
+        {saveMessage && (
+          <div className={`mb-3 p-3 rounded-lg text-sm ${
+            saveMessage.type === 'success' 
+              ? 'bg-green-100 text-green-800' 
+              : 'bg-red-100 text-red-800'
+          }`}>
+            {saveMessage.message}
+          </div>
+        )}
         <div className="overflow-auto">
           <table className="w-full text-sm">
             <thead>
@@ -1094,13 +1142,55 @@ function PageManualGrid() {
               {rows.map((r,i)=> (
                 <tr key={i} className="border-t">
                   <td className="py-2 text-xs text-zinc-500">{r.src}</td>
-                  <td contentEditable className="outline-none px-1">{r.policy}</td>
-                  <td contentEditable className="outline-none px-1">{r.vehicle}</td>
-                  <td contentEditable className="outline-none px-1">{r.make}</td>
-                  <td contentEditable className="outline-none px-1">{r.model}</td>
-                  <td contentEditable className="outline-none px-1">{r.insurer}</td>
-                  <td contentEditable className="outline-none px-1">{r.total}</td>
-                  <td contentEditable className="outline-none px-1">{r.cashback}</td>
+                  <td className="px-1">
+                    <input 
+                      value={r.policy} 
+                      onChange={(e) => updateRow(i, 'policy', e.target.value)}
+                      className="w-full border-none outline-none bg-transparent text-sm"
+                    />
+                  </td>
+                  <td className="px-1">
+                    <input 
+                      value={r.vehicle} 
+                      onChange={(e) => updateRow(i, 'vehicle', e.target.value)}
+                      className="w-full border-none outline-none bg-transparent text-sm"
+                    />
+                  </td>
+                  <td className="px-1">
+                    <input 
+                      value={r.make} 
+                      onChange={(e) => updateRow(i, 'make', e.target.value)}
+                      className="w-full border-none outline-none bg-transparent text-sm"
+                    />
+                  </td>
+                  <td className="px-1">
+                    <input 
+                      value={r.model} 
+                      onChange={(e) => updateRow(i, 'model', e.target.value)}
+                      className="w-full border-none outline-none bg-transparent text-sm"
+                    />
+                  </td>
+                  <td className="px-1">
+                    <input 
+                      value={r.insurer} 
+                      onChange={(e) => updateRow(i, 'insurer', e.target.value)}
+                      className="w-full border-none outline-none bg-transparent text-sm"
+                    />
+                  </td>
+                  <td className="px-1">
+                    <input 
+                      value={r.total} 
+                      onChange={(e) => updateRow(i, 'total', e.target.value)}
+                      className="w-full border-none outline-none bg-transparent text-sm"
+                    />
+                  </td>
+                  <td className="px-1">
+                    <input 
+                      value={r.cashback} 
+                      onChange={(e) => updateRow(i, 'cashback', e.target.value)}
+                      className="w-full border-none outline-none bg-transparent text-sm"
+                    />
+                  </td>
                   <td>{r.status.includes("Error") ? <span className="text-amber-700 bg-amber-100 px-2 py-1 rounded-full text-xs">{r.status}</span> : <span className="text-emerald-700 bg-emerald-100 px-2 py-1 rounded-full text-xs">OK</span>}</td>
                 </tr>
               ))}
@@ -1108,7 +1198,13 @@ function PageManualGrid() {
           </table>
         </div>
         <div className="flex gap-3 mt-4">
-          <button className="px-4 py-2 rounded-xl bg-zinc-900 text-white">Save All</button>
+          <button 
+            onClick={handleSaveAll}
+            disabled={isSaving}
+            className="px-4 py-2 rounded-xl bg-zinc-900 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isSaving ? 'Saving...' : 'Save All'}
+          </button>
           <button className="px-4 py-2 rounded-xl bg-white border">Validate</button>
         </div>
       </Card>
