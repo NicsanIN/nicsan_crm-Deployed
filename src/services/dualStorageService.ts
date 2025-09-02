@@ -262,8 +262,7 @@ class DualStorageService {
     ];
 
     return this.executeDualStoragePattern(
-      () => this.s3Service.getAllPoliciesFromS3(),
-      () => this.databaseService.getAllPoliciesFromDB(),
+      () => this.backendApiService.getAllPolicies(),
       mockData,
       'All Policies'
     );
