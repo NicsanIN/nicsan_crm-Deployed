@@ -1170,71 +1170,224 @@ function PageManualGrid() {
   ]);
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<{type: 'success' | 'error', message: string} | null>(null);
+  const [rowStatuses, setRowStatuses] = useState<{[key: number]: 'pending' | 'saving' | 'saved' | 'error'}>({});
 
   const updateRow = (rowIndex: number, field: string, value: string) => {
+    // Don't allow editing if row is being saved or has been saved
+    const rowStatus = rowStatuses[rowIndex];
+    if (rowStatus === 'saving' || rowStatus === 'saved') {
+      return;
+    }
+    
     setRows(prev => prev.map((row, i) => 
       i === rowIndex ? { ...row, [field]: value } : row
     ));
+  };
+
+  const retryFailedRows = async () => {
+    const failedRowIndices = Object.keys(rowStatuses)
+      .map(Number)
+      .filter(index => rowStatuses[index] === 'error');
+    
+    if (failedRowIndices.length === 0) return;
+    
+    // Reset status for failed rows
+    setRowStatuses(prev => {
+      const newStatuses = { ...prev };
+      failedRowIndices.forEach(index => {
+        delete newStatuses[index];
+      });
+      return newStatuses;
+    });
+    
+    // Retry saving only the failed rows
+    const failedRows = failedRowIndices.map(index => rows[index]);
+    const retryResults = await Promise.allSettled(
+      failedRows.map(async (row, retryIndex) => {
+        const originalIndex = failedRowIndices[retryIndex];
+        try {
+          const policyData = {
+            policy_number: row.policy,
+            vehicle_number: row.vehicle,
+            insurer: row.insurer,
+            product_type: row.productType || 'Private Car',
+            vehicle_type: row.vehicleType || 'Private Car',
+            make: row.make || 'Unknown',
+            model: row.model || '',
+            cc: row.cc || '',
+            manufacturing_year: row.manufacturingYear || '',
+            issue_date: row.issueDate || new Date().toISOString().split('T')[0],
+            expiry_date: row.expiryDate || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+            idv: (parseFloat(row.idv) || 0).toString(),
+            ncb: (parseFloat(row.ncb) || 0).toString(),
+            discount: (parseFloat(row.discount) || 0).toString(),
+            net_od: (parseFloat(row.netOd) || 0).toString(),
+            ref: row.ref || '',
+            total_od: (parseFloat(row.totalOd) || 0).toString(),
+            net_premium: (parseFloat(row.netPremium) || 0).toString(),
+            total_premium: parseFloat(row.totalPremium).toString(),
+            cashback_percentage: (parseFloat(row.cashbackPct) || 0).toString(),
+            cashback_amount: (parseFloat(row.cashbackAmt) || 0).toString(),
+            customer_paid: (parseFloat(row.customerPaid) || 0).toString(),
+            brokerage: (parseFloat(row.brokerage) || 0).toString(),
+            executive: row.executive || 'Unknown',
+            caller_name: row.callerName || 'Unknown',
+            mobile: row.mobile || '0000000000',
+            rollover: row.rollover || '',
+            remark: row.remark || '',
+            cashback: (parseFloat(row.cashback) || 0).toString(),
+            source: 'MANUAL_GRID'
+          };
+          
+          await NicsanCRMService.createPolicy(policyData);
+          return { originalIndex, success: true };
+        } catch (error) {
+          return { originalIndex, success: false, error };
+        }
+      })
+    );
+    
+    // Update statuses for retried rows
+    const retryStatuses: {[key: number]: 'saved' | 'error'} = {};
+    retryResults.forEach((result, index) => {
+      const originalIndex = failedRowIndices[index];
+      if (result.status === 'fulfilled' && result.value.success) {
+        retryStatuses[originalIndex] = 'saved';
+      } else {
+        retryStatuses[originalIndex] = 'error';
+      }
+    });
+    
+    setRowStatuses(prev => ({ ...prev, ...retryStatuses }));
+    
+    // Remove successfully retried rows
+    setTimeout(() => {
+      setRows(prev => prev.filter((_, index) => retryStatuses[index] !== 'saved'));
+      setRowStatuses(prev => {
+        const newStatuses = { ...prev };
+        Object.keys(retryStatuses).forEach(key => {
+          if (retryStatuses[Number(key)] === 'saved') {
+            delete newStatuses[Number(key)];
+          }
+        });
+        return newStatuses;
+      });
+    }, 2000);
+    
+    const retrySuccessCount = Object.values(retryStatuses).filter(s => s === 'saved').length;
+    if (retrySuccessCount > 0) {
+      setSaveMessage({ 
+        type: 'success', 
+        message: `Retry successful: ${retrySuccessCount} policies saved!` 
+      });
+    }
   };
 
   const handleSaveAll = async () => {
     setIsSaving(true);
     setSaveMessage(null);
     
+    // Initialize all rows as 'saving'
+    const newStatuses: {[key: number]: 'saving' | 'saved' | 'error'} = {};
+    rows.forEach((_, index) => {
+      newStatuses[index] = 'saving';
+    });
+    setRowStatuses(newStatuses);
+    
     try {
-      // Process each row and save to backend
-      for (const row of rows) {
-        const policyData = {
-          // Basic Info
-          policy_number: row.policy,
-          vehicle_number: row.vehicle,
-          insurer: row.insurer,
-          
-          // Vehicle Details
-          product_type: row.productType || 'Private Car',
-          vehicle_type: row.vehicleType || 'Private Car',
-          make: row.make || 'Unknown',
-          model: row.model || '',
-          cc: row.cc || '',
-          manufacturing_year: row.manufacturingYear || '',
-          
-          // Dates
-          issue_date: row.issueDate || new Date().toISOString().split('T')[0],
-          expiry_date: row.expiryDate || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          
-          // Financial
-          idv: (parseFloat(row.idv) || 0).toString(),
-          ncb: (parseFloat(row.ncb) || 0).toString(),
-          discount: (parseFloat(row.discount) || 0).toString(),
-          net_od: (parseFloat(row.netOd) || 0).toString(),
-          ref: row.ref || '',
-          total_od: (parseFloat(row.totalOd) || 0).toString(),
-          net_premium: (parseFloat(row.netPremium) || 0).toString(),
-          total_premium: parseFloat(row.totalPremium).toString(),
-          cashback_percentage: (parseFloat(row.cashbackPct) || 0).toString(),
-          cashback_amount: (parseFloat(row.cashbackAmt) || 0).toString(),
-          customer_paid: (parseFloat(row.customerPaid) || 0).toString(),
-          brokerage: (parseFloat(row.brokerage) || 0).toString(),
-          
-          // Contact Info
-          executive: row.executive || 'Unknown',
-          caller_name: row.callerName || 'Unknown',
-          mobile: row.mobile || '0000000000',
-          
-          // Additional
-          rollover: row.rollover || '',
-          remark: row.remark || '',
-          cashback: (parseFloat(row.cashback) || 0).toString(),
-          source: 'MANUAL_GRID'
-        };
-        
-        await NicsanCRMService.createPolicy(policyData);
+      // Process all rows in parallel for better performance
+      const results = await Promise.allSettled(
+        rows.map(async (row, index) => {
+          try {
+            const policyData = {
+              // Basic Info
+              policy_number: row.policy,
+              vehicle_number: row.vehicle,
+              insurer: row.insurer,
+              
+              // Vehicle Details
+              product_type: row.productType || 'Private Car',
+              vehicle_type: row.vehicleType || 'Private Car',
+              make: row.make || 'Unknown',
+              model: row.model || '',
+              cc: row.cc || '',
+              manufacturing_year: row.manufacturingYear || '',
+              
+              // Dates
+              issue_date: row.issueDate || new Date().toISOString().split('T')[0],
+              expiry_date: row.expiryDate || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+              
+              // Financial
+              idv: (parseFloat(row.idv) || 0).toString(),
+              ncb: (parseFloat(row.ncb) || 0).toString(),
+              discount: (parseFloat(row.discount) || 0).toString(),
+              net_od: (parseFloat(row.netOd) || 0).toString(),
+              ref: row.ref || '',
+              total_od: (parseFloat(row.totalOd) || 0).toString(),
+              net_premium: (parseFloat(row.netPremium) || 0).toString(),
+              total_premium: parseFloat(row.totalPremium).toString(),
+              cashback_percentage: (parseFloat(row.cashbackPct) || 0).toString(),
+              cashback_amount: (parseFloat(row.cashbackAmt) || 0).toString(),
+              customer_paid: (parseFloat(row.customerPaid) || 0).toString(),
+              brokerage: (parseFloat(row.brokerage) || 0).toString(),
+              
+              // Contact Info
+              executive: row.executive || 'Unknown',
+              caller_name: row.callerName || 'Unknown',
+              mobile: row.mobile || '0000000000',
+              
+              // Additional
+              rollover: row.rollover || '',
+              remark: row.remark || '',
+              cashback: (parseFloat(row.cashback) || 0).toString(),
+              source: 'MANUAL_GRID'
+            };
+            
+            await NicsanCRMService.createPolicy(policyData);
+            return { index, success: true };
+          } catch (error) {
+            console.error(`Failed to save row ${index}:`, error);
+            return { index, success: false, error };
+          }
+        })
+      );
+      
+      // Update row statuses based on results
+      const finalStatuses: {[key: number]: 'saved' | 'error'} = {};
+      results.forEach((result, index) => {
+        if (result.status === 'fulfilled' && result.value.success) {
+          finalStatuses[index] = 'saved';
+        } else {
+          finalStatuses[index] = 'error';
+        }
+      });
+      setRowStatuses(finalStatuses);
+      
+      // Remove saved rows after a delay to show success status
+      setTimeout(() => {
+        setRows(prev => prev.filter((_, index) => finalStatuses[index] !== 'saved'));
+        setRowStatuses({});
+      }, 2000);
+      
+      // Show detailed results
+      const savedCount = Object.values(finalStatuses).filter(s => s === 'saved').length;
+      const errorCount = Object.values(finalStatuses).filter(s => s === 'error').length;
+      
+      if (savedCount === rows.length) {
+        setSaveMessage({ type: 'success', message: `Successfully saved all ${rows.length} policies!` });
+      } else if (savedCount > 0) {
+        setSaveMessage({ 
+          type: 'success', 
+          message: `Saved ${savedCount} policies successfully. ${errorCount} failed - please check and retry.` 
+        });
+      } else {
+        setSaveMessage({ type: 'error', message: 'Failed to save any policies. Please check the data and try again.' });
       }
       
-      setSaveMessage({ type: 'success', message: `Successfully saved ${rows.length} policies!` });
     } catch (error) {
       console.error('Error saving grid data:', error);
       setSaveMessage({ type: 'error', message: 'Failed to save policies. Please try again.' });
+      setRowStatuses({});
     } finally {
       setIsSaving(false);
     }
@@ -1289,42 +1442,96 @@ function PageManualGrid() {
               </tr>
             </thead>
             <tbody>
-              {rows.map((r,i)=> (
-                <tr key={i} className="border-t">
+              {rows.map((r,i)=> {
+                const rowStatus = rowStatuses[i] || 'pending';
+                const getRowClassName = () => {
+                  switch (rowStatus) {
+                    case 'saving':
+                      return "border-t bg-blue-50 animate-pulse";
+                    case 'saved':
+                      return "border-t bg-green-50";
+                    case 'error':
+                      return "border-t bg-red-50";
+                    default:
+                      return "border-t";
+                  }
+                };
+                
+                const getStatusIndicator = () => {
+                  switch (rowStatus) {
+                    case 'saving':
+                      return <span className="text-blue-700 bg-blue-100 px-2 py-1 rounded-full text-xs flex items-center gap-1">
+                        <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                        Saving...
+                      </span>;
+                    case 'saved':
+                      return <span className="text-green-700 bg-green-100 px-2 py-1 rounded-full text-xs flex items-center gap-1">
+                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                        Saved
+                      </span>;
+                    case 'error':
+                      return <span className="text-red-700 bg-red-100 px-2 py-1 rounded-full text-xs flex items-center gap-1">
+                        <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                        Error
+                      </span>;
+                    default:
+                      return r.status.includes("Error") ? 
+                        <span className="text-amber-700 bg-amber-100 px-2 py-1 rounded-full text-xs">{r.status}</span> : 
+                        <span className="text-emerald-700 bg-emerald-100 px-2 py-1 rounded-full text-xs">OK</span>;
+                  }
+                };
+                
+                return (
+                <tr key={i} className={getRowClassName()}>
                   <td className="py-2 text-xs text-zinc-500 px-1">{r.src}</td>
                   <td className="px-1">
                     <input 
                       value={r.policy} 
                       onChange={(e) => updateRow(i, 'policy', e.target.value)}
-                      className="w-full border-none outline-none bg-transparent text-sm"
+                      disabled={rowStatus === 'saving' || rowStatus === 'saved'}
+                      className={`w-full border-none outline-none bg-transparent text-sm ${
+                        rowStatus === 'saving' || rowStatus === 'saved' ? 'opacity-50 cursor-not-allowed' : ''
+                      }`}
                     />
                   </td>
                   <td className="px-1">
                     <input 
                       value={r.vehicle} 
                       onChange={(e) => updateRow(i, 'vehicle', e.target.value)}
-                      className="w-full border-none outline-none bg-transparent text-sm"
+                      disabled={rowStatus === 'saving' || rowStatus === 'saved'}
+                      className={`w-full border-none outline-none bg-transparent text-sm ${
+                        rowStatus === 'saving' || rowStatus === 'saved' ? 'opacity-50 cursor-not-allowed' : ''
+                      }`}
                     />
                   </td>
                   <td className="px-1">
                     <input 
                       value={r.productType} 
                       onChange={(e) => updateRow(i, 'productType', e.target.value)}
-                      className="w-full border-none outline-none bg-transparent text-sm"
+                      disabled={rowStatus === 'saving' || rowStatus === 'saved'}
+                      className={`w-full border-none outline-none bg-transparent text-sm ${
+                        rowStatus === 'saving' || rowStatus === 'saved' ? 'opacity-50 cursor-not-allowed' : ''
+                      }`}
                     />
                   </td>
                   <td className="px-1">
                     <input 
                       value={r.vehicleType} 
                       onChange={(e) => updateRow(i, 'vehicleType', e.target.value)}
-                      className="w-full border-none outline-none bg-transparent text-sm"
+                      disabled={rowStatus === 'saving' || rowStatus === 'saved'}
+                      className={`w-full border-none outline-none bg-transparent text-sm ${
+                        rowStatus === 'saving' || rowStatus === 'saved' ? 'opacity-50 cursor-not-allowed' : ''
+                      }`}
                     />
                   </td>
                   <td className="px-1">
                     <input 
                       value={r.make} 
                       onChange={(e) => updateRow(i, 'make', e.target.value)}
-                      className="w-full border-none outline-none bg-transparent text-sm"
+                      disabled={rowStatus === 'saving' || rowStatus === 'saved'}
+                      className={`w-full border-none outline-none bg-transparent text-sm ${
+                        rowStatus === 'saving' || rowStatus === 'saved' ? 'opacity-50 cursor-not-allowed' : ''
+                      }`}
                     />
                   </td>
                   <td className="px-1">
@@ -1494,9 +1701,10 @@ function PageManualGrid() {
                       className="w-full border-none outline-none bg-transparent text-sm"
                     />
                   </td>
-                  <td className="px-1">{r.status.includes("Error") ? <span className="text-amber-700 bg-amber-100 px-2 py-1 rounded-full text-xs">{r.status}</span> : <span className="text-emerald-700 bg-emerald-100 px-2 py-1 rounded-full text-xs">OK</span>}</td>
+                  <td className="px-1">{getStatusIndicator()}</td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -1508,6 +1716,14 @@ function PageManualGrid() {
           >
             {isSaving ? 'Saving...' : 'Save All'}
           </button>
+          {Object.values(rowStatuses).some(status => status === 'error') && (
+            <button 
+              onClick={retryFailedRows}
+              className="px-4 py-2 rounded-xl bg-orange-600 text-white hover:bg-orange-700"
+            >
+              Retry Failed ({Object.values(rowStatuses).filter(s => s === 'error').length})
+            </button>
+          )}
           <button className="px-4 py-2 rounded-xl bg-white border">Validate</button>
         </div>
       </Card>

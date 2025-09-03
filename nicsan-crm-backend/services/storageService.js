@@ -388,7 +388,15 @@ class StorageService {
         }
       }
       
-      // Transform to policy format with null safety
+      // Helper function to safely convert and validate numeric values
+      const safeNumeric = (value, maxValue = 99999999.99, defaultValue = 0) => {
+        if (value === null || value === undefined || value === '') return defaultValue;
+        const num = parseFloat(value);
+        if (isNaN(num)) return defaultValue;
+        return Math.min(Math.max(num, 0), maxValue); // Clamp between 0 and maxValue
+      };
+
+      // Transform to policy format with null safety and numeric validation
       const policyData = {
         // PDF extracted data with null safety
         policy_number: extractedData?.policy_number || `POL-${Date.now()}`,
@@ -402,32 +410,32 @@ class StorageService {
         manufacturing_year: extractedData?.manufacturing_year || '2021',
         issue_date: extractedData?.issue_date || new Date().toISOString().split('T')[0],
         expiry_date: extractedData?.expiry_date || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        idv: extractedData?.idv || 0,
-        ncb: extractedData?.ncb || 0,
-        discount: extractedData?.discount || 0,
-        net_od: extractedData?.net_od || 0,
+        idv: safeNumeric(extractedData?.idv, 9999999999999.99, 0),
+        ncb: safeNumeric(extractedData?.ncb, 99999999.99, 0),
+        discount: safeNumeric(extractedData?.discount, 99999999.99, 0),
+        net_od: safeNumeric(extractedData?.net_od, 9999999999999.99, 0),
         ref: extractedData?.ref || '',
-        total_od: extractedData?.total_od || 0,
-        net_premium: extractedData?.net_premium || 0,
-        total_premium: extractedData?.total_premium || 0,
-        confidence_score: extractedData?.confidence_score || 0,
+        total_od: safeNumeric(extractedData?.total_od, 9999999999999.99, 0),
+        net_premium: safeNumeric(extractedData?.net_premium, 9999999999999.99, 0),
+        total_premium: safeNumeric(extractedData?.total_premium, 9999999999999.99, 0),
+        confidence_score: safeNumeric(extractedData?.confidence_score, 1.0, 0),
         
-        // Manual extras with null safety
+        // Manual extras with null safety and numeric validation
         executive: manualExtras?.executive || '',
         caller_name: manualExtras?.callerName || '',
         mobile: manualExtras?.mobile || '',
         rollover: manualExtras?.rollover || '',
         remark: manualExtras?.remark || '',
-        brokerage: manualExtras?.brokerage || 0,
-        cashback: manualExtras?.cashback || 0,
-        customer_paid: manualExtras?.customerPaid || 0,
+        brokerage: safeNumeric(manualExtras?.brokerage, 9999999999999.99, 0),
+        cashback: safeNumeric(manualExtras?.cashback, 9999999999999.99, 0),
+        customer_paid: safeNumeric(manualExtras?.customerPaid, 9999999999999.99, 0),
         customer_cheque_no: manualExtras?.customerChequeNo || '',
         our_cheque_no: manualExtras?.ourChequeNo || '',
         
-        // Calculated fields with null safety
+        // Calculated fields with null safety and numeric validation
         cashback_percentage: (manualExtras?.cashback && extractedData?.total_premium) ? 
-          parseFloat(((manualExtras.cashback / extractedData.total_premium) * 100).toFixed(2)) : 0,
-        cashback_amount: manualExtras?.cashback || 0,
+          safeNumeric(((manualExtras.cashback / extractedData.total_premium) * 100), 99999999.99, 0) : 0,
+        cashback_amount: safeNumeric(manualExtras?.cashback, 9999999999999.99, 0),
         
         // Metadata
         source: 'PDF_UPLOAD',
