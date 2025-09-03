@@ -649,7 +649,7 @@ export class NicsanCRMService {
       data: [
         {
           id: '1',
-          name: 'Asha',
+          name: 'Priya Singh',
           leads_assigned: 120,
           converted: 22,
           gwp: 260000,
@@ -661,7 +661,7 @@ export class NicsanCRMService {
         },
         {
           id: '2',
-          name: 'Vikram',
+          name: 'Rahul Kumar',
           leads_assigned: 110,
           converted: 18,
           gwp: 210000,

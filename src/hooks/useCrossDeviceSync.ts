@@ -227,3 +227,4 @@ export const useCrossDeviceSync = () => {
     lastSyncFormatted: syncStatus.lastSync ? new Date(syncStatus.lastSync).toLocaleTimeString() : 'Never'
   };
 };
+

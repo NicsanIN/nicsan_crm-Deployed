@@ -115,7 +115,7 @@ class DualStorageService {
     const mockData = [
       {
         id: '1',
-        name: 'Asha',
+        name: 'Priya Singh',
         leads_assigned: 120,
         converted: 22,
         gwp: 260000,
@@ -127,7 +127,7 @@ class DualStorageService {
       },
       {
         id: '2',
-        name: 'Vikram',
+        name: 'Rahul Kumar',
         leads_assigned: 110,
         converted: 18,
         gwp: 210000,
@@ -139,7 +139,7 @@ class DualStorageService {
       },
       {
         id: '3',
-        name: 'Meera',
+        name: 'Anjali Sharma',
         leads_assigned: 90,
         converted: 20,
         gwp: 240000,

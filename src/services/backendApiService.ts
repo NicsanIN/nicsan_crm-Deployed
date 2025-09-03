@@ -120,7 +120,7 @@ class BackendApiService {
 
       // Transform backend data to match frontend expectations
       const transformedData = (result.data || []).map((rep: any) => ({
-        name: rep.executive,           // Map executive → name
+        name: rep.name,                // Map name → name (no transformation needed)
         leads_assigned: rep.policies,  // Map policies → leads_assigned  
         converted: rep.policies,       // Map policies → converted
         gwp: rep.gwp,

@@ -99,7 +99,7 @@ router.get('/leaderboard', authenticateToken, requireFounder, async (req, res) =
     // Removed date filter to show all-time rep performance (consistent with Sales Explorer)
     const result = await query(`
       SELECT 
-        COALESCE(executive, 'Unknown') as executive,
+        COALESCE(caller_name, 'Unknown') as name,
         COUNT(*) as policies,
         SUM(total_premium) as gwp,
         SUM(brokerage) as brokerage,
@@ -107,7 +107,7 @@ router.get('/leaderboard', authenticateToken, requireFounder, async (req, res) =
         SUM(brokerage - cashback_amount) as net,
         AVG(cashback_percentage) as avg_cashback_pct
       FROM policies 
-      GROUP BY COALESCE(executive, 'Unknown')
+      GROUP BY COALESCE(caller_name, 'Unknown')
       ORDER BY net DESC
       LIMIT 20
     `);

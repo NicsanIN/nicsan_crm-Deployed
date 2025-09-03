@@ -830,7 +830,7 @@ class StorageService {
     // Calculate ratios
     const conversionRate = totalPolicies > 0 ? (totalPolicies / (totalPolicies * 1.2)) * 100 : 0;
     const lossRatio = totalGWP > 0 ? (totalCashback / totalGWP) * 100 : 0;
-    const expenseRatio = 155.0; // Mock value
+    const expenseRatio = totalGWP > 0 ? ((totalBrokerage - totalCashback) / totalGWP) * 100 : 0;
     const combinedRatio = lossRatio + expenseRatio;
 
     return {
@@ -859,7 +859,7 @@ class StorageService {
   async calculateSalesReps() {
     const result = await query(`
       SELECT 
-        COALESCE(executive, 'Unknown') as name,
+        COALESCE(caller_name, 'Unknown') as name,
         COUNT(*) as policies,
         SUM(total_premium) as gwp,
         SUM(brokerage) as brokerage,
@@ -867,7 +867,7 @@ class StorageService {
         SUM(brokerage - cashback_amount) as net_revenue,
         AVG(cashback_percentage) as avg_cashback_pct
       FROM policies 
-      GROUP BY COALESCE(executive, 'Unknown')
+      GROUP BY COALESCE(caller_name, 'Unknown')
       ORDER BY net_revenue DESC
       LIMIT 20
     `);
@@ -908,7 +908,7 @@ class StorageService {
 
     const result = await query(`
       SELECT 
-        executive as rep,
+        caller_name as rep,
         make,
         model,
         COUNT(*) as policies,
@@ -918,7 +918,7 @@ class StorageService {
         SUM(brokerage - cashback_amount) as net
       FROM policies 
       ${whereClause}
-      GROUP BY executive, make, model
+      GROUP BY caller_name, make, model
       ORDER BY net DESC
     `, params);
 
