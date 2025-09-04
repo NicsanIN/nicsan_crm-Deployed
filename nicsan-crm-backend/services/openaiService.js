@@ -70,6 +70,15 @@ class OpenAIService {
   "confidence_score": "number"
 }
 
+CRITICAL EXTRACTION RULES:
+1. Extract ONLY the individual vehicle IDV value (not total IDV, not table concatenations)
+2. Look for "IDV (₹)" followed by a number in header sections
+3. IGNORE table values like "Vehicle IDV (₹)" or "Total IDV (₹)"
+4. Do NOT concatenate policy year with IDV values
+5. If multiple IDV values exist, choose the LARGEST one (individual vehicle value)
+6. Policy year and IDV are SEPARATE fields - do not combine them
+7. For table data, extract only the IDV column value, ignore policy year column
+
 For ${insurer} insurance policies. If a field is not found, use null. For dates, use YYYY-MM-DD format. For numbers, use actual numbers not strings.
 
 Text to analyze:

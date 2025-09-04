@@ -273,6 +273,29 @@ class StorageService {
     try {
       console.log('🔄 Parsing OpenAI result...');
       
+      // IDV Validation and Correction
+      let correctedIdv = openaiResult.idv;
+      
+      // Check if IDV has policy year concatenated (starts with 1-9 and is too large)
+      if (correctedIdv && correctedIdv > 1000000) {
+        const idvStr = correctedIdv.toString();
+        
+        // Check if it starts with policy year (1-9) followed by large number
+        if (idvStr.length >= 7 && /^[1-9]\d{6,}$/.test(idvStr)) {
+          console.log('⚠️ Detected policy year concatenation in IDV, attempting correction...');
+          
+          // Remove first digit if it looks like policy year concatenation
+          const correctedStr = idvStr.substring(1);
+          const correctedNum = parseInt(correctedStr);
+          
+          // Validate corrected value is reasonable for vehicle IDV
+          if (correctedNum >= 100000 && correctedNum <= 10000000) {
+            correctedIdv = correctedNum;
+            console.log(`✅ IDV corrected from ${openaiResult.idv} to ${correctedIdv}`);
+          }
+        }
+      }
+      
       // OpenAI returns structured JSON directly, so we just need to validate and format
       const extractedData = {
         policy_number: openaiResult.policy_number || `TA-${Math.floor(Math.random() * 10000)}`,
@@ -286,7 +309,7 @@ class StorageService {
         manufacturing_year: openaiResult.manufacturing_year || '2021',
         issue_date: openaiResult.issue_date || new Date().toISOString().split('T')[0],
         expiry_date: openaiResult.expiry_date || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        idv: parseInt(openaiResult.idv) || 495000,
+        idv: parseInt(correctedIdv) || 495000,
         ncb: parseInt(openaiResult.ncb) || 20,
         discount: parseInt(openaiResult.discount) || 0,
         net_od: parseInt(openaiResult.net_od) || 5400,
