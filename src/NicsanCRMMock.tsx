@@ -3,6 +3,7 @@ import { Upload, FileText, CheckCircle2, AlertTriangle, Table2, Settings, Layout
 import { ResponsiveContainer, CartesianGrid, BarChart, Bar, Legend, Area, AreaChart, XAxis, YAxis, Tooltip } from "recharts";
 import { authUtils } from './services/api';
 import NicsanCRMService from './services/api-integration';
+import { policiesAPI } from './services/api';
 import DualStorageService from './services/dualStorageService';
 import CrossDeviceSyncDemo from './components/CrossDeviceSyncDemo';
 
@@ -1158,6 +1159,13 @@ function PageManualForm() {
     if (validationMode === 'progressive' && !fieldTouched[fieldName]) {
       return [];
     }
+    
+    // For policy number, return async errors
+    if (fieldName === 'policyNumber') {
+      return asyncErrors[fieldName] || [];
+    }
+    
+    // For other fields, return synchronous validation
     return validateField(fieldName, form[fieldName]);
   };
 
@@ -1344,14 +1352,19 @@ function PageManualForm() {
     }
   };
 
-  // Comprehensive validation
+  // State for async validation errors
+  const [asyncErrors, setAsyncErrors] = useState<{[key: string]: string[]}>({});
+
+  // Comprehensive validation (synchronous part)
   const errors = useMemo(() => {
     const allErrors: string[] = [];
     
-    // Field-level validation
+    // Field-level validation (synchronous only)
     Object.keys(form).forEach(field => {
-      const fieldErrors = validateField(field, form[field]);
-      allErrors.push(...fieldErrors);
+      if (field !== 'policyNumber') { // Skip async fields
+        const fieldErrors = validateField(field, form[field]);
+        allErrors.push(...fieldErrors);
+      }
     });
     
     // Cross-field validation
@@ -1361,6 +1374,11 @@ function PageManualForm() {
     // Business rule validation
     const businessRuleErrors = validateBusinessRules();
     allErrors.push(...businessRuleErrors);
+    
+    // Add async errors
+    Object.values(asyncErrors).forEach(fieldErrors => {
+      allErrors.push(...fieldErrors);
+    });
     
     // Log validation history for analytics
     if (allErrors.length > 0) {
@@ -1372,7 +1390,52 @@ function PageManualForm() {
     }
     
     return allErrors;
-  }, [form, fieldTouched, validationMode]);
+  }, [form, fieldTouched, validationMode, asyncErrors]);
+
+  // Async validation for policy number
+  const validatePolicyNumberAsync = async (value: string) => {
+    const errors: string[] = [];
+    
+    if (!value) {
+      return errors;
+    }
+    
+    if (!/^[A-Z0-9\-_]{3,20}$/.test(value)) {
+      return errors; // Format validation handled by sync validation
+    }
+    
+    try {
+      const response = await policiesAPI.checkDuplicate(value);
+      if (response.success && response.data?.exists) {
+        errors.push('Policy number already exists. Please use a different number.');
+      }
+    } catch (error) {
+      console.warn('Policy number duplicate check failed:', error);
+      // Don't add error if check fails - allow user to proceed
+    }
+    
+    return errors;
+  };
+
+  // Handle async validation for policy number
+  useEffect(() => {
+    const validatePolicyNumber = async () => {
+      if (form.policyNumber && fieldTouched.policyNumber) {
+        try {
+          const fieldErrors = await validatePolicyNumberAsync(form.policyNumber);
+          setAsyncErrors(prev => ({
+            ...prev,
+            policyNumber: fieldErrors
+          }));
+        } catch (error) {
+          console.warn('Policy number validation failed:', error);
+        }
+      }
+    };
+
+    const timeoutId = setTimeout(validatePolicyNumber, 500); // Debounce
+    return () => clearTimeout(timeoutId);
+  }, [form.policyNumber, fieldTouched.policyNumber]);
 
   return (
     <>

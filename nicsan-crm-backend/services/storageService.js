@@ -3,6 +3,20 @@ const { uploadToS3, deleteFromS3, extractTextFromPDF, generateS3Key, generatePol
 const websocketService = require('./websocketService');
 
 class StorageService {
+  // Check if policy number already exists
+  async checkPolicyNumberExists(policyNumber) {
+    try {
+      const result = await query(
+        'SELECT id FROM policies WHERE policy_number = $1',
+        [policyNumber]
+      );
+      return result.rows.length > 0;
+    } catch (error) {
+      console.error('❌ Error checking policy number existence:', error);
+      return false; // Return false on error to allow insertion attempt
+    }
+  }
+
   // Dual Storage: Save to both S3 (primary) and PostgreSQL (secondary)
   async savePolicy(policyData) {
     try {
@@ -43,7 +57,18 @@ class StorageService {
       };
     } catch (error) {
       console.error('❌ Dual storage save error:', error);
-      throw error;
+      
+      // Handle specific PostgreSQL constraint violations
+      if (error.code === '23505') {  // PostgreSQL unique constraint violation
+        throw new Error(`Policy number '${policyData.policy_number}' already exists. Please use a different policy number.`);
+      } else if (error.code === '23502') {  // PostgreSQL not null constraint violation
+        throw new Error('Required fields are missing. Please check all mandatory fields.');
+      } else if (error.message && error.message.includes('already exists')) {
+        // Re-throw our custom duplicate error as-is
+        throw error;
+      } else {
+        throw new Error(`Database error: ${error.message}`);
+      }
     }
   }
 
@@ -57,6 +82,12 @@ class StorageService {
       our_cheque_no, executive, caller_name, mobile, rollover, remark,
       brokerage, cashback, source, s3_key, confidence_score
     } = policyData;
+
+    // Check for duplicate policy number before insert
+    const isDuplicate = await this.checkPolicyNumberExists(policy_number);
+    if (isDuplicate) {
+      throw new Error(`Policy number '${policy_number}' already exists. Please use a different policy number.`);
+    }
 
     const queryText = `
       INSERT INTO policies (

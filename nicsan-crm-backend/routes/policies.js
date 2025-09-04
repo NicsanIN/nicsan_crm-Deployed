@@ -103,5 +103,35 @@ router.post('/grid', authenticateToken, requireOps, async (req, res) => {
   }
 });
 
+// Check if policy number already exists
+router.get('/check-duplicate/:policyNumber', authenticateToken, requireOps, async (req, res) => {
+  try {
+    const { policyNumber } = req.params;
+    
+    if (!policyNumber) {
+      return res.status(400).json({
+        success: false,
+        error: 'Policy number is required'
+      });
+    }
+
+    const exists = await storageService.checkPolicyNumberExists(policyNumber);
+    
+    res.json({
+      success: true,
+      data: {
+        policyNumber,
+        exists
+      }
+    });
+  } catch (error) {
+    console.error('Check policy number duplicate error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to check policy number'
+    });
+  }
+});
+
 module.exports = router;
 

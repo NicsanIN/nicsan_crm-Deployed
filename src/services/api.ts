@@ -236,6 +236,11 @@ export const policiesAPI = {
       body: JSON.stringify({ entries }),
     });
   },
+
+  // Check if policy number already exists
+  checkDuplicate: async (policyNumber: string): Promise<ApiResponse<{ policyNumber: string; exists: boolean }>> => {
+    return apiCall(`/policies/check-duplicate/${encodeURIComponent(policyNumber)}`);
+  },
 };
 
 // PDF Upload API
