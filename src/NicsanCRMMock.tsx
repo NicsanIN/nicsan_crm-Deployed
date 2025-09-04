@@ -1566,99 +1566,111 @@ function PageManualForm() {
 }
 
 function PageManualGrid() {
-  const [rows, setRows] = useState([
-    { 
+  const [rows, setRows] = useState<any[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<{type: 'success' | 'error' | 'info', message: string} | null>(null);
+  const [rowStatuses, setRowStatuses] = useState<{[key: number]: 'pending' | 'saving' | 'saved' | 'error'}>({});
+  const [isLoading, setIsLoading] = useState(true);
+  const [savedPolicies, setSavedPolicies] = useState<any[]>([]);
+
+  // Load grid data on component mount
+  useEffect(() => {
+    const loadGridData = async () => {
+      try {
+        setIsLoading(true);
+        console.log('🔄 Loading Grid Entry data...');
+        
+        // Load all policies from backend
+        const response = await NicsanCRMService.getPolicies(100, 0);
+        
+        if (response.success && Array.isArray(response.data)) {
+          // Filter policies that were saved from grid
+          const gridPolicies = response.data.filter((p: any) => p.source === 'MANUAL_GRID');
+          setSavedPolicies(gridPolicies);
+          
+          console.log(`📋 Found ${gridPolicies.length} saved policies from grid`);
+          
+          // Show info message about saved policies
+          if (gridPolicies.length > 0) {
+            setSaveMessage({ 
+              type: 'info', 
+              message: `Found ${gridPolicies.length} saved policies. Grid is ready for new entries.` 
+            });
+          } else {
+            setSaveMessage({ 
+              type: 'info', 
+              message: 'Grid is ready for new policy entries.' 
+            });
+          }
+        } else {
+          console.log('📋 No policies found, starting with empty grid');
+          setSaveMessage({ 
+            type: 'info', 
+            message: 'Grid is ready for new policy entries.' 
+          });
+        }
+      } catch (error) {
+        console.error('Failed to load grid data:', error);
+        setSaveMessage({ 
+          type: 'info', 
+          message: 'Grid is ready for new policy entries.' 
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    loadGridData();
+  }, []);
+
+  const addNewRow = () => {
+    const newRow = {
       // Basic Info
       src: "MANUAL_GRID", 
-      policy: "TA-9921", 
-      vehicle: "KA01AB1234", 
-      insurer: "Tata AIG",
+      policy: "", 
+      vehicle: "", 
+      insurer: "",
       
       // Vehicle Details
       productType: "Private Car",
       vehicleType: "Private Car",
-      make: "Maruti", 
-      model: "Swift",
-      cc: "1200",
-      manufacturingYear: "2020",
-      
-      // Dates
-      issueDate: "2024-01-15",
-      expiryDate: "2025-01-14",
-      
-      // Financial
-      idv: 500000,
-      ncb: 20,
-      discount: 5,
-      netOd: 8000,
-      ref: "REF001",
-      totalOd: 8500,
-      netPremium: 10000,
-      totalPremium: 12150,
-      cashbackPct: 5,
-      cashbackAmt: 600,
-      customerPaid: 11550,
-      brokerage: 500,
-      
-      // Contact Info
-      executive: "John Doe",
-      callerName: "Jane Smith",
-      mobile: "9876543210",
-      
-      // Additional
-      rollover: "RENEWAL",
-      remark: "Customer preferred",
-      cashback: 600, 
-      status: "OK" 
-    },
-    { 
-      // Basic Info
-      src: "MANUAL_GRID", 
-      policy: "DG-4410", 
-      vehicle: "KA05CJ7777", 
-      insurer: "Digit",
-      
-      // Vehicle Details
-      productType: "Private Car",
-      vehicleType: "Private Car",
-      make: "Hyundai", 
-      model: "i20",
-      cc: "1200",
-      manufacturingYear: "2019",
+      make: "", 
+      model: "",
+      cc: "",
+      manufacturingYear: "",
       
       // Dates
       issueDate: "",
-      expiryDate: "2025-02-10",
+      expiryDate: "",
       
       // Financial
-      idv: 450000,
-      ncb: 15,
-      discount: 3,
-      netOd: 7500,
-      ref: "REF002",
-      totalOd: 8000,
-      netPremium: 9500,
-      totalPremium: 11500,
-      cashbackPct: 4,
-      cashbackAmt: 500,
-      customerPaid: 11000,
-      brokerage: 400,
+      idv: "",
+      ncb: "",
+      discount: "",
+      netOd: "",
+      ref: "",
+      totalOd: "",
+      netPremium: "",
+      totalPremium: "",
+      cashbackPct: "",
+      cashbackAmt: "",
+      customerPaid: "",
+      brokerage: "",
       
       // Contact Info
-      executive: "Mike Johnson",
-      callerName: "Sarah Wilson",
-      mobile: "9876543211",
+      executive: "",
+      callerName: "",
+      mobile: "",
       
       // Additional
-      rollover: "NEW",
-      remark: "First time customer",
-      cashback: 500, 
-      status: "Error: Missing Issue Date" 
-    },
-  ]);
-  const [isSaving, setIsSaving] = useState(false);
-  const [saveMessage, setSaveMessage] = useState<{type: 'success' | 'error', message: string} | null>(null);
-  const [rowStatuses, setRowStatuses] = useState<{[key: number]: 'pending' | 'saving' | 'saved' | 'error'}>({});
+      rollover: "",
+      remark: "",
+      cashback: "", 
+      status: "OK" 
+    };
+    
+    setRows(prev => [...prev, newRow]);
+  };
 
   const updateRow = (rowIndex: number, field: string, value: string) => {
     // Don't allow editing if row is being saved or has been saved
@@ -1881,15 +1893,39 @@ function PageManualGrid() {
     }
   };
 
+  if (isLoading) {
+    return (
+      <Card title="Grid Entry (Excel-like)" desc="Loading grid data...">
+        <div className="flex items-center justify-center h-32">
+          <div className="text-sm text-zinc-600">Loading grid data...</div>
+        </div>
+      </Card>
+    );
+  }
+
   return (
     <>
       <Card title="Grid Entry (Excel-like)" desc="Paste multiple rows; fix inline errors. Dedupe on Policy No. + Vehicle No.">
         <div className="mb-3 text-xs text-zinc-600">Tip: Copy from Excel and <b>Ctrl+V</b> directly here. Use <b>Ctrl+S</b> to save all.</div>
+        
+        {/* Show saved policies info */}
+        {savedPolicies.length > 0 && (
+          <div className="mb-4 p-3 bg-green-50 rounded-lg border border-green-200">
+            <h3 className="font-medium text-green-800 mb-2">Recently Saved Policies ({savedPolicies.length})</h3>
+            <div className="text-sm text-green-600">
+              {savedPolicies.slice(0, 5).map(p => `${p.policy_number} - ${p.vehicle_number}`).join(', ')}
+              {savedPolicies.length > 5 && ` and ${savedPolicies.length - 5} more...`}
+            </div>
+          </div>
+        )}
+        
         {saveMessage && (
           <div className={`mb-3 p-3 rounded-lg text-sm ${
             saveMessage.type === 'success' 
               ? 'bg-green-100 text-green-800' 
-              : 'bg-red-100 text-red-800'
+              : saveMessage.type === 'error'
+              ? 'bg-red-100 text-red-800'
+              : 'bg-blue-100 text-blue-800'
           }`}>
             {saveMessage.message}
           </div>
@@ -2198,11 +2234,17 @@ function PageManualGrid() {
         </div>
         <div className="flex gap-3 mt-4">
           <button 
+            onClick={addNewRow}
+            className="px-4 py-2 rounded-xl bg-blue-600 text-white hover:bg-blue-700"
+          >
+            + Add New Row
+          </button>
+          <button 
             onClick={handleSaveAll}
-            disabled={isSaving}
+            disabled={isSaving || rows.length === 0}
             className="px-4 py-2 rounded-xl bg-zinc-900 text-white disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isSaving ? 'Saving...' : 'Save All'}
+            {isSaving ? 'Saving...' : `Save All (${rows.length})`}
           </button>
           {Object.values(rowStatuses).some(status => status === 'error') && (
             <button 
