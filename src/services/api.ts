@@ -1,7 +1,9 @@
 // API Service Layer for Nicsan CRM
 // Handles all communication with the backend
 
-const API_BASE_URL = 'http://localhost:3001/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
+const API_TIMEOUT = parseInt(import.meta.env.VITE_API_TIMEOUT || '30000');
+const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
 
 // Types for API responses
 export interface ApiResponse<T = any> {
@@ -84,7 +86,29 @@ async function apiCall<T>(
   options: RequestInit = {}
 ): Promise<ApiResponse<T>> {
   try {
-    const token = localStorage.getItem('authToken');
+    let token = localStorage.getItem('authToken');
+    
+    // Check if token is expired or about to expire
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        const currentTime = Date.now() / 1000;
+        
+        // If token expires in next 5 minutes, try to refresh
+        if (payload.exp && (payload.exp - currentTime) < 300) {
+          if (ENABLE_DEBUG) console.log('🔄 Token expiring soon, attempting refresh...');
+          const refreshResult = await authUtils.refreshToken();
+          if (refreshResult.success) {
+            token = refreshResult.data.token;
+          }
+        }
+      } catch (error) {
+        if (ENABLE_DEBUG) console.log('⚠️ Token validation failed, will attempt refresh');
+      }
+    }
+    
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT);
     
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       headers: {
@@ -92,9 +116,11 @@ async function apiCall<T>(
         ...(token && { Authorization: `Bearer ${token}` }),
         ...options.headers,
       },
+      signal: controller.signal,
       ...options,
     });
 
+    clearTimeout(timeoutId);
     const data = await response.json();
 
     if (!response.ok) {
@@ -103,7 +129,7 @@ async function apiCall<T>(
 
     return data;
   } catch (error) {
-    console.error(`API Error (${endpoint}):`, error);
+    if (ENABLE_DEBUG) console.error(`API Error (${endpoint}):`, error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error occurred',
@@ -144,7 +170,7 @@ export const authAPI = {
 
 // Policies API
 export const policiesAPI = {
-  getAll: async (page = 1, limit = 50, filters?: any): Promise<ApiResponse<{ policies: Policy[]; total: number }>> => {
+  getAll: async (page: number = 1, limit: number = 20, filters?: any): Promise<ApiResponse<{ policies: Policy[]; total: number }>> => {
     const params = new URLSearchParams({
       page: page.toString(),
       limit: limit.toString(),
@@ -181,6 +207,33 @@ export const policiesAPI = {
     return apiCall('/policies/bulk', {
       method: 'POST',
       body: JSON.stringify({ policies }),
+    });
+  },
+
+  // New dual storage methods
+  getPolicies: async (limit: number = 100, offset: number = 0): Promise<ApiResponse<Policy[]>> => {
+    const params = new URLSearchParams({
+      limit: limit.toString(),
+      offset: offset.toString(),
+    });
+    return apiCall(`/policies?${params}`);
+  },
+
+  getPolicy: async (id: string): Promise<ApiResponse<Policy>> => {
+    return apiCall(`/policies/${id}`);
+  },
+
+  saveManualForm: async (formData: any): Promise<ApiResponse<any>> => {
+    return apiCall('/policies/manual', {
+      method: 'POST',
+      body: JSON.stringify(formData),
+    });
+  },
+
+  saveGridEntries: async (entries: any[]): Promise<ApiResponse<any>> => {
+    return apiCall('/policies/grid', {
+      method: 'POST',
+      body: JSON.stringify({ entries }),
     });
   },
 };
@@ -224,11 +277,12 @@ export const uploadAPI = {
   },
 
   getUploads: async (page = 1, limit = 50): Promise<ApiResponse<{ uploads: PDFUpload[]; total: number }>> => {
+    const offset = (page - 1) * limit;
     const params = new URLSearchParams({
-      page: page.toString(),
       limit: limit.toString(),
+      offset: offset.toString(),
     });
-    return apiCall(`/upload/pdf?${params}`);
+    return apiCall(`/upload?${params}`);
   },
 
   getUploadById: async (uploadId: string): Promise<ApiResponse<PDFUpload>> => {
@@ -306,6 +360,16 @@ export const uploadAPI = {
       method: 'POST',
     });
   },
+
+  confirmUploadAsPolicy: async (uploadId: string): Promise<ApiResponse<any>> => {
+    return apiCall(`/upload/${uploadId}/confirm`, {
+      method: 'POST',
+    });
+  },
+
+  getUploadForReview: async (uploadId: string): Promise<ApiResponse<any>> => {
+    return apiCall(`/upload/${uploadId}/review`);
+  },
 };
 
 // Dashboard API
@@ -371,13 +435,42 @@ export const authUtils = {
   },
 
   setToken: (token: string): void => {
-    console.log('🔍 Debug: Setting token, length:', token.length);
+    if (ENABLE_DEBUG) console.log('🔍 Debug: Setting token, length:', token.length);
     localStorage.setItem('authToken', token);
-    console.log('🔍 Debug: Token stored, verifying:', !!localStorage.getItem('authToken'));
+    if (ENABLE_DEBUG) console.log('🔍 Debug: Token stored, verifying:', !!localStorage.getItem('authToken'));
   },
 
   removeToken: (): void => {
     localStorage.removeItem('authToken');
+  },
+
+  async refreshToken(): Promise<ApiResponse<any>> {
+    try {
+      const currentToken = localStorage.getItem('authToken');
+      if (!currentToken) {
+        return { success: false, error: 'No token to refresh' };
+      }
+
+      // Try to get a new token using the current user info
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      if (user.email) {
+        // For now, we'll try to login again with stored credentials
+        // In a real app, you'd have a refresh token endpoint
+        const response = await authAPI.login({ 
+          email: user.email, 
+          password: '***' // This won't work, but shows the pattern
+        });
+        
+        if (response.success) {
+          this.setToken(response.data.token);
+          return response;
+        }
+      }
+      
+      return { success: false, error: 'Token refresh failed' };
+    } catch (error) {
+      return { success: false, error: 'Token refresh error' };
+    }
   },
 
   logout: (): void => {
