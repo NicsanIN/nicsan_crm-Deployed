@@ -225,7 +225,7 @@ class StorageService {
       let extractedData;
       try {
         const openaiResult = await extractTextFromPDF(upload.s3_key, upload.insurer);
-        extractedData = this.parseOpenAIResult(openaiResult);
+        extractedData = this.parseOpenAIResult(openaiResult, upload.insurer);
         console.log('✅ OpenAI processing successful');
       } catch (openaiError) {
         console.error('⚠️ OpenAI failed, using mock data:', openaiError.message);

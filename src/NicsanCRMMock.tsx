@@ -1672,6 +1672,145 @@ function PageManualGrid() {
     setRows(prev => [...prev, newRow]);
   };
 
+  // Validation function for grid rows (reused from Manual Form)
+  const validateGridRow = (row: any) => {
+    const errors: string[] = [];
+    
+    // Policy Number validation
+    if (!row.policy) {
+      errors.push('Policy Number is required');
+    } else if (!/^[A-Z0-9\-_]{3,20}$/.test(row.policy)) {
+      errors.push('Policy Number must be 3-20 characters (letters, numbers, hyphens, underscores)');
+    }
+    
+    // Vehicle Number validation
+    if (!row.vehicle) {
+      errors.push('Vehicle Number is required');
+    } else if (!/^[A-Z]{2}[0-9]{2}[A-Z]{2}[0-9]{4}$/.test(row.vehicle)) {
+      errors.push('Vehicle Number must be in format: KA01AB1234');
+    }
+    
+    // Insurer validation
+    if (!row.insurer) {
+      errors.push('Insurer is required');
+    } else if (row.insurer.length < 3) {
+      errors.push('Insurer name must be at least 3 characters');
+    }
+    
+    // Make validation
+    if (row.make && row.make.length < 2) {
+      errors.push('Make must be at least 2 characters');
+    }
+    
+    // Mobile validation
+    if (row.mobile && !/^[6-9]\d{9}$/.test(row.mobile)) {
+      errors.push('Invalid mobile number format (10 digits starting with 6-9)');
+    }
+    
+    // Total Premium validation
+    if (row.totalPremium && (isNaN(parseFloat(row.totalPremium)) || parseFloat(row.totalPremium) <= 0)) {
+      errors.push('Total Premium must be a valid positive number');
+    }
+    
+    return errors;
+  };
+
+  // Handle Excel copy-paste functionality
+  const handlePaste = (e: React.ClipboardEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const clipboardData = e.clipboardData?.getData('text/plain');
+    
+    if (clipboardData) {
+      console.log('📋 Excel data pasted:', clipboardData);
+      
+      // Parse tab-separated values
+      const rows = clipboardData.split('\n').filter(row => row.trim());
+      
+      if (rows.length > 0) {
+        const newRows = rows.map((row) => {
+          const cells = row.split('\t');
+          
+          // Map Excel columns to grid fields
+          const newRow = {
+            // Basic Info
+            src: "MANUAL_GRID", 
+            policy: cells[0] || "", 
+            vehicle: cells[1] || "", 
+            insurer: cells[2] || "",
+            
+            // Vehicle Details
+            productType: cells[3] || "Private Car",
+            vehicleType: cells[4] || "Private Car",
+            make: cells[5] || "", 
+            model: cells[6] || "",
+            cc: cells[7] || "",
+            manufacturingYear: cells[8] || "",
+            
+            // Dates
+            issueDate: cells[9] || "",
+            expiryDate: cells[10] || "",
+            
+            // Financial
+            idv: cells[11] || "",
+            ncb: cells[12] || "",
+            discount: cells[13] || "",
+            netOd: cells[14] || "",
+            ref: cells[15] || "",
+            totalOd: cells[16] || "",
+            netPremium: cells[17] || "",
+            totalPremium: cells[18] || "",
+            cashbackPct: cells[19] || "",
+            cashbackAmt: cells[20] || "",
+            customerPaid: cells[21] || "",
+            brokerage: cells[22] || "",
+            
+            // Contact Info
+            executive: cells[23] || "",
+            callerName: cells[24] || "",
+            mobile: cells[25] || "",
+            
+            // Additional
+            rollover: cells[26] || "",
+            remark: cells[27] || "",
+            cashback: cells[28] || "", 
+            status: "OK" 
+          };
+          
+          // Validate the row
+          const validationErrors = validateGridRow(newRow);
+          if (validationErrors.length > 0) {
+            newRow.status = `Error: ${validationErrors.join(', ')}`;
+            (newRow as any).validationErrors = validationErrors;
+          }
+          
+          return newRow;
+        });
+        
+        // Add all new rows to the grid
+        setRows(prev => [...prev, ...newRows]);
+        
+        // Count valid and invalid rows
+        const validRows = newRows.filter(row => !(row as any).validationErrors || (row as any).validationErrors.length === 0).length;
+        const invalidRows = newRows.length - validRows;
+        
+        // Show appropriate message
+        if (invalidRows === 0) {
+          setSaveMessage({ 
+            type: 'success', 
+            message: `Successfully pasted ${newRows.length} rows from Excel!` 
+          });
+        } else {
+          setSaveMessage({ 
+            type: 'error', 
+            message: `Pasted ${newRows.length} rows from Excel. ${validRows} valid, ${invalidRows} have errors. Please fix errors before saving.` 
+          });
+        }
+        
+        console.log(`✅ Added ${newRows.length} rows from Excel paste (${validRows} valid, ${invalidRows} with errors)`);
+      }
+    }
+  };
+
   const updateRow = (rowIndex: number, field: string, value: string) => {
     // Don't allow editing if row is being saved or has been saved
     const rowStatus = rowStatuses[rowIndex];
@@ -1679,9 +1818,24 @@ function PageManualGrid() {
       return;
     }
     
-    setRows(prev => prev.map((row, i) => 
-      i === rowIndex ? { ...row, [field]: value } : row
-    ));
+    setRows(prev => prev.map((row, i) => {
+      if (i === rowIndex) {
+        const updatedRow = { ...row, [field]: value };
+        
+        // Re-validate the row after update
+        const validationErrors = validateGridRow(updatedRow);
+        if (validationErrors.length > 0) {
+          updatedRow.status = `Error: ${validationErrors.join(', ')}`;
+          (updatedRow as any).validationErrors = validationErrors;
+        } else {
+          updatedRow.status = "OK";
+          (updatedRow as any).validationErrors = [];
+        }
+        
+        return updatedRow;
+      }
+      return row;
+    }));
   };
 
   const retryFailedRows = async () => {
@@ -1786,6 +1940,21 @@ function PageManualGrid() {
   const handleSaveAll = async () => {
     setIsSaving(true);
     setSaveMessage(null);
+    
+    // Validate all rows before saving
+    const validationErrors = rows.map((row, index) => {
+      const errors = validateGridRow(row);
+      return { index, errors };
+    }).filter(item => item.errors.length > 0);
+    
+    if (validationErrors.length > 0) {
+      setIsSaving(false);
+      setSaveMessage({ 
+        type: 'error', 
+        message: `Cannot save: ${validationErrors.length} rows have validation errors. Please fix them first.` 
+      });
+      return;
+    }
     
     // Initialize all rows as 'saving'
     const newStatuses: {[key: number]: 'saving' | 'saved' | 'error'} = {};
@@ -1930,7 +2099,10 @@ function PageManualGrid() {
             {saveMessage.message}
           </div>
         )}
-        <div className="overflow-x-auto">
+        <div 
+          className="overflow-x-auto"
+          onPaste={handlePaste}
+        >
           <table className="w-full text-sm min-w-max">
             <thead>
               <tr className="text-left text-zinc-500">
@@ -2000,7 +2172,7 @@ function PageManualGrid() {
                       </span>;
                     default:
                       return r.status.includes("Error") ? 
-                        <span className="text-amber-700 bg-amber-100 px-2 py-1 rounded-full text-xs">{r.status}</span> : 
+                        <span className="text-red-700 bg-red-100 px-2 py-1 rounded-full text-xs" title={r.status}>{r.status.length > 50 ? r.status.substring(0, 50) + '...' : r.status}</span> : 
                         <span className="text-emerald-700 bg-emerald-100 px-2 py-1 rounded-full text-xs">OK</span>;
                   }
                 };
