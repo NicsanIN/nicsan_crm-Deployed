@@ -719,22 +719,68 @@ function PageUpload() {
   )
 }
 
-function LabeledInput({ label, placeholder, hint, required, value, onChange }: { label: string; placeholder?: string; hint?: string; required?: boolean; value?: any; onChange?: (v:any)=>void }) {
+function LabeledInput({ label, placeholder, hint, required, value, onChange, error, suggestions }: { 
+  label: string; 
+  placeholder?: string; 
+  hint?: string; 
+  required?: boolean; 
+  value?: any; 
+  onChange?: (v:any)=>void;
+  error?: string;
+  suggestions?: string[];
+}) {
   return (
     <label className="block">
-      <div className="text-xs text-zinc-600 mb-1">{label} {required && <span className="text-rose-600">*</span>} {hint && <span className="text-[10px] text-zinc-400">({hint})</span>}</div>
-      <input value={value} onChange={e=>onChange && onChange(e.target.value)} className="w-full rounded-xl border border-zinc-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200" placeholder={placeholder} />
+      <div className="text-xs text-zinc-600 mb-1">
+        {label} {required && <span className="text-rose-600">*</span>} {hint && <span className="text-[10px] text-zinc-400">({hint})</span>}
+      </div>
+      <input 
+        value={value} 
+        onChange={e=>onChange && onChange(e.target.value)} 
+        className={`w-full rounded-xl border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200 ${
+          error ? 'border-red-300 bg-red-50' : 'border-zinc-300'
+        }`} 
+        placeholder={placeholder} 
+      />
+      {error && (
+        <div className="text-xs text-red-600 mt-1">{error}</div>
+      )}
+      {suggestions && suggestions.length > 0 && (
+        <div className="text-xs text-blue-600 mt-1">
+          Suggestions: {suggestions.slice(0, 3).join(', ')}
+          {suggestions.length > 3 && ` +${suggestions.length - 3} more`}
+        </div>
+      )}
     </label>
   )
 }
 
-function LabeledSelect({ label, value, onChange, options }: { label: string; value?: any; onChange?: (v:any)=>void; options: string[] }) {
+function LabeledSelect({ label, value, onChange, options, required, error }: { 
+  label: string; 
+  value?: any; 
+  onChange?: (v:any)=>void; 
+  options: string[];
+  required?: boolean;
+  error?: string;
+}) {
   return (
     <label className="block text-sm">
-      <div className="text-xs text-zinc-600 mb-1">{label}</div>
-      <select value={value} onChange={e=>onChange && onChange(e.target.value)} className="w-full rounded-xl border border-zinc-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200">
+      <div className="text-xs text-zinc-600 mb-1">
+        {label} {required && <span className="text-rose-600">*</span>}
+      </div>
+      <select 
+        value={value} 
+        onChange={e=>onChange && onChange(e.target.value)} 
+        className={`w-full rounded-xl border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200 ${
+          error ? 'border-red-300 bg-red-50' : 'border-zinc-300'
+        }`}
+      >
+        <option value="">Select {label}</option>
         {options.map(o=> <option key={o} value={o}>{o}</option>)}
       </select>
+      {error && (
+        <div className="text-xs text-red-600 mt-1">{error}</div>
+      )}
     </label>
   )
 }
@@ -776,7 +822,15 @@ function PageManualForm() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState<{type: 'success' | 'error', message: string} | null>(null);
-  const set = (k:string,v:any)=> setForm((f:any)=>({ ...f, [k]: v }));
+  const [validationHistory, setValidationHistory] = useState<any[]>([]);
+  const [fieldTouched, setFieldTouched] = useState<{[key: string]: boolean}>({});
+  const [validationMode, setValidationMode] = useState<'progressive' | 'strict'>('progressive');
+  
+  const set = (k:string,v:any)=> {
+    setForm((f:any)=>({ ...f, [k]: v }));
+    // Mark field as touched for progressive validation
+    setFieldTouched(prev => ({ ...prev, [k]: true }));
+  };
   const number = (v:any)=> (v===''||v===null)?0:parseFloat(v.toString().replace(/[^0-9.]/g,''))||0;
 
   // Two-way binding for cashback
@@ -794,6 +848,341 @@ function PageManualForm() {
     const tp = number(form.totalPremium); const amt = number(v);
     const pct = tp? ((amt/tp)*100).toFixed(1): ""; setForm({ ...form, cashbackAmt: v, cashbackPct: pct })
   }
+
+  // Advanced validation engine with business rules
+  const validateField = (fieldName: string, value: any, context?: any) => {
+    const errors: string[] = [];
+    
+    // Progressive validation - only validate touched fields or all fields in strict mode
+    if (validationMode === 'progressive' && !fieldTouched[fieldName]) {
+      return errors;
+    }
+
+    switch (fieldName) {
+      case 'policyNumber':
+        if (!value) {
+          errors.push('Policy Number is required');
+        } else if (!/^[A-Z0-9\-_]{3,20}$/.test(value)) {
+          errors.push('Policy Number must be 3-20 characters (letters, numbers, hyphens, underscores)');
+        }
+        break;
+        
+      case 'vehicleNumber':
+        if (!value) {
+          errors.push('Vehicle Number is required');
+        } else if (!/^[A-Z]{2}[0-9]{2}[A-Z]{2}[0-9]{4}$/.test(value)) {
+          errors.push('Vehicle Number must be in format: KA01AB1234');
+        }
+        break;
+        
+      case 'insurer':
+        if (!value) {
+          errors.push('Insurer (Company) is required');
+        } else if (value.length < 3) {
+          errors.push('Insurer name must be at least 3 characters');
+        }
+        break;
+        
+      case 'productType':
+        if (!value) {
+          errors.push('Product Type is required');
+        }
+        break;
+        
+      case 'vehicleType':
+        if (!value) {
+          errors.push('Vehicle Type is required');
+        }
+        break;
+        
+      case 'make':
+        if (!value) {
+          errors.push('Make is required');
+        } else if (value.length < 2) {
+          errors.push('Make must be at least 2 characters');
+        }
+        break;
+        
+      case 'model':
+        if (!value) {
+          errors.push('Model is required');
+        } else if (value.length < 2) {
+          errors.push('Model must be at least 2 characters');
+        }
+        break;
+        
+      case 'cc':
+        if (!value) {
+          errors.push('CC (engine size) is required');
+        } else if (!/^\d{3,5}$/.test(value)) {
+          errors.push('CC must be 3-5 digits');
+        }
+        break;
+        
+      case 'manufacturingYear':
+        if (!value) {
+          errors.push('Manufacturing Year is required');
+        } else {
+          const year = parseInt(value);
+          const currentYear = new Date().getFullYear();
+          if (isNaN(year) || year < 1990 || year > currentYear + 1) {
+            errors.push(`Manufacturing Year must be between 1990 and ${currentYear + 1}`);
+          }
+        }
+        break;
+        
+      case 'issueDate':
+        if (!value) {
+          errors.push('Issue Date is required');
+        } else {
+          const issueDate = new Date(value);
+          const today = new Date();
+          if (isNaN(issueDate.getTime()) || issueDate > today) {
+            errors.push('Issue Date must be a valid date not in the future');
+          }
+        }
+        break;
+        
+      case 'expiryDate':
+        if (!value) {
+          errors.push('Expiry Date is required');
+        } else {
+          const expiryDate = new Date(value);
+          const issueDate = form.issueDate ? new Date(form.issueDate) : new Date();
+          if (isNaN(expiryDate.getTime()) || expiryDate <= issueDate) {
+            errors.push('Expiry Date must be after Issue Date');
+          }
+        }
+        break;
+        
+      case 'idv':
+        if (!value) {
+          errors.push('IDV (₹) is required');
+        } else {
+          const idv = number(value);
+          if (idv <= 0 || idv > 100000000) {
+            errors.push('IDV must be between ₹1 and ₹10 crore');
+          }
+        }
+        break;
+        
+      case 'discount':
+        if (!value) {
+          errors.push('Discount (%) is required');
+        } else {
+          const discount = number(value);
+          if (discount < 0 || discount > 100) {
+            errors.push('Discount must be between 0% and 100%');
+          }
+        }
+        break;
+        
+      case 'netOd':
+        if (!value) {
+          errors.push('Net OD (₹) is required');
+        } else {
+          const netOd = number(value);
+          if (netOd < 0 || netOd > 10000000) {
+            errors.push('Net OD must be between ₹0 and ₹1 crore');
+          }
+        }
+        break;
+        
+      case 'totalOd':
+        if (!value) {
+          errors.push('Total OD (₹) is required');
+        } else {
+          const totalOd = number(value);
+          const netOd = number(form.netOd);
+          if (totalOd < 0 || totalOd > 10000000) {
+            errors.push('Total OD must be between ₹0 and ₹1 crore');
+          } else if (totalOd < netOd) {
+            errors.push('Total OD cannot be less than Net OD');
+          }
+        }
+        break;
+        
+      case 'totalPremium':
+        if (!value) {
+          errors.push('Total Premium (₹) is required');
+        } else {
+          const totalPremium = number(value);
+          if (totalPremium <= 0 || totalPremium > 1000000) {
+            errors.push('Total Premium must be between ₹1 and ₹10 lakh');
+          }
+        }
+        break;
+        
+      case 'customerPaid':
+        if (!value) {
+          errors.push('Customer Paid (₹) is required');
+        } else {
+          const customerPaid = number(value);
+          const totalPremium = number(form.totalPremium);
+          if (customerPaid < 0 || customerPaid > 1000000) {
+            errors.push('Customer Paid must be between ₹0 and ₹10 lakh');
+          } else if (customerPaid > totalPremium) {
+            errors.push('Customer Paid cannot exceed Total Premium');
+          }
+        }
+        break;
+        
+      case 'brokerage':
+        if (!value) {
+          errors.push('Brokerage (₹) is required');
+        } else {
+          const brokerage = number(value);
+          const totalPremium = number(form.totalPremium);
+          if (brokerage < 0 || brokerage > 100000) {
+            errors.push('Brokerage must be between ₹0 and ₹1 lakh');
+          } else if (brokerage > totalPremium * 0.15) {
+            errors.push('Brokerage cannot exceed 15% of Total Premium');
+          }
+        }
+        break;
+        
+      case 'callerName':
+        if (!value) {
+          errors.push('Caller Name is required');
+        } else if (value.length < 2) {
+          errors.push('Caller Name must be at least 2 characters');
+        }
+        break;
+        
+      case 'mobile':
+        if (!value) {
+          errors.push('Mobile Number is required');
+        } else if (!/^[6-9]\d{9}$/.test(value)) {
+          errors.push('Mobile Number must be 10 digits starting with 6-9');
+        }
+        break;
+        
+      case 'rollover':
+        if (!value) {
+          errors.push('Rollover/Renewal is required');
+        } else if (value.length < 3) {
+          errors.push('Rollover/Renewal must be at least 3 characters');
+        }
+        break;
+        
+      case 'remark':
+        if (!value) {
+          errors.push('Remark is required');
+        } else if (value.length < 5) {
+          errors.push('Remark must be at least 5 characters');
+        }
+        break;
+    }
+    
+    return errors;
+  };
+
+  // Cross-field validation
+  const validateCrossFields = () => {
+    const errors: string[] = [];
+    
+    // Premium validation
+    const netPremium = number(form.netPremium);
+    const totalPremium = number(form.totalPremium);
+    const netOd = number(form.netOd);
+    const totalOd = number(form.totalOd);
+    
+    if (netPremium > totalPremium) {
+      errors.push('Net Premium cannot exceed Total Premium');
+    }
+    
+    if (netOd > totalOd) {
+      errors.push('Net OD cannot exceed Total OD');
+    }
+    
+    // Cashback validation
+    const cashbackPct = number(form.cashbackPct);
+    const cashbackAmt = number(form.cashbackAmt);
+    
+    if (cashbackPct > 50) {
+      errors.push('Cashback percentage cannot exceed 50%');
+    }
+    
+    if (cashbackAmt > totalPremium * 0.5) {
+      errors.push('Cashback amount cannot exceed 50% of Total Premium');
+    }
+    
+    // Date validation
+    if (form.issueDate && form.expiryDate) {
+      const issueDate = new Date(form.issueDate);
+      const expiryDate = new Date(form.expiryDate);
+      const diffTime = expiryDate.getTime() - issueDate.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      
+      if (diffDays < 30) {
+        errors.push('Policy duration must be at least 30 days');
+      }
+      
+      if (diffDays > 1095) {
+        errors.push('Policy duration cannot exceed 3 years');
+      }
+    }
+    
+    return errors;
+  };
+
+  // Business rule validation
+  const validateBusinessRules = () => {
+    const errors: string[] = [];
+    
+    // NCB validation
+    const ncb = number(form.ncb);
+    if (ncb < 0 || ncb > 50) {
+      errors.push('NCB must be between 0% and 50%');
+    }
+    
+    // IDV vs Premium validation
+    const idv = number(form.idv);
+    const totalPremium = number(form.totalPremium);
+    if (totalPremium > idv * 0.1) {
+      errors.push('Total Premium cannot exceed 10% of IDV');
+    }
+    
+    // Executive validation
+    if (!form.executive) {
+      errors.push('Executive name is required');
+    } else if (form.executive.length < 2) {
+      errors.push('Executive name must be at least 2 characters');
+    }
+    
+    return errors;
+  };
+
+  // Get field-specific errors for progressive validation
+  const getFieldErrors = (fieldName: string) => {
+    if (validationMode === 'progressive' && !fieldTouched[fieldName]) {
+      return [];
+    }
+    return validateField(fieldName, form[fieldName]);
+  };
+
+  // Smart suggestions based on patterns
+  const getSmartSuggestions = (fieldName: string) => {
+    const suggestions: string[] = [];
+    
+    switch (fieldName) {
+      case 'make':
+        suggestions.push('Maruti', 'Hyundai', 'Honda', 'Tata', 'Mahindra', 'Toyota', 'Ford', 'Nissan');
+        break;
+      case 'model':
+        if (form.make === 'Maruti') {
+          suggestions.push('Swift', 'Dzire', 'Alto', 'WagonR', 'Baleno', 'Ertiga');
+        } else if (form.make === 'Hyundai') {
+          suggestions.push('i20', 'i10', 'Verna', 'Creta', 'Venue', 'Santro');
+        }
+        break;
+      case 'insurer':
+        suggestions.push('Tata AIG', 'ICICI Lombard', 'Bajaj Allianz', 'HDFC Ergo', 'Reliance General', 'Oriental Insurance');
+        break;
+    }
+    
+    return suggestions;
+  };
 
   const quickFill = ()=> {
     // Demo: pretend we fetched last year policy by vehicle no
@@ -955,18 +1344,39 @@ function PageManualForm() {
     }
   };
 
-  const errors = useMemo(()=> {
-    const e:string[] = [];
-    if (!form.policyNumber) e.push("Policy Number is required");
-    if (!form.vehicleNumber) e.push("Vehicle Number is required");
-    if (!form.insurer) e.push("Company (Insurer) is required");
-    if (!form.totalPremium) e.push("Total Premium is required");
-    return e;
-  }, [form])
+  // Comprehensive validation
+  const errors = useMemo(() => {
+    const allErrors: string[] = [];
+    
+    // Field-level validation
+    Object.keys(form).forEach(field => {
+      const fieldErrors = validateField(field, form[field]);
+      allErrors.push(...fieldErrors);
+    });
+    
+    // Cross-field validation
+    const crossFieldErrors = validateCrossFields();
+    allErrors.push(...crossFieldErrors);
+    
+    // Business rule validation
+    const businessRuleErrors = validateBusinessRules();
+    allErrors.push(...businessRuleErrors);
+    
+    // Log validation history for analytics
+    if (allErrors.length > 0) {
+      setValidationHistory(prev => [...prev, {
+        timestamp: new Date().toISOString(),
+        errors: allErrors,
+        formData: { ...form }
+      }]);
+    }
+    
+    return allErrors;
+  }, [form, fieldTouched, validationMode]);
 
   return (
     <>
-      <Card title="Manual Entry — Speed Mode" desc="All required columns. QuickFill; Required-first; two-way cashback; sticky save bar">
+      <Card title="Manual Entry — Enterprise Validation Mode" desc="Comprehensive validation with business rules, progressive feedback, and data quality assurance">
         {/* Success/Error Messages */}
         {submitMessage && (
           <div className={`mb-4 p-3 rounded-xl text-sm ${
@@ -977,6 +1387,21 @@ function PageManualForm() {
             {submitMessage.message}
           </div>
         )}
+        
+        {/* Validation Mode Toggle */}
+        <div className="mb-4 p-3 bg-blue-50 rounded-lg">
+          <div className="flex items-center justify-between">
+            <div className="text-sm font-medium text-blue-800">
+              🎯 Validation Mode: {validationMode === 'progressive' ? 'Progressive (Validates as you type)' : 'Strict (Validates all fields)'}
+            </div>
+            <button 
+              onClick={() => setValidationMode(prev => prev === 'progressive' ? 'strict' : 'progressive')}
+              className="px-3 py-1 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
+              Switch to {validationMode === 'progressive' ? 'Strict' : 'Progressive'}
+            </button>
+          </div>
+        </div>
         
         {/* Top row: Vehicle + QuickFill */}
         <div className="flex flex-col md:flex-row gap-3 mb-4">
