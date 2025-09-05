@@ -421,9 +421,11 @@ export class NicsanCRMService {
     };
   }
 
-  async confirmUploadAsPolicy(uploadId: string): Promise<any> {
+  async confirmUploadAsPolicy(uploadId: string, editedData?: any): Promise<any> {
     // Always check backend availability before API calls
     await this.checkBackendAvailability();
+    
+    console.log('🔍 Confirming upload as policy with edited data:', editedData);
     
     // Check if this is a mock upload ID
     if (uploadId.startsWith('mock_')) {
@@ -441,7 +443,7 @@ export class NicsanCRMService {
     
     if (this.isBackendAvailable) {
       try {
-        const result = await uploadAPI.confirmUploadAsPolicy(uploadId);
+        const result = await uploadAPI.confirmUploadAsPolicy(uploadId, editedData);
         return result;
       } catch (error: any) {
         if (ENABLE_DEBUG) console.error('Policy confirmation failed:', error);

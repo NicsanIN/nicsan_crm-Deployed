@@ -2685,6 +2685,38 @@ function PageReview() {
     return errors;
   };
 
+  const validateEditedData = () => {
+    const errors = [];
+    
+    // Validate PDF data
+    if (!editableData.pdfData.policy_number) {
+      errors.push('Policy Number is required');
+    }
+    if (!editableData.pdfData.vehicle_number) {
+      errors.push('Vehicle Number is required');
+    }
+    
+    // Validate manual extras
+    if (!editableData.manualExtras.executive) {
+      errors.push('Executive name is required');
+    }
+    if (!editableData.manualExtras.mobile) {
+      errors.push('Mobile number is required');
+    }
+    
+    // Format validation
+    if (editableData.pdfData.vehicle_number && !/^[A-Z]{2}[0-9]{2}[A-Z]{2}[0-9]{4}$/.test(editableData.pdfData.vehicle_number)) {
+      errors.push('Invalid vehicle number format (e.g., KA01AB1234)');
+    }
+    
+    // Mobile number validation
+    if (editableData.manualExtras.mobile && !/^[6-9]\d{9}$/.test(editableData.manualExtras.mobile)) {
+      errors.push('Invalid mobile number format (10 digits starting with 6-9)');
+    }
+    
+    return errors;
+  };
+
   const handleConfirmAndSave = async () => {
     setIsLoading(true);
     setSaveMessage(null);
@@ -2693,9 +2725,10 @@ function PageReview() {
       console.log('🔍 Starting Confirm & Save process...');
       console.log('🔍 Review data:', reviewData);
       console.log('🔍 Upload ID:', reviewData?.id);
+      console.log('🔍 Editable data:', editableData);
       
-      // Validate data before saving
-      const validationErrors = validateData();
+      // Validate edited data before saving
+      const validationErrors = validateEditedData();
       if (validationErrors.length > 0) {
         console.log('❌ Validation failed:', validationErrors);
         setSubmitMessage({ 
@@ -2726,16 +2759,19 @@ function PageReview() {
         return;
       }
       
-      console.log('💾 Processing real upload...');
-      // Confirm upload as policy for real uploads
-      const result = await NicsanCRMService.confirmUploadAsPolicy(reviewData.id);
+      console.log('💾 Processing real upload with edited data...');
+      // Send edited data to backend
+      const result = await NicsanCRMService.confirmUploadAsPolicy(reviewData.id, {
+        pdfData: editableData.pdfData,
+        manualExtras: editableData.manualExtras
+      });
       console.log('🔍 API result:', result);
       
       if (result.success) {
-        console.log('✅ Policy confirmed successfully!');
+        console.log('✅ Policy confirmed successfully with edited data!');
         setSubmitMessage({ 
           type: 'success', 
-          message: 'Policy confirmed and saved successfully!' 
+          message: 'Policy confirmed and saved successfully with your edits!' 
         });
         
         // Clear form after successful save

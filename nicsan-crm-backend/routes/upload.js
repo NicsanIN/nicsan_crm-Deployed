@@ -175,6 +175,10 @@ router.get('/', authenticateToken, requireOps, async (req, res) => {
 router.post('/:uploadId/confirm', authenticateToken, requireOps, async (req, res) => {
   try {
     const uploadId = req.params.uploadId;
+    const { editedData } = req.body;
+    
+    console.log('🔍 Confirming upload:', uploadId);
+    console.log('🔍 Edited data received:', editedData);
     
     // Validate upload exists and is in REVIEW status
     const upload = await storageService.getUploadStatus(uploadId);
@@ -193,10 +197,59 @@ router.post('/:uploadId/confirm', authenticateToken, requireOps, async (req, res
       });
     }
     
-    // Confirm upload as policy
-    const result = await storageService.confirmUploadAsPolicy(uploadId);
+    // Create policy data - use edited data if provided, otherwise original
+    let policyData;
     
-    res.json(result);
+    if (editedData && editedData.pdfData && editedData.manualExtras) {
+      // Use edited data
+      policyData = {
+        ...editedData.pdfData,
+        ...editedData.manualExtras,
+        source: 'PDF_UPLOAD',
+        s3_key: upload.s3_key,
+        confidence_score: upload.extracted_data?.extracted_data?.confidence_score || 0.8
+      };
+      
+      console.log('✅ Using edited data for policy creation');
+    } else {
+      // Fallback to original data
+      policyData = {
+        ...upload.extracted_data.extracted_data,
+        ...upload.extracted_data.manual_extras,
+        source: 'PDF_UPLOAD',
+        s3_key: upload.s3_key
+      };
+      
+      console.log('⚠️ Using original data for policy creation (no edited data provided)');
+    }
+    
+    // Validate policy data
+    if (!policyData.policy_number || !policyData.vehicle_number) {
+      return res.status(400).json({
+        success: false,
+        error: 'Policy number and vehicle number are required'
+      });
+    }
+    
+    // Save policy with the determined data
+    const result = await storageService.savePolicy(policyData);
+    
+    if (result.success) {
+      // Update upload status
+      await storageService.updateUploadStatus(uploadId, 'COMPLETED');
+      
+      console.log('✅ Policy created successfully with data source:', editedData ? 'EDITED' : 'ORIGINAL');
+      
+      res.json({
+        success: true,
+        data: result.data
+      });
+    } else {
+      res.status(400).json({
+        success: false,
+        error: result.error
+      });
+    }
   } catch (error) {
     console.error('Confirm upload error:', error);
     res.status(400).json({

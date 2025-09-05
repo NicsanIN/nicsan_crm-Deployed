@@ -366,9 +366,17 @@ export const uploadAPI = {
     });
   },
 
-  confirmUploadAsPolicy: async (uploadId: string): Promise<ApiResponse<any>> => {
+  confirmUploadAsPolicy: async (uploadId: string, editedData?: any): Promise<ApiResponse<any>> => {
+    const requestBody = editedData ? {
+      editedData: {
+        pdfData: editedData.pdfData,
+        manualExtras: editedData.manualExtras
+      }
+    } : {};
+    
     return apiCall(`/upload/${uploadId}/confirm`, {
       method: 'POST',
+      body: JSON.stringify(requestBody),
     });
   },
 
