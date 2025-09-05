@@ -366,10 +366,31 @@ class StorageService {
       
       // NEW: Enforce DIGIT/RELIANCE_GENERAL business rules
       if (extractedData.insurer === 'DIGIT' || extractedData.insurer === 'RELIANCE_GENERAL') {
-        // Enforce total_od = net_od rule for DIGIT and RELIANCE_GENERAL
-        if (extractedData.net_od && extractedData.total_od !== extractedData.net_od) {
-          console.log(`⚠️ Correcting ${extractedData.insurer} total_od to match net_od (${extractedData.net_od})`);
-          extractedData.total_od = extractedData.net_od;
+        // For DIGIT: All three fields (net_od, total_od, net_premium) should equal "Total OD Premium"
+        if (extractedData.insurer === 'DIGIT') {
+          // Find the "Total OD Premium" value from any of the three fields
+          const totalOdPremium = extractedData.net_od || extractedData.total_od || extractedData.net_premium;
+          if (totalOdPremium) {
+            console.log(`🔧 DIGIT: Setting all three fields to Total OD Premium value: ${totalOdPremium}`);
+            extractedData.net_od = totalOdPremium;
+            extractedData.total_od = totalOdPremium;
+            extractedData.net_premium = totalOdPremium;
+          }
+        } else if (extractedData.insurer === 'RELIANCE_GENERAL') {
+          // For RELIANCE_GENERAL: All three fields (net_od, total_od, net_premium) should equal "Total Own Damage Premium"
+          const totalOwnDamagePremium = extractedData.net_od || extractedData.total_od || extractedData.net_premium;
+          if (totalOwnDamagePremium) {
+            console.log(`🔧 RELIANCE_GENERAL: Setting all three fields to Total Own Damage Premium value: ${totalOwnDamagePremium}`);
+            extractedData.net_od = totalOwnDamagePremium;
+            extractedData.total_od = totalOwnDamagePremium;
+            extractedData.net_premium = totalOwnDamagePremium;
+          }
+        } else {
+          // For other insurers: Enforce total_od = net_od rule
+          if (extractedData.net_od && extractedData.total_od !== extractedData.net_od) {
+            console.log(`⚠️ Correcting ${extractedData.insurer} total_od to match net_od (${extractedData.net_od})`);
+            extractedData.total_od = extractedData.net_od;
+          }
         }
       }
       
