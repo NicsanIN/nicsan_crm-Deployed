@@ -75,9 +75,12 @@ CRITICAL EXTRACTION RULES:
 2. Look for "IDV (₹)" followed by a number in header sections
 3. IGNORE table values like "Vehicle IDV (₹)" or "Total IDV (₹)"
 4. Do NOT concatenate policy year with IDV values
-5. If multiple IDV values exist, choose the LARGEST one (individual vehicle value)
+5. For IDV: Look specifically for "IDV (₹):" in header sections, NOT "Vehicle IDV (₹)" or "Total IDV (₹)" in tables. TATA AIG uses "IDV (₹):" in policy header, ignore all table variations.
 6. Policy year and IDV are SEPARATE fields - do not combine them
 7. For table data, extract only the IDV column value, ignore policy year column
+8. For NET OD: Extract "Total Own Damage Premium (A)" values - this is the NET OD in TATA AIG
+9. For TOTAL OD: Extract "Total Premium" or "Total Amount" values - this is the TOTAL OD in TATA AIG
+10. For NCB: Extract percentage value, use 0 if not found (not 20)
 
 For ${insurer} insurance policies. If a field is not found, use null. For dates, use YYYY-MM-DD format. For numbers, use actual numbers not strings.
 

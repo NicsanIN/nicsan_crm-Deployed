@@ -354,7 +354,7 @@ class StorageService {
         issue_date: openaiResult.issue_date || new Date().toISOString().split('T')[0],
         expiry_date: openaiResult.expiry_date || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
         idv: parseInt(correctedIdv) || 495000,
-        ncb: parseInt(openaiResult.ncb) || 20,
+        ncb: openaiResult.ncb !== null && openaiResult.ncb !== undefined ? parseInt(openaiResult.ncb) : 0,
         discount: parseInt(openaiResult.discount) || 0,
         net_od: parseInt(openaiResult.net_od) || 5400,
         ref: openaiResult.ref || '',
@@ -372,6 +372,7 @@ class StorageService {
           extractedData.total_od = extractedData.net_od;
         }
       }
+      
       
       console.log('✅ OpenAI result parsed successfully');
       return extractedData;
