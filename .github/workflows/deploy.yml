@@ -1,89 +1,90 @@
 name: deploy
 
 on:
-  workflow_dispatch:
   push:
-    branches: [ main ]
-    paths:
-      - "nicsan-crm-backend/**"
-      - ".github/workflows/deploy.yml"
+    branches: [ "main" ]
+
+# REQUIRED for OIDC + aws-actions/configure-aws-credentials
+permissions:
+  id-token: write
+  contents: read
 
 env:
-  AWS_REGION: ${{ secrets.AWS_REGION }}
-  ROLE_ARN:   ${{ secrets.AWS_ROLE_ARN }}
-  ECR_REPO:   ${{ secrets.ECR_REPO }}
-  ECS_CLUSTER: ${{ secrets.ECS_CLUSTER }}
-  ECS_SERVICE: ${{ secrets.ECS_SERVICE }}
-  TASK_FAMILY: ${{ secrets.TASK_FAMILY }}
-  CONTAINER:   ${{ secrets.CONTAINER }}
-
-permissions:
-  id-token: write     # required for OIDC
-  contents: read
+  AWS_REGION: ap-south-1
+  AWS_ACCOUNT_ID: "132418765186"
+  # Change if your ECR repo name is different
+  ECR_REPOSITORY: "nicsan-crm-api"
+  # ECS resources
+  ECS_CLUSTER: "nicsan-backend-cluster"
+  ECS_SERVICE: "nicsan-backend-svc"
+  TASK_FAMILY: "nicsan-backend-task"
+  # Name of the container in your task definition
+  CONTAINER_NAME: "backend"
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
 
-      - name: Configure AWS credentials
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # --- OIDC + AWS credentials (minimal header requirement) ---
+      - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::132418765186:role/GitHubActionsDeploy-Backend
-          role-session-name: github-actions
-          aws-region: ap-south-1
+          aws-region: ${{ env.AWS_REGION }}
+          audience: sts.amazonaws.com
+      # ------------------------------------------------------------
 
+      # Optional: uncomment to inspect claims if you still see OIDC issues
+      # - name: Debug OIDC claims (temporary)
+      #   shell: bash
+      #   run: |
+      #     echo "repo=${{ github.repository }}"
+      #     echo "ref=${{ github.ref }}"
+      #     echo "actor=${{ github.actor }}"
 
-      - name: Login to ECR
-        id: ecr
+      - name: Login to Amazon ECR
+        id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build & push image
+      - name: Build, tag, and push image to ECR
         env:
-          ECR_REGISTRY: ${{ steps.ecr.outputs.registry }}
+          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
         run: |
-          docker build -f nicsan-crm-backend/Dockerfile -t $ECR_REGISTRY/$ECR_REPO:$IMAGE_TAG nicsan-crm-backend
-          docker push $ECR_REGISTRY/$ECR_REPO:$IMAGE_TAG
-          echo "IMAGE_URI=$ECR_REGISTRY/$ECR_REPO:$IMAGE_TAG" >> $GITHUB_ENV
+          set -e
+          echo "Building image..."
+          docker build \
+            -f nicsan-crm-backend/Dockerfile \
+            -t "$REGISTRY/${{ env.ECR_REPOSITORY }}:$IMAGE_TAG" \
+            nicsan-crm-backend
 
-      - name: Get current task def
+          echo "Pushing image..."
+          docker push "$REGISTRY/${{ env.ECR_REPOSITORY }}:$IMAGE_TAG"
+
+          echo "IMAGE_URI=$REGISTRY/${{ env.ECR_REPOSITORY }}:$IMAGE_TAG" >> $GITHUB_ENV
+
+      - name: Download current task definition
         run: |
-          aws ecs describe-task-definition --task-definition "$TASK_FAMILY" \
-            --query "taskDefinition" > taskdef.json
+          aws ecs describe-task-definition \
+            --task-definition "${{ env.TASK_FAMILY }}" \
+            --query taskDefinition > task-def.json
 
-      - name: Update image in task def
-        run: |
-          # Replace the container image (must match your container name exactly)
-          IMAGE_URI="${IMAGE_URI}"
-          CONTAINER="${CONTAINER}"
+      - name: Render task definition with new image
+        id: render-tdef
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-def.json
+          container-name: ${{ env.CONTAINER_NAME }}
+          image: ${{ env.IMAGE_URI }}
 
-          # jq to patch the image & strip fields ECS forbids on register
-          jq --arg c "$CONTAINER" --arg i "$IMAGE_URI" '
-            .containerDefinitions |=
-              (map(if .name == $c then .image = $i else . end)) |
-            del(.taskDefinitionArn, .revision, .status, .requiresAttributes,
-                .compatibilities, .registeredAt, .registeredBy)
-          ' taskdef.json > taskdef.effective.json
-
-      - name: Register new task def
-        id: register
-        run: |
-          ARN=$(aws ecs register-task-definition \
-              --cli-input-json file://taskdef.effective.json \
-              --query "taskDefinition.taskDefinitionArn" -o text)
-          echo "TD_ARN=$ARN" >> $GITHUB_OUTPUT
-
-      - name: Deploy service
-        run: |
-          aws ecs update-service \
-            --cluster "$ECS_CLUSTER" \
-            --service "$ECS_SERVICE" \
-            --task-definition "${{ steps.register.outputs.TD_ARN }}" \
-            --force-new-deployment > /dev/null
-
-      - name: Wait for stable
-        run: |
-          aws ecs wait services-stable --cluster "$ECS_CLUSTER" --services "$ECS_SERVICE"
-          echo "✅ ECS service is stable."
+      - name: Deploy to Amazon ECS
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition: ${{ steps.render-tdef.outputs.task-definition }}
+          service: ${{ env.ECS_SERVICE }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: true
