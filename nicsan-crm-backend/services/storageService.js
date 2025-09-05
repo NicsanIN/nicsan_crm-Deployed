@@ -167,8 +167,8 @@ class StorageService {
       
       const { file, insurer, manualExtras } = uploadData;
       
-      // 1. Upload to S3 (Primary Storage)
-      const s3Key = generateS3Key(file.originalname, insurer);
+      // 1. Upload to S3 (Primary Storage) with insurer detection
+      const s3Key = await generateS3Key(file.originalname, insurer, file.buffer);
       const s3Result = await uploadToS3(file, s3Key);
       
       // 2. Save metadata to PostgreSQL (Secondary Storage)
@@ -225,12 +225,25 @@ class StorageService {
       let extractedData;
       try {
         const openaiResult = await extractTextFromPDF(upload.s3_key, upload.insurer);
-        extractedData = this.parseOpenAIResult(openaiResult, upload.insurer);
+        extractedData = this.parseOpenAIResult(openaiResult);
         console.log('✅ OpenAI processing successful');
       } catch (openaiError) {
         console.error('⚠️ OpenAI failed, using mock data:', openaiError.message);
         // Fallback to mock data when OpenAI fails
         extractedData = this.generateMockExtractedData(upload.filename, upload.insurer);
+      }
+      
+      // NEW: Log insurer mismatch but continue processing
+      if (extractedData.insurer && extractedData.insurer !== upload.insurer) {
+        console.log(`⚠️ Insurer mismatch detected: PDF contains ${extractedData.insurer} but was uploaded as ${upload.insurer}`);
+        console.log(`📝 Continuing with detected insurer: ${extractedData.insurer}`);
+        
+        // Add mismatch info to extracted data but don't fail
+        extractedData.mismatch_info = {
+          selected_insurer: upload.insurer,
+          detected_insurer: extractedData.insurer,
+          message: `PDF content indicates ${extractedData.insurer} policy, but was uploaded as ${upload.insurer}`
+        };
       }
       
       // Update status in PostgreSQL
@@ -351,6 +364,15 @@ class StorageService {
         confidence_score: openaiResult.confidence_score || 0.95 // OpenAI typically has higher confidence
       };
       
+      // NEW: Enforce DIGIT/RELIANCE_GENERAL business rules
+      if (extractedData.insurer === 'DIGIT' || extractedData.insurer === 'RELIANCE_GENERAL') {
+        // Enforce total_od = net_od rule for DIGIT and RELIANCE_GENERAL
+        if (extractedData.net_od && extractedData.total_od !== extractedData.net_od) {
+          console.log(`⚠️ Correcting ${extractedData.insurer} total_od to match net_od (${extractedData.net_od})`);
+          extractedData.total_od = extractedData.net_od;
+        }
+      }
+      
       console.log('✅ OpenAI result parsed successfully');
       return extractedData;
     } catch (error) {
@@ -452,7 +474,7 @@ class StorageService {
 
       // Transform to policy format with null safety and numeric validation
       const policyData = {
-        // PDF extracted data with null safety
+        // PDF extracted data with null safety - prioritize extracted insurer
         policy_number: extractedData?.policy_number || `POL-${Date.now()}`,
         vehicle_number: extractedData?.vehicle_number || 'KA01AB0000',
         insurer: extractedData?.insurer || upload.insurer || 'TATA_AIG',

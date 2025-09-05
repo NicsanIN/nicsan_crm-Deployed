@@ -58,8 +58,15 @@ router.post('/pdf', authenticateToken, requireOps, upload.single('pdf'), async (
     if (result.success) {
       try {
         console.log('🔄 Auto-triggering OpenAI processing...');
-        await storageService.processPDF(result.data.uploadId);
-        console.log('✅ OpenAI processing completed automatically');
+        const processResult = await storageService.processPDF(result.data.uploadId);
+        
+        if (!processResult.success && processResult.data?.status === 'INSURER_MISMATCH') {
+          console.log('⚠️ Insurer mismatch detected, but allowing upload to continue');
+          // Log the mismatch but don't fail the upload
+          console.log(`Mismatch details: ${processResult.error}`);
+        } else {
+          console.log('✅ OpenAI processing completed automatically');
+        }
       } catch (processError) {
         console.error('⚠️ Auto OpenAI processing failed:', processError.message);
         // Don't fail the upload if OpenAI fails

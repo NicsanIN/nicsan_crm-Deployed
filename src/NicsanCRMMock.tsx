@@ -226,7 +226,7 @@ function OpsSidebar({ page, setPage }: { page: string; setPage: (p: string) => v
 function PageUpload() {
   const [uploadStatus, setUploadStatus] = useState<string>('');
   const [uploadedFiles, setUploadedFiles] = useState<any[]>([]);
-  const [selectedInsurer, setSelectedInsurer] = useState<'TATA_AIG' | 'DIGIT'>('TATA_AIG');
+  const [selectedInsurer, setSelectedInsurer] = useState<'TATA_AIG' | 'DIGIT' | 'RELIANCE_GENERAL'>('TATA_AIG');
   const [manualExtras, setManualExtras] = useState({
     executive: '',
     callerName: '',
@@ -301,7 +301,9 @@ function PageUpload() {
               // Mock PDF data for demo (in real app, this comes from Textract)
               policy_number: "TA-" + Math.floor(Math.random() * 10000),
               vehicle_number: "KA01AB" + Math.floor(Math.random() * 1000),
-              insurer: selectedInsurer === 'TATA_AIG' ? 'Tata AIG' : 'Digit',
+              insurer: selectedInsurer === 'TATA_AIG' ? 'Tata AIG' : 
+                       selectedInsurer === 'DIGIT' ? 'Digit' : 
+                       selectedInsurer === 'RELIANCE_GENERAL' ? 'Reliance General' : 'Unknown',
               product_type: "Private Car",
               vehicle_type: "Private Car",
               make: "Maruti",
@@ -348,7 +350,30 @@ function PageUpload() {
         });
         setManualExtrasSaved(false);
       } else {
-        setUploadStatus(`Upload failed: ${result.error}`);
+        // Handle insurer mismatch error specifically
+        if (result.data?.status === 'INSURER_MISMATCH') {
+          setUploadStatus(`❌ Insurer Mismatch: ${result.error}`);
+          
+          // Add to uploaded files list with INSURER_MISMATCH status
+          const newFile = {
+            id: result.data.uploadId,
+            filename: file.name,
+            status: 'INSURER_MISMATCH',
+            insurer: selectedInsurer,
+            s3_key: result.data?.s3Key || `uploads/${Date.now()}_${file.name}`,
+            time: new Date().toLocaleTimeString(),
+            size: (file.size / 1024 / 1024).toFixed(2) + ' MB',
+            extracted_data: {
+              insurer: selectedInsurer,
+              status: 'INSURER_MISMATCH',
+              error: result.error
+            }
+          };
+          
+          setUploadedFiles(prev => [...prev, newFile]);
+        } else {
+          setUploadStatus(`Upload failed: ${result.error}`);
+        }
       }
     } catch (error) {
       setUploadStatus(`Upload error: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -410,6 +435,9 @@ function PageUpload() {
           } else if (status === 'FAILED') {
             setUploadStatus('PDF processing failed. Please try again.');
             return; // Stop polling
+          } else if (status === 'INSURER_MISMATCH') {
+            setUploadStatus('❌ Insurer mismatch detected. Please check your selection and upload the correct PDF.');
+            return; // Stop polling
           }
           
           // Continue polling if still processing
@@ -449,9 +477,10 @@ function PageUpload() {
             <label className="flex items-center gap-2">
               <input 
                 type="radio" 
+                name="insurer"
                 value="TATA_AIG" 
                 checked={selectedInsurer === 'TATA_AIG'}
-                onChange={(e) => setSelectedInsurer(e.target.value as 'TATA_AIG' | 'DIGIT')}
+                onChange={(e) => setSelectedInsurer(e.target.value as 'TATA_AIG' | 'DIGIT' | 'RELIANCE_GENERAL')}
                 className="w-4 h-4 text-indigo-600"
               />
               <span className="text-sm">Tata AIG</span>
@@ -459,12 +488,24 @@ function PageUpload() {
             <label className="flex items-center gap-2">
               <input 
                 type="radio" 
+                name="insurer"
                 value="DIGIT" 
                 checked={selectedInsurer === 'DIGIT'}
-                onChange={(e) => setSelectedInsurer(e.target.value as 'TATA_AIG' | 'DIGIT')}
+                onChange={(e) => setSelectedInsurer(e.target.value as 'TATA_AIG' | 'DIGIT' | 'RELIANCE_GENERAL')}
                 className="w-4 h-4 text-indigo-600"
               />
               <span className="text-sm">Digit</span>
+            </label>
+            <label className="flex items-center gap-2">
+              <input 
+                type="radio" 
+                name="insurer"
+                value="RELIANCE_GENERAL" 
+                checked={selectedInsurer === 'RELIANCE_GENERAL'}
+                onChange={(e) => setSelectedInsurer(e.target.value as 'TATA_AIG' | 'DIGIT' | 'RELIANCE_GENERAL')}
+                className="w-4 h-4 text-indigo-600"
+              />
+              <span className="text-sm">Reliance General</span>
             </label>
           </div>
         </div>
@@ -687,7 +728,9 @@ function PageUpload() {
                             ? 'bg-blue-100 text-blue-700'
                             : 'bg-green-100 text-green-700'
                         }`}>
-                          {file.insurer === 'TATA_AIG' ? 'Tata AIG' : 'Digit'}
+                          {file.insurer === 'TATA_AIG' ? 'Tata AIG' : 
+                           file.insurer === 'DIGIT' ? 'Digit' : 
+                           file.insurer === 'RELIANCE_GENERAL' ? 'Reliance General' : 'Unknown'}
                         </span>
                       </td>
                       <td className="py-2">{file.size}</td>
@@ -702,6 +745,8 @@ function PageUpload() {
                             : file.status === 'COMPLETED'
                             ? 'bg-green-100 text-green-700'
                             : file.status === 'FAILED'
+                            ? 'bg-red-100 text-red-700'
+                            : file.status === 'INSURER_MISMATCH'
                             ? 'bg-red-100 text-red-700'
                             : 'bg-gray-100 text-gray-700'
                         }`}>
@@ -1732,25 +1777,25 @@ function PageManualGrid() {
           
           // Map Excel columns to grid fields
           const newRow = {
-            // Basic Info
-            src: "MANUAL_GRID", 
+      // Basic Info
+      src: "MANUAL_GRID", 
             policy: cells[0] || "", 
             vehicle: cells[1] || "", 
             insurer: cells[2] || "",
-            
-            // Vehicle Details
+      
+      // Vehicle Details
             productType: cells[3] || "Private Car",
             vehicleType: cells[4] || "Private Car",
             make: cells[5] || "", 
             model: cells[6] || "",
             cc: cells[7] || "",
             manufacturingYear: cells[8] || "",
-            
-            // Dates
+      
+      // Dates
             issueDate: cells[9] || "",
             expiryDate: cells[10] || "",
-            
-            // Financial
+      
+      // Financial
             idv: cells[11] || "",
             ncb: cells[12] || "",
             discount: cells[13] || "",
@@ -1763,13 +1808,13 @@ function PageManualGrid() {
             cashbackAmt: cells[20] || "",
             customerPaid: cells[21] || "",
             brokerage: cells[22] || "",
-            
-            // Contact Info
+      
+      // Contact Info
             executive: cells[23] || "",
             callerName: cells[24] || "",
             mobile: cells[25] || "",
-            
-            // Additional
+      
+      // Additional
             rollover: cells[26] || "",
             remark: cells[27] || "",
             cashback: cells[28] || "", 
@@ -1968,51 +2013,51 @@ function PageManualGrid() {
       const results = await Promise.allSettled(
         rows.map(async (row, index) => {
           try {
-            const policyData = {
-              // Basic Info
-              policy_number: row.policy,
-              vehicle_number: row.vehicle,
-              insurer: row.insurer,
-              
-              // Vehicle Details
-              product_type: row.productType || 'Private Car',
-              vehicle_type: row.vehicleType || 'Private Car',
-              make: row.make || 'Unknown',
-              model: row.model || '',
-              cc: row.cc || '',
-              manufacturing_year: row.manufacturingYear || '',
-              
-              // Dates
-              issue_date: row.issueDate || new Date().toISOString().split('T')[0],
-              expiry_date: row.expiryDate || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-              
-              // Financial
-              idv: (parseFloat(row.idv) || 0).toString(),
-              ncb: (parseFloat(row.ncb) || 0).toString(),
-              discount: (parseFloat(row.discount) || 0).toString(),
-              net_od: (parseFloat(row.netOd) || 0).toString(),
-              ref: row.ref || '',
-              total_od: (parseFloat(row.totalOd) || 0).toString(),
-              net_premium: (parseFloat(row.netPremium) || 0).toString(),
-              total_premium: parseFloat(row.totalPremium).toString(),
-              cashback_percentage: (parseFloat(row.cashbackPct) || 0).toString(),
-              cashback_amount: (parseFloat(row.cashbackAmt) || 0).toString(),
-              customer_paid: (parseFloat(row.customerPaid) || 0).toString(),
-              brokerage: (parseFloat(row.brokerage) || 0).toString(),
-              
-              // Contact Info
-              executive: row.executive || 'Unknown',
-              caller_name: row.callerName || 'Unknown',
-              mobile: row.mobile || '0000000000',
-              
-              // Additional
-              rollover: row.rollover || '',
-              remark: row.remark || '',
-              cashback: (parseFloat(row.cashback) || 0).toString(),
-              source: 'MANUAL_GRID'
-            };
-            
-            await NicsanCRMService.createPolicy(policyData);
+        const policyData = {
+          // Basic Info
+          policy_number: row.policy,
+          vehicle_number: row.vehicle,
+          insurer: row.insurer,
+          
+          // Vehicle Details
+          product_type: row.productType || 'Private Car',
+          vehicle_type: row.vehicleType || 'Private Car',
+          make: row.make || 'Unknown',
+          model: row.model || '',
+          cc: row.cc || '',
+          manufacturing_year: row.manufacturingYear || '',
+          
+          // Dates
+          issue_date: row.issueDate || new Date().toISOString().split('T')[0],
+          expiry_date: row.expiryDate || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          
+          // Financial
+          idv: (parseFloat(row.idv) || 0).toString(),
+          ncb: (parseFloat(row.ncb) || 0).toString(),
+          discount: (parseFloat(row.discount) || 0).toString(),
+          net_od: (parseFloat(row.netOd) || 0).toString(),
+          ref: row.ref || '',
+          total_od: (parseFloat(row.totalOd) || 0).toString(),
+          net_premium: (parseFloat(row.netPremium) || 0).toString(),
+          total_premium: parseFloat(row.totalPremium).toString(),
+          cashback_percentage: (parseFloat(row.cashbackPct) || 0).toString(),
+          cashback_amount: (parseFloat(row.cashbackAmt) || 0).toString(),
+          customer_paid: (parseFloat(row.customerPaid) || 0).toString(),
+          brokerage: (parseFloat(row.brokerage) || 0).toString(),
+          
+          // Contact Info
+          executive: row.executive || 'Unknown',
+          caller_name: row.callerName || 'Unknown',
+          mobile: row.mobile || '0000000000',
+          
+          // Additional
+          rollover: row.rollover || '',
+          remark: row.remark || '',
+          cashback: (parseFloat(row.cashback) || 0).toString(),
+          source: 'MANUAL_GRID'
+        };
+        
+        await NicsanCRMService.createPolicy(policyData);
             return { index, success: true };
           } catch (error) {
             console.error(`Failed to save row ${index}:`, error);
