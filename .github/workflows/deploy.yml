@@ -1,99 +1,89 @@
-name: Deploy backend to ECS
+name: deploy
 
 on:
+  workflow_dispatch:
   push:
     branches: [ main ]
-  workflow_dispatch:
+    paths:
+      - "nicsan-crm-backend/**"
+      - ".github/workflows/deploy.yml"
 
-# Prevent overlapping deploys on the same branch
-concurrency:
-  group: deploy-${{ github.ref }}
-  cancel-in-progress: true
+permissions:
+  id-token: write   # OIDC
+  contents: read
 
 env:
-  AWS_REGION: ap-south-1
-  AWS_ACCOUNT_ID: "132418765186"
-  ECR_REPO: nicsan-crm-api
-  ECS_CLUSTER: nicsan-crm
-  ECS_SERVICE: nicsan-backend-svc
-  ECS_TASK_FAMILY: nicsan-backend-task
-  CONTAINER_NAME: backend
-  BUILD_CONTEXT: nicsan-crm-backend            # <- change if your backend folder is different
-  DOCKERFILE: nicsan-crm-backend/Dockerfile    # <- change if your Dockerfile location differs
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  ROLE_ARN:   ${{ secrets.AWS_ROLE_ARN }}
+  ECR_REPO:   ${{ secrets.ECR_REPO }}
+  ECS_CLUSTER: ${{ secrets.ECS_CLUSTER }}
+  ECS_SERVICE: ${{ secrets.ECS_SERVICE }}
+  TASK_FAMILY: ${{ secrets.TASK_FAMILY }}
+  CONTAINER:   ${{ secrets.CONTAINER }}
 
 jobs:
-  deploy:
-    name: Build, Push, and Deploy
+  build-and-deploy:
     runs-on: ubuntu-latest
-    permissions:
-      id-token: write         # OIDC
-      contents: read
 
     steps:
       - name: Checkout
-      - uses: actions/checkout@v4
+        uses: actions/checkout@v4
 
-      - name: Configure AWS credentials (OIDC)
+      - name: Configure AWS (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::132418765186:role/GithubActionsDeploy-Backend
+          role-to-assume: ${{ env.ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Login to Amazon ECR
+      - name: Login to ECR
         id: ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build and push image
-        id: build
-        run: |
-          IMAGE_URI=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}
-          TAG=prod-${GITHUB_SHA::12}
-          echo "IMAGE_URI=${IMAGE_URI}:${TAG}" >> $GITHUB_OUTPUT
-
-          docker build -f "${DOCKERFILE}" -t "${IMAGE_URI}:${TAG}" "${BUILD_CONTEXT}"
-          docker push "${IMAGE_URI}:${TAG}"
+      - name: Build & push image
         env:
-          AWS_REGION: ${{ vars.AWS_REGION }}
-          AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
-          ECR_REPO: ${{ env.ECR_REPO }}
-          DOCKERFILE: ${{ env.DOCKERFILE }}
-          BUILD_CONTEXT: ${{ env.BUILD_CONTEXT }}
-
-      - name: Fetch current task definition
+          ECR_REGISTRY: ${{ steps.ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
         run: |
-          aws ecs describe-task-definition \
-            --task-definition "${ECS_TASK_FAMILY}" \
-            --query 'taskDefinition' \
-            --output json > td.json
+          docker build -f nicsan-crm-backend/Dockerfile -t $ECR_REGISTRY/$ECR_REPO:$IMAGE_TAG nicsan-crm-backend
+          docker push $ECR_REGISTRY/$ECR_REPO:$IMAGE_TAG
+          echo "IMAGE_URI=$ECR_REGISTRY/$ECR_REPO:$IMAGE_TAG" >> $GITHUB_ENV
 
-      - name: Create new task definition with new image
+      - name: Get current task def
         run: |
-          NEW_IMAGE="${{ steps.build.outputs.IMAGE_URI }}"
-          # Strip fields AWS won't accept on register
-          cat td.json \
-            | jq 'del(.taskDefinitionArn,.revision,.status,.requiresAttributes,.compatibilities,.registeredAt,.registeredBy,.deregisteredAt)' \
-            | jq --arg IMG "$NEW_IMAGE" --arg NAME "${CONTAINER_NAME}" \
-                 '(.containerDefinitions[] | select(.name==$NAME) | .image) |= $IMG' \
-            > td.effective.json
+          aws ecs describe-task-definition --task-definition "$TASK_FAMILY" \
+            --query "taskDefinition" > taskdef.json
 
-          echo "Registering new task def..."
-          TD_ARN=$(aws ecs register-task-definition \
-              --cli-input-json file://td.effective.json \
-              --query 'taskDefinition.taskDefinitionArn' \
-              --output text)
-          echo "TD_ARN=$TD_ARN" >> $GITHUB_ENV
+      - name: Update image in task def
+        run: |
+          # Replace the container image (must match your container name exactly)
+          IMAGE_URI="${IMAGE_URI}"
+          CONTAINER="${CONTAINER}"
 
-      - name: Update service to new task definition
+          # jq to patch the image & strip fields ECS forbids on register
+          jq --arg c "$CONTAINER" --arg i "$IMAGE_URI" '
+            .containerDefinitions |=
+              (map(if .name == $c then .image = $i else . end)) |
+            del(.taskDefinitionArn, .revision, .status, .requiresAttributes,
+                .compatibilities, .registeredAt, .registeredBy)
+          ' taskdef.json > taskdef.effective.json
+
+      - name: Register new task def
+        id: register
+        run: |
+          ARN=$(aws ecs register-task-definition \
+              --cli-input-json file://taskdef.effective.json \
+              --query "taskDefinition.taskDefinitionArn" -o text)
+          echo "TD_ARN=$ARN" >> $GITHUB_OUTPUT
+
+      - name: Deploy service
         run: |
           aws ecs update-service \
-            --cluster "${ECS_CLUSTER}" \
-            --service "${ECS_SERVICE}" \
-            --task-definition "${TD_ARN}" \
-            --force-new-deployment \
-            --region "${AWS_REGION}"
+            --cluster "$ECS_CLUSTER" \
+            --service "$ECS_SERVICE" \
+            --task-definition "${{ steps.register.outputs.TD_ARN }}" \
+            --force-new-deployment > /dev/null
 
-      - name: Show deployment status
+      - name: Wait for stable
         run: |
-          aws ecs describe-services --cluster "${ECS_CLUSTER}" --services "${ECS_SERVICE}" \
-            --query 'services[0].deployments[*].{id:id,status:status,desired:desiredCount,running:runningCount,createdAt:createdAt}' \
-            --output table
+          aws ecs wait services-stable --cluster "$ECS_CLUSTER" --services "$ECS_SERVICE"
+          echo "✅ ECS service is stable."
