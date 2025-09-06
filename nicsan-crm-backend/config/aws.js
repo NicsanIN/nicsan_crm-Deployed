@@ -71,12 +71,31 @@ const extractTextFromPDF = async (s3Key, insurer = 'TATA_AIG') => {
   }
 };
 
-// Generate unique S3 key
-const generateS3Key = (filename, insurer) => {
-  const timestamp = Date.now();
-  const randomId = Math.random().toString(36).substring(2, 15);
-  const extension = filename.split('.').pop();
-  return `uploads/${insurer}/${timestamp}_${randomId}.${extension}`;
+// Generate unique S3 key with insurer detection
+const generateS3Key = async (filename, selectedInsurer, fileBuffer) => {
+  try {
+    // Detect insurer from PDF content
+    const insurerDetectionService = require('../services/insurerDetectionService');
+    const detectedInsurer = await insurerDetectionService.detectInsurerFromPDF(fileBuffer);
+    
+    // Use detected insurer if available, otherwise use selected insurer
+    const insurer = detectedInsurer !== 'UNKNOWN' ? detectedInsurer : selectedInsurer;
+    
+    const timestamp = Date.now();
+    const randomId = Math.random().toString(36).substring(2, 15);
+    const extension = filename.split('.').pop();
+    
+    console.log(`📁 S3 Key: Using ${insurer} for file ${filename} (detected: ${detectedInsurer}, selected: ${selectedInsurer})`);
+    
+    return `uploads/${insurer}/${timestamp}_${randomId}.${extension}`;
+  } catch (error) {
+    console.error('❌ Insurer detection failed, using selected insurer:', error);
+    // Fallback to selected insurer if detection fails
+    const timestamp = Date.now();
+    const randomId = Math.random().toString(36).substring(2, 15);
+    const extension = filename.split('.').pop();
+    return `uploads/${selectedInsurer}/${timestamp}_${randomId}.${extension}`;
+  }
 };
 
 // Generate S3 key for confirmed policies

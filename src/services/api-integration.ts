@@ -1,7 +1,7 @@
 // Real API Integration Service for Nicsan CRM
 // This replaces the mock data with actual backend API calls
 
-import { authAPI, policiesAPI, uploadAPI, dashboardAPI, usersAPI } from './api';
+import { authAPI, policiesAPI, uploadAPI, dashboardAPI, usersAPI, settingsAPI } from './api';
 
 // Environment variables
 const HEALTH_URL = import.meta.env.VITE_BACKEND_HEALTH_URL || 'http://localhost:3001/health';
@@ -285,6 +285,267 @@ export class NicsanCRMService {
     };
   }
 
+  // Search policies by vehicle number
+  async searchPoliciesByVehicle(vehicleNumber: string): Promise<any> {
+    await this.checkBackendAvailability();
+    
+    if (this.isBackendAvailable) {
+      try {
+        const result = await policiesAPI.searchPoliciesByVehicle(vehicleNumber);
+        return result;
+      } catch (error: any) {
+        return {
+          success: false,
+          error: error.message || 'Vehicle search failed',
+          data: []
+        };
+      }
+    } else {
+      // Fallback to mock search
+      const mockResults = mockData.policies.filter(policy => 
+        policy.vehicle_number.toLowerCase().includes(vehicleNumber.toLowerCase())
+      );
+      return {
+        success: true,
+        data: mockResults,
+        message: 'Using mock data (Backend unavailable)'
+      };
+    }
+  }
+
+  // Search policies by policy number
+  async searchPoliciesByPolicyNumber(policyNumber: string): Promise<any> {
+    await this.checkBackendAvailability();
+    
+    if (this.isBackendAvailable) {
+      try {
+        const result = await policiesAPI.searchPoliciesByPolicyNumber(policyNumber);
+        return result;
+      } catch (error: any) {
+        return {
+          success: false,
+          error: error.message || 'Policy search failed',
+          data: []
+        };
+      }
+    } else {
+      // Fallback to mock search
+      const mockResults = mockData.policies.filter(policy => 
+        policy.policy_number.toLowerCase().includes(policyNumber.toLowerCase())
+      );
+      return {
+        success: true,
+        data: mockResults,
+        message: 'Using mock data (Backend unavailable)'
+      };
+    }
+  }
+
+  // Combined search
+  async searchPolicies(query: string): Promise<any> {
+    await this.checkBackendAvailability();
+    
+    if (this.isBackendAvailable) {
+      try {
+        const result = await policiesAPI.searchPolicies(query);
+        return result;
+      } catch (error: any) {
+        return {
+          success: false,
+          error: error.message || 'Search failed',
+          data: []
+        };
+      }
+    } else {
+      // Fallback to mock search
+      const mockResults = mockData.policies.filter(policy => 
+        policy.vehicle_number.toLowerCase().includes(query.toLowerCase()) ||
+        policy.policy_number.toLowerCase().includes(query.toLowerCase())
+      );
+      return {
+        success: true,
+        data: mockResults,
+        message: 'Using mock data (Backend unavailable)'
+      };
+    }
+  }
+
+  // Settings methods - Dual Storage Pattern (S3 Primary, PostgreSQL Secondary, Local Fallback)
+  async getSettings(): Promise<any> {
+    await this.checkBackendAvailability();
+    
+    if (this.isBackendAvailable) {
+      try {
+        const result = await settingsAPI.getSettings();
+        if (result.success) {
+          return {
+            success: true,
+            data: result.data,
+            source: 'S3_CLOUD', // Primary storage
+            message: 'Settings loaded from cloud storage'
+          };
+        } else {
+          // Try local storage fallback
+          const localData = localStorage.getItem('nicsan_settings');
+          if (localData) {
+            return {
+              success: true,
+              data: JSON.parse(localData),
+              source: 'LOCAL_STORAGE',
+              message: 'Settings loaded from local storage (Cloud unavailable)'
+            };
+          }
+          return {
+            success: false,
+            error: result.error || 'Failed to load settings',
+            data: this.getDefaultSettings(),
+            source: 'DEFAULT_VALUES'
+          };
+        }
+      } catch (error: any) {
+        // Try local storage fallback
+        const localData = localStorage.getItem('nicsan_settings');
+        if (localData) {
+          return {
+            success: true,
+            data: JSON.parse(localData),
+            source: 'LOCAL_STORAGE',
+            message: 'Settings loaded from local storage (Backend error)'
+          };
+        }
+        return {
+          success: false,
+          error: error.message || 'Failed to load settings',
+          data: this.getDefaultSettings(),
+          source: 'DEFAULT_VALUES'
+        };
+      }
+    } else {
+      // Backend unavailable - try local storage
+      const localData = localStorage.getItem('nicsan_settings');
+      if (localData) {
+        return {
+          success: true,
+          data: JSON.parse(localData),
+          source: 'LOCAL_STORAGE',
+          message: 'Settings loaded from local storage (Backend unavailable)'
+        };
+      }
+      // Fallback to default settings
+      return {
+        success: true,
+        data: this.getDefaultSettings(),
+        source: 'DEFAULT_VALUES',
+        message: 'Using default settings (No data available)'
+      };
+    }
+  }
+
+  async saveSettings(settings: any): Promise<any> {
+    await this.checkBackendAvailability();
+    
+    if (this.isBackendAvailable) {
+      try {
+        const result = await settingsAPI.saveSettings(settings);
+        if (result.success) {
+          // Also save to local storage as backup
+          localStorage.setItem('nicsan_settings', JSON.stringify(settings));
+          return {
+            success: true,
+            data: result.data,
+            source: 'S3_CLOUD',
+            message: 'Settings saved to cloud storage'
+          };
+        } else {
+          // Save to local storage as fallback
+          localStorage.setItem('nicsan_settings', JSON.stringify(settings));
+          return {
+            success: true,
+            data: settings,
+            source: 'LOCAL_STORAGE',
+            message: 'Settings saved locally (Cloud save failed)'
+          };
+        }
+      } catch (error: any) {
+        // Save to local storage as fallback
+        localStorage.setItem('nicsan_settings', JSON.stringify(settings));
+        return {
+          success: true,
+          data: settings,
+          source: 'LOCAL_STORAGE',
+          message: 'Settings saved locally (Backend error)'
+        };
+      }
+    } else {
+      // Backend unavailable - save to local storage
+      localStorage.setItem('nicsan_settings', JSON.stringify(settings));
+      return {
+        success: true,
+        data: settings,
+        source: 'LOCAL_STORAGE',
+        message: 'Settings saved locally (Backend unavailable)'
+      };
+    }
+  }
+
+  async resetSettings(): Promise<any> {
+    await this.checkBackendAvailability();
+    
+    const defaultSettings = this.getDefaultSettings();
+    
+    if (this.isBackendAvailable) {
+      try {
+        const result = await settingsAPI.resetSettings();
+        if (result.success) {
+          // Also save to local storage as backup
+          localStorage.setItem('nicsan_settings', JSON.stringify(defaultSettings));
+          return {
+            success: true,
+            data: result.data,
+            source: 'S3_CLOUD',
+            message: 'Settings reset in cloud storage'
+          };
+        } else {
+          // Reset local storage as fallback
+          localStorage.setItem('nicsan_settings', JSON.stringify(defaultSettings));
+          return {
+            success: true,
+            data: defaultSettings,
+            source: 'LOCAL_STORAGE',
+            message: 'Settings reset locally (Cloud reset failed)'
+          };
+        }
+      } catch (error: any) {
+        // Reset local storage as fallback
+        localStorage.setItem('nicsan_settings', JSON.stringify(defaultSettings));
+        return {
+          success: true,
+          data: defaultSettings,
+          source: 'LOCAL_STORAGE',
+          message: 'Settings reset locally (Backend error)'
+        };
+      }
+    } else {
+      // Backend unavailable - reset local storage
+      localStorage.setItem('nicsan_settings', JSON.stringify(defaultSettings));
+      return {
+        success: true,
+        data: defaultSettings,
+        source: 'LOCAL_STORAGE',
+        message: 'Settings reset locally (Backend unavailable)'
+      };
+    }
+  }
+
+  private getDefaultSettings() {
+    return {
+      brokeragePercent: '15',
+      repDailyCost: '2000',
+      expectedConversion: '25',
+      premiumGrowth: '10'
+    };
+  }
+
   // Upload methods
   async getUploads(page: number = 1, limit: number = 20): Promise<any> {
     // Always check backend availability before API calls
@@ -421,9 +682,11 @@ export class NicsanCRMService {
     };
   }
 
-  async confirmUploadAsPolicy(uploadId: string): Promise<any> {
+  async confirmUploadAsPolicy(uploadId: string, editedData?: any): Promise<any> {
     // Always check backend availability before API calls
     await this.checkBackendAvailability();
+    
+    console.log('🔍 Confirming upload as policy with edited data:', editedData);
     
     // Check if this is a mock upload ID
     if (uploadId.startsWith('mock_')) {
@@ -441,7 +704,7 @@ export class NicsanCRMService {
     
     if (this.isBackendAvailable) {
       try {
-        const result = await uploadAPI.confirmUploadAsPolicy(uploadId);
+        const result = await uploadAPI.confirmUploadAsPolicy(uploadId, editedData);
         return result;
       } catch (error: any) {
         if (ENABLE_DEBUG) console.error('Policy confirmation failed:', error);

@@ -111,6 +111,28 @@ const initializeDatabase = async () => {
       )
     `);
 
+    // Create settings table
+    await query(`
+      CREATE TABLE IF NOT EXISTS settings (
+        id SERIAL PRIMARY KEY,
+        key VARCHAR(100) UNIQUE NOT NULL,
+        value TEXT NOT NULL,
+        description TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Insert default settings
+    await query(`
+      INSERT INTO settings (key, value, description) VALUES
+      ('brokeragePercent', '15', 'Percentage of GWP that we earn as brokerage'),
+      ('repDailyCost', '2000', 'Daily cost per sales representative'),
+      ('expectedConversion', '25', 'Expected conversion rate for lead valuation'),
+      ('premiumGrowth', '10', 'Expected premium growth rate for LTV calculations')
+      ON CONFLICT (key) DO NOTHING
+    `);
+
     console.log('✅ Database tables initialized successfully');
   } catch (error) {
     console.error('❌ Database initialization error:', error);

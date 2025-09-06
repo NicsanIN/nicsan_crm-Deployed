@@ -219,6 +219,25 @@ export const policiesAPI = {
     return apiCall(`/policies?${params}`);
   },
 
+  // Search methods
+  searchPoliciesByVehicle: async (vehicleNumber: string): Promise<ApiResponse<Policy[]>> => {
+    return apiCall(`/policies/search/vehicle/${encodeURIComponent(vehicleNumber)}`, {
+      method: 'GET',
+    });
+  },
+
+  searchPoliciesByPolicyNumber: async (policyNumber: string): Promise<ApiResponse<Policy[]>> => {
+    return apiCall(`/policies/search/policy/${encodeURIComponent(policyNumber)}`, {
+      method: 'GET',
+    });
+  },
+
+  searchPolicies: async (query: string): Promise<ApiResponse<Policy[]>> => {
+    return apiCall(`/policies/search/${encodeURIComponent(query)}`, {
+      method: 'GET',
+    });
+  },
+
   getPolicy: async (id: string): Promise<ApiResponse<Policy>> => {
     return apiCall(`/policies/${id}`);
   },
@@ -234,6 +253,33 @@ export const policiesAPI = {
     return apiCall('/policies/grid', {
       method: 'POST',
       body: JSON.stringify({ entries }),
+    });
+  },
+
+  // Check if policy number already exists
+  checkDuplicate: async (policyNumber: string): Promise<ApiResponse<{ policyNumber: string; exists: boolean }>> => {
+    return apiCall(`/policies/check-duplicate/${encodeURIComponent(policyNumber)}`);
+  },
+};
+
+// Settings API
+export const settingsAPI = {
+  getSettings: async (): Promise<ApiResponse<any>> => {
+    return apiCall('/settings', {
+      method: 'GET',
+    });
+  },
+
+  saveSettings: async (settings: any): Promise<ApiResponse<any>> => {
+    return apiCall('/settings', {
+      method: 'PUT',
+      body: JSON.stringify({ settings }),
+    });
+  },
+
+  resetSettings: async (): Promise<ApiResponse<any>> => {
+    return apiCall('/settings/reset', {
+      method: 'POST',
     });
   },
 };
@@ -361,9 +407,17 @@ export const uploadAPI = {
     });
   },
 
-  confirmUploadAsPolicy: async (uploadId: string): Promise<ApiResponse<any>> => {
+  confirmUploadAsPolicy: async (uploadId: string, editedData?: any): Promise<ApiResponse<any>> => {
+    const requestBody = editedData ? {
+      editedData: {
+        pdfData: editedData.pdfData,
+        manualExtras: editedData.manualExtras
+      }
+    } : {};
+    
     return apiCall(`/upload/${uploadId}/confirm`, {
       method: 'POST',
+      body: JSON.stringify(requestBody),
     });
   },
 
@@ -486,5 +540,6 @@ export default {
   upload: uploadAPI,
   dashboard: dashboardAPI,
   users: usersAPI,
+  settings: settingsAPI,
   utils: authUtils,
 };

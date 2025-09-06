@@ -3,8 +3,10 @@ import { Upload, FileText, CheckCircle2, AlertTriangle, Table2, Settings, Layout
 import { ResponsiveContainer, CartesianGrid, BarChart, Bar, Legend, Area, AreaChart, XAxis, YAxis, Tooltip } from "recharts";
 import { authUtils } from './services/api';
 import NicsanCRMService from './services/api-integration';
+import { policiesAPI } from './services/api';
 import DualStorageService from './services/dualStorageService';
 import CrossDeviceSyncDemo from './components/CrossDeviceSyncDemo';
+import { SettingsProvider, useSettings } from './contexts/SettingsContext';
 
 // Environment variables
 const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
@@ -225,14 +227,14 @@ function OpsSidebar({ page, setPage }: { page: string; setPage: (p: string) => v
 function PageUpload() {
   const [uploadStatus, setUploadStatus] = useState<string>('');
   const [uploadedFiles, setUploadedFiles] = useState<any[]>([]);
-  const [selectedInsurer, setSelectedInsurer] = useState<'TATA_AIG' | 'DIGIT'>('TATA_AIG');
+  const [selectedInsurer, setSelectedInsurer] = useState<'TATA_AIG' | 'DIGIT' | 'RELIANCE_GENERAL'>('TATA_AIG');
   const [manualExtras, setManualExtras] = useState({
     executive: '',
     callerName: '',
     mobile: '',
     rollover: '',
     remark: '',
-    brokerage: '',
+    brokerage: '0',
     cashback: '',
     customerPaid: '',
     customerChequeNo: '',
@@ -240,6 +242,7 @@ function PageUpload() {
   });
   const [manualExtrasSaved, setManualExtrasSaved] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [callerNames, setCallerNames] = useState<string[]>([]);
 
   const handleFiles = async (files: FileList) => {
     const file = files[0];
@@ -300,7 +303,9 @@ function PageUpload() {
               // Mock PDF data for demo (in real app, this comes from Textract)
               policy_number: "TA-" + Math.floor(Math.random() * 10000),
               vehicle_number: "KA01AB" + Math.floor(Math.random() * 1000),
-              insurer: selectedInsurer === 'TATA_AIG' ? 'Tata AIG' : 'Digit',
+              insurer: selectedInsurer === 'TATA_AIG' ? 'Tata AIG' : 
+                       selectedInsurer === 'DIGIT' ? 'Digit' : 
+                       selectedInsurer === 'RELIANCE_GENERAL' ? 'Reliance General' : 'Unknown',
               product_type: "Private Car",
               vehicle_type: "Private Car",
               make: "Maruti",
@@ -347,7 +352,30 @@ function PageUpload() {
         });
         setManualExtrasSaved(false);
       } else {
-        setUploadStatus(`Upload failed: ${result.error}`);
+        // Handle insurer mismatch error specifically
+        if (result.data?.status === 'INSURER_MISMATCH') {
+          setUploadStatus(`❌ Insurer Mismatch: ${result.error}`);
+          
+          // Add to uploaded files list with INSURER_MISMATCH status
+          const newFile = {
+            id: result.data.uploadId,
+            filename: file.name,
+            status: 'INSURER_MISMATCH',
+            insurer: selectedInsurer,
+            s3_key: result.data?.s3Key || `uploads/${Date.now()}_${file.name}`,
+            time: new Date().toLocaleTimeString(),
+            size: (file.size / 1024 / 1024).toFixed(2) + ' MB',
+            extracted_data: {
+              insurer: selectedInsurer,
+              status: 'INSURER_MISMATCH',
+              error: result.error
+            }
+          };
+          
+          setUploadedFiles(prev => [...prev, newFile]);
+        } else {
+          setUploadStatus(`Upload failed: ${result.error}`);
+        }
       }
     } catch (error) {
       setUploadStatus(`Upload error: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -409,6 +437,9 @@ function PageUpload() {
           } else if (status === 'FAILED') {
             setUploadStatus('PDF processing failed. Please try again.');
             return; // Stop polling
+          } else if (status === 'INSURER_MISMATCH') {
+            setUploadStatus('❌ Insurer mismatch detected. Please check your selection and upload the correct PDF.');
+            return; // Stop polling
           }
           
           // Continue polling if still processing
@@ -438,6 +469,63 @@ function PageUpload() {
     setManualExtras(prev => ({ ...prev, [field]: value }));
   };
 
+  // Load real caller names on component mount
+  useEffect(() => {
+    const loadCallerNames = async () => {
+      try {
+        const response = await DualStorageService.getSalesReps();
+        if (response.success && response.data) {
+          const names = response.data
+            .map((rep: any) => rep.name)
+            .filter((name: string) => name && name !== 'Unknown');
+          setCallerNames(names);
+        }
+      } catch (error) {
+        console.warn('Failed to load caller names:', error);
+        // Fallback to mock data
+        setCallerNames(['Priya Singh', 'Rahul Kumar', 'Anjali Sharma']);
+      }
+    };
+    
+    loadCallerNames();
+  }, []);
+
+  // Smart suggestions for caller names
+  const getSmartSuggestions = (fieldName: string) => {
+    if (fieldName === 'callerName') {
+      return callerNames; // Real caller names from database
+    }
+    return [];
+  };
+
+  // Filtered caller suggestions for autocomplete
+  const getFilteredCallerSuggestions = async (input: string): Promise<string[]> => {
+    if (input.length < 2) return [];
+    
+    try {
+      const response = await DualStorageService.getSalesReps();
+      if (response.success && response.data) {
+        const filteredNames = response.data
+          .map((rep: any) => rep.name)
+          .filter((name: string) => 
+            name && 
+            name !== 'Unknown' && 
+            name.toLowerCase().includes(input.toLowerCase())
+          )
+          .slice(0, 5); // Limit to 5 suggestions
+        return filteredNames;
+      }
+    } catch (error) {
+      console.warn('Failed to get caller suggestions:', error);
+    }
+    
+    // Fallback to mock data with filtering
+    const mockCallers = ['Priya Singh', 'Rahul Kumar', 'Anjali Sharma'];
+    return mockCallers.filter(name => 
+      name.toLowerCase().includes(input.toLowerCase())
+    );
+  };
+
   return (
     <>
       <Card title="Drag & Drop PDF" desc="(S3 = cloud folder; Textract = PDF reader bot). Tata AIG & Digit only in v1.">
@@ -448,9 +536,10 @@ function PageUpload() {
             <label className="flex items-center gap-2">
               <input 
                 type="radio" 
+                name="insurer"
                 value="TATA_AIG" 
                 checked={selectedInsurer === 'TATA_AIG'}
-                onChange={(e) => setSelectedInsurer(e.target.value as 'TATA_AIG' | 'DIGIT')}
+                onChange={(e) => setSelectedInsurer(e.target.value as 'TATA_AIG' | 'DIGIT' | 'RELIANCE_GENERAL')}
                 className="w-4 h-4 text-indigo-600"
               />
               <span className="text-sm">Tata AIG</span>
@@ -458,12 +547,24 @@ function PageUpload() {
             <label className="flex items-center gap-2">
               <input 
                 type="radio" 
+                name="insurer"
                 value="DIGIT" 
                 checked={selectedInsurer === 'DIGIT'}
-                onChange={(e) => setSelectedInsurer(e.target.value as 'TATA_AIG' | 'DIGIT')}
+                onChange={(e) => setSelectedInsurer(e.target.value as 'TATA_AIG' | 'DIGIT' | 'RELIANCE_GENERAL')}
                 className="w-4 h-4 text-indigo-600"
               />
               <span className="text-sm">Digit</span>
+            </label>
+            <label className="flex items-center gap-2">
+              <input 
+                type="radio" 
+                name="insurer"
+                value="RELIANCE_GENERAL" 
+                checked={selectedInsurer === 'RELIANCE_GENERAL'}
+                onChange={(e) => setSelectedInsurer(e.target.value as 'TATA_AIG' | 'DIGIT' | 'RELIANCE_GENERAL')}
+                className="w-4 h-4 text-indigo-600"
+              />
+              <span className="text-sm">Reliance General</span>
             </label>
           </div>
         </div>
@@ -483,13 +584,12 @@ function PageUpload() {
               />
             </div>
             <div>
-              <label className="block text-xs text-blue-700 mb-1">Caller Name</label>
-              <input 
-                type="text" 
+              <AutocompleteInput 
+                label="Caller Name" 
                 placeholder="Telecaller name"
                 value={manualExtras.callerName}
-                onChange={(e) => handleManualExtrasChange('callerName', e.target.value)}
-                className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                onChange={(value) => handleManualExtrasChange('callerName', value)}
+                getSuggestions={getFilteredCallerSuggestions}
               />
             </div>
             <div>
@@ -512,7 +612,7 @@ function PageUpload() {
                 className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
               />
             </div>
-            <div>
+            <div style={{ display: 'none' }}>
               <label className="block text-xs text-blue-700 mb-1">Brokerage (₹)</label>
               <input 
                 type="number" 
@@ -686,7 +786,9 @@ function PageUpload() {
                             ? 'bg-blue-100 text-blue-700'
                             : 'bg-green-100 text-green-700'
                         }`}>
-                          {file.insurer === 'TATA_AIG' ? 'Tata AIG' : 'Digit'}
+                          {file.insurer === 'TATA_AIG' ? 'Tata AIG' : 
+                           file.insurer === 'DIGIT' ? 'Digit' : 
+                           file.insurer === 'RELIANCE_GENERAL' ? 'Reliance General' : 'Unknown'}
                         </span>
                       </td>
                       <td className="py-2">{file.size}</td>
@@ -701,6 +803,8 @@ function PageUpload() {
                             : file.status === 'COMPLETED'
                             ? 'bg-green-100 text-green-700'
                             : file.status === 'FAILED'
+                            ? 'bg-red-100 text-red-700'
+                            : file.status === 'INSURER_MISMATCH'
                             ? 'bg-red-100 text-red-700'
                             : 'bg-gray-100 text-gray-700'
                         }`}>
@@ -753,6 +857,123 @@ function LabeledInput({ label, placeholder, hint, required, value, onChange, err
       )}
     </label>
   )
+}
+
+function AutocompleteInput({ 
+  label, 
+  placeholder, 
+  hint, 
+  required, 
+  value, 
+  onChange, 
+  error, 
+  getSuggestions 
+}: { 
+  label: string; 
+  placeholder?: string; 
+  hint?: string; 
+  required?: boolean; 
+  value?: any; 
+  onChange?: (v:any)=>void;
+  error?: string;
+  getSuggestions?: (input: string) => Promise<string[]>;
+}) {
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Debounced suggestions loading
+  const debouncedGetSuggestions = useMemo(
+    () => {
+      let timeoutId: NodeJS.Timeout;
+      return (input: string) => {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(async () => {
+          if (input.length >= 2 && getSuggestions) {
+            setIsLoading(true);
+            try {
+              const newSuggestions = await getSuggestions(input);
+              setSuggestions(newSuggestions);
+              setShowSuggestions(true);
+            } catch (error) {
+              console.warn('Failed to get suggestions:', error);
+              setSuggestions([]);
+            } finally {
+              setIsLoading(false);
+            }
+          } else {
+            setSuggestions([]);
+            setShowSuggestions(false);
+          }
+        }, 300);
+      };
+    },
+    [getSuggestions]
+  );
+
+  const handleInputChange = (inputValue: string) => {
+    onChange && onChange(inputValue);
+    debouncedGetSuggestions(inputValue);
+  };
+
+  const handleSuggestionClick = (suggestion: string) => {
+    onChange && onChange(suggestion);
+    setShowSuggestions(false);
+  };
+
+  const handleInputFocus = () => {
+    if (value && value.length >= 2) {
+      setShowSuggestions(suggestions.length > 0);
+    }
+  };
+
+  const handleInputBlur = () => {
+    // Delay hiding to allow click on suggestions
+    setTimeout(() => setShowSuggestions(false), 200);
+  };
+
+  return (
+    <div className="relative">
+      <label className="block">
+        <div className="text-xs text-zinc-600 mb-1">
+          {label} {required && <span className="text-rose-600">*</span>} {hint && <span className="text-[10px] text-zinc-400">({hint})</span>}
+        </div>
+        <input 
+          value={value} 
+          onChange={e => handleInputChange(e.target.value)}
+          onFocus={handleInputFocus}
+          onBlur={handleInputBlur}
+          className={`w-full rounded-xl border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200 ${
+            error ? 'border-red-300 bg-red-50' : 'border-zinc-300'
+          }`} 
+          placeholder={placeholder} 
+        />
+        {isLoading && (
+          <div className="absolute right-3 top-8 text-blue-500">
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
+          </div>
+        )}
+        {error && (
+          <div className="text-xs text-red-600 mt-1">{error}</div>
+        )}
+      </label>
+      
+      {/* Dropdown with click functionality */}
+      {showSuggestions && suggestions.length > 0 && (
+        <div className="absolute z-10 mt-1 w-full bg-white border border-zinc-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+          {suggestions.map((suggestion, index) => (
+            <div
+              key={index}
+              className="px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-zinc-100 last:border-b-0"
+              onClick={() => handleSuggestionClick(suggestion)}
+            >
+              {suggestion}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function LabeledSelect({ label, value, onChange, options, required, error }: { 
@@ -817,7 +1038,7 @@ function PageManualForm() {
     mobile: "",
     rollover: "",
     remark: "",
-    brokerage: "",
+    brokerage: "0",
     cashback: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -825,6 +1046,7 @@ function PageManualForm() {
   const [validationHistory, setValidationHistory] = useState<any[]>([]);
   const [fieldTouched, setFieldTouched] = useState<{[key: string]: boolean}>({});
   const [validationMode, setValidationMode] = useState<'progressive' | 'strict'>('progressive');
+  const [callerNames, setCallerNames] = useState<string[]>([]);
   
   const set = (k:string,v:any)=> {
     setForm((f:any)=>({ ...f, [k]: v }));
@@ -1027,19 +1249,20 @@ function PageManualForm() {
         }
         break;
         
-      case 'brokerage':
-        if (!value) {
-          errors.push('Brokerage (₹) is required');
-        } else {
-          const brokerage = number(value);
-          const totalPremium = number(form.totalPremium);
-          if (brokerage < 0 || brokerage > 100000) {
-            errors.push('Brokerage must be between ₹0 and ₹1 lakh');
-          } else if (brokerage > totalPremium * 0.15) {
-            errors.push('Brokerage cannot exceed 15% of Total Premium');
-          }
-        }
-        break;
+      // Brokerage validation removed - field is hidden
+      // case 'brokerage':
+      //   if (!value) {
+      //     errors.push('Brokerage (₹) is required');
+      //   } else {
+      //     const brokerage = number(value);
+      //     const totalPremium = number(form.totalPremium);
+      //     if (brokerage < 0 || brokerage > 100000) {
+      //       errors.push('Brokerage must be between ₹0 and ₹1 lakh');
+      //     } else if (brokerage > totalPremium * 0.15) {
+      //       errors.push('Brokerage cannot exceed 15% of Total Premium');
+      //     }
+      //   }
+      //   break;
         
       case 'callerName':
         if (!value) {
@@ -1158,6 +1381,13 @@ function PageManualForm() {
     if (validationMode === 'progressive' && !fieldTouched[fieldName]) {
       return [];
     }
+    
+    // For policy number, return async errors
+    if (fieldName === 'policyNumber') {
+      return asyncErrors[fieldName] || [];
+    }
+    
+    // For other fields, return synchronous validation
     return validateField(fieldName, form[fieldName]);
   };
 
@@ -1179,9 +1409,39 @@ function PageManualForm() {
       case 'insurer':
         suggestions.push('Tata AIG', 'ICICI Lombard', 'Bajaj Allianz', 'HDFC Ergo', 'Reliance General', 'Oriental Insurance');
         break;
+      case 'callerName':
+        return callerNames; // Real caller names from database
     }
     
     return suggestions;
+  };
+
+  // Filtered caller suggestions for autocomplete
+  const getFilteredCallerSuggestions = async (input: string): Promise<string[]> => {
+    if (input.length < 2) return [];
+    
+    try {
+      const response = await DualStorageService.getSalesReps();
+      if (response.success && response.data) {
+        const filteredNames = response.data
+          .map((rep: any) => rep.name)
+          .filter((name: string) => 
+            name && 
+            name !== 'Unknown' && 
+            name.toLowerCase().includes(input.toLowerCase())
+          )
+          .slice(0, 5); // Limit to 5 suggestions
+        return filteredNames;
+      }
+    } catch (error) {
+      console.warn('Failed to get caller suggestions:', error);
+    }
+    
+    // Fallback to mock data with filtering
+    const mockCallers = ['Priya Singh', 'Rahul Kumar', 'Anjali Sharma'];
+    return mockCallers.filter(name => 
+      name.toLowerCase().includes(input.toLowerCase())
+    );
   };
 
   const quickFill = ()=> {
@@ -1344,14 +1604,40 @@ function PageManualForm() {
     }
   };
 
-  // Comprehensive validation
+  // State for async validation errors
+  const [asyncErrors, setAsyncErrors] = useState<{[key: string]: string[]}>({});
+
+  // Load real caller names on component mount
+  useEffect(() => {
+    const loadCallerNames = async () => {
+      try {
+        const response = await DualStorageService.getSalesReps();
+        if (response.success && response.data) {
+          const names = response.data
+            .map((rep: any) => rep.name)
+            .filter((name: string) => name && name !== 'Unknown');
+          setCallerNames(names);
+        }
+      } catch (error) {
+        console.warn('Failed to load caller names:', error);
+        // Fallback to mock data
+        setCallerNames(['Priya Singh', 'Rahul Kumar', 'Anjali Sharma']);
+      }
+    };
+    
+    loadCallerNames();
+  }, []);
+
+  // Comprehensive validation (synchronous part)
   const errors = useMemo(() => {
     const allErrors: string[] = [];
     
-    // Field-level validation
+    // Field-level validation (synchronous only)
     Object.keys(form).forEach(field => {
-      const fieldErrors = validateField(field, form[field]);
-      allErrors.push(...fieldErrors);
+      if (field !== 'policyNumber') { // Skip async fields
+        const fieldErrors = validateField(field, form[field]);
+        allErrors.push(...fieldErrors);
+      }
     });
     
     // Cross-field validation
@@ -1361,6 +1647,11 @@ function PageManualForm() {
     // Business rule validation
     const businessRuleErrors = validateBusinessRules();
     allErrors.push(...businessRuleErrors);
+    
+    // Add async errors
+    Object.values(asyncErrors).forEach(fieldErrors => {
+      allErrors.push(...fieldErrors);
+    });
     
     // Log validation history for analytics
     if (allErrors.length > 0) {
@@ -1372,7 +1663,52 @@ function PageManualForm() {
     }
     
     return allErrors;
-  }, [form, fieldTouched, validationMode]);
+  }, [form, fieldTouched, validationMode, asyncErrors]);
+
+  // Async validation for policy number
+  const validatePolicyNumberAsync = async (value: string) => {
+    const errors: string[] = [];
+    
+    if (!value) {
+      return errors;
+    }
+    
+    if (!/^[A-Z0-9\-_]{3,20}$/.test(value)) {
+      return errors; // Format validation handled by sync validation
+    }
+    
+    try {
+      const response = await policiesAPI.checkDuplicate(value);
+      if (response.success && response.data?.exists) {
+        errors.push('Policy number already exists. Please use a different number.');
+      }
+    } catch (error) {
+      console.warn('Policy number duplicate check failed:', error);
+      // Don't add error if check fails - allow user to proceed
+    }
+    
+    return errors;
+  };
+
+  // Handle async validation for policy number
+  useEffect(() => {
+    const validatePolicyNumber = async () => {
+      if (form.policyNumber && fieldTouched.policyNumber) {
+        try {
+          const fieldErrors = await validatePolicyNumberAsync(form.policyNumber);
+          setAsyncErrors(prev => ({
+            ...prev,
+            policyNumber: fieldErrors
+          }));
+        } catch (error) {
+          console.warn('Policy number validation failed:', error);
+        }
+      }
+    };
+
+    const timeoutId = setTimeout(validatePolicyNumber, 500); // Debounce
+    return () => clearTimeout(timeoutId);
+  }, [form.policyNumber, fieldTouched.policyNumber]);
 
   return (
     <>
@@ -1451,14 +1787,16 @@ function PageManualForm() {
 
         {/* Brokerage & Additional */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-          <LabeledInput label="Brokerage (₹)" hint="commission amount" value={form.brokerage} onChange={v=>set('brokerage', v)}/>
+          <div style={{ display: 'none' }}>
+            <LabeledInput label="Brokerage (₹)" hint="commission amount" value={form.brokerage} onChange={v=>set('brokerage', v)}/>
+          </div>
           <LabeledInput label="Cashback (₹)" hint="total cashback amount" value={form.cashback} onChange={v=>set('cashback', v)}/>
         </div>
 
         {/* People & Notes */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
           <LabeledInput label="Executive" value={form.executive} onChange={v=>set('executive', v)}/>
-          <LabeledInput label="Caller Name" value={form.callerName} onChange={v=>set('callerName', v)}/>
+          <AutocompleteInput label="Caller Name" value={form.callerName} onChange={v=>set('callerName', v)} getSuggestions={getFilteredCallerSuggestions}/>
           <LabeledInput label="Mobile Number" required placeholder="9xxxxxxxxx" value={form.mobile} onChange={v=>set('mobile', v)}/>
           <LabeledInput label="Rollover/Renewal" hint="internal code" value={form.rollover} onChange={v=>set('rollover', v)}/>
           <LabeledInput label="Remark" placeholder="Any note" value={form.remark} onChange={v=>set('remark', v)}/>
@@ -1503,99 +1841,250 @@ function PageManualForm() {
 }
 
 function PageManualGrid() {
-  const [rows, setRows] = useState([
-    { 
+  const [rows, setRows] = useState<any[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<{type: 'success' | 'error' | 'info', message: string} | null>(null);
+  const [rowStatuses, setRowStatuses] = useState<{[key: number]: 'pending' | 'saving' | 'saved' | 'error'}>({});
+  const [isLoading, setIsLoading] = useState(true);
+  const [savedPolicies, setSavedPolicies] = useState<any[]>([]);
+
+  // Load grid data on component mount
+  useEffect(() => {
+    const loadGridData = async () => {
+      try {
+        setIsLoading(true);
+        console.log('🔄 Loading Grid Entry data...');
+        
+        // Load all policies from backend
+        const response = await NicsanCRMService.getPolicies(100, 0);
+        
+        if (response.success && Array.isArray(response.data)) {
+          // Filter policies that were saved from grid
+          const gridPolicies = response.data.filter((p: any) => p.source === 'MANUAL_GRID');
+          setSavedPolicies(gridPolicies);
+          
+          console.log(`📋 Found ${gridPolicies.length} saved policies from grid`);
+          
+          // Show info message about saved policies
+          if (gridPolicies.length > 0) {
+            setSaveMessage({ 
+              type: 'info', 
+              message: `Found ${gridPolicies.length} saved policies. Grid is ready for new entries.` 
+            });
+          } else {
+            setSaveMessage({ 
+              type: 'info', 
+              message: 'Grid is ready for new policy entries.' 
+            });
+          }
+        } else {
+          console.log('📋 No policies found, starting with empty grid');
+          setSaveMessage({ 
+            type: 'info', 
+            message: 'Grid is ready for new policy entries.' 
+          });
+        }
+      } catch (error) {
+        console.error('Failed to load grid data:', error);
+        setSaveMessage({ 
+          type: 'info', 
+          message: 'Grid is ready for new policy entries.' 
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    loadGridData();
+  }, []);
+
+  const addNewRow = () => {
+    const newRow = {
       // Basic Info
       src: "MANUAL_GRID", 
-      policy: "TA-9921", 
-      vehicle: "KA01AB1234", 
-      insurer: "Tata AIG",
+      policy: "", 
+      vehicle: "", 
+      insurer: "",
       
       // Vehicle Details
       productType: "Private Car",
       vehicleType: "Private Car",
-      make: "Maruti", 
-      model: "Swift",
-      cc: "1200",
-      manufacturingYear: "2020",
-      
-      // Dates
-      issueDate: "2024-01-15",
-      expiryDate: "2025-01-14",
-      
-      // Financial
-      idv: 500000,
-      ncb: 20,
-      discount: 5,
-      netOd: 8000,
-      ref: "REF001",
-      totalOd: 8500,
-      netPremium: 10000,
-      totalPremium: 12150,
-      cashbackPct: 5,
-      cashbackAmt: 600,
-      customerPaid: 11550,
-      brokerage: 500,
-      
-      // Contact Info
-      executive: "John Doe",
-      callerName: "Jane Smith",
-      mobile: "9876543210",
-      
-      // Additional
-      rollover: "RENEWAL",
-      remark: "Customer preferred",
-      cashback: 600, 
-      status: "OK" 
-    },
-    { 
-      // Basic Info
-      src: "MANUAL_GRID", 
-      policy: "DG-4410", 
-      vehicle: "KA05CJ7777", 
-      insurer: "Digit",
-      
-      // Vehicle Details
-      productType: "Private Car",
-      vehicleType: "Private Car",
-      make: "Hyundai", 
-      model: "i20",
-      cc: "1200",
-      manufacturingYear: "2019",
+      make: "", 
+      model: "",
+      cc: "",
+      manufacturingYear: "",
       
       // Dates
       issueDate: "",
-      expiryDate: "2025-02-10",
+      expiryDate: "",
       
       // Financial
-      idv: 450000,
-      ncb: 15,
-      discount: 3,
-      netOd: 7500,
-      ref: "REF002",
-      totalOd: 8000,
-      netPremium: 9500,
-      totalPremium: 11500,
-      cashbackPct: 4,
-      cashbackAmt: 500,
-      customerPaid: 11000,
-      brokerage: 400,
+      idv: "",
+      ncb: "",
+      discount: "",
+      netOd: "",
+      ref: "",
+      totalOd: "",
+      netPremium: "",
+      totalPremium: "",
+      cashbackPct: "",
+      cashbackAmt: "",
+      customerPaid: "",
+      brokerage: "0",
       
       // Contact Info
-      executive: "Mike Johnson",
-      callerName: "Sarah Wilson",
-      mobile: "9876543211",
+      executive: "",
+      callerName: "",
+      mobile: "",
       
       // Additional
-      rollover: "NEW",
-      remark: "First time customer",
-      cashback: 500, 
-      status: "Error: Missing Issue Date" 
-    },
-  ]);
-  const [isSaving, setIsSaving] = useState(false);
-  const [saveMessage, setSaveMessage] = useState<{type: 'success' | 'error', message: string} | null>(null);
-  const [rowStatuses, setRowStatuses] = useState<{[key: number]: 'pending' | 'saving' | 'saved' | 'error'}>({});
+      rollover: "",
+      remark: "",
+      cashback: "", 
+      status: "OK" 
+    };
+    
+    setRows(prev => [...prev, newRow]);
+  };
+
+  // Validation function for grid rows (reused from Manual Form)
+  const validateGridRow = (row: any) => {
+    const errors: string[] = [];
+    
+    // Policy Number validation
+    if (!row.policy) {
+      errors.push('Policy Number is required');
+    } else if (!/^[A-Z0-9\-_]{3,20}$/.test(row.policy)) {
+      errors.push('Policy Number must be 3-20 characters (letters, numbers, hyphens, underscores)');
+    }
+    
+    // Vehicle Number validation
+    if (!row.vehicle) {
+      errors.push('Vehicle Number is required');
+    } else if (!/^[A-Z]{2}[0-9]{2}[A-Z]{2}[0-9]{4}$/.test(row.vehicle)) {
+      errors.push('Vehicle Number must be in format: KA01AB1234');
+    }
+    
+    // Insurer validation
+    if (!row.insurer) {
+      errors.push('Insurer is required');
+    } else if (row.insurer.length < 3) {
+      errors.push('Insurer name must be at least 3 characters');
+    }
+    
+    // Make validation
+    if (row.make && row.make.length < 2) {
+      errors.push('Make must be at least 2 characters');
+    }
+    
+    // Mobile validation
+    if (row.mobile && !/^[6-9]\d{9}$/.test(row.mobile)) {
+      errors.push('Invalid mobile number format (10 digits starting with 6-9)');
+    }
+    
+    // Total Premium validation
+    if (row.totalPremium && (isNaN(parseFloat(row.totalPremium)) || parseFloat(row.totalPremium) <= 0)) {
+      errors.push('Total Premium must be a valid positive number');
+    }
+    
+    return errors;
+  };
+
+  // Handle Excel copy-paste functionality
+  const handlePaste = (e: React.ClipboardEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const clipboardData = e.clipboardData?.getData('text/plain');
+    
+    if (clipboardData) {
+      console.log('📋 Excel data pasted:', clipboardData);
+      
+      // Parse tab-separated values
+      const rows = clipboardData.split('\n').filter(row => row.trim());
+      
+      if (rows.length > 0) {
+        const newRows = rows.map((row) => {
+          const cells = row.split('\t');
+          
+          // Map Excel columns to grid fields
+          const newRow = {
+      // Basic Info
+      src: "MANUAL_GRID", 
+            policy: cells[0] || "", 
+            vehicle: cells[1] || "", 
+            insurer: cells[2] || "",
+      
+      // Vehicle Details
+            productType: cells[3] || "Private Car",
+            vehicleType: cells[4] || "Private Car",
+            make: cells[5] || "", 
+            model: cells[6] || "",
+            cc: cells[7] || "",
+            manufacturingYear: cells[8] || "",
+      
+      // Dates
+            issueDate: cells[9] || "",
+            expiryDate: cells[10] || "",
+      
+      // Financial
+            idv: cells[11] || "",
+            ncb: cells[12] || "",
+            discount: cells[13] || "",
+            netOd: cells[14] || "",
+            ref: cells[15] || "",
+            totalOd: cells[16] || "",
+            netPremium: cells[17] || "",
+            totalPremium: cells[18] || "",
+            cashbackPct: cells[19] || "",
+            cashbackAmt: cells[20] || "",
+            customerPaid: cells[21] || "",
+            brokerage: cells[22] || "",
+      
+      // Contact Info
+            executive: cells[23] || "",
+            callerName: cells[24] || "",
+            mobile: cells[25] || "",
+      
+      // Additional
+            rollover: cells[26] || "",
+            remark: cells[27] || "",
+            cashback: cells[28] || "", 
+            status: "OK" 
+          };
+          
+          // Validate the row
+          const validationErrors = validateGridRow(newRow);
+          if (validationErrors.length > 0) {
+            newRow.status = `Error: ${validationErrors.join(', ')}`;
+            (newRow as any).validationErrors = validationErrors;
+          }
+          
+          return newRow;
+        });
+        
+        // Add all new rows to the grid
+        setRows(prev => [...prev, ...newRows]);
+        
+        // Count valid and invalid rows
+        const validRows = newRows.filter(row => !(row as any).validationErrors || (row as any).validationErrors.length === 0).length;
+        const invalidRows = newRows.length - validRows;
+        
+        // Show appropriate message
+        if (invalidRows === 0) {
+          setSaveMessage({ 
+            type: 'success', 
+            message: `Successfully pasted ${newRows.length} rows from Excel!` 
+          });
+        } else {
+          setSaveMessage({ 
+            type: 'error', 
+            message: `Pasted ${newRows.length} rows from Excel. ${validRows} valid, ${invalidRows} have errors. Please fix errors before saving.` 
+          });
+        }
+        
+        console.log(`✅ Added ${newRows.length} rows from Excel paste (${validRows} valid, ${invalidRows} with errors)`);
+      }
+    }
+  };
 
   const updateRow = (rowIndex: number, field: string, value: string) => {
     // Don't allow editing if row is being saved or has been saved
@@ -1604,9 +2093,24 @@ function PageManualGrid() {
       return;
     }
     
-    setRows(prev => prev.map((row, i) => 
-      i === rowIndex ? { ...row, [field]: value } : row
-    ));
+    setRows(prev => prev.map((row, i) => {
+      if (i === rowIndex) {
+        const updatedRow = { ...row, [field]: value };
+        
+        // Re-validate the row after update
+        const validationErrors = validateGridRow(updatedRow);
+        if (validationErrors.length > 0) {
+          updatedRow.status = `Error: ${validationErrors.join(', ')}`;
+          (updatedRow as any).validationErrors = validationErrors;
+        } else {
+          updatedRow.status = "OK";
+          (updatedRow as any).validationErrors = [];
+        }
+        
+        return updatedRow;
+      }
+      return row;
+    }));
   };
 
   const retryFailedRows = async () => {
@@ -1712,6 +2216,21 @@ function PageManualGrid() {
     setIsSaving(true);
     setSaveMessage(null);
     
+    // Validate all rows before saving
+    const validationErrors = rows.map((row, index) => {
+      const errors = validateGridRow(row);
+      return { index, errors };
+    }).filter(item => item.errors.length > 0);
+    
+    if (validationErrors.length > 0) {
+      setIsSaving(false);
+      setSaveMessage({ 
+        type: 'error', 
+        message: `Cannot save: ${validationErrors.length} rows have validation errors. Please fix them first.` 
+      });
+      return;
+    }
+    
     // Initialize all rows as 'saving'
     const newStatuses: {[key: number]: 'saving' | 'saved' | 'error'} = {};
     rows.forEach((_, index) => {
@@ -1724,51 +2243,51 @@ function PageManualGrid() {
       const results = await Promise.allSettled(
         rows.map(async (row, index) => {
           try {
-            const policyData = {
-              // Basic Info
-              policy_number: row.policy,
-              vehicle_number: row.vehicle,
-              insurer: row.insurer,
-              
-              // Vehicle Details
-              product_type: row.productType || 'Private Car',
-              vehicle_type: row.vehicleType || 'Private Car',
-              make: row.make || 'Unknown',
-              model: row.model || '',
-              cc: row.cc || '',
-              manufacturing_year: row.manufacturingYear || '',
-              
-              // Dates
-              issue_date: row.issueDate || new Date().toISOString().split('T')[0],
-              expiry_date: row.expiryDate || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-              
-              // Financial
-              idv: (parseFloat(row.idv) || 0).toString(),
-              ncb: (parseFloat(row.ncb) || 0).toString(),
-              discount: (parseFloat(row.discount) || 0).toString(),
-              net_od: (parseFloat(row.netOd) || 0).toString(),
-              ref: row.ref || '',
-              total_od: (parseFloat(row.totalOd) || 0).toString(),
-              net_premium: (parseFloat(row.netPremium) || 0).toString(),
-              total_premium: parseFloat(row.totalPremium).toString(),
-              cashback_percentage: (parseFloat(row.cashbackPct) || 0).toString(),
-              cashback_amount: (parseFloat(row.cashbackAmt) || 0).toString(),
-              customer_paid: (parseFloat(row.customerPaid) || 0).toString(),
-              brokerage: (parseFloat(row.brokerage) || 0).toString(),
-              
-              // Contact Info
-              executive: row.executive || 'Unknown',
-              caller_name: row.callerName || 'Unknown',
-              mobile: row.mobile || '0000000000',
-              
-              // Additional
-              rollover: row.rollover || '',
-              remark: row.remark || '',
-              cashback: (parseFloat(row.cashback) || 0).toString(),
-              source: 'MANUAL_GRID'
-            };
-            
-            await NicsanCRMService.createPolicy(policyData);
+        const policyData = {
+          // Basic Info
+          policy_number: row.policy,
+          vehicle_number: row.vehicle,
+          insurer: row.insurer,
+          
+          // Vehicle Details
+          product_type: row.productType || 'Private Car',
+          vehicle_type: row.vehicleType || 'Private Car',
+          make: row.make || 'Unknown',
+          model: row.model || '',
+          cc: row.cc || '',
+          manufacturing_year: row.manufacturingYear || '',
+          
+          // Dates
+          issue_date: row.issueDate || new Date().toISOString().split('T')[0],
+          expiry_date: row.expiryDate || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          
+          // Financial
+          idv: (parseFloat(row.idv) || 0).toString(),
+          ncb: (parseFloat(row.ncb) || 0).toString(),
+          discount: (parseFloat(row.discount) || 0).toString(),
+          net_od: (parseFloat(row.netOd) || 0).toString(),
+          ref: row.ref || '',
+          total_od: (parseFloat(row.totalOd) || 0).toString(),
+          net_premium: (parseFloat(row.netPremium) || 0).toString(),
+          total_premium: parseFloat(row.totalPremium).toString(),
+          cashback_percentage: (parseFloat(row.cashbackPct) || 0).toString(),
+          cashback_amount: (parseFloat(row.cashbackAmt) || 0).toString(),
+          customer_paid: (parseFloat(row.customerPaid) || 0).toString(),
+          brokerage: (parseFloat(row.brokerage) || 0).toString(),
+          
+          // Contact Info
+          executive: row.executive || 'Unknown',
+          caller_name: row.callerName || 'Unknown',
+          mobile: row.mobile || '0000000000',
+          
+          // Additional
+          rollover: row.rollover || '',
+          remark: row.remark || '',
+          cashback: (parseFloat(row.cashback) || 0).toString(),
+          source: 'MANUAL_GRID'
+        };
+        
+        await NicsanCRMService.createPolicy(policyData);
             return { index, success: true };
           } catch (error) {
             console.error(`Failed to save row ${index}:`, error);
@@ -1818,20 +2337,47 @@ function PageManualGrid() {
     }
   };
 
+  if (isLoading) {
+    return (
+      <Card title="Grid Entry (Excel-like)" desc="Loading grid data...">
+        <div className="flex items-center justify-center h-32">
+          <div className="text-sm text-zinc-600">Loading grid data...</div>
+        </div>
+      </Card>
+    );
+  }
+
   return (
     <>
       <Card title="Grid Entry (Excel-like)" desc="Paste multiple rows; fix inline errors. Dedupe on Policy No. + Vehicle No.">
         <div className="mb-3 text-xs text-zinc-600">Tip: Copy from Excel and <b>Ctrl+V</b> directly here. Use <b>Ctrl+S</b> to save all.</div>
+        
+        {/* Show saved policies info */}
+        {savedPolicies.length > 0 && (
+          <div className="mb-4 p-3 bg-green-50 rounded-lg border border-green-200">
+            <h3 className="font-medium text-green-800 mb-2">Recently Saved Policies ({savedPolicies.length})</h3>
+            <div className="text-sm text-green-600">
+              {savedPolicies.slice(0, 5).map(p => `${p.policy_number} - ${p.vehicle_number}`).join(', ')}
+              {savedPolicies.length > 5 && ` and ${savedPolicies.length - 5} more...`}
+            </div>
+          </div>
+        )}
+        
         {saveMessage && (
           <div className={`mb-3 p-3 rounded-lg text-sm ${
             saveMessage.type === 'success' 
               ? 'bg-green-100 text-green-800' 
-              : 'bg-red-100 text-red-800'
+              : saveMessage.type === 'error'
+              ? 'bg-red-100 text-red-800'
+              : 'bg-blue-100 text-blue-800'
           }`}>
             {saveMessage.message}
           </div>
         )}
-        <div className="overflow-x-auto">
+        <div 
+          className="overflow-x-auto"
+          onPaste={handlePaste}
+        >
           <table className="w-full text-sm min-w-max">
             <thead>
               <tr className="text-left text-zinc-500">
@@ -1857,7 +2403,7 @@ function PageManualGrid() {
                 <th className="py-2 px-1">Cashback %</th>
                 <th className="py-2 px-1">Cashback (₹)</th>
                 <th className="py-2 px-1">Customer Paid (₹)</th>
-                <th className="py-2 px-1">Brokerage (₹)</th>
+                <th className="py-2 px-1" style={{ display: 'none' }}>Brokerage (₹)</th>
                 <th className="py-2 px-1">Executive</th>
                 <th className="py-2 px-1">Caller Name</th>
                 <th className="py-2 px-1">Mobile</th>
@@ -1901,7 +2447,7 @@ function PageManualGrid() {
                       </span>;
                     default:
                       return r.status.includes("Error") ? 
-                        <span className="text-amber-700 bg-amber-100 px-2 py-1 rounded-full text-xs">{r.status}</span> : 
+                        <span className="text-red-700 bg-red-100 px-2 py-1 rounded-full text-xs" title={r.status}>{r.status.length > 50 ? r.status.substring(0, 50) + '...' : r.status}</span> : 
                         <span className="text-emerald-700 bg-emerald-100 px-2 py-1 rounded-full text-xs">OK</span>;
                   }
                 };
@@ -2083,7 +2629,7 @@ function PageManualGrid() {
                       className="w-full border-none outline-none bg-transparent text-sm"
                     />
                   </td>
-                  <td className="px-1">
+                  <td className="px-1" style={{ display: 'none' }}>
                     <input 
                       type="number"
                       value={r.brokerage} 
@@ -2135,11 +2681,17 @@ function PageManualGrid() {
         </div>
         <div className="flex gap-3 mt-4">
           <button 
+            onClick={addNewRow}
+            className="px-4 py-2 rounded-xl bg-blue-600 text-white hover:bg-blue-700"
+          >
+            + Add New Row
+          </button>
+          <button 
             onClick={handleSaveAll}
-            disabled={isSaving}
+            disabled={isSaving || rows.length === 0}
             className="px-4 py-2 rounded-xl bg-zinc-900 text-white disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isSaving ? 'Saving...' : 'Save All'}
+            {isSaving ? 'Saving...' : `Save All (${rows.length})`}
           </button>
           {Object.values(rowStatuses).some(status => status === 'error') && (
             <button 
@@ -2167,6 +2719,7 @@ function PageReview() {
     pdfData: {},
     manualExtras: {}
   });
+  const [callerNames, setCallerNames] = useState<string[]>([]);
 
   // Load available uploads for review
   useEffect(() => {
@@ -2258,6 +2811,63 @@ function PageReview() {
     
     return () => clearInterval(interval);
   }, []);
+
+  // Load real caller names on component mount
+  useEffect(() => {
+    const loadCallerNames = async () => {
+      try {
+        const response = await DualStorageService.getSalesReps();
+        if (response.success && response.data) {
+          const names = response.data
+            .map((rep: any) => rep.name)
+            .filter((name: string) => name && name !== 'Unknown');
+          setCallerNames(names);
+        }
+      } catch (error) {
+        console.warn('Failed to load caller names:', error);
+        // Fallback to mock data
+        setCallerNames(['Priya Singh', 'Rahul Kumar', 'Anjali Sharma']);
+      }
+    };
+    
+    loadCallerNames();
+  }, []);
+
+  // Smart suggestions for caller names
+  const getSmartSuggestions = (fieldName: string) => {
+    if (fieldName === 'callerName') {
+      return callerNames; // Real caller names from database
+    }
+    return [];
+  };
+
+  // Filtered caller suggestions for autocomplete
+  const getFilteredCallerSuggestions = async (input: string): Promise<string[]> => {
+    if (input.length < 2) return [];
+    
+    try {
+      const response = await DualStorageService.getSalesReps();
+      if (response.success && response.data) {
+        const filteredNames = response.data
+          .map((rep: any) => rep.name)
+          .filter((name: string) => 
+            name && 
+            name !== 'Unknown' && 
+            name.toLowerCase().includes(input.toLowerCase())
+          )
+          .slice(0, 5); // Limit to 5 suggestions
+        return filteredNames;
+      }
+    } catch (error) {
+      console.warn('Failed to get caller suggestions:', error);
+    }
+    
+    // Fallback to mock data with filtering
+    const mockCallers = ['Priya Singh', 'Rahul Kumar', 'Anjali Sharma'];
+    return mockCallers.filter(name => 
+      name.toLowerCase().includes(input.toLowerCase())
+    );
+  };
 
   const loadUploadData = async (uploadId: string) => {
     try {
@@ -2363,6 +2973,38 @@ function PageReview() {
     return errors;
   };
 
+  const validateEditedData = () => {
+    const errors = [];
+    
+    // Validate PDF data
+    if (!editableData.pdfData.policy_number) {
+      errors.push('Policy Number is required');
+    }
+    if (!editableData.pdfData.vehicle_number) {
+      errors.push('Vehicle Number is required');
+    }
+    
+    // Validate manual extras
+    if (!editableData.manualExtras.executive) {
+      errors.push('Executive name is required');
+    }
+    if (!editableData.manualExtras.mobile) {
+      errors.push('Mobile number is required');
+    }
+    
+    // Format validation
+    if (editableData.pdfData.vehicle_number && !/^[A-Z]{2}[0-9]{2}[A-Z]{2}[0-9]{4}$/.test(editableData.pdfData.vehicle_number)) {
+      errors.push('Invalid vehicle number format (e.g., KA01AB1234)');
+    }
+    
+    // Mobile number validation
+    if (editableData.manualExtras.mobile && !/^[6-9]\d{9}$/.test(editableData.manualExtras.mobile)) {
+      errors.push('Invalid mobile number format (10 digits starting with 6-9)');
+    }
+    
+    return errors;
+  };
+
   const handleConfirmAndSave = async () => {
     setIsLoading(true);
     setSaveMessage(null);
@@ -2371,9 +3013,10 @@ function PageReview() {
       console.log('🔍 Starting Confirm & Save process...');
       console.log('🔍 Review data:', reviewData);
       console.log('🔍 Upload ID:', reviewData?.id);
+      console.log('🔍 Editable data:', editableData);
       
-      // Validate data before saving
-      const validationErrors = validateData();
+      // Validate edited data before saving
+      const validationErrors = validateEditedData();
       if (validationErrors.length > 0) {
         console.log('❌ Validation failed:', validationErrors);
         setSubmitMessage({ 
@@ -2404,16 +3047,19 @@ function PageReview() {
         return;
       }
       
-      console.log('💾 Processing real upload...');
-      // Confirm upload as policy for real uploads
-      const result = await NicsanCRMService.confirmUploadAsPolicy(reviewData.id);
+      console.log('💾 Processing real upload with edited data...');
+      // Send edited data to backend
+      const result = await NicsanCRMService.confirmUploadAsPolicy(reviewData.id, {
+        pdfData: editableData.pdfData,
+        manualExtras: editableData.manualExtras
+      });
       console.log('🔍 API result:', result);
       
       if (result.success) {
-        console.log('✅ Policy confirmed successfully!');
+        console.log('✅ Policy confirmed successfully with edited data!');
         setSubmitMessage({ 
           type: 'success', 
-          message: 'Policy confirmed and saved successfully!' 
+          message: 'Policy confirmed and saved successfully with your edits!' 
         });
         
         // Clear form after successful save
@@ -2636,13 +3282,13 @@ function PageReview() {
     <>
       <Card title="Review & Confirm" desc="Review PDF data + manual extras before saving">
         {/* Success/Error Messages */}
-        {saveMessage && (
+        {submitMessage && (
           <div className={`mb-4 p-3 rounded-xl text-sm ${
-            saveMessage.type === 'success' 
+            submitMessage.type === 'success' 
               ? 'bg-green-100 text-green-800 border border-green-200' 
               : 'bg-red-100 text-red-800 border border-red-200'
           }`}>
-            {saveMessage.message}
+            {submitMessage.message}
           </div>
         )}
 
@@ -2789,11 +3435,12 @@ function PageReview() {
               onChange={(value) => updateManualExtras('executive', value)}
               hint="sales rep name"
             />
-            <LabeledInput 
+            <AutocompleteInput 
               label="Caller Name" 
               value={editableData.manualExtras.callerName || manualExtras.callerName}
               onChange={(value) => updateManualExtras('callerName', value)}
               hint="telecaller name"
+              getSuggestions={getFilteredCallerSuggestions}
             />
             <LabeledInput 
               label="Mobile Number" 
@@ -2806,12 +3453,14 @@ function PageReview() {
               onChange={(value) => updateManualExtras('rollover', value)}
               hint="internal code"
             />
-            <LabeledInput 
-              label="Brokerage (₹)" 
-              value={editableData.manualExtras.brokerage || manualExtras.brokerage}
-              onChange={(value) => updateManualExtras('brokerage', value)}
-              hint="commission amount"
-            />
+            <div style={{ display: 'none' }}>
+              <LabeledInput 
+                label="Brokerage (₹)" 
+                value={editableData.manualExtras.brokerage || manualExtras.brokerage}
+                onChange={(value) => updateManualExtras('brokerage', value)}
+                hint="commission amount"
+              />
+            </div>
             <LabeledInput 
               label="Cashback (₹)" 
               value={editableData.manualExtras.cashback || manualExtras.cashback}
@@ -2918,6 +3567,13 @@ function PagePolicyDetail() {
   const [policyId, setPolicyId] = useState<string>('1');
   const [availablePolicies, setAvailablePolicies] = useState<any[]>([]);
   const [isLoadingPolicies, setIsLoadingPolicies] = useState(true);
+  
+  // Search functionality state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchType, setSearchType] = useState<'vehicle' | 'policy' | 'both'>('both');
+  const [showResults, setShowResults] = useState(false);
 
   const loadAvailablePolicies = async () => {
     try {
@@ -2979,6 +3635,89 @@ function PagePolicyDetail() {
     }
   }, [policyId]);
 
+  // Search functionality
+  const handleSearch = async (query: string) => {
+    if (!query.trim()) {
+      setSearchResults([]);
+      return;
+    }
+    
+    setIsSearching(true);
+    
+    try {
+      let searchResults: any[] = [];
+      
+      if (searchType === 'vehicle' || searchType === 'both') {
+        // Search by vehicle number
+        const vehicleResults = availablePolicies.filter(policy => 
+          policy.vehicle_number.toLowerCase().includes(query.toLowerCase())
+        );
+        searchResults = [...searchResults, ...vehicleResults];
+      }
+      
+      if (searchType === 'policy' || searchType === 'both') {
+        // Search by policy number
+        const policyResults = availablePolicies.filter(policy => 
+          policy.policy_number.toLowerCase().includes(query.toLowerCase())
+        );
+        searchResults = [...searchResults, ...policyResults];
+      }
+      
+      // Remove duplicates and sort
+      const uniqueResults = searchResults.filter((policy, index, self) => 
+        index === self.findIndex(p => p.id === policy.id)
+      );
+      
+      setSearchResults(uniqueResults);
+    } catch (error) {
+      console.error('Search error:', error);
+      setSearchResults([]);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  // Debounced search
+  const debouncedSearch = useMemo(
+    () => {
+      let timeoutId: NodeJS.Timeout;
+      return (query: string) => {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => handleSearch(query), 300);
+      };
+    },
+    [searchType, availablePolicies]
+  );
+
+  useEffect(() => {
+    if (searchQuery.trim()) {
+      debouncedSearch(searchQuery);
+    } else {
+      setSearchResults([]);
+    }
+  }, [searchQuery, debouncedSearch]);
+
+  const handlePolicySelect = (policy: any) => {
+    setPolicyId(policy.id);
+    setSearchQuery(`${policy.policy_number} - ${policy.vehicle_number}`);
+    setShowResults(false);
+  };
+
+  // Close search results when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.search-container')) {
+        setShowResults(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
   if (isLoading) {
   return (
       <Card title="Policy Detail — Loading..." desc="Loading policy data...">
@@ -3009,37 +3748,112 @@ function PagePolicyDetail() {
       {/* Policy Selection */}
       <Card title="Policy Detail" desc={`View comprehensive policy information (Data Source: ${dataSource || 'Loading...'})`}>
         <div className="mb-4">
-          <div className="flex items-center gap-3">
-            <label className="text-sm font-medium">Select Policy:</label>
-            {isLoadingPolicies ? (
-              <div className="text-sm text-zinc-500">Loading policies...</div>
-            ) : (
-              <select
-                value={policyId}
-                onChange={(e) => setPolicyId(e.target.value)}
-                className="px-3 py-1 border border-zinc-300 rounded-md text-sm min-w-64"
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <label className="text-sm font-medium">Search Policy:</label>
+              {isLoadingPolicies ? (
+                <div className="text-sm text-zinc-500">Loading policies...</div>
+              ) : (
+                <div className="relative flex-1 max-w-md search-container">
+                  {/* Search Type Toggle */}
+                  <div className="flex space-x-4 mb-3">
+                    <label className="flex items-center">
+                      <input
+                        type="radio"
+                        value="both"
+                        checked={searchType === 'both'}
+                        onChange={(e) => setSearchType(e.target.value as 'vehicle' | 'policy' | 'both')}
+                        className="mr-2"
+                      />
+                      <span className="text-sm">Both</span>
+                    </label>
+                    <label className="flex items-center">
+                      <input
+                        type="radio"
+                        value="vehicle"
+                        checked={searchType === 'vehicle'}
+                        onChange={(e) => setSearchType(e.target.value as 'vehicle' | 'policy' | 'both')}
+                        className="mr-2"
+                      />
+                      <span className="text-sm">Vehicle</span>
+                    </label>
+                    <label className="flex items-center">
+                      <input
+                        type="radio"
+                        value="policy"
+                        checked={searchType === 'policy'}
+                        onChange={(e) => setSearchType(e.target.value as 'vehicle' | 'policy' | 'both')}
+                        className="mr-2"
+                      />
+                      <span className="text-sm">Policy</span>
+                    </label>
+                  </div>
+                  
+                  {/* Search Input */}
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onFocus={() => setShowResults(true)}
+                      placeholder={`Search by ${searchType === 'both' ? 'vehicle number or policy number' : searchType === 'vehicle' ? 'vehicle number' : 'policy number'}...`}
+                      className="block w-full px-3 py-2 pr-10 border border-zinc-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                      {isSearching ? (
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                      ) : (
+                        <div className="text-zinc-400">🔍</div>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {/* Search Results Dropdown */}
+                  {showResults && searchResults.length > 0 && (
+                    <div className="absolute z-10 mt-1 w-full bg-white border border-zinc-300 rounded-md shadow-lg max-h-60 overflow-auto">
+                      {searchResults.map((policy) => (
+                        <div
+                          key={policy.id}
+                          onClick={() => handlePolicySelect(policy)}
+                          className="px-4 py-3 hover:bg-zinc-50 cursor-pointer border-b border-zinc-100 last:border-b-0"
+                        >
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <p className="text-sm font-medium text-zinc-900">
+                                {policy.policy_number}
+                              </p>
+                              <p className="text-sm text-zinc-500">
+                                {policy.vehicle_number} - {policy.insurer}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  
+                  {/* No Results Message */}
+                  {showResults && searchQuery && searchResults.length === 0 && !isSearching && (
+                    <div className="mt-2 text-sm text-zinc-500">
+                      No policies found matching your search.
+                    </div>
+                  )}
+                </div>
+              )}
+              <button
+                onClick={() => loadAvailablePolicies()}
+                className="px-3 py-1 bg-zinc-100 text-zinc-700 rounded-md text-sm hover:bg-zinc-200"
+                disabled={isLoadingPolicies}
               >
-                <option value="">Select a policy...</option>
-                {availablePolicies.map((policy) => (
-                  <option key={policy.id} value={policy.id}>
-                    {policy.policy_number} - {policy.vehicle_number} ({policy.insurer})
-                  </option>
-                ))}
-              </select>
-            )}
-            <button
-              onClick={() => loadAvailablePolicies()}
-              className="px-3 py-1 bg-zinc-100 text-zinc-700 rounded-md text-sm hover:bg-zinc-200"
-              disabled={isLoadingPolicies}
-            >
-              Refresh
-            </button>
-        </div>
-          {availablePolicies.length > 0 && (
-            <div className="mt-2 text-xs text-zinc-500">
-              {availablePolicies.length} policies available
+                Refresh
+              </button>
             </div>
-          )}
+            {availablePolicies.length > 0 && (
+              <div className="text-xs text-zinc-500">
+                {availablePolicies.length} policies available
+              </div>
+            )}
+          </div>
         </div>
       </Card>
 
@@ -3381,6 +4195,53 @@ function PageOverview() {
 function PageLeaderboard() {
   const [reps, setReps] = useState<any[]>([]);
   const [dataSource, setDataSource] = useState<string>('');
+  const [sortField, setSortField] = useState<string>('');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const getSortedReps = () => {
+    if (!sortField) return reps;
+    
+    return [...reps].sort((a, b) => {
+      let aValue = 0;
+      let bValue = 0;
+      
+      switch (sortField) {
+        case 'converted':
+          aValue = a.converted || 0;
+          bValue = b.converted || 0;
+          break;
+        case 'gwp':
+          aValue = a.gwp || 0;
+          bValue = b.gwp || 0;
+          break;
+        case 'brokerage':
+          aValue = a.brokerage || 0;
+          bValue = b.brokerage || 0;
+          break;
+        case 'cashback':
+          aValue = a.cashback || 0;
+          bValue = b.cashback || 0;
+          break;
+        case 'net':
+          aValue = a.net_revenue || a.net || 0;
+          bValue = b.net_revenue || b.net || 0;
+          break;
+        default:
+          return 0;
+      }
+      
+      return sortDirection === 'asc' ? aValue - bValue : bValue - aValue;
+    });
+  };
 
   useEffect(() => {
     const loadSalesReps = async () => {
@@ -3428,11 +4289,44 @@ function PageLeaderboard() {
         <table className="w-full text-sm">
           <thead>
             <tr className="text-left text-zinc-500">
-              <th className="py-2">Telecaller</th><th>Leads Assigned</th><th>Converted</th><th>GWP</th><th>Brokerage</th><th>Cashback</th><th>Net</th><th>Lead→Sale %</th><th>CAC/Policy</th>
+              <th className="py-2">Telecaller</th>
+              <th>Leads Assigned</th>
+              <th 
+                className="cursor-pointer hover:bg-zinc-100 px-2 py-1 rounded transition-colors"
+                onClick={() => handleSort('converted')}
+              >
+                Converted {sortField === 'converted' && (sortDirection === 'asc' ? '↑' : '↓')}
+              </th>
+              <th 
+                className="cursor-pointer hover:bg-zinc-100 px-2 py-1 rounded transition-colors"
+                onClick={() => handleSort('gwp')}
+              >
+                GWP {sortField === 'gwp' && (sortDirection === 'asc' ? '↑' : '↓')}
+              </th>
+              <th 
+                className="cursor-pointer hover:bg-zinc-100 px-2 py-1 rounded transition-colors"
+                onClick={() => handleSort('brokerage')}
+              >
+                Brokerage {sortField === 'brokerage' && (sortDirection === 'asc' ? '↑' : '↓')}
+              </th>
+              <th 
+                className="cursor-pointer hover:bg-zinc-100 px-2 py-1 rounded transition-colors"
+                onClick={() => handleSort('cashback')}
+              >
+                Cashback {sortField === 'cashback' && (sortDirection === 'asc' ? '↑' : '↓')}
+              </th>
+              <th 
+                className="cursor-pointer hover:bg-zinc-100 px-2 py-1 rounded transition-colors"
+                onClick={() => handleSort('net')}
+              >
+                Net {sortField === 'net' && (sortDirection === 'asc' ? '↑' : '↓')}
+              </th>
+              <th>Lead→Sale %</th>
+              <th>CAC/Policy</th>
             </tr>
           </thead>
           <tbody>
-            {reps.map((r,i)=> (
+            {getSortedReps().map((r,i)=> (
               <tr key={i} className="border-t">
                 <td className="py-2 font-medium">{r.name}</td>
                 <td>{r.leads_assigned || r.leads}</td>
@@ -3642,17 +4536,230 @@ function PageSources() {
 }
 
 function PageFounderSettings() {
+  const [settings, setSettings] = useState({
+    brokeragePercent: '15',
+    repDailyCost: '2000',
+    expectedConversion: '25',
+    premiumGrowth: '10'
+  });
+  
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [hasChanges, setHasChanges] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<any>({});
+
+  // Load settings on component mount
+  useEffect(() => {
+    loadSettings();
+  }, []);
+
+  // Track changes
+  useEffect(() => {
+    setHasChanges(true);
+  }, [settings]);
+
+  const [dataSource, setDataSource] = useState<string>('');
+
+  const loadSettings = async () => {
+    try {
+      setIsLoading(true);
+      const response = await NicsanCRMService.getSettings();
+      if (response.success) {
+        setSettings(response.data);
+        setHasChanges(false);
+        setDataSource(response.source || 'Unknown');
+        
+        if (ENABLE_DEBUG) {
+          console.log('📋 Settings - Data source:', response.source);
+          console.log('📋 Settings - Message:', response.message);
+        }
+      } else {
+        setError(response.error || 'Failed to load settings');
+      }
+    } catch (error: any) {
+      setError(error.message || 'Failed to load settings');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const updateSetting = (key: string, value: string) => {
+    setSettings(prev => ({
+      ...prev,
+      [key]: value
+    }));
+  };
+
+  const validateSettings = (settings: any) => {
+    const errors: any = {};
+    
+    // Brokerage % validation
+    if (!settings.brokeragePercent || isNaN(parseFloat(settings.brokeragePercent))) {
+      errors.brokeragePercent = 'Brokerage % is required and must be a number';
+    } else {
+      const value = parseFloat(settings.brokeragePercent);
+      if (value < 0 || value > 100) {
+        errors.brokeragePercent = 'Brokerage % must be between 0 and 100';
+      }
+    }
+    
+    // Rep Daily Cost validation
+    if (!settings.repDailyCost || isNaN(parseFloat(settings.repDailyCost))) {
+      errors.repDailyCost = 'Rep Daily Cost is required and must be a number';
+    } else {
+      const value = parseFloat(settings.repDailyCost);
+      if (value < 0) {
+        errors.repDailyCost = 'Rep Daily Cost must be positive';
+      }
+    }
+    
+    // Expected Conversion % validation
+    if (!settings.expectedConversion || isNaN(parseFloat(settings.expectedConversion))) {
+      errors.expectedConversion = 'Expected Conversion % is required and must be a number';
+    } else {
+      const value = parseFloat(settings.expectedConversion);
+      if (value < 0 || value > 100) {
+        errors.expectedConversion = 'Expected Conversion % must be between 0 and 100';
+      }
+    }
+    
+    // Premium Growth % validation
+    if (!settings.premiumGrowth || isNaN(parseFloat(settings.premiumGrowth))) {
+      errors.premiumGrowth = 'Premium Growth % is required and must be a number';
+    } else {
+      const value = parseFloat(settings.premiumGrowth);
+      if (value < 0 || value > 100) {
+        errors.premiumGrowth = 'Premium Growth % must be between 0 and 100';
+      }
+    }
+    
+    return errors;
+  };
+
+  const handleSave = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      setSuccess(null);
+      
+      // Validate settings
+      const validationErrors = validateSettings(settings);
+      if (Object.keys(validationErrors).length > 0) {
+        setValidationErrors(validationErrors);
+        return;
+      }
+      
+      // Save settings
+      const response = await NicsanCRMService.saveSettings(settings);
+      
+      if (response.success) {
+        setSuccess(`Settings saved successfully! (${response.message || 'Saved'})`);
+        setHasChanges(false);
+        setValidationErrors({});
+        setDataSource(response.source || 'Unknown');
+        
+        // Clear success message after 3 seconds
+        setTimeout(() => setSuccess(null), 3000);
+      } else {
+        setError(response.error || 'Failed to save settings');
+      }
+    } catch (error: any) {
+      setError(error.message || 'Failed to save settings');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleReset = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      setSuccess(null);
+      
+      // Reset settings
+      const response = await NicsanCRMService.resetSettings();
+      
+      if (response.success) {
+        setSettings(response.data);
+        setHasChanges(false);
+        setValidationErrors({});
+        setSuccess(`Settings reset to defaults! (${response.message || 'Reset'})`);
+        setDataSource(response.source || 'Unknown');
+        
+        // Clear success message after 3 seconds
+        setTimeout(() => setSuccess(null), 3000);
+      } else {
+        setError(response.error || 'Failed to reset settings');
+      }
+    } catch (error: any) {
+      setError(error.message || 'Failed to reset settings');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
-    <Card title="Business Settings" desc="These drive calculations in dashboards.">
+    <Card title="Business Settings" desc={`These drive calculations in dashboards (Data Source: ${dataSource || 'Loading...'})`}>
+      {/* Error/Success Messages */}
+      {error && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+          <div className="text-sm text-red-800">{error}</div>
+        </div>
+      )}
+      
+      {success && (
+        <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+          <div className="text-sm text-green-800">{success}</div>
+        </div>
+      )}
+      
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <LabeledInput label="Brokerage %" hint="% of GWP that we earn"/>
-        <LabeledInput label="Rep Daily Cost (₹)" hint="salary + incentives + telephony + tools / working days"/>
-        <LabeledInput label="Expected Conversion %" hint="for valuing backlog"/>
-        <LabeledInput label="Premium Growth %" hint="for LTV estimates later"/>
+        <LabeledInput 
+          label="Brokerage %" 
+          hint="% of GWP that we earn"
+          value={settings.brokeragePercent}
+          onChange={(value) => updateSetting('brokeragePercent', value)}
+          error={validationErrors.brokeragePercent}
+        />
+        <LabeledInput 
+          label="Rep Daily Cost (₹)" 
+          hint="salary + incentives + telephony + tools / working days"
+          value={settings.repDailyCost}
+          onChange={(value) => updateSetting('repDailyCost', value)}
+          error={validationErrors.repDailyCost}
+        />
+        <LabeledInput 
+          label="Expected Conversion %" 
+          hint="for valuing backlog"
+          value={settings.expectedConversion}
+          onChange={(value) => updateSetting('expectedConversion', value)}
+          error={validationErrors.expectedConversion}
+        />
+        <LabeledInput 
+          label="Premium Growth %" 
+          hint="for LTV estimates later"
+          value={settings.premiumGrowth}
+          onChange={(value) => updateSetting('premiumGrowth', value)}
+          error={validationErrors.premiumGrowth}
+        />
       </div>
+      
       <div className="flex gap-3 mt-4">
-        <button className="px-4 py-2 rounded-xl bg-zinc-900 text-white">Save Settings</button>
-        <button className="px-4 py-2 rounded-xl bg-white border">Reset</button>
+        <button 
+          onClick={handleSave}
+          disabled={isLoading || !hasChanges}
+          className="px-4 py-2 rounded-xl bg-zinc-900 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {isLoading ? 'Saving...' : 'Save Settings'}
+        </button>
+        <button 
+          onClick={handleReset}
+          disabled={isLoading}
+          className="px-4 py-2 rounded-xl bg-white border disabled:opacity-50"
+        >
+          Reset
+        </button>
       </div>
     </Card>
   )
@@ -3660,6 +4767,7 @@ function PageFounderSettings() {
 
 // ---------- KPI DASHBOARD ----------
 function PageKPIs() {
+  const { settings } = useSettings();
   const [kpiData, setKpiData] = useState<any>(null);
   const [dataSource, setDataSource] = useState<string>('');
 
@@ -3697,12 +4805,23 @@ function PageKPIs() {
   const totalBrokerage = kpiData?.basicMetrics?.totalBrokerage || 0;
   const totalCashback = kpiData?.basicMetrics?.totalCashback || 0;
 
-  // Use backend KPI calculations if available, otherwise calculate from real data
+  // Use settings for calculations
+  const brokeragePercent = parseFloat(settings.brokeragePercent) / 100;
+  const repDailyCost = parseFloat(settings.repDailyCost);
+  const expectedConversion = parseFloat(settings.expectedConversion) / 100;
+  const premiumGrowth = parseFloat(settings.premiumGrowth) / 100;
+
+  // Use backend KPI calculations if available, otherwise calculate from real data with settings
   const backendKPIs = kpiData?.kpis || {};
   const conversionRate = parseFloat(backendKPIs.conversionRate) || (totalConverted/(totalLeads||1))*100;
   const lossRatio = parseFloat(backendKPIs.lossRatio) || (sumGWP > 0 ? (totalCashback / sumGWP) * 100 : 0);
   const expenseRatio = parseFloat(backendKPIs.expenseRatio) || (sumGWP > 0 ? ((totalBrokerage - totalCashback) / sumGWP) * 100 : 0);
   const combinedRatio = parseFloat(backendKPIs.combinedRatio) || (lossRatio + expenseRatio);
+
+  // Calculate settings-based metrics
+  const calculatedBrokerage = sumGWP * brokeragePercent;
+  const expectedBacklogValue = (totalLeads - totalConverted) * expectedConversion * (sumGWP / (totalConverted || 1));
+  const projectedLTV = (sumGWP / (totalConverted || 1)) * Math.pow(1 + premiumGrowth, 3); // 3-year projection
 
   // Calculate real metrics from actual data (no hardcoded assumptions)
   const ARPA = totalConverted > 0 ? sumNet / totalConverted : 0;
@@ -3767,6 +4886,16 @@ function PageKPIs() {
             <Tile label="Marketing ROI" info="((Rev−Spend) ÷ Spend)" value={pct(marketingROI)} sub="No marketing spend data available"/>
           </div>
         </Card>
+
+        {/* Settings-Based Calculations */}
+        <Card title="Business Projections" desc="Calculations based on current settings">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+            <Tile label="Expected Brokerage" info={`(${settings.brokeragePercent}% of GWP)`} value={fmtINR(calculatedBrokerage)} sub={`${settings.brokeragePercent}% of ${fmtINR(sumGWP)}`}/>
+            <Tile label="Backlog Value" info={`(${settings.expectedConversion}% conversion)`} value={fmtINR(expectedBacklogValue)} sub={`${totalLeads - totalConverted} pending leads`}/>
+            <Tile label="3-Year LTV" info={`(${settings.premiumGrowth}% growth)`} value={fmtINR(projectedLTV)} sub="Projected customer value"/>
+            <Tile label="Daily Rep Cost" info="(per representative)" value={fmtINR(repDailyCost)} sub="From settings"/>
+          </div>
+        </Card>
       </div>
     </>
   )
@@ -3820,7 +4949,7 @@ function PageTests() {
   );
 }
 
-export default function NicsanCRMMock() {
+function NicsanCRMMock() {
   const [user, setUser] = useState<{name:string; email?:string; role:"ops"|"founder"}|null>(null);
   const [tab, setTab] = useState<"ops"|"founder">("ops");
   const [opsPage, setOpsPage] = useState("upload");
@@ -3895,4 +5024,12 @@ export default function NicsanCRMMock() {
       )}
     </div>
   )
+}
+
+export default function App() {
+  return (
+    <SettingsProvider>
+      <NicsanCRMMock />
+    </SettingsProvider>
+  );
 }

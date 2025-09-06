@@ -103,5 +103,166 @@ router.post('/grid', authenticateToken, requireOps, async (req, res) => {
   }
 });
 
+// Check if policy number already exists
+router.get('/check-duplicate/:policyNumber', authenticateToken, requireOps, async (req, res) => {
+  try {
+    const { policyNumber } = req.params;
+    
+    if (!policyNumber) {
+      return res.status(400).json({
+        success: false,
+        error: 'Policy number is required'
+      });
+    }
+
+    const exists = await storageService.checkPolicyNumberExists(policyNumber);
+    
+    res.json({
+      success: true,
+      data: {
+        policyNumber,
+        exists
+      }
+    });
+  } catch (error) {
+    console.error('Check policy number duplicate error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to check policy number'
+    });
+  }
+});
+
+// Search policies by vehicle number
+router.get('/search/vehicle/:vehicleNumber', authenticateToken, async (req, res) => {
+  try {
+    const { vehicleNumber } = req.params;
+    
+    if (!vehicleNumber) {
+      return res.status(400).json({
+        success: false,
+        error: 'Vehicle number is required'
+      });
+    }
+    
+    // Search policies by vehicle number (partial match)
+    const query = `
+      SELECT 
+        p.*,
+        pd.document_name,
+        pd.document_type,
+        pd.s3_key
+      FROM policies p
+      LEFT JOIN policy_documents pd ON p.id = pd.policy_id
+      WHERE LOWER(p.vehicle_number) LIKE LOWER($1)
+      ORDER BY p.vehicle_number, p.created_at DESC
+      LIMIT 20
+    `;
+    
+    const result = await storageService.db.query(query, [`%${vehicleNumber}%`]);
+    
+    res.json({
+      success: true,
+      data: result.rows
+    });
+  } catch (error) {
+    console.error('Vehicle search error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Search failed'
+    });
+  }
+});
+
+// Search policies by policy number
+router.get('/search/policy/:policyNumber', authenticateToken, async (req, res) => {
+  try {
+    const { policyNumber } = req.params;
+    
+    if (!policyNumber) {
+      return res.status(400).json({
+        success: false,
+        error: 'Policy number is required'
+      });
+    }
+    
+    // Search policies by policy number (partial match)
+    const query = `
+      SELECT 
+        p.*,
+        pd.document_name,
+        pd.document_type,
+        pd.s3_key
+      FROM policies p
+      LEFT JOIN policy_documents pd ON p.id = pd.policy_id
+      WHERE LOWER(p.policy_number) LIKE LOWER($1)
+      ORDER BY p.policy_number, p.created_at DESC
+      LIMIT 20
+    `;
+    
+    const result = await storageService.db.query(query, [`%${policyNumber}%`]);
+    
+    res.json({
+      success: true,
+      data: result.rows
+    });
+  } catch (error) {
+    console.error('Policy search error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Search failed'
+    });
+  }
+});
+
+// Combined search
+router.get('/search/:query', authenticateToken, async (req, res) => {
+  try {
+    const { query } = req.params;
+    
+    if (!query) {
+      return res.status(400).json({
+        success: false,
+        error: 'Search query is required'
+      });
+    }
+    
+    // Search policies by both vehicle number and policy number
+    const searchQuery = `
+      SELECT 
+        p.*,
+        pd.document_name,
+        pd.document_type,
+        pd.s3_key
+      FROM policies p
+      LEFT JOIN policy_documents pd ON p.id = pd.policy_id
+      WHERE 
+        LOWER(p.vehicle_number) LIKE LOWER($1) OR
+        LOWER(p.policy_number) LIKE LOWER($1)
+      ORDER BY 
+        CASE 
+          WHEN LOWER(p.vehicle_number) = LOWER($1) THEN 1
+          WHEN LOWER(p.policy_number) = LOWER($1) THEN 2
+          ELSE 3
+        END,
+        p.created_at DESC
+      LIMIT 20
+    `;
+    
+    const result = await storageService.db.query(searchQuery, [`%${query}%`]);
+    
+    res.json({
+      success: true,
+      data: result.rows
+    });
+  } catch (error) {
+    console.error('Combined search error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Search failed'
+    });
+  }
+});
+
 module.exports = router;
 

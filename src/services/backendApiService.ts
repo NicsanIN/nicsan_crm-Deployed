@@ -172,7 +172,7 @@ class BackendApiService {
 
       // Transform backend data to match frontend expectations
       const transformedData = (result.data || []).map((policy: any) => ({
-        rep: policy.rep || 'Unknown',  // Handle null rep field
+        rep: policy.rep || 'Unknown',  // Use caller_name field for telecaller names
         make: policy.make || 'Unknown',
         model: policy.model || 'Unknown',
         policies: parseInt(policy.policies) || 0,  // Convert string to number

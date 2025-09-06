@@ -41,6 +41,60 @@ class OpenAIService {
     }
   }
 
+  // Extract DIGIT premiums using multi-phase approach
+  async extractDigitPremiums(pdfText) {
+    try {
+      console.log('🔄 Starting multi-phase DIGIT extraction...');
+      
+      // Phase 1: Extract "Net Premium (₹)" for first three fields
+      const netPremiumPrompt = `Find "Net Premium (₹)" value in this text. Return ONLY the number.
+      Look for patterns like: "Net Premium (₹): 4902" or "Net Premium: 4902"
+      DO NOT use "Total OD Premium" or "Own Damage Premium" - only "Net Premium (₹)"
+      Text: ${pdfText}`;
+      
+      const netPremiumResponse = await this.client.chat.completions.create({
+        model: process.env.OPENAI_MODEL_FAST || 'gpt-4o-mini',
+        messages: [{ role: "user", content: netPremiumPrompt }],
+        temperature: 0.1,
+        max_tokens: 50
+      });
+      
+      const netPremium = parseInt(netPremiumResponse.choices[0].message.content.trim());
+      
+      // Phase 2: Extract "Final Premium"
+      const finalPremiumPrompt = `Find "Final Premium" value in this text. Return ONLY the number.
+      Look for patterns like: "Final Premium: 6500" or "Final Premium (₹): 6500"
+      DO NOT use "Net Premium (₹)" or "Total OD Premium" - only "Final Premium"
+      Text: ${pdfText}`;
+      
+      const finalPremiumResponse = await this.client.chat.completions.create({
+        model: process.env.OPENAI_MODEL_FAST || 'gpt-4o-mini',
+        messages: [{ role: "user", content: finalPremiumPrompt }],
+        temperature: 0.1,
+        max_tokens: 50
+      });
+      
+      const finalPremium = parseInt(finalPremiumResponse.choices[0].message.content.trim());
+      
+      // Phase 3: Validate and return
+      if (netPremium && finalPremium && netPremium !== finalPremium) {
+        console.log(`✅ Multi-phase extraction successful: Net Premium (₹)=${netPremium}, Final Premium=${finalPremium}`);
+        return {
+          net_od: netPremium,
+          total_od: netPremium,
+          net_premium: netPremium,
+          total_premium: finalPremium,
+          extraction_method: 'MULTI_PHASE'
+        };
+      }
+      
+      throw new Error('Multi-phase extraction failed - values not found or equal');
+    } catch (error) {
+      console.error('❌ Multi-phase extraction failed:', error);
+      throw error;
+    }
+  }
+
   // Extract policy data using OpenAI
   async extractPolicyData(pdfText, insurer) {
     try {
@@ -69,6 +123,36 @@ class OpenAIService {
   "total_premium": "number",
   "confidence_score": "number"
 }
+
+CRITICAL EXTRACTION RULES:
+1. Extract IDV (Insured Declared Value) from multiple sources with priority order
+2. PRIORITY 1: Table data - "Vehicle IDV (₹)" or "Total IDV (₹)" in tables (ACCEPT these values)
+3. PRIORITY 2: Policy year context - "Policy Year: 2024, Vehicle IDV: 495000" (ACCEPT policy year + IDV combinations)
+4. PRIORITY 3: Header data - "IDV (₹):" in header sections (fallback when table data unavailable)
+5. For IDV: ACCEPT both header "IDV (₹):" AND table "Vehicle IDV (₹)" or "Total IDV (₹)" values
+6. Policy year and IDV can be combined - extract policy year context when available
+7. For table data, extract IDV column value AND policy year when present
+8. For TATA_AIG policies specifically: PRIORITIZE "Total IDV (₹)" as the primary source over "Vehicle IDV (₹)"
+8. For NET OD: Extract "Total Own Damage Premium (A)" values - this is the NET OD in TATA AIG
+9. For TOTAL OD: Extract "Total Premium" or "Total Amount" values - this is the TOTAL OD in TATA AIG
+10. For DIGIT policies specifically:
+    - Net OD (₹): Extract from "Net Premium (₹)" values
+    - Total OD (₹): Extract from "Net Premium (₹)" values  
+    - Net Premium (₹): Extract from "Net Premium (₹)" values
+    - Total Premium (₹): Extract from "Final Premium" values
+    
+    CRITICAL DIGIT RULE: "Net Premium (₹)" and "Final Premium" are DIFFERENT fields!
+    - "Net Premium (₹)" is typically smaller (e.g., 4902)
+    - "Final Premium" is typically larger (e.g., 6500)
+    - These values should be DIFFERENT!
+    - Look for "Final Premium" or "Total Premium Payable" for total_premium
+    - DO NOT use "Net Premium (₹)" value for total_premium!
+11. For RELIANCE_GENERAL policies specifically:
+    - Net OD (₹): Extract from "Total Own Damage Premium" values
+    - Total OD (₹): Extract from "Total Own Damage Premium" values  
+    - Net Premium (₹): Extract from "Total Own Damage Premium" values
+    - Total Premium (₹): Extract from "Total Premium Payable" values
+12. For NCB: Extract percentage value, use 0 if not found (not 20)
 
 For ${insurer} insurance policies. If a field is not found, use null. For dates, use YYYY-MM-DD format. For numbers, use actual numbers not strings.
 
@@ -99,6 +183,23 @@ ${pdfText}`;
       
       const extractedData = JSON.parse(content);
       console.log('✅ OpenAI extraction completed');
+      
+      // Enhanced logging for DIGIT extraction debugging
+      if (insurer === 'DIGIT') {
+        console.log('🔍 DIGIT extraction results:');
+        console.log(`  - net_od: ${extractedData.net_od}`);
+        console.log(`  - total_od: ${extractedData.total_od}`);
+        console.log(`  - net_premium: ${extractedData.net_premium}`);
+        console.log(`  - total_premium: ${extractedData.total_premium}`);
+        
+        // Check for DIGIT bug
+        if (extractedData.net_od === extractedData.total_premium) {
+          console.log('⚠️ DIGIT Bug detected: All premium fields are equal!');
+          console.log('🔍 This indicates OpenAI extracted total_premium from wrong source');
+        } else {
+          console.log('✅ DIGIT extraction appears correct: total_premium differs from other premium fields');
+        }
+      }
       
       return extractedData;
     } catch (error) {

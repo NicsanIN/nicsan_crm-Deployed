@@ -3,6 +3,20 @@ const { uploadToS3, deleteFromS3, extractTextFromPDF, generateS3Key, generatePol
 const websocketService = require('./websocketService');
 
 class StorageService {
+  // Check if policy number already exists
+  async checkPolicyNumberExists(policyNumber) {
+    try {
+      const result = await query(
+        'SELECT id FROM policies WHERE policy_number = $1',
+        [policyNumber]
+      );
+      return result.rows.length > 0;
+    } catch (error) {
+      console.error('❌ Error checking policy number existence:', error);
+      return false; // Return false on error to allow insertion attempt
+    }
+  }
+
   // Dual Storage: Save to both S3 (primary) and PostgreSQL (secondary)
   async savePolicy(policyData) {
     try {
@@ -43,7 +57,18 @@ class StorageService {
       };
     } catch (error) {
       console.error('❌ Dual storage save error:', error);
-      throw error;
+      
+      // Handle specific PostgreSQL constraint violations
+      if (error.code === '23505') {  // PostgreSQL unique constraint violation
+        throw new Error(`Policy number '${policyData.policy_number}' already exists. Please use a different policy number.`);
+      } else if (error.code === '23502') {  // PostgreSQL not null constraint violation
+        throw new Error('Required fields are missing. Please check all mandatory fields.');
+      } else if (error.message && error.message.includes('already exists')) {
+        // Re-throw our custom duplicate error as-is
+        throw error;
+      } else {
+        throw new Error(`Database error: ${error.message}`);
+      }
     }
   }
 
@@ -57,6 +82,12 @@ class StorageService {
       our_cheque_no, executive, caller_name, mobile, rollover, remark,
       brokerage, cashback, source, s3_key, confidence_score
     } = policyData;
+
+    // Check for duplicate policy number before insert
+    const isDuplicate = await this.checkPolicyNumberExists(policy_number);
+    if (isDuplicate) {
+      throw new Error(`Policy number '${policy_number}' already exists. Please use a different policy number.`);
+    }
 
     const queryText = `
       INSERT INTO policies (
@@ -136,8 +167,8 @@ class StorageService {
       
       const { file, insurer, manualExtras } = uploadData;
       
-      // 1. Upload to S3 (Primary Storage)
-      const s3Key = generateS3Key(file.originalname, insurer);
+      // 1. Upload to S3 (Primary Storage) with insurer detection
+      const s3Key = await generateS3Key(file.originalname, insurer, file.buffer);
       const s3Result = await uploadToS3(file, s3Key);
       
       // 2. Save metadata to PostgreSQL (Secondary Storage)
@@ -192,14 +223,45 @@ class StorageService {
       
       // Try OpenAI processing first
       let extractedData;
+      let pdfText = null;
       try {
         const openaiResult = await extractTextFromPDF(upload.s3_key, upload.insurer);
-        extractedData = this.parseOpenAIResult(openaiResult);
+        
+        // Get PDF text for multi-phase extraction if needed
+        if (upload.insurer === 'DIGIT') {
+          try {
+            const pdf = require('pdf-parse');
+            const { s3 } = require('../config/aws');
+            const pdfBuffer = await s3.getObject({
+              Bucket: process.env.AWS_S3_BUCKET,
+              Key: upload.s3_key
+            }).promise();
+            const pdfData = await pdf(pdfBuffer.Body);
+            pdfText = pdfData.text;
+          } catch (pdfError) {
+            console.log('⚠️ Could not get PDF text for multi-phase extraction:', pdfError.message);
+          }
+        }
+        
+        extractedData = await this.parseOpenAIResult(openaiResult, pdfText);
         console.log('✅ OpenAI processing successful');
       } catch (openaiError) {
         console.error('⚠️ OpenAI failed, using mock data:', openaiError.message);
         // Fallback to mock data when OpenAI fails
         extractedData = this.generateMockExtractedData(upload.filename, upload.insurer);
+      }
+      
+      // NEW: Log insurer mismatch but continue processing
+      if (extractedData.insurer && extractedData.insurer !== upload.insurer) {
+        console.log(`⚠️ Insurer mismatch detected: PDF contains ${extractedData.insurer} but was uploaded as ${upload.insurer}`);
+        console.log(`📝 Continuing with detected insurer: ${extractedData.insurer}`);
+        
+        // Add mismatch info to extracted data but don't fail
+        extractedData.mismatch_info = {
+          selected_insurer: upload.insurer,
+          detected_insurer: extractedData.insurer,
+          message: `PDF content indicates ${extractedData.insurer} policy, but was uploaded as ${upload.insurer}`
+        };
       }
       
       // Update status in PostgreSQL
@@ -269,9 +331,36 @@ class StorageService {
   }
 
   // Parse OpenAI result to extract relevant fields
-  parseOpenAIResult(openaiResult) {
+  async parseOpenAIResult(openaiResult, pdfText = null) {
     try {
       console.log('🔄 Parsing OpenAI result...');
+      
+      // IDV Validation and Processing
+      let correctedIdv = openaiResult.idv;
+      
+      // Accept IDV values from multiple sources (header and table data)
+      // Policy year context is now valid and should be preserved
+      if (correctedIdv && correctedIdv > 0) {
+        const idvStr = correctedIdv.toString();
+        
+        // Validate IDV is within reasonable range for vehicle insurance
+        if (correctedIdv >= 100000 && correctedIdv <= 10000000) {
+          console.log(`✅ IDV validated: ${correctedIdv} (from table or header source)`);
+        } else if (correctedIdv > 10000000) {
+          // Only correct if value is unreasonably large (likely extraction error)
+          console.log('⚠️ IDV value seems unreasonably large, checking for extraction errors...');
+          
+          // Check if it's a concatenation error (not policy year context)
+          if (idvStr.length >= 8 && /^\d{8,}$/.test(idvStr)) {
+            // Try to extract reasonable IDV from the value
+            const reasonableIdv = parseInt(idvStr.substring(0, 6)); // Take first 6 digits
+            if (reasonableIdv >= 100000 && reasonableIdv <= 10000000) {
+              correctedIdv = reasonableIdv;
+              console.log(`✅ IDV corrected from ${openaiResult.idv} to ${correctedIdv} (extraction error fix)`);
+            }
+          }
+        }
+      }
       
       // OpenAI returns structured JSON directly, so we just need to validate and format
       const extractedData = {
@@ -286,8 +375,8 @@ class StorageService {
         manufacturing_year: openaiResult.manufacturing_year || '2021',
         issue_date: openaiResult.issue_date || new Date().toISOString().split('T')[0],
         expiry_date: openaiResult.expiry_date || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        idv: parseInt(openaiResult.idv) || 495000,
-        ncb: parseInt(openaiResult.ncb) || 20,
+        idv: parseInt(correctedIdv) || 495000,
+        ncb: openaiResult.ncb !== null && openaiResult.ncb !== undefined ? parseInt(openaiResult.ncb) : 0,
         discount: parseInt(openaiResult.discount) || 0,
         net_od: parseInt(openaiResult.net_od) || 5400,
         ref: openaiResult.ref || '',
@@ -296,6 +385,67 @@ class StorageService {
         total_premium: parseInt(openaiResult.total_premium) || 12150,
         confidence_score: openaiResult.confidence_score || 0.95 // OpenAI typically has higher confidence
       };
+      
+      // NEW: Enforce DIGIT/RELIANCE_GENERAL business rules
+      if (extractedData.insurer === 'DIGIT' || extractedData.insurer === 'RELIANCE_GENERAL') {
+        // For DIGIT: All three fields (net_od, total_od, net_premium) should equal "Total OD Premium"
+        if (extractedData.insurer === 'DIGIT') {
+          console.log('🔍 Processing DIGIT with enhanced source validation...');
+          
+          // Try multi-phase extraction first for DIGIT
+          try {
+            const openaiService = require('./openaiService');
+            const multiPhaseResult = await openaiService.extractDigitPremiums(pdfText);
+            if (multiPhaseResult && multiPhaseResult.extraction_method === 'MULTI_PHASE') {
+              console.log('✅ Using multi-phase extraction results for DIGIT');
+              extractedData.net_od = multiPhaseResult.net_od;
+              extractedData.total_od = multiPhaseResult.total_od;
+              extractedData.net_premium = multiPhaseResult.net_premium;
+              extractedData.total_premium = multiPhaseResult.total_premium;
+              extractedData.extraction_method = 'MULTI_PHASE';
+              console.log(`✅ DIGIT multi-phase extraction: Net OD=${multiPhaseResult.net_od}, Total Premium=${multiPhaseResult.total_premium}`);
+            }
+          } catch (multiPhaseError) {
+            console.log('⚠️ Multi-phase extraction failed, using standard extraction with validation');
+            
+            // Fallback to standard extraction with enhanced validation
+            const totalOdPremium = extractedData.net_od || extractedData.total_od || extractedData.net_premium;
+            if (totalOdPremium) {
+              console.log(`🔧 DIGIT: Setting all three fields to Total OD Premium value: ${totalOdPremium}`);
+              extractedData.net_od = totalOdPremium;
+              extractedData.total_od = totalOdPremium;
+              extractedData.net_premium = totalOdPremium;
+              
+              // Enhanced DIGIT Bug Fix: Validate that total_premium is different from Total OD Premium
+              if (extractedData.total_premium === totalOdPremium) {
+                console.log('⚠️ DIGIT Bug detected: total_premium equals Total OD Premium value');
+                console.log('🔍 This indicates extraction from wrong source fields');
+                extractedData.digit_bug_flag = 'TOTAL_PREMIUM_SAME_AS_OD_PREMIUM';
+                extractedData.extraction_method = 'STANDARD_WITH_BUG';
+              } else {
+                console.log(`✅ DIGIT validation passed: total_premium (${extractedData.total_premium}) differs from Total OD Premium (${totalOdPremium})`);
+                extractedData.extraction_method = 'STANDARD_VALIDATED';
+              }
+            }
+          }
+        } else if (extractedData.insurer === 'RELIANCE_GENERAL') {
+          // For RELIANCE_GENERAL: All three fields (net_od, total_od, net_premium) should equal "Total Own Damage Premium"
+          const totalOwnDamagePremium = extractedData.net_od || extractedData.total_od || extractedData.net_premium;
+          if (totalOwnDamagePremium) {
+            console.log(`🔧 RELIANCE_GENERAL: Setting all three fields to Total Own Damage Premium value: ${totalOwnDamagePremium}`);
+            extractedData.net_od = totalOwnDamagePremium;
+            extractedData.total_od = totalOwnDamagePremium;
+            extractedData.net_premium = totalOwnDamagePremium;
+          }
+        } else {
+          // For other insurers: Enforce total_od = net_od rule
+          if (extractedData.net_od && extractedData.total_od !== extractedData.net_od) {
+            console.log(`⚠️ Correcting ${extractedData.insurer} total_od to match net_od (${extractedData.net_od})`);
+            extractedData.total_od = extractedData.net_od;
+          }
+        }
+      }
+      
       
       console.log('✅ OpenAI result parsed successfully');
       return extractedData;
@@ -398,7 +548,7 @@ class StorageService {
 
       // Transform to policy format with null safety and numeric validation
       const policyData = {
-        // PDF extracted data with null safety
+        // PDF extracted data with null safety - prioritize extracted insurer
         policy_number: extractedData?.policy_number || `POL-${Date.now()}`,
         vehicle_number: extractedData?.vehicle_number || 'KA01AB0000',
         insurer: extractedData?.insurer || upload.insurer || 'TATA_AIG',
@@ -422,7 +572,7 @@ class StorageService {
         
         // Manual extras with null safety and numeric validation
         executive: manualExtras?.executive || '',
-        caller_name: manualExtras?.callerName || '',
+        caller_name: manualExtras?.caller_name || manualExtras?.callerName || '',
         mobile: manualExtras?.mobile || '',
         rollover: manualExtras?.rollover || '',
         remark: manualExtras?.remark || '',
@@ -550,9 +700,10 @@ class StorageService {
     try {
       console.log('📝 Saving manual form to dual storage...');
       
-      // Add source metadata
+      // Add source metadata and handle field mapping
       const policyData = {
         ...formData,
+        caller_name: formData.caller_name || formData.callerName || '', // Map callerName to caller_name
         source: 'MANUAL_FORM',
         confidence_score: 100 // Manual entry = 100% confidence
       };
@@ -931,6 +1082,69 @@ class StorageService {
     `, params);
 
     return result.rows;
+  }
+
+  // Settings methods - Dual Storage Pattern (S3 Primary, PostgreSQL Secondary)
+  async getSettings() {
+    try {
+      console.log('💾 Loading settings from dual storage...');
+      
+      // 1. Try to get from S3 (Primary Storage)
+      try {
+        const s3Key = 'settings/business_settings.json';
+        const s3Data = await getJSONFromS3(s3Key);
+        
+        if (s3Data) {
+          console.log('✅ Settings loaded from S3 (Primary Storage)');
+          return s3Data;
+        }
+      } catch (s3Error) {
+        console.log('⚠️ S3 unavailable, trying database...');
+      }
+      
+      // 2. Fallback to PostgreSQL (Secondary Storage)
+      const result = await query('SELECT key, value FROM settings');
+      
+      const settings = {};
+      result.rows.forEach(row => {
+        settings[row.key] = row.value;
+      });
+      
+      console.log('✅ Settings loaded from PostgreSQL (Secondary Storage)');
+      return settings;
+    } catch (error) {
+      console.error('❌ Error getting settings:', error);
+      throw error;
+    }
+  }
+
+  async saveSettings(settings) {
+    try {
+      console.log('💾 Saving settings to dual storage...');
+      
+      // 1. Save to S3 (Primary Storage)
+      try {
+        const s3Key = 'settings/business_settings.json';
+        await uploadJSONToS3(settings, s3Key);
+        console.log('✅ Settings saved to S3 (Primary Storage)');
+      } catch (s3Error) {
+        console.log('⚠️ S3 save failed, continuing with database...');
+      }
+      
+      // 2. Save to PostgreSQL (Secondary Storage)
+      for (const [key, value] of Object.entries(settings)) {
+        await query(
+          'INSERT INTO settings (key, value, updated_at) VALUES ($1, $2, CURRENT_TIMESTAMP) ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = CURRENT_TIMESTAMP',
+          [key, value]
+        );
+      }
+      
+      console.log('✅ Settings saved to PostgreSQL (Secondary Storage)');
+      return settings;
+    } catch (error) {
+      console.error('❌ Error saving settings:', error);
+      throw error;
+    }
   }
 }
 
