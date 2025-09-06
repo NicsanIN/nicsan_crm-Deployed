@@ -49,6 +49,34 @@ jobs:
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
+      
+      - name: Ensure backend Dockerfile exists at expected path
+        shell: bash
+        run: |
+          set -e
+          TARGET_DIR="nicsan-crm-backend"
+          TARGET_FILE="$TARGET_DIR/Dockerfile"
+
+          if [ -f "$TARGET_FILE" ]; then
+            echo "✓ Found $TARGET_FILE"
+            exit 0
+          fi
+
+          echo "No Dockerfile at $TARGET_FILE. Searching repository..."
+          FOUND=$(find . -maxdepth 3 -type f -name Dockerfile | head -n 1 || true)
+
+          if [ -n "$FOUND" ]; then
+            echo "Linking $FOUND -> $TARGET_FILE"
+            mkdir -p "$TARGET_DIR"
+            ln -s "$(realpath "$FOUND")" "$TARGET_FILE"
+            ls -la "$TARGET_DIR"
+            exit 0
+          fi
+
+          echo "❌ No Dockerfile found anywhere. Repository tree (depth 2):"
+          find . -maxdepth 2 -type d -print
+          exit 1
+
 
       - name: Build, tag, and push image to ECR
         env:
