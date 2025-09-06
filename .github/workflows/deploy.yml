@@ -5,7 +5,6 @@ on:
     branches: [ "main" ]
   workflow_dispatch:
 
-# REQUIRED for OIDC + aws-actions/configure-aws-credentials
 permissions:
   id-token: write
   contents: read
@@ -31,22 +30,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # --- TEMP: print OIDC token claims to confirm iss/aud/sub (remove once green) ---
       - name: DEBUG — show OIDC claims
         if: always()
         shell: bash
         run: |
-          set -e
+          set +e
           echo "repo=${{ github.repository }}"
           echo "ref=${{ github.ref }}"
           echo "actor=${{ github.actor }}"
           TOK_JSON=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
             "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com")
           TOK=$(echo "$TOK_JSON" | jq -r .value)
-          echo "$TOK" | cut -d '.' -f2 | base64 -d 2>/dev/null | jq '{iss, aud, sub}'
-      # -------------------------------------------------------------------------------
+          echo "$TOK" | cut -d '.' -f2 | base64 -d 2>/dev/null | jq '{iss, aud, sub}' || true
 
-      # --- OIDC + AWS credentials ---
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -54,7 +50,6 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
           audience: sts.amazonaws.com
           role-session-name: gha-${{ github.run_id }}
-      # ------------------------------
 
       - name: Login to Amazon ECR
         id: login-ecr
@@ -70,11 +65,7 @@ jobs:
           echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
 
           echo "Building image: $IMAGE_URI"
-          docker build \
-            -f nicsan-crm-backend/Dockerfile \
-            -t "$IMAGE_URI" \
-            nicsan-crm-backend
-
+          docker build -f nicsan-crm-backend/Dockerfile -t "$IMAGE_URI" nicsan-crm-backend
           echo "Pushing image: $IMAGE_URI"
           docker push "$IMAGE_URI"
 
@@ -90,7 +81,7 @@ jobs:
         with:
           task-definition: task-def.json
           container-name: ${{ env.CONTAINER_NAME }}
-          image: ${{ env.IMAGE_URI }} # This comes from $GITHUB_ENV set above
+          image: ${{ env.IMAGE_URI }}
 
       - name: Deploy to Amazon ECS
         uses: aws-actions/amazon-ecs-deploy-task-definition@v1
