@@ -85,3 +85,13 @@ jobs:
           service: ${{ env.ECS_SERVICE }}
           cluster: ${{ env.ECS_CLUSTER }}
           wait-for-service-stability: true
+
+      - name: DEBUG — show OIDC claims
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          TOK_JSON=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com")
+          TOK=$(echo "$TOK_JSON" | jq -r .value)
+          echo "$TOK" | cut -d '.' -f2 | base64 -d 2>/dev/null | jq '{iss, aud, sub}' || true
