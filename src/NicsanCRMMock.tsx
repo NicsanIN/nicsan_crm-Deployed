@@ -3282,13 +3282,13 @@ function PageReview() {
     <>
       <Card title="Review & Confirm" desc="Review PDF data + manual extras before saving">
         {/* Success/Error Messages */}
-        {saveMessage && (
+        {submitMessage && (
           <div className={`mb-4 p-3 rounded-xl text-sm ${
-            saveMessage.type === 'success' 
+            submitMessage.type === 'success' 
               ? 'bg-green-100 text-green-800 border border-green-200' 
               : 'bg-red-100 text-red-800 border border-red-200'
           }`}>
-            {saveMessage.message}
+            {submitMessage.message}
           </div>
         )}
 

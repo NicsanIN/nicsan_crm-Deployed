@@ -572,7 +572,7 @@ class StorageService {
         
         // Manual extras with null safety and numeric validation
         executive: manualExtras?.executive || '',
-        caller_name: manualExtras?.callerName || '',
+        caller_name: manualExtras?.caller_name || manualExtras?.callerName || '',
         mobile: manualExtras?.mobile || '',
         rollover: manualExtras?.rollover || '',
         remark: manualExtras?.remark || '',
@@ -700,9 +700,10 @@ class StorageService {
     try {
       console.log('📝 Saving manual form to dual storage...');
       
-      // Add source metadata
+      // Add source metadata and handle field mapping
       const policyData = {
         ...formData,
+        caller_name: formData.caller_name || formData.callerName || '', // Map callerName to caller_name
         source: 'MANUAL_FORM',
         confidence_score: 100 // Manual entry = 100% confidence
       };
