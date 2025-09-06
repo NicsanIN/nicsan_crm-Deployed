@@ -3,22 +3,24 @@ name: deploy
 on:
   push:
     branches: [ "main" ]
+  workflow_dispatch:
 
 # REQUIRED for OIDC + aws-actions/configure-aws-credentials
 permissions:
   id-token: write
   contents: read
 
+concurrency:
+  group: ecs-deploy-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   AWS_REGION: ap-south-1
   AWS_ACCOUNT_ID: "132418765186"
-  # Change if your ECR repo name is different
   ECR_REPOSITORY: "nicsan-crm-api"
-  # ECS resources
   ECS_CLUSTER: "nicsan-backend-cluster"
   ECS_SERVICE: "nicsan-backend-svc"
   TASK_FAMILY: "nicsan-backend-task"
-  # Name of the container in your task definition
   CONTAINER_NAME: "backend"
 
 jobs:
@@ -29,22 +31,30 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # --- OIDC + AWS credentials (minimal header requirement) ---
+      # --- TEMP: print OIDC token claims to confirm iss/aud/sub (remove once green) ---
+      - name: DEBUG — show OIDC claims
+        if: always()
+        shell: bash
+        run: |
+          set -e
+          echo "repo=${{ github.repository }}"
+          echo "ref=${{ github.ref }}"
+          echo "actor=${{ github.actor }}"
+          TOK_JSON=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com")
+          TOK=$(echo "$TOK_JSON" | jq -r .value)
+          echo "$TOK" | cut -d '.' -f2 | base64 -d 2>/dev/null | jq '{iss, aud, sub}'
+      # -------------------------------------------------------------------------------
+
+      # --- OIDC + AWS credentials ---
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::132418765186:role/GitHubActionsDeploy-Backend
           aws-region: ${{ env.AWS_REGION }}
           audience: sts.amazonaws.com
-      # ------------------------------------------------------------
-
-      # Optional: uncomment to inspect claims if you still see OIDC issues
-      # - name: Debug OIDC claims (temporary)
-      #   shell: bash
-      #   run: |
-      #     echo "repo=${{ github.repository }}"
-      #     echo "ref=${{ github.ref }}"
-      #     echo "actor=${{ github.actor }}"
+          role-session-name: gha-${{ github.run_id }}
+      # ------------------------------
 
       - name: Login to Amazon ECR
         id: login-ecr
@@ -53,19 +63,20 @@ jobs:
       - name: Build, tag, and push image to ECR
         env:
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          IMAGE_TAG: ${{ github.sha }}
         run: |
           set -e
-          echo "Building image..."
+          BUILD_TAG="prod-$(date +%Y%m%d%H%M%S)"
+          IMAGE_URI="$REGISTRY/${{ env.ECR_REPOSITORY }}:$BUILD_TAG"
+          echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
+
+          echo "Building image: $IMAGE_URI"
           docker build \
             -f nicsan-crm-backend/Dockerfile \
-            -t "$REGISTRY/${{ env.ECR_REPOSITORY }}:$IMAGE_TAG" \
+            -t "$IMAGE_URI" \
             nicsan-crm-backend
 
-          echo "Pushing image..."
-          docker push "$REGISTRY/${{ env.ECR_REPOSITORY }}:$IMAGE_TAG"
-
-          echo "IMAGE_URI=$REGISTRY/${{ env.ECR_REPOSITORY }}:$IMAGE_TAG" >> $GITHUB_ENV
+          echo "Pushing image: $IMAGE_URI"
+          docker push "$IMAGE_URI"
 
       - name: Download current task definition
         run: |
@@ -79,7 +90,7 @@ jobs:
         with:
           task-definition: task-def.json
           container-name: ${{ env.CONTAINER_NAME }}
-          image: ${{ env.IMAGE_URI }}
+          image: ${{ env.IMAGE_URI }} # This comes from $GITHUB_ENV set above
 
       - name: Deploy to Amazon ECS
         uses: aws-actions/amazon-ecs-deploy-task-definition@v1
