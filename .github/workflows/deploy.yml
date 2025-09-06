@@ -98,6 +98,42 @@ jobs:
           aws ecs describe-task-definition \
             --task-definition "${{ env.TASK_FAMILY }}" \
             --query taskDefinition > task-def.json
+        
+      - name: Sanitize task definition for ECS register
+        shell: bash
+        run: |
+          set -e
+          # Rebuild a clean RegisterTaskDefinition payload and drop unknown/read-only keys
+          jq '{
+            family: .family,
+            taskRoleArn: .taskRoleArn,
+            executionRoleArn: .executionRoleArn,
+            networkMode: .networkMode,
+            containerDefinitions: (
+              .containerDefinitions
+              | map(del(
+                  .enableFaultInjection,          # <-- drop the culprit
+                  .repositoryCredentials,
+                  .firelensConfiguration,
+                  .systemControls,
+                  .ulimits,
+                  .credentialSpecs
+                ))
+            ),
+            volumes: .volumes,
+            placementConstraints: .placementConstraints,
+            requiresCompatibilities: .requiresCompatibilities,
+            cpu: .cpu,
+            memory: .memory,
+            pidMode: .pidMode,
+            ipcMode: .ipcMode,
+            proxyConfiguration: .proxyConfiguration,
+            inferenceAccelerators: .inferenceAccelerators,
+            ephemeralStorage: .ephemeralStorage,
+            runtimePlatform: .runtimePlatform
+          }' task-def.json > task-def.clean.json
+          mv task-def.clean.json task-def.json
+          echo "✅ task-def.json sanitized"
 
       - name: Render task definition with new image
         id: render-tdef
