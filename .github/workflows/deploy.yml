@@ -47,7 +47,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::132418765186:role/GitHubActionsDeploy-Backend
-          aws-region: ${{ env.AWS_REGION }}
+          aws-region: ap-south-1
           audience: sts.amazonaws.com
           role-session-name: gha-${{ github.run_id }}
 
