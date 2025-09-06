@@ -1,5 +1,4 @@
-name: deploy
-
+name: Deploy to AWS
 on:
   push:
     branches: [ "main" ]
@@ -23,10 +22,12 @@ env:
   CONTAINER_NAME: "backend"
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-
+    permissions:
+      id-token: write   # Required for OIDC
+      contents: read    # Required to checkout code
+      
     steps:
       - name: Checkout
         uses: actions/checkout@v4
