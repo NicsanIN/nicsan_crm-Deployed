@@ -6,6 +6,7 @@ import NicsanCRMService from './services/api-integration';
 import { policiesAPI } from './services/api';
 import DualStorageService from './services/dualStorageService';
 import CrossDeviceSyncDemo from './components/CrossDeviceSyncDemo';
+import { SettingsProvider, useSettings } from './contexts/SettingsContext';
 
 // Environment variables
 const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
@@ -233,7 +234,7 @@ function PageUpload() {
     mobile: '',
     rollover: '',
     remark: '',
-    brokerage: '',
+    brokerage: '0',
     cashback: '',
     customerPaid: '',
     customerChequeNo: '',
@@ -554,7 +555,7 @@ function PageUpload() {
                 className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
               />
             </div>
-            <div>
+            <div style={{ display: 'none' }}>
               <label className="block text-xs text-blue-700 mb-1">Brokerage (₹)</label>
               <input 
                 type="number" 
@@ -863,7 +864,7 @@ function PageManualForm() {
     mobile: "",
     rollover: "",
     remark: "",
-    brokerage: "",
+    brokerage: "0",
     cashback: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -1073,19 +1074,20 @@ function PageManualForm() {
         }
         break;
         
-      case 'brokerage':
-        if (!value) {
-          errors.push('Brokerage (₹) is required');
-        } else {
-          const brokerage = number(value);
-          const totalPremium = number(form.totalPremium);
-          if (brokerage < 0 || brokerage > 100000) {
-            errors.push('Brokerage must be between ₹0 and ₹1 lakh');
-          } else if (brokerage > totalPremium * 0.15) {
-            errors.push('Brokerage cannot exceed 15% of Total Premium');
-          }
-        }
-        break;
+      // Brokerage validation removed - field is hidden
+      // case 'brokerage':
+      //   if (!value) {
+      //     errors.push('Brokerage (₹) is required');
+      //   } else {
+      //     const brokerage = number(value);
+      //     const totalPremium = number(form.totalPremium);
+      //     if (brokerage < 0 || brokerage > 100000) {
+      //       errors.push('Brokerage must be between ₹0 and ₹1 lakh');
+      //     } else if (brokerage > totalPremium * 0.15) {
+      //       errors.push('Brokerage cannot exceed 15% of Total Premium');
+      //     }
+      //   }
+      //   break;
         
       case 'callerName':
         if (!value) {
@@ -1559,7 +1561,9 @@ function PageManualForm() {
 
         {/* Brokerage & Additional */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-          <LabeledInput label="Brokerage (₹)" hint="commission amount" value={form.brokerage} onChange={v=>set('brokerage', v)}/>
+          <div style={{ display: 'none' }}>
+            <LabeledInput label="Brokerage (₹)" hint="commission amount" value={form.brokerage} onChange={v=>set('brokerage', v)}/>
+          </div>
           <LabeledInput label="Cashback (₹)" hint="total cashback amount" value={form.cashback} onChange={v=>set('cashback', v)}/>
         </div>
 
@@ -1700,7 +1704,7 @@ function PageManualGrid() {
       cashbackPct: "",
       cashbackAmt: "",
       customerPaid: "",
-      brokerage: "",
+      brokerage: "0",
       
       // Contact Info
       executive: "",
@@ -2173,7 +2177,7 @@ function PageManualGrid() {
                 <th className="py-2 px-1">Cashback %</th>
                 <th className="py-2 px-1">Cashback (₹)</th>
                 <th className="py-2 px-1">Customer Paid (₹)</th>
-                <th className="py-2 px-1">Brokerage (₹)</th>
+                <th className="py-2 px-1" style={{ display: 'none' }}>Brokerage (₹)</th>
                 <th className="py-2 px-1">Executive</th>
                 <th className="py-2 px-1">Caller Name</th>
                 <th className="py-2 px-1">Mobile</th>
@@ -2399,7 +2403,7 @@ function PageManualGrid() {
                       className="w-full border-none outline-none bg-transparent text-sm"
                     />
                   </td>
-                  <td className="px-1">
+                  <td className="px-1" style={{ display: 'none' }}>
                     <input 
                       type="number"
                       value={r.brokerage} 
@@ -3164,12 +3168,14 @@ function PageReview() {
               onChange={(value) => updateManualExtras('rollover', value)}
               hint="internal code"
             />
-            <LabeledInput 
-              label="Brokerage (₹)" 
-              value={editableData.manualExtras.brokerage || manualExtras.brokerage}
-              onChange={(value) => updateManualExtras('brokerage', value)}
-              hint="commission amount"
-            />
+            <div style={{ display: 'none' }}>
+              <LabeledInput 
+                label="Brokerage (₹)" 
+                value={editableData.manualExtras.brokerage || manualExtras.brokerage}
+                onChange={(value) => updateManualExtras('brokerage', value)}
+                hint="commission amount"
+              />
+            </div>
             <LabeledInput 
               label="Cashback (₹)" 
               value={editableData.manualExtras.cashback || manualExtras.cashback}
@@ -3276,6 +3282,13 @@ function PagePolicyDetail() {
   const [policyId, setPolicyId] = useState<string>('1');
   const [availablePolicies, setAvailablePolicies] = useState<any[]>([]);
   const [isLoadingPolicies, setIsLoadingPolicies] = useState(true);
+  
+  // Search functionality state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchType, setSearchType] = useState<'vehicle' | 'policy' | 'both'>('both');
+  const [showResults, setShowResults] = useState(false);
 
   const loadAvailablePolicies = async () => {
     try {
@@ -3337,6 +3350,89 @@ function PagePolicyDetail() {
     }
   }, [policyId]);
 
+  // Search functionality
+  const handleSearch = async (query: string) => {
+    if (!query.trim()) {
+      setSearchResults([]);
+      return;
+    }
+    
+    setIsSearching(true);
+    
+    try {
+      let searchResults: any[] = [];
+      
+      if (searchType === 'vehicle' || searchType === 'both') {
+        // Search by vehicle number
+        const vehicleResults = availablePolicies.filter(policy => 
+          policy.vehicle_number.toLowerCase().includes(query.toLowerCase())
+        );
+        searchResults = [...searchResults, ...vehicleResults];
+      }
+      
+      if (searchType === 'policy' || searchType === 'both') {
+        // Search by policy number
+        const policyResults = availablePolicies.filter(policy => 
+          policy.policy_number.toLowerCase().includes(query.toLowerCase())
+        );
+        searchResults = [...searchResults, ...policyResults];
+      }
+      
+      // Remove duplicates and sort
+      const uniqueResults = searchResults.filter((policy, index, self) => 
+        index === self.findIndex(p => p.id === policy.id)
+      );
+      
+      setSearchResults(uniqueResults);
+    } catch (error) {
+      console.error('Search error:', error);
+      setSearchResults([]);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  // Debounced search
+  const debouncedSearch = useMemo(
+    () => {
+      let timeoutId: NodeJS.Timeout;
+      return (query: string) => {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => handleSearch(query), 300);
+      };
+    },
+    [searchType, availablePolicies]
+  );
+
+  useEffect(() => {
+    if (searchQuery.trim()) {
+      debouncedSearch(searchQuery);
+    } else {
+      setSearchResults([]);
+    }
+  }, [searchQuery, debouncedSearch]);
+
+  const handlePolicySelect = (policy: any) => {
+    setPolicyId(policy.id);
+    setSearchQuery(`${policy.policy_number} - ${policy.vehicle_number}`);
+    setShowResults(false);
+  };
+
+  // Close search results when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.search-container')) {
+        setShowResults(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
   if (isLoading) {
   return (
       <Card title="Policy Detail — Loading..." desc="Loading policy data...">
@@ -3367,37 +3463,112 @@ function PagePolicyDetail() {
       {/* Policy Selection */}
       <Card title="Policy Detail" desc={`View comprehensive policy information (Data Source: ${dataSource || 'Loading...'})`}>
         <div className="mb-4">
-          <div className="flex items-center gap-3">
-            <label className="text-sm font-medium">Select Policy:</label>
-            {isLoadingPolicies ? (
-              <div className="text-sm text-zinc-500">Loading policies...</div>
-            ) : (
-              <select
-                value={policyId}
-                onChange={(e) => setPolicyId(e.target.value)}
-                className="px-3 py-1 border border-zinc-300 rounded-md text-sm min-w-64"
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <label className="text-sm font-medium">Search Policy:</label>
+              {isLoadingPolicies ? (
+                <div className="text-sm text-zinc-500">Loading policies...</div>
+              ) : (
+                <div className="relative flex-1 max-w-md search-container">
+                  {/* Search Type Toggle */}
+                  <div className="flex space-x-4 mb-3">
+                    <label className="flex items-center">
+                      <input
+                        type="radio"
+                        value="both"
+                        checked={searchType === 'both'}
+                        onChange={(e) => setSearchType(e.target.value as 'vehicle' | 'policy' | 'both')}
+                        className="mr-2"
+                      />
+                      <span className="text-sm">Both</span>
+                    </label>
+                    <label className="flex items-center">
+                      <input
+                        type="radio"
+                        value="vehicle"
+                        checked={searchType === 'vehicle'}
+                        onChange={(e) => setSearchType(e.target.value as 'vehicle' | 'policy' | 'both')}
+                        className="mr-2"
+                      />
+                      <span className="text-sm">Vehicle</span>
+                    </label>
+                    <label className="flex items-center">
+                      <input
+                        type="radio"
+                        value="policy"
+                        checked={searchType === 'policy'}
+                        onChange={(e) => setSearchType(e.target.value as 'vehicle' | 'policy' | 'both')}
+                        className="mr-2"
+                      />
+                      <span className="text-sm">Policy</span>
+                    </label>
+                  </div>
+                  
+                  {/* Search Input */}
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onFocus={() => setShowResults(true)}
+                      placeholder={`Search by ${searchType === 'both' ? 'vehicle number or policy number' : searchType === 'vehicle' ? 'vehicle number' : 'policy number'}...`}
+                      className="block w-full px-3 py-2 pr-10 border border-zinc-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                      {isSearching ? (
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                      ) : (
+                        <div className="text-zinc-400">🔍</div>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {/* Search Results Dropdown */}
+                  {showResults && searchResults.length > 0 && (
+                    <div className="absolute z-10 mt-1 w-full bg-white border border-zinc-300 rounded-md shadow-lg max-h-60 overflow-auto">
+                      {searchResults.map((policy) => (
+                        <div
+                          key={policy.id}
+                          onClick={() => handlePolicySelect(policy)}
+                          className="px-4 py-3 hover:bg-zinc-50 cursor-pointer border-b border-zinc-100 last:border-b-0"
+                        >
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <p className="text-sm font-medium text-zinc-900">
+                                {policy.policy_number}
+                              </p>
+                              <p className="text-sm text-zinc-500">
+                                {policy.vehicle_number} - {policy.insurer}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  
+                  {/* No Results Message */}
+                  {showResults && searchQuery && searchResults.length === 0 && !isSearching && (
+                    <div className="mt-2 text-sm text-zinc-500">
+                      No policies found matching your search.
+                    </div>
+                  )}
+                </div>
+              )}
+              <button
+                onClick={() => loadAvailablePolicies()}
+                className="px-3 py-1 bg-zinc-100 text-zinc-700 rounded-md text-sm hover:bg-zinc-200"
+                disabled={isLoadingPolicies}
               >
-                <option value="">Select a policy...</option>
-                {availablePolicies.map((policy) => (
-                  <option key={policy.id} value={policy.id}>
-                    {policy.policy_number} - {policy.vehicle_number} ({policy.insurer})
-                  </option>
-                ))}
-              </select>
-            )}
-            <button
-              onClick={() => loadAvailablePolicies()}
-              className="px-3 py-1 bg-zinc-100 text-zinc-700 rounded-md text-sm hover:bg-zinc-200"
-              disabled={isLoadingPolicies}
-            >
-              Refresh
-            </button>
-        </div>
-          {availablePolicies.length > 0 && (
-            <div className="mt-2 text-xs text-zinc-500">
-              {availablePolicies.length} policies available
+                Refresh
+              </button>
             </div>
-          )}
+            {availablePolicies.length > 0 && (
+              <div className="text-xs text-zinc-500">
+                {availablePolicies.length} policies available
+              </div>
+            )}
+          </div>
         </div>
       </Card>
 
@@ -4000,17 +4171,230 @@ function PageSources() {
 }
 
 function PageFounderSettings() {
+  const [settings, setSettings] = useState({
+    brokeragePercent: '15',
+    repDailyCost: '2000',
+    expectedConversion: '25',
+    premiumGrowth: '10'
+  });
+  
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [hasChanges, setHasChanges] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<any>({});
+
+  // Load settings on component mount
+  useEffect(() => {
+    loadSettings();
+  }, []);
+
+  // Track changes
+  useEffect(() => {
+    setHasChanges(true);
+  }, [settings]);
+
+  const [dataSource, setDataSource] = useState<string>('');
+
+  const loadSettings = async () => {
+    try {
+      setIsLoading(true);
+      const response = await NicsanCRMService.getSettings();
+      if (response.success) {
+        setSettings(response.data);
+        setHasChanges(false);
+        setDataSource(response.source || 'Unknown');
+        
+        if (ENABLE_DEBUG) {
+          console.log('📋 Settings - Data source:', response.source);
+          console.log('📋 Settings - Message:', response.message);
+        }
+      } else {
+        setError(response.error || 'Failed to load settings');
+      }
+    } catch (error: any) {
+      setError(error.message || 'Failed to load settings');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const updateSetting = (key: string, value: string) => {
+    setSettings(prev => ({
+      ...prev,
+      [key]: value
+    }));
+  };
+
+  const validateSettings = (settings: any) => {
+    const errors: any = {};
+    
+    // Brokerage % validation
+    if (!settings.brokeragePercent || isNaN(parseFloat(settings.brokeragePercent))) {
+      errors.brokeragePercent = 'Brokerage % is required and must be a number';
+    } else {
+      const value = parseFloat(settings.brokeragePercent);
+      if (value < 0 || value > 100) {
+        errors.brokeragePercent = 'Brokerage % must be between 0 and 100';
+      }
+    }
+    
+    // Rep Daily Cost validation
+    if (!settings.repDailyCost || isNaN(parseFloat(settings.repDailyCost))) {
+      errors.repDailyCost = 'Rep Daily Cost is required and must be a number';
+    } else {
+      const value = parseFloat(settings.repDailyCost);
+      if (value < 0) {
+        errors.repDailyCost = 'Rep Daily Cost must be positive';
+      }
+    }
+    
+    // Expected Conversion % validation
+    if (!settings.expectedConversion || isNaN(parseFloat(settings.expectedConversion))) {
+      errors.expectedConversion = 'Expected Conversion % is required and must be a number';
+    } else {
+      const value = parseFloat(settings.expectedConversion);
+      if (value < 0 || value > 100) {
+        errors.expectedConversion = 'Expected Conversion % must be between 0 and 100';
+      }
+    }
+    
+    // Premium Growth % validation
+    if (!settings.premiumGrowth || isNaN(parseFloat(settings.premiumGrowth))) {
+      errors.premiumGrowth = 'Premium Growth % is required and must be a number';
+    } else {
+      const value = parseFloat(settings.premiumGrowth);
+      if (value < 0 || value > 100) {
+        errors.premiumGrowth = 'Premium Growth % must be between 0 and 100';
+      }
+    }
+    
+    return errors;
+  };
+
+  const handleSave = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      setSuccess(null);
+      
+      // Validate settings
+      const validationErrors = validateSettings(settings);
+      if (Object.keys(validationErrors).length > 0) {
+        setValidationErrors(validationErrors);
+        return;
+      }
+      
+      // Save settings
+      const response = await NicsanCRMService.saveSettings(settings);
+      
+      if (response.success) {
+        setSuccess(`Settings saved successfully! (${response.message || 'Saved'})`);
+        setHasChanges(false);
+        setValidationErrors({});
+        setDataSource(response.source || 'Unknown');
+        
+        // Clear success message after 3 seconds
+        setTimeout(() => setSuccess(null), 3000);
+      } else {
+        setError(response.error || 'Failed to save settings');
+      }
+    } catch (error: any) {
+      setError(error.message || 'Failed to save settings');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleReset = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      setSuccess(null);
+      
+      // Reset settings
+      const response = await NicsanCRMService.resetSettings();
+      
+      if (response.success) {
+        setSettings(response.data);
+        setHasChanges(false);
+        setValidationErrors({});
+        setSuccess(`Settings reset to defaults! (${response.message || 'Reset'})`);
+        setDataSource(response.source || 'Unknown');
+        
+        // Clear success message after 3 seconds
+        setTimeout(() => setSuccess(null), 3000);
+      } else {
+        setError(response.error || 'Failed to reset settings');
+      }
+    } catch (error: any) {
+      setError(error.message || 'Failed to reset settings');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
-    <Card title="Business Settings" desc="These drive calculations in dashboards.">
+    <Card title="Business Settings" desc={`These drive calculations in dashboards (Data Source: ${dataSource || 'Loading...'})`}>
+      {/* Error/Success Messages */}
+      {error && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+          <div className="text-sm text-red-800">{error}</div>
+        </div>
+      )}
+      
+      {success && (
+        <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+          <div className="text-sm text-green-800">{success}</div>
+        </div>
+      )}
+      
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <LabeledInput label="Brokerage %" hint="% of GWP that we earn"/>
-        <LabeledInput label="Rep Daily Cost (₹)" hint="salary + incentives + telephony + tools / working days"/>
-        <LabeledInput label="Expected Conversion %" hint="for valuing backlog"/>
-        <LabeledInput label="Premium Growth %" hint="for LTV estimates later"/>
+        <LabeledInput 
+          label="Brokerage %" 
+          hint="% of GWP that we earn"
+          value={settings.brokeragePercent}
+          onChange={(value) => updateSetting('brokeragePercent', value)}
+          error={validationErrors.brokeragePercent}
+        />
+        <LabeledInput 
+          label="Rep Daily Cost (₹)" 
+          hint="salary + incentives + telephony + tools / working days"
+          value={settings.repDailyCost}
+          onChange={(value) => updateSetting('repDailyCost', value)}
+          error={validationErrors.repDailyCost}
+        />
+        <LabeledInput 
+          label="Expected Conversion %" 
+          hint="for valuing backlog"
+          value={settings.expectedConversion}
+          onChange={(value) => updateSetting('expectedConversion', value)}
+          error={validationErrors.expectedConversion}
+        />
+        <LabeledInput 
+          label="Premium Growth %" 
+          hint="for LTV estimates later"
+          value={settings.premiumGrowth}
+          onChange={(value) => updateSetting('premiumGrowth', value)}
+          error={validationErrors.premiumGrowth}
+        />
       </div>
+      
       <div className="flex gap-3 mt-4">
-        <button className="px-4 py-2 rounded-xl bg-zinc-900 text-white">Save Settings</button>
-        <button className="px-4 py-2 rounded-xl bg-white border">Reset</button>
+        <button 
+          onClick={handleSave}
+          disabled={isLoading || !hasChanges}
+          className="px-4 py-2 rounded-xl bg-zinc-900 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {isLoading ? 'Saving...' : 'Save Settings'}
+        </button>
+        <button 
+          onClick={handleReset}
+          disabled={isLoading}
+          className="px-4 py-2 rounded-xl bg-white border disabled:opacity-50"
+        >
+          Reset
+        </button>
       </div>
     </Card>
   )
@@ -4018,6 +4402,7 @@ function PageFounderSettings() {
 
 // ---------- KPI DASHBOARD ----------
 function PageKPIs() {
+  const { settings } = useSettings();
   const [kpiData, setKpiData] = useState<any>(null);
   const [dataSource, setDataSource] = useState<string>('');
 
@@ -4055,12 +4440,23 @@ function PageKPIs() {
   const totalBrokerage = kpiData?.basicMetrics?.totalBrokerage || 0;
   const totalCashback = kpiData?.basicMetrics?.totalCashback || 0;
 
-  // Use backend KPI calculations if available, otherwise calculate from real data
+  // Use settings for calculations
+  const brokeragePercent = parseFloat(settings.brokeragePercent) / 100;
+  const repDailyCost = parseFloat(settings.repDailyCost);
+  const expectedConversion = parseFloat(settings.expectedConversion) / 100;
+  const premiumGrowth = parseFloat(settings.premiumGrowth) / 100;
+
+  // Use backend KPI calculations if available, otherwise calculate from real data with settings
   const backendKPIs = kpiData?.kpis || {};
   const conversionRate = parseFloat(backendKPIs.conversionRate) || (totalConverted/(totalLeads||1))*100;
   const lossRatio = parseFloat(backendKPIs.lossRatio) || (sumGWP > 0 ? (totalCashback / sumGWP) * 100 : 0);
   const expenseRatio = parseFloat(backendKPIs.expenseRatio) || (sumGWP > 0 ? ((totalBrokerage - totalCashback) / sumGWP) * 100 : 0);
   const combinedRatio = parseFloat(backendKPIs.combinedRatio) || (lossRatio + expenseRatio);
+
+  // Calculate settings-based metrics
+  const calculatedBrokerage = sumGWP * brokeragePercent;
+  const expectedBacklogValue = (totalLeads - totalConverted) * expectedConversion * (sumGWP / (totalConverted || 1));
+  const projectedLTV = (sumGWP / (totalConverted || 1)) * Math.pow(1 + premiumGrowth, 3); // 3-year projection
 
   // Calculate real metrics from actual data (no hardcoded assumptions)
   const ARPA = totalConverted > 0 ? sumNet / totalConverted : 0;
@@ -4125,6 +4521,16 @@ function PageKPIs() {
             <Tile label="Marketing ROI" info="((Rev−Spend) ÷ Spend)" value={pct(marketingROI)} sub="No marketing spend data available"/>
           </div>
         </Card>
+
+        {/* Settings-Based Calculations */}
+        <Card title="Business Projections" desc="Calculations based on current settings">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+            <Tile label="Expected Brokerage" info={`(${settings.brokeragePercent}% of GWP)`} value={fmtINR(calculatedBrokerage)} sub={`${settings.brokeragePercent}% of ${fmtINR(sumGWP)}`}/>
+            <Tile label="Backlog Value" info={`(${settings.expectedConversion}% conversion)`} value={fmtINR(expectedBacklogValue)} sub={`${totalLeads - totalConverted} pending leads`}/>
+            <Tile label="3-Year LTV" info={`(${settings.premiumGrowth}% growth)`} value={fmtINR(projectedLTV)} sub="Projected customer value"/>
+            <Tile label="Daily Rep Cost" info="(per representative)" value={fmtINR(repDailyCost)} sub="From settings"/>
+          </div>
+        </Card>
       </div>
     </>
   )
@@ -4178,7 +4584,7 @@ function PageTests() {
   );
 }
 
-export default function NicsanCRMMock() {
+function NicsanCRMMock() {
   const [user, setUser] = useState<{name:string; email?:string; role:"ops"|"founder"}|null>(null);
   const [tab, setTab] = useState<"ops"|"founder">("ops");
   const [opsPage, setOpsPage] = useState("upload");
@@ -4253,4 +4659,12 @@ export default function NicsanCRMMock() {
       )}
     </div>
   )
+}
+
+export default function App() {
+  return (
+    <SettingsProvider>
+      <NicsanCRMMock />
+    </SettingsProvider>
+  );
 }

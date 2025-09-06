@@ -125,13 +125,14 @@ class OpenAIService {
 }
 
 CRITICAL EXTRACTION RULES:
-1. Extract ONLY the individual vehicle IDV value (not total IDV, not table concatenations)
-2. Look for "IDV (₹)" followed by a number in header sections
-3. IGNORE table values like "Vehicle IDV (₹)" or "Total IDV (₹)"
-4. Do NOT concatenate policy year with IDV values
-5. For IDV: Look specifically for "IDV (₹):" in header sections, NOT "Vehicle IDV (₹)" or "Total IDV (₹)" in tables. TATA AIG uses "IDV (₹):" in policy header, ignore all table variations.
-6. Policy year and IDV are SEPARATE fields - do not combine them
-7. For table data, extract only the IDV column value, ignore policy year column
+1. Extract IDV (Insured Declared Value) from multiple sources with priority order
+2. PRIORITY 1: Table data - "Vehicle IDV (₹)" or "Total IDV (₹)" in tables (ACCEPT these values)
+3. PRIORITY 2: Policy year context - "Policy Year: 2024, Vehicle IDV: 495000" (ACCEPT policy year + IDV combinations)
+4. PRIORITY 3: Header data - "IDV (₹):" in header sections (fallback when table data unavailable)
+5. For IDV: ACCEPT both header "IDV (₹):" AND table "Vehicle IDV (₹)" or "Total IDV (₹)" values
+6. Policy year and IDV can be combined - extract policy year context when available
+7. For table data, extract IDV column value AND policy year when present
+8. For TATA_AIG policies specifically: PRIORITIZE "Total IDV (₹)" as the primary source over "Vehicle IDV (₹)"
 8. For NET OD: Extract "Total Own Damage Premium (A)" values - this is the NET OD in TATA AIG
 9. For TOTAL OD: Extract "Total Premium" or "Total Amount" values - this is the TOTAL OD in TATA AIG
 10. For DIGIT policies specifically:

@@ -335,25 +335,29 @@ class StorageService {
     try {
       console.log('🔄 Parsing OpenAI result...');
       
-      // IDV Validation and Correction
+      // IDV Validation and Processing
       let correctedIdv = openaiResult.idv;
       
-      // Check if IDV has policy year concatenated (starts with 1-9 and is too large)
-      if (correctedIdv && correctedIdv > 1000000) {
+      // Accept IDV values from multiple sources (header and table data)
+      // Policy year context is now valid and should be preserved
+      if (correctedIdv && correctedIdv > 0) {
         const idvStr = correctedIdv.toString();
         
-        // Check if it starts with policy year (1-9) followed by large number
-        if (idvStr.length >= 7 && /^[1-9]\d{6,}$/.test(idvStr)) {
-          console.log('⚠️ Detected policy year concatenation in IDV, attempting correction...');
+        // Validate IDV is within reasonable range for vehicle insurance
+        if (correctedIdv >= 100000 && correctedIdv <= 10000000) {
+          console.log(`✅ IDV validated: ${correctedIdv} (from table or header source)`);
+        } else if (correctedIdv > 10000000) {
+          // Only correct if value is unreasonably large (likely extraction error)
+          console.log('⚠️ IDV value seems unreasonably large, checking for extraction errors...');
           
-          // Remove first digit if it looks like policy year concatenation
-          const correctedStr = idvStr.substring(1);
-          const correctedNum = parseInt(correctedStr);
-          
-          // Validate corrected value is reasonable for vehicle IDV
-          if (correctedNum >= 100000 && correctedNum <= 10000000) {
-            correctedIdv = correctedNum;
-            console.log(`✅ IDV corrected from ${openaiResult.idv} to ${correctedIdv}`);
+          // Check if it's a concatenation error (not policy year context)
+          if (idvStr.length >= 8 && /^\d{8,}$/.test(idvStr)) {
+            // Try to extract reasonable IDV from the value
+            const reasonableIdv = parseInt(idvStr.substring(0, 6)); // Take first 6 digits
+            if (reasonableIdv >= 100000 && reasonableIdv <= 10000000) {
+              correctedIdv = reasonableIdv;
+              console.log(`✅ IDV corrected from ${openaiResult.idv} to ${correctedIdv} (extraction error fix)`);
+            }
           }
         }
       }
@@ -1077,6 +1081,69 @@ class StorageService {
     `, params);
 
     return result.rows;
+  }
+
+  // Settings methods - Dual Storage Pattern (S3 Primary, PostgreSQL Secondary)
+  async getSettings() {
+    try {
+      console.log('💾 Loading settings from dual storage...');
+      
+      // 1. Try to get from S3 (Primary Storage)
+      try {
+        const s3Key = 'settings/business_settings.json';
+        const s3Data = await getJSONFromS3(s3Key);
+        
+        if (s3Data) {
+          console.log('✅ Settings loaded from S3 (Primary Storage)');
+          return s3Data;
+        }
+      } catch (s3Error) {
+        console.log('⚠️ S3 unavailable, trying database...');
+      }
+      
+      // 2. Fallback to PostgreSQL (Secondary Storage)
+      const result = await query('SELECT key, value FROM settings');
+      
+      const settings = {};
+      result.rows.forEach(row => {
+        settings[row.key] = row.value;
+      });
+      
+      console.log('✅ Settings loaded from PostgreSQL (Secondary Storage)');
+      return settings;
+    } catch (error) {
+      console.error('❌ Error getting settings:', error);
+      throw error;
+    }
+  }
+
+  async saveSettings(settings) {
+    try {
+      console.log('💾 Saving settings to dual storage...');
+      
+      // 1. Save to S3 (Primary Storage)
+      try {
+        const s3Key = 'settings/business_settings.json';
+        await uploadJSONToS3(settings, s3Key);
+        console.log('✅ Settings saved to S3 (Primary Storage)');
+      } catch (s3Error) {
+        console.log('⚠️ S3 save failed, continuing with database...');
+      }
+      
+      // 2. Save to PostgreSQL (Secondary Storage)
+      for (const [key, value] of Object.entries(settings)) {
+        await query(
+          'INSERT INTO settings (key, value, updated_at) VALUES ($1, $2, CURRENT_TIMESTAMP) ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = CURRENT_TIMESTAMP',
+          [key, value]
+        );
+      }
+      
+      console.log('✅ Settings saved to PostgreSQL (Secondary Storage)');
+      return settings;
+    } catch (error) {
+      console.error('❌ Error saving settings:', error);
+      throw error;
+    }
   }
 }
 
