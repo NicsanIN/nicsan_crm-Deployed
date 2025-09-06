@@ -3910,6 +3910,53 @@ function PageOverview() {
 function PageLeaderboard() {
   const [reps, setReps] = useState<any[]>([]);
   const [dataSource, setDataSource] = useState<string>('');
+  const [sortField, setSortField] = useState<string>('');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const getSortedReps = () => {
+    if (!sortField) return reps;
+    
+    return [...reps].sort((a, b) => {
+      let aValue = 0;
+      let bValue = 0;
+      
+      switch (sortField) {
+        case 'converted':
+          aValue = a.converted || 0;
+          bValue = b.converted || 0;
+          break;
+        case 'gwp':
+          aValue = a.gwp || 0;
+          bValue = b.gwp || 0;
+          break;
+        case 'brokerage':
+          aValue = a.brokerage || 0;
+          bValue = b.brokerage || 0;
+          break;
+        case 'cashback':
+          aValue = a.cashback || 0;
+          bValue = b.cashback || 0;
+          break;
+        case 'net':
+          aValue = a.net_revenue || a.net || 0;
+          bValue = b.net_revenue || b.net || 0;
+          break;
+        default:
+          return 0;
+      }
+      
+      return sortDirection === 'asc' ? aValue - bValue : bValue - aValue;
+    });
+  };
 
   useEffect(() => {
     const loadSalesReps = async () => {
@@ -3957,11 +4004,44 @@ function PageLeaderboard() {
         <table className="w-full text-sm">
           <thead>
             <tr className="text-left text-zinc-500">
-              <th className="py-2">Telecaller</th><th>Leads Assigned</th><th>Converted</th><th>GWP</th><th>Brokerage</th><th>Cashback</th><th>Net</th><th>Lead→Sale %</th><th>CAC/Policy</th>
+              <th className="py-2">Telecaller</th>
+              <th>Leads Assigned</th>
+              <th 
+                className="cursor-pointer hover:bg-zinc-100 px-2 py-1 rounded transition-colors"
+                onClick={() => handleSort('converted')}
+              >
+                Converted {sortField === 'converted' && (sortDirection === 'asc' ? '↑' : '↓')}
+              </th>
+              <th 
+                className="cursor-pointer hover:bg-zinc-100 px-2 py-1 rounded transition-colors"
+                onClick={() => handleSort('gwp')}
+              >
+                GWP {sortField === 'gwp' && (sortDirection === 'asc' ? '↑' : '↓')}
+              </th>
+              <th 
+                className="cursor-pointer hover:bg-zinc-100 px-2 py-1 rounded transition-colors"
+                onClick={() => handleSort('brokerage')}
+              >
+                Brokerage {sortField === 'brokerage' && (sortDirection === 'asc' ? '↑' : '↓')}
+              </th>
+              <th 
+                className="cursor-pointer hover:bg-zinc-100 px-2 py-1 rounded transition-colors"
+                onClick={() => handleSort('cashback')}
+              >
+                Cashback {sortField === 'cashback' && (sortDirection === 'asc' ? '↑' : '↓')}
+              </th>
+              <th 
+                className="cursor-pointer hover:bg-zinc-100 px-2 py-1 rounded transition-colors"
+                onClick={() => handleSort('net')}
+              >
+                Net {sortField === 'net' && (sortDirection === 'asc' ? '↑' : '↓')}
+              </th>
+              <th>Lead→Sale %</th>
+              <th>CAC/Policy</th>
             </tr>
           </thead>
           <tbody>
-            {reps.map((r,i)=> (
+            {getSortedReps().map((r,i)=> (
               <tr key={i} className="border-t">
                 <td className="py-2 font-medium">{r.name}</td>
                 <td>{r.leads_assigned || r.leads}</td>
