@@ -223,9 +223,27 @@ class StorageService {
       
       // Try OpenAI processing first
       let extractedData;
+      let pdfText = null;
       try {
         const openaiResult = await extractTextFromPDF(upload.s3_key, upload.insurer);
-        extractedData = this.parseOpenAIResult(openaiResult);
+        
+        // Get PDF text for multi-phase extraction if needed
+        if (upload.insurer === 'DIGIT') {
+          try {
+            const pdf = require('pdf-parse');
+            const { s3 } = require('../config/aws');
+            const pdfBuffer = await s3.getObject({
+              Bucket: process.env.AWS_S3_BUCKET,
+              Key: upload.s3_key
+            }).promise();
+            const pdfData = await pdf(pdfBuffer.Body);
+            pdfText = pdfData.text;
+          } catch (pdfError) {
+            console.log('⚠️ Could not get PDF text for multi-phase extraction:', pdfError.message);
+          }
+        }
+        
+        extractedData = await this.parseOpenAIResult(openaiResult, pdfText);
         console.log('✅ OpenAI processing successful');
       } catch (openaiError) {
         console.error('⚠️ OpenAI failed, using mock data:', openaiError.message);
@@ -313,7 +331,7 @@ class StorageService {
   }
 
   // Parse OpenAI result to extract relevant fields
-  parseOpenAIResult(openaiResult) {
+  async parseOpenAIResult(openaiResult, pdfText = null) {
     try {
       console.log('🔄 Parsing OpenAI result...');
       
@@ -368,13 +386,43 @@ class StorageService {
       if (extractedData.insurer === 'DIGIT' || extractedData.insurer === 'RELIANCE_GENERAL') {
         // For DIGIT: All three fields (net_od, total_od, net_premium) should equal "Total OD Premium"
         if (extractedData.insurer === 'DIGIT') {
-          // Find the "Total OD Premium" value from any of the three fields
-          const totalOdPremium = extractedData.net_od || extractedData.total_od || extractedData.net_premium;
-          if (totalOdPremium) {
-            console.log(`🔧 DIGIT: Setting all three fields to Total OD Premium value: ${totalOdPremium}`);
-            extractedData.net_od = totalOdPremium;
-            extractedData.total_od = totalOdPremium;
-            extractedData.net_premium = totalOdPremium;
+          console.log('🔍 Processing DIGIT with enhanced source validation...');
+          
+          // Try multi-phase extraction first for DIGIT
+          try {
+            const openaiService = require('./openaiService');
+            const multiPhaseResult = await openaiService.extractDigitPremiums(pdfText);
+            if (multiPhaseResult && multiPhaseResult.extraction_method === 'MULTI_PHASE') {
+              console.log('✅ Using multi-phase extraction results for DIGIT');
+              extractedData.net_od = multiPhaseResult.net_od;
+              extractedData.total_od = multiPhaseResult.total_od;
+              extractedData.net_premium = multiPhaseResult.net_premium;
+              extractedData.total_premium = multiPhaseResult.total_premium;
+              extractedData.extraction_method = 'MULTI_PHASE';
+              console.log(`✅ DIGIT multi-phase extraction: Net OD=${multiPhaseResult.net_od}, Total Premium=${multiPhaseResult.total_premium}`);
+            }
+          } catch (multiPhaseError) {
+            console.log('⚠️ Multi-phase extraction failed, using standard extraction with validation');
+            
+            // Fallback to standard extraction with enhanced validation
+            const totalOdPremium = extractedData.net_od || extractedData.total_od || extractedData.net_premium;
+            if (totalOdPremium) {
+              console.log(`🔧 DIGIT: Setting all three fields to Total OD Premium value: ${totalOdPremium}`);
+              extractedData.net_od = totalOdPremium;
+              extractedData.total_od = totalOdPremium;
+              extractedData.net_premium = totalOdPremium;
+              
+              // Enhanced DIGIT Bug Fix: Validate that total_premium is different from Total OD Premium
+              if (extractedData.total_premium === totalOdPremium) {
+                console.log('⚠️ DIGIT Bug detected: total_premium equals Total OD Premium value');
+                console.log('🔍 This indicates extraction from wrong source fields');
+                extractedData.digit_bug_flag = 'TOTAL_PREMIUM_SAME_AS_OD_PREMIUM';
+                extractedData.extraction_method = 'STANDARD_WITH_BUG';
+              } else {
+                console.log(`✅ DIGIT validation passed: total_premium (${extractedData.total_premium}) differs from Total OD Premium (${totalOdPremium})`);
+                extractedData.extraction_method = 'STANDARD_VALIDATED';
+              }
+            }
           }
         } else if (extractedData.insurer === 'RELIANCE_GENERAL') {
           // For RELIANCE_GENERAL: All three fields (net_od, total_od, net_premium) should equal "Total Own Damage Premium"
