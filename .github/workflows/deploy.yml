@@ -183,6 +183,13 @@ jobs:
           cluster: ${{ env.ECS_CLUSTER }}
           wait-for-service-stability: true
 
+      - name: Debug GitHub Context
+        run: |
+          echo "Repository: ${{ github.repository }}"
+          echo "Ref: ${{ github.ref }}"
+          echo "Expected: repo:NicsanIN/nicsan_crm-Deployed:ref:refs/heads/main"
+          echo "Actual: repo:${{ github.repository }}:${{ github.ref }}"
+
       - name: DEBUG — show OIDC claims
         if: always()
         shell: bash
