@@ -135,6 +135,38 @@ jobs:
           mv task-def.clean.json task-def.json
           echo "✅ task-def.json sanitized"
 
+      - name: Render container image into task-def (jq)
+        run: |
+          set -e
+          jq --arg img "${IMAGE_URI}" \
+             --arg name "${CONTAINER_NAME}" \
+             '(.containerDefinitions[] | select(.name==$name) | .image) = $img' \
+             task-def.json > task-def.rendered.json
+          mv task-def.rendered.json task-def.json
+
+      - name: Register task definition (CLI)
+        id: reg
+        run: |
+          set -e
+          ARN=$(aws ecs register-task-definition \
+            --cli-input-json file://task-def.json \
+            --query 'taskDefinition.taskDefinitionArn' --output text)
+          echo "TASKDEF_ARN=$ARN" >> $GITHUB_ENV
+          echo "Registered: $ARN"
+
+      - name: Update service & wait for stability (CLI)
+        run: |
+          set -e
+          aws ecs update-service \
+            --cluster "${ECS_CLUSTER}" \
+            --service "${ECS_SERVICE}" \
+            --task-definition "${TASKDEF_ARN}" \
+            --force-new-deployment >/dev/null
+          aws ecs wait services-stable \
+            --cluster "${ECS_CLUSTER}" \
+            --services "${ECS_SERVICE}"
+
+
       - name: Render task definition with new image
         id: render-tdef
         uses: aws-actions/amazon-ecs-render-task-definition@v1
