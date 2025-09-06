@@ -25,46 +25,39 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     permissions:
-      id-token: write   # Required for OIDC
-      contents: read    # Required to checkout code
-      
+      id-token: write
+      contents: read
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # prove exactly which ARN this run will assume
       - name: Echo role arn
         run: echo "ROLE_TO_ASSUME=arn:aws:iam::132418765186:role/gha-ecs-deployer-nicsan-v2"
 
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          # If you didn't create the new role, switch this back to your existing role ARN
           role-to-assume: arn:aws:iam::132418765186:role/gha-ecs-deployer-nicsan-v2
           aws-region: ${{ env.AWS_REGION }}
           audience: sts.amazonaws.com
           role-session-name: gha-${{ github.run_id }}
-          role-skip-session-tagging: true
 
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
-      
+
       - name: Ensure backend Dockerfile exists at expected path
         shell: bash
         run: |
           set -e
           TARGET_DIR="nicsan-crm-backend"
           TARGET_FILE="$TARGET_DIR/Dockerfile"
-
           if [ -f "$TARGET_FILE" ]; then
-            echo "✓ Found $TARGET_FILE"
-            exit 0
+            echo "✓ Found $TARGET_FILE"; exit 0
           fi
-
           echo "No Dockerfile at $TARGET_FILE. Searching repository..."
           FOUND=$(find . -maxdepth 3 -type f -name Dockerfile | head -n 1 || true)
-
           if [ -n "$FOUND" ]; then
             echo "Linking $FOUND -> $TARGET_FILE"
             mkdir -p "$TARGET_DIR"
@@ -72,11 +65,7 @@ jobs:
             ls -la "$TARGET_DIR"
             exit 0
           fi
-
-          echo "❌ No Dockerfile found anywhere. Repository tree (depth 2):"
-          find . -maxdepth 2 -type d -print
-          exit 1
-
+          echo "❌ No Dockerfile found anywhere."; exit 1
 
       - name: Build, tag, and push image to ECR
         env:
@@ -86,10 +75,8 @@ jobs:
           BUILD_TAG="prod-$(date +%Y%m%d%H%M%S)"
           IMAGE_URI="$REGISTRY/${{ env.ECR_REPOSITORY }}:$BUILD_TAG"
           echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
-
           echo "Building:  $IMAGE_URI"
           docker build -f nicsan-crm-backend/Dockerfile -t "$IMAGE_URI" nicsan-crm-backend
-
           echo "Pushing:   $IMAGE_URI"
           docker push "$IMAGE_URI"
 
@@ -98,12 +85,12 @@ jobs:
           aws ecs describe-task-definition \
             --task-definition "${{ env.TASK_FAMILY }}" \
             --query taskDefinition > task-def.json
-        
+
       - name: Sanitize task definition for ECS register
         shell: bash
         run: |
           set -e
-          # Rebuild a clean RegisterTaskDefinition payload and drop unknown/read-only keys
+          # Keep only registerable fields; drop read-only/unsupported; remove all nulls.
           jq '{
             family: .family,
             taskRoleArn: .taskRoleArn,
@@ -112,7 +99,7 @@ jobs:
             containerDefinitions: (
               .containerDefinitions
               | map(del(
-                  .enableFaultInjection,          # <-- drop the culprit
+                  .enableFaultInjection,
                   .repositoryCredentials,
                   .firelensConfiguration,
                   .systemControls,
@@ -131,18 +118,18 @@ jobs:
             inferenceAccelerators: .inferenceAccelerators,
             ephemeralStorage: .ephemeralStorage,
             runtimePlatform: .runtimePlatform
-          }' task-def.json > task-def.clean.json
+          } | del(.. | nulls)' task-def.json > task-def.clean.json
           mv task-def.clean.json task-def.json
           echo "✅ task-def.json sanitized"
 
       - name: Render container image into task-def (jq)
         run: |
           set -e
-          jq --arg img "${IMAGE_URI}" \
-             --arg name "${CONTAINER_NAME}" \
-             '(.containerDefinitions[] | select(.name==$name) | .image) = $img' \
-             task-def.json > task-def.rendered.json
+          jq --arg img "${IMAGE_URI}" --arg name "${CONTAINER_NAME}" \
+            '(.containerDefinitions[] | select(.name==$name) | .image) = $img' \
+            task-def.json > task-def.rendered.json
           mv task-def.rendered.json task-def.json
+          echo "🔧 Image set to ${IMAGE_URI}"
 
       - name: Register task definition (CLI)
         id: reg
@@ -152,7 +139,7 @@ jobs:
             --cli-input-json file://task-def.json \
             --query 'taskDefinition.taskDefinitionArn' --output text)
           echo "TASKDEF_ARN=$ARN" >> $GITHUB_ENV
-          echo "Registered: $ARN"
+          echo "🆕 Registered: $ARN"
 
       - name: Update service & wait for stability (CLI)
         run: |
@@ -165,23 +152,7 @@ jobs:
           aws ecs wait services-stable \
             --cluster "${ECS_CLUSTER}" \
             --services "${ECS_SERVICE}"
-
-
-      - name: Render task definition with new image
-        id: render-tdef
-        uses: aws-actions/amazon-ecs-render-task-definition@v1
-        with:
-          task-definition: task-def.json
-          container-name: ${{ env.CONTAINER_NAME }}
-          image: ${{ env.IMAGE_URI }}
-
-      - name: Deploy to Amazon ECS
-        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
-        with:
-          task-definition: ${{ steps.render-tdef.outputs.task-definition }}
-          service: ${{ env.ECS_SERVICE }}
-          cluster: ${{ env.ECS_CLUSTER }}
-          wait-for-service-stability: true
+          echo "✅ Service stable"
 
       - name: Debug GitHub Context
         run: |
