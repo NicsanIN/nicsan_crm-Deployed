@@ -242,6 +242,7 @@ function PageUpload() {
   });
   const [manualExtrasSaved, setManualExtrasSaved] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [callerNames, setCallerNames] = useState<string[]>([]);
 
   const handleFiles = async (files: FileList) => {
     const file = files[0];
@@ -468,6 +469,63 @@ function PageUpload() {
     setManualExtras(prev => ({ ...prev, [field]: value }));
   };
 
+  // Load real caller names on component mount
+  useEffect(() => {
+    const loadCallerNames = async () => {
+      try {
+        const response = await DualStorageService.getSalesReps();
+        if (response.success && response.data) {
+          const names = response.data
+            .map((rep: any) => rep.name)
+            .filter((name: string) => name && name !== 'Unknown');
+          setCallerNames(names);
+        }
+      } catch (error) {
+        console.warn('Failed to load caller names:', error);
+        // Fallback to mock data
+        setCallerNames(['Priya Singh', 'Rahul Kumar', 'Anjali Sharma']);
+      }
+    };
+    
+    loadCallerNames();
+  }, []);
+
+  // Smart suggestions for caller names
+  const getSmartSuggestions = (fieldName: string) => {
+    if (fieldName === 'callerName') {
+      return callerNames; // Real caller names from database
+    }
+    return [];
+  };
+
+  // Filtered caller suggestions for autocomplete
+  const getFilteredCallerSuggestions = async (input: string): Promise<string[]> => {
+    if (input.length < 2) return [];
+    
+    try {
+      const response = await DualStorageService.getSalesReps();
+      if (response.success && response.data) {
+        const filteredNames = response.data
+          .map((rep: any) => rep.name)
+          .filter((name: string) => 
+            name && 
+            name !== 'Unknown' && 
+            name.toLowerCase().includes(input.toLowerCase())
+          )
+          .slice(0, 5); // Limit to 5 suggestions
+        return filteredNames;
+      }
+    } catch (error) {
+      console.warn('Failed to get caller suggestions:', error);
+    }
+    
+    // Fallback to mock data with filtering
+    const mockCallers = ['Priya Singh', 'Rahul Kumar', 'Anjali Sharma'];
+    return mockCallers.filter(name => 
+      name.toLowerCase().includes(input.toLowerCase())
+    );
+  };
+
   return (
     <>
       <Card title="Drag & Drop PDF" desc="(S3 = cloud folder; Textract = PDF reader bot). Tata AIG & Digit only in v1.">
@@ -526,13 +584,12 @@ function PageUpload() {
               />
             </div>
             <div>
-              <label className="block text-xs text-blue-700 mb-1">Caller Name</label>
-              <input 
-                type="text" 
+              <AutocompleteInput 
+                label="Caller Name" 
                 placeholder="Telecaller name"
                 value={manualExtras.callerName}
-                onChange={(e) => handleManualExtrasChange('callerName', e.target.value)}
-                className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                onChange={(value) => handleManualExtrasChange('callerName', value)}
+                getSuggestions={getFilteredCallerSuggestions}
               />
             </div>
             <div>
@@ -802,6 +859,123 @@ function LabeledInput({ label, placeholder, hint, required, value, onChange, err
   )
 }
 
+function AutocompleteInput({ 
+  label, 
+  placeholder, 
+  hint, 
+  required, 
+  value, 
+  onChange, 
+  error, 
+  getSuggestions 
+}: { 
+  label: string; 
+  placeholder?: string; 
+  hint?: string; 
+  required?: boolean; 
+  value?: any; 
+  onChange?: (v:any)=>void;
+  error?: string;
+  getSuggestions?: (input: string) => Promise<string[]>;
+}) {
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Debounced suggestions loading
+  const debouncedGetSuggestions = useMemo(
+    () => {
+      let timeoutId: NodeJS.Timeout;
+      return (input: string) => {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(async () => {
+          if (input.length >= 2 && getSuggestions) {
+            setIsLoading(true);
+            try {
+              const newSuggestions = await getSuggestions(input);
+              setSuggestions(newSuggestions);
+              setShowSuggestions(true);
+            } catch (error) {
+              console.warn('Failed to get suggestions:', error);
+              setSuggestions([]);
+            } finally {
+              setIsLoading(false);
+            }
+          } else {
+            setSuggestions([]);
+            setShowSuggestions(false);
+          }
+        }, 300);
+      };
+    },
+    [getSuggestions]
+  );
+
+  const handleInputChange = (inputValue: string) => {
+    onChange && onChange(inputValue);
+    debouncedGetSuggestions(inputValue);
+  };
+
+  const handleSuggestionClick = (suggestion: string) => {
+    onChange && onChange(suggestion);
+    setShowSuggestions(false);
+  };
+
+  const handleInputFocus = () => {
+    if (value && value.length >= 2) {
+      setShowSuggestions(suggestions.length > 0);
+    }
+  };
+
+  const handleInputBlur = () => {
+    // Delay hiding to allow click on suggestions
+    setTimeout(() => setShowSuggestions(false), 200);
+  };
+
+  return (
+    <div className="relative">
+      <label className="block">
+        <div className="text-xs text-zinc-600 mb-1">
+          {label} {required && <span className="text-rose-600">*</span>} {hint && <span className="text-[10px] text-zinc-400">({hint})</span>}
+        </div>
+        <input 
+          value={value} 
+          onChange={e => handleInputChange(e.target.value)}
+          onFocus={handleInputFocus}
+          onBlur={handleInputBlur}
+          className={`w-full rounded-xl border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200 ${
+            error ? 'border-red-300 bg-red-50' : 'border-zinc-300'
+          }`} 
+          placeholder={placeholder} 
+        />
+        {isLoading && (
+          <div className="absolute right-3 top-8 text-blue-500">
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
+          </div>
+        )}
+        {error && (
+          <div className="text-xs text-red-600 mt-1">{error}</div>
+        )}
+      </label>
+      
+      {/* Dropdown with click functionality */}
+      {showSuggestions && suggestions.length > 0 && (
+        <div className="absolute z-10 mt-1 w-full bg-white border border-zinc-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+          {suggestions.map((suggestion, index) => (
+            <div
+              key={index}
+              className="px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-zinc-100 last:border-b-0"
+              onClick={() => handleSuggestionClick(suggestion)}
+            >
+              {suggestion}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function LabeledSelect({ label, value, onChange, options, required, error }: { 
   label: string; 
   value?: any; 
@@ -872,6 +1046,7 @@ function PageManualForm() {
   const [validationHistory, setValidationHistory] = useState<any[]>([]);
   const [fieldTouched, setFieldTouched] = useState<{[key: string]: boolean}>({});
   const [validationMode, setValidationMode] = useState<'progressive' | 'strict'>('progressive');
+  const [callerNames, setCallerNames] = useState<string[]>([]);
   
   const set = (k:string,v:any)=> {
     setForm((f:any)=>({ ...f, [k]: v }));
@@ -1234,9 +1409,39 @@ function PageManualForm() {
       case 'insurer':
         suggestions.push('Tata AIG', 'ICICI Lombard', 'Bajaj Allianz', 'HDFC Ergo', 'Reliance General', 'Oriental Insurance');
         break;
+      case 'callerName':
+        return callerNames; // Real caller names from database
     }
     
     return suggestions;
+  };
+
+  // Filtered caller suggestions for autocomplete
+  const getFilteredCallerSuggestions = async (input: string): Promise<string[]> => {
+    if (input.length < 2) return [];
+    
+    try {
+      const response = await DualStorageService.getSalesReps();
+      if (response.success && response.data) {
+        const filteredNames = response.data
+          .map((rep: any) => rep.name)
+          .filter((name: string) => 
+            name && 
+            name !== 'Unknown' && 
+            name.toLowerCase().includes(input.toLowerCase())
+          )
+          .slice(0, 5); // Limit to 5 suggestions
+        return filteredNames;
+      }
+    } catch (error) {
+      console.warn('Failed to get caller suggestions:', error);
+    }
+    
+    // Fallback to mock data with filtering
+    const mockCallers = ['Priya Singh', 'Rahul Kumar', 'Anjali Sharma'];
+    return mockCallers.filter(name => 
+      name.toLowerCase().includes(input.toLowerCase())
+    );
   };
 
   const quickFill = ()=> {
@@ -1401,6 +1606,27 @@ function PageManualForm() {
 
   // State for async validation errors
   const [asyncErrors, setAsyncErrors] = useState<{[key: string]: string[]}>({});
+
+  // Load real caller names on component mount
+  useEffect(() => {
+    const loadCallerNames = async () => {
+      try {
+        const response = await DualStorageService.getSalesReps();
+        if (response.success && response.data) {
+          const names = response.data
+            .map((rep: any) => rep.name)
+            .filter((name: string) => name && name !== 'Unknown');
+          setCallerNames(names);
+        }
+      } catch (error) {
+        console.warn('Failed to load caller names:', error);
+        // Fallback to mock data
+        setCallerNames(['Priya Singh', 'Rahul Kumar', 'Anjali Sharma']);
+      }
+    };
+    
+    loadCallerNames();
+  }, []);
 
   // Comprehensive validation (synchronous part)
   const errors = useMemo(() => {
@@ -1570,7 +1796,7 @@ function PageManualForm() {
         {/* People & Notes */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
           <LabeledInput label="Executive" value={form.executive} onChange={v=>set('executive', v)}/>
-          <LabeledInput label="Caller Name" value={form.callerName} onChange={v=>set('callerName', v)}/>
+          <AutocompleteInput label="Caller Name" value={form.callerName} onChange={v=>set('callerName', v)} getSuggestions={getFilteredCallerSuggestions}/>
           <LabeledInput label="Mobile Number" required placeholder="9xxxxxxxxx" value={form.mobile} onChange={v=>set('mobile', v)}/>
           <LabeledInput label="Rollover/Renewal" hint="internal code" value={form.rollover} onChange={v=>set('rollover', v)}/>
           <LabeledInput label="Remark" placeholder="Any note" value={form.remark} onChange={v=>set('remark', v)}/>
@@ -2493,6 +2719,7 @@ function PageReview() {
     pdfData: {},
     manualExtras: {}
   });
+  const [callerNames, setCallerNames] = useState<string[]>([]);
 
   // Load available uploads for review
   useEffect(() => {
@@ -2584,6 +2811,63 @@ function PageReview() {
     
     return () => clearInterval(interval);
   }, []);
+
+  // Load real caller names on component mount
+  useEffect(() => {
+    const loadCallerNames = async () => {
+      try {
+        const response = await DualStorageService.getSalesReps();
+        if (response.success && response.data) {
+          const names = response.data
+            .map((rep: any) => rep.name)
+            .filter((name: string) => name && name !== 'Unknown');
+          setCallerNames(names);
+        }
+      } catch (error) {
+        console.warn('Failed to load caller names:', error);
+        // Fallback to mock data
+        setCallerNames(['Priya Singh', 'Rahul Kumar', 'Anjali Sharma']);
+      }
+    };
+    
+    loadCallerNames();
+  }, []);
+
+  // Smart suggestions for caller names
+  const getSmartSuggestions = (fieldName: string) => {
+    if (fieldName === 'callerName') {
+      return callerNames; // Real caller names from database
+    }
+    return [];
+  };
+
+  // Filtered caller suggestions for autocomplete
+  const getFilteredCallerSuggestions = async (input: string): Promise<string[]> => {
+    if (input.length < 2) return [];
+    
+    try {
+      const response = await DualStorageService.getSalesReps();
+      if (response.success && response.data) {
+        const filteredNames = response.data
+          .map((rep: any) => rep.name)
+          .filter((name: string) => 
+            name && 
+            name !== 'Unknown' && 
+            name.toLowerCase().includes(input.toLowerCase())
+          )
+          .slice(0, 5); // Limit to 5 suggestions
+        return filteredNames;
+      }
+    } catch (error) {
+      console.warn('Failed to get caller suggestions:', error);
+    }
+    
+    // Fallback to mock data with filtering
+    const mockCallers = ['Priya Singh', 'Rahul Kumar', 'Anjali Sharma'];
+    return mockCallers.filter(name => 
+      name.toLowerCase().includes(input.toLowerCase())
+    );
+  };
 
   const loadUploadData = async (uploadId: string) => {
     try {
@@ -3151,11 +3435,12 @@ function PageReview() {
               onChange={(value) => updateManualExtras('executive', value)}
               hint="sales rep name"
             />
-            <LabeledInput 
+            <AutocompleteInput 
               label="Caller Name" 
               value={editableData.manualExtras.callerName || manualExtras.callerName}
               onChange={(value) => updateManualExtras('callerName', value)}
               hint="telecaller name"
+              getSuggestions={getFilteredCallerSuggestions}
             />
             <LabeledInput 
               label="Mobile Number" 
