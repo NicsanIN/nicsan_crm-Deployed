@@ -21,29 +21,6 @@ env:
   TASK_FAMILY: "nicsan-backend-task"
   CONTAINER_NAME: "backend"
 
-  # --- New (safe defaults / optional) ---
-  LOG_GROUP: "/ecs/nicsan-backend"
-  LOG_RETENTION_DAYS: "30"
-
-  # One-off migration (set these to enable)
-  MIGRATION_SUBNETS: ""                 # e.g., "subnet-aaa,subnet-bbb"
-  MIGRATION_SECURITY_GROUP: ""          # e.g., "sg-xxxxxxxx"
-  MIGRATION_COMMAND_JSON: '["npx","prisma","migrate","deploy"]'  # change to your tool if needed
-
-  # Optional autoscaling (set ENABLE_AUTOSCALING=true to enable)
-  ENABLE_AUTOSCALING: "false"
-  AS_MIN: "1"
-  AS_MAX: "4"
-  AS_CPU_TARGET: "50"                   # %
-  AS_MEM_TARGET: "70"                   # %
-
-  # Optional ALB alarm (set ENABLE_ALB_ALARM=true to enable)
-  ENABLE_ALB_ALARM: "false"
-  ALB_NAME: "nicsan-backend-alb"
-  TG_NAME: "nicsan-backend-tg"
-  SNS_TOPIC_ARN: ""                     # e.g., arn:aws:sns:ap-south-1:132418765186:nicsan-alb-health-alerts
-  # --------------------------------------
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -164,33 +141,6 @@ jobs:
           echo "TASKDEF_ARN=$ARN" >> $GITHUB_ENV
           echo "🆕 Registered: $ARN"
 
-      # ---------- NEW: Optional one-off DB migrations ----------
-      - name: Run DB migrations (one-off ECS task)
-        if: ${{ env.MIGRATION_SUBNETS != '' && env.MIGRATION_SECURITY_GROUP != '' }}
-        run: |
-          set -e
-          echo "Running DB migrations using ${TASKDEF_ARN}"
-          CMD_JSON='${{ env.MIGRATION_COMMAND_JSON }}'
-          TASK_ARN=$(aws ecs run-task \
-            --cluster "${ECS_CLUSTER}" \
-            --launch-type FARGATE \
-            --task-definition "${TASKDEF_ARN}" \
-            --network-configuration "awsvpcConfiguration={subnets=[${{ env.MIGRATION_SUBNETS }}],securityGroups=[${{ env.MIGRATION_SECURITY_GROUP }}],assignPublicIp=DISABLED}" \
-            --overrides "$(jq -n --arg name "${CONTAINER_NAME}" --argjson cmd "${CMD_JSON}" '{containerOverrides:[{name:$name,command:$cmd}]}')" \
-            --query 'tasks[0].taskArn' --output text)
-          echo "Started migration task: $TASK_ARN"
-          aws ecs wait tasks-stopped --cluster "${ECS_CLUSTER}" --tasks "$TASK_ARN"
-          EXIT_CODE=$(aws ecs describe-tasks --cluster "${ECS_CLUSTER}" --tasks "$TASK_ARN" \
-            --query 'tasks[0].containers[0].exitCode' --output text)
-          if [ "$EXIT_CODE" != "0" ]; then
-            echo "❌ Migration failed with exit code $EXIT_CODE"; exit 1
-          fi
-          echo "✅ Migration succeeded"
-      - name: Skip migrations (missing env)
-        if: ${{ !(env.MIGRATION_SUBNETS != '' && env.MIGRATION_SECURITY_GROUP != '') }}
-        run: echo "⏭️  Skipping migrations (set MIGRATION_SUBNETS and MIGRATION_SECURITY_GROUP to enable)."
-      # ---------------------------------------------------------
-
       - name: Update service & wait for stability (CLI)
         run: |
           set -e
@@ -203,71 +153,6 @@ jobs:
             --cluster "${ECS_CLUSTER}" \
             --services "${ECS_SERVICE}"
           echo "✅ Service stable"
-
-      # ---------- NEW: Idempotent log retention ----------
-      - name: Ensure CloudWatch log retention
-        run: |
-          aws logs put-retention-policy \
-            --log-group-name "${LOG_GROUP}" \
-            --retention-in-days "${LOG_RETENTION_DAYS}"
-      # ---------------------------------------------------
-
-      # ---------- NEW: Optional autoscaling ----------
-      - name: Configure ECS autoscaling (idempotent)
-        if: ${{ env.ENABLE_AUTOSCALING == 'true' }}
-        run: |
-          set -e
-          aws application-autoscaling register-scalable-target \
-            --service-namespace ecs \
-            --resource-id service/${ECS_CLUSTER}/${ECS_SERVICE} \
-            --scalable-dimension ecs:service:DesiredCount \
-            --min-capacity ${AS_MIN} --max-capacity ${AS_MAX}
-          aws application-autoscaling put-scaling-policy \
-            --service-namespace ecs \
-            --resource-id service/${ECS_CLUSTER}/${ECS_SERVICE} \
-            --scalable-dimension ecs:service:DesiredCount \
-            --policy-name cpu-target \
-            --policy-type TargetTrackingScaling \
-            --target-tracking-scaling-policy-configuration "{
-              \"TargetValue\": ${AS_CPU_TARGET},
-              \"PredefinedMetricSpecification\": {\"PredefinedMetricType\":\"ECSServiceAverageCPUUtilization\"},
-              \"ScaleInCooldown\": 60, \"ScaleOutCooldown\": 60
-            }"
-          aws application-autoscaling put-scaling-policy \
-            --service-namespace ecs \
-            --resource-id service/${ECS_CLUSTER}/${ECS_SERVICE} \
-            --scalable-dimension ecs:service:DesiredCount \
-            --policy-name mem-target \
-            --policy-type TargetTrackingScaling \
-            --target-tracking-scaling-policy-configuration "{
-              \"TargetValue\": ${AS_MEM_TARGET},
-              \"PredefinedMetricSpecification\": {\"PredefinedMetricType\":\"ECSServiceAverageMemoryUtilization\"},
-              \"ScaleInCooldown\": 60, \"ScaleOutCooldown\": 60
-            }"
-      # ---------------------------------------------------
-
-      # ---------- NEW: Optional ALB UnHealthyHostCount alarm ----------
-      - name: Ensure ALB health alarm (5m >0)
-        if: ${{ env.ENABLE_ALB_ALARM == 'true' && env.SNS_TOPIC_ARN != '' }}
-        run: |
-          set -e
-          TG_ARN=$(aws elbv2 describe-target-groups --names "${TG_NAME}" --query 'TargetGroups[0].TargetGroupArn' --output text)
-          ALB_ARN=$(aws elbv2 describe-load-balancers --names "${ALB_NAME}" --query 'LoadBalancers[0].LoadBalancerArn' --output text)
-          TG_DIM=${TG_ARN#arn:aws:elasticloadbalancing:${AWS_REGION}:*:targetgroup/}
-          ALB_DIM=${ALB_ARN#arn:aws:elasticloadbalancing:${AWS_REGION}:*:loadbalancer/}
-          aws cloudwatch put-metric-alarm \
-            --alarm-name "ALB-UnHealthyHostCount>0-5m" \
-            --metric-name UnHealthyHostCount \
-            --namespace AWS/ApplicationELB \
-            --statistic Maximum \
-            --period 60 \
-            --evaluation-periods 5 \
-            --threshold 0 \
-            --comparison-operator GreaterThanThreshold \
-            --dimensions Name=TargetGroup,Value="$TG_DIM" Name=LoadBalancer,Value="$ALB_DIM" \
-            --treat-missing-data notBreaching \
-            --alarm-actions "${SNS_TOPIC_ARN}"
-      # ---------------------------------------------------------------
 
       - name: Debug GitHub Context
         run: |
