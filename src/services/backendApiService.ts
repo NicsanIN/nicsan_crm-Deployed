@@ -3,6 +3,8 @@
 
 import { authAPI, policiesAPI } from './api';
 
+// Environment variables
+const API_BASE = import.meta.env.VITE_API_BASE_URL;
 const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
 
 interface BackendApiResult {
@@ -41,7 +43,7 @@ class BackendApiService {
         console.log('🔄 BackendApiService: Getting dashboard metrics...');
       }
 
-      const response = await fetch('http://localhost:3001/api/dashboard/metrics', {
+      const response = await fetch(`${API_BASE}/dashboard/metrics`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
@@ -98,7 +100,7 @@ class BackendApiService {
         console.log('🔄 BackendApiService: Getting sales reps...');
       }
 
-      const response = await fetch('http://localhost:3001/api/dashboard/sales-reps', {
+      const response = await fetch(`${API_BASE}/dashboard/sales-reps`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
@@ -150,7 +152,7 @@ class BackendApiService {
         console.log('🔄 BackendApiService: Getting sales explorer...');
       }
 
-      const response = await fetch('http://localhost:3001/api/dashboard/vehicle-analysis', {
+      const response = await fetch(`${API_BASE}/dashboard/vehicle-analysis`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
@@ -210,7 +212,7 @@ class BackendApiService {
         console.log('🔄 BackendApiService: Getting policy detail...');
       }
 
-      const response = await fetch(`http://localhost:3001/api/policies/${policyId}`, {
+      const response = await fetch(`${API_BASE}/policies/${policyId}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
@@ -248,7 +250,7 @@ class BackendApiService {
         console.log('🔄 BackendApiService: Getting data sources...');
       }
 
-      const response = await fetch('http://localhost:3001/api/dashboard/metrics', {
+      const response = await fetch(`${API_BASE}/dashboard/metrics`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
@@ -313,7 +315,7 @@ class BackendApiService {
         console.log('🔄 BackendApiService: Getting all policies...');
       }
 
-      const response = await fetch('http://localhost:3001/api/policies', {
+      const response = await fetch(`${API_BASE}/policies`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
