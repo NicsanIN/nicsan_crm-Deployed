@@ -217,7 +217,7 @@ jobs:
 
       - name: Build (prod mode)
         working-directory: ${{ env.FRONTEND_DIR }}
-        run: npm run build
+        run: npx vite build
 
       - name: Assert no localhost:3001 in dist
         working-directory: ${{ env.FRONTEND_DIR }}
@@ -254,7 +254,7 @@ jobs:
 
       - name: Build (prod mode)
         working-directory: ${{ env.FRONTEND_DIR }}
-        run: npm run build
+        run: npx vite build
 
       # HTML served no-cache; assets long-cache
       - name: Prepare cache headers
