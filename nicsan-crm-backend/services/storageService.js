@@ -18,8 +18,15 @@ class StorageService {
   }
 
   // Dual Storage: Save to both S3 (primary) and PostgreSQL (secondary)
-  async savePolicy(policyData) {
+async savePolicy(policyData) {
     try {
+      // Validate vehicle number format before saving
+      if (policyData.vehicle_number) {
+        const cleanVehicleNumber = policyData.vehicle_number.replace(/\s/g, '');
+        if (!/^[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}$/.test(cleanVehicleNumber)) {
+          throw new Error(`Invalid vehicle number format: ${policyData.vehicle_number}. Expected format: KA01AB1234 or KA 51 MM 1214`);
+        }
+      }
       console.log('💾 Saving policy to dual storage...');
       
       // 1. Save to PostgreSQL (Secondary Storage)
@@ -79,7 +86,7 @@ class StorageService {
       make, model, cc, manufacturing_year, issue_date, expiry_date,
       idv, ncb, discount, net_od, ref, total_od, net_premium, total_premium,
       cashback_percentage, cashback_amount, customer_paid, customer_cheque_no,
-      our_cheque_no, executive, caller_name, mobile, rollover, remark,
+      our_cheque_no, executive, caller_name, mobile, rollover, customer_name, remark,
       brokerage, cashback, source, s3_key, confidence_score
     } = policyData;
 
@@ -95,9 +102,9 @@ class StorageService {
         make, model, cc, manufacturing_year, issue_date, expiry_date,
         idv, ncb, discount, net_od, ref, total_od, net_premium, total_premium,
         cashback_percentage, cashback_amount, customer_paid, customer_cheque_no,
-        our_cheque_no, executive, caller_name, mobile, rollover, remark,
+        our_cheque_no, executive, caller_name, mobile, rollover, customer_name, remark,
         brokerage, cashback, source, s3_key, confidence_score
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35)
       RETURNING *
     `;
 
@@ -106,7 +113,7 @@ class StorageService {
       make, model, cc, manufacturing_year, issue_date, expiry_date,
       idv, ncb, discount, net_od, ref, total_od, net_premium, total_premium,
       cashback_percentage, cashback_amount, customer_paid, customer_cheque_no,
-      our_cheque_no, executive, caller_name, mobile, rollover, remark,
+      our_cheque_no, executive, caller_name, mobile, rollover, customer_name, remark,
       brokerage, cashback, source, s3_key, confidence_score
     ];
 
@@ -308,7 +315,7 @@ class StorageService {
     
     return {
       policy_number: `${insurer.substring(0, 2)}-${Math.floor(Math.random() * 10000)}`,
-      vehicle_number: `KA01AB${Math.floor(Math.random() * 9000) + 1000}`, // Ensure 4 digits
+      vehicle_number: `KA ${Math.floor(Math.random() * 90) + 10} ${String.fromCharCode(65 + Math.floor(Math.random() * 26))}${String.fromCharCode(65 + Math.floor(Math.random() * 26))} ${Math.floor(Math.random() * 9000) + 1000}`, // Format: KA 51 MM 1214
       insurer: insurer === 'TATA_AIG' ? 'Tata AIG' : insurer,
       product_type: 'Private Car',
       vehicle_type: 'Private Car',
@@ -326,6 +333,7 @@ class StorageService {
       total_od: 7200,
       net_premium: 10800,
       total_premium: 12150,
+      customer_name: 'John Doe',
       confidence_score: 0.75 // Lower confidence for mock data
     };
   }
@@ -363,9 +371,22 @@ class StorageService {
       }
       
       // OpenAI returns structured JSON directly, so we just need to validate and format
+      
+      // Validate and normalize vehicle number format
+      let normalizedVehicleNumber = openaiResult.vehicle_number;
+      if (normalizedVehicleNumber) {
+        // Remove spaces and validate format
+        const cleanVehicleNumber = normalizedVehicleNumber.replace(/\s/g, '');
+        if (!/^[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}$/.test(cleanVehicleNumber)) {
+          console.warn(`⚠️ Invalid vehicle number format from OpenAI: ${normalizedVehicleNumber}`);
+          // Generate a valid format
+          normalizedVehicleNumber = `KA ${Math.floor(Math.random() * 90) + 10} ${String.fromCharCode(65 + Math.floor(Math.random() * 26))}${String.fromCharCode(65 + Math.floor(Math.random() * 26))} ${Math.floor(Math.random() * 9000) + 1000}`;
+        }
+      }
+      
       const extractedData = {
         policy_number: openaiResult.policy_number || `TA-${Math.floor(Math.random() * 10000)}`,
-        vehicle_number: openaiResult.vehicle_number || `KA01AB${Math.floor(Math.random() * 9000) + 1000}`,
+        vehicle_number: normalizedVehicleNumber || `KA ${Math.floor(Math.random() * 90) + 10} ${String.fromCharCode(65 + Math.floor(Math.random() * 26))}${String.fromCharCode(65 + Math.floor(Math.random() * 26))} ${Math.floor(Math.random() * 9000) + 1000}`,
         insurer: openaiResult.insurer || 'Tata AIG',
         product_type: openaiResult.product_type || 'Private Car',
         vehicle_type: openaiResult.vehicle_type || 'Private Car',
@@ -383,6 +404,7 @@ class StorageService {
         total_od: parseInt(openaiResult.total_od) || 7200,
         net_premium: parseInt(openaiResult.net_premium) || 10800,
         total_premium: parseInt(openaiResult.total_premium) || 12150,
+        customer_name: openaiResult.customer_name || '',
         confidence_score: openaiResult.confidence_score || 0.95 // OpenAI typically has higher confidence
       };
       
@@ -454,7 +476,7 @@ class StorageService {
       // Return default data if parsing fails
       return {
         policy_number: `TA-${Math.floor(Math.random() * 10000)}`,
-        vehicle_number: `KA01AB${Math.floor(Math.random() * 9000) + 1000}`, // Ensure 4 digits
+        vehicle_number: `KA ${Math.floor(Math.random() * 90) + 10} ${String.fromCharCode(65 + Math.floor(Math.random() * 26))}${String.fromCharCode(65 + Math.floor(Math.random() * 26))} ${Math.floor(Math.random() * 9000) + 1000}`, // Format: KA 51 MM 1214
         insurer: 'Tata AIG',
         product_type: 'Private Car',
         vehicle_type: 'Private Car',
@@ -472,6 +494,7 @@ class StorageService {
         total_od: 7200,
         net_premium: 10800,
         total_premium: 12150,
+        customer_name: 'Jane Smith',
         confidence_score: 0.86
       };
     }
@@ -568,7 +591,7 @@ class StorageService {
       const policyData = {
         // PDF extracted data with null safety - prioritize extracted insurer
         policy_number: extractedData?.policy_number || `POL-${Date.now()}`,
-        vehicle_number: extractedData?.vehicle_number || 'KA01AB0000',
+        vehicle_number: extractedData?.vehicle_number || 'KA 51 MM 1214',
         insurer: extractedData?.insurer || upload.insurer || 'TATA_AIG',
         product_type: extractedData?.product_type || 'Private Car',
         vehicle_type: extractedData?.vehicle_type || 'Private Car',

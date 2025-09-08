@@ -121,6 +121,7 @@ class OpenAIService {
   "total_od": "number",
   "net_premium": "number",
   "total_premium": "number",
+  "customer_name": "string",
   "confidence_score": "number"
 }
 
@@ -153,6 +154,7 @@ CRITICAL EXTRACTION RULES:
     - Net Premium (₹): Extract from "Total Own Damage Premium" values
     - Total Premium (₹): Extract from "Total Premium Payable" values
 12. For NCB: Extract percentage value, use 0 if not found (not 20)
+13. For CUSTOMER_NAME: Extract customer name from policy holder information, insured name, or customer details section. Look for fields like "Policy Holder Name", "Insured Name", "Customer Name", "Name of Insured", etc.
 
 For ${insurer} insurance policies. If a field is not found, use null. For dates, use YYYY-MM-DD format. For numbers, use actual numbers not strings.
 

@@ -18,6 +18,7 @@ const mockData = {
       vehicle_number: 'KA01AB1234',
       insurer: 'Tata AIG',
       total_premium: 12150,
+      customer_name: 'John Doe',
       cashback: 600,
       status: 'SAVED',
       source: 'PDF_UPLOAD',
@@ -670,6 +671,7 @@ export class NicsanCRMService {
             total_od: 7200,
             net_premium: 10800,
             total_premium: 12150,
+            customer_name: 'Jane Smith',
             confidence_score: 0.86
           }
         }
@@ -832,6 +834,7 @@ export class NicsanCRMService {
             total_od: 7200,
             net_premium: 10800,
             total_premium: 12150,
+            customer_name: 'Jane Smith',
             confidence_score: 0.86
           }
         }
