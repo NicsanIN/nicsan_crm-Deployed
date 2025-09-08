@@ -484,6 +484,24 @@ class StorageService {
     return result.rows[0];
   }
 
+  // Update upload status
+  async updateUploadStatus(uploadId, status) {
+    try {
+      const queryText = 'UPDATE pdf_uploads SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE upload_id = $2';
+      const result = await query(queryText, [status, uploadId]);
+      
+      if (result.rowCount === 0) {
+        throw new Error(`Upload with ID ${uploadId} not found`);
+      }
+      
+      console.log(`✅ Upload status updated to ${status} for upload ${uploadId}`);
+      return { success: true, uploadId, status };
+    } catch (error) {
+      console.error('❌ Error updating upload status:', error);
+      throw error;
+    }
+  }
+
   // Delete from both storages
   async deletePolicy(policyId) {
     try {
@@ -705,7 +723,7 @@ class StorageService {
         ...formData,
         caller_name: formData.caller_name || formData.callerName || '', // Map callerName to caller_name
         source: 'MANUAL_FORM',
-        confidence_score: 100 // Manual entry = 100% confidence
+        confidence_score: 99.99 // Manual entry = 99.99% confidence (max for DECIMAL(4,2))
       };
       
       // Save to both storages
@@ -729,7 +747,7 @@ class StorageService {
           ...entry,
           caller_name: entry.caller_name || entry.callerName || '', // Map callerName to caller_name
           source: 'MANUAL_GRID',
-          confidence_score: 100 // Manual entry = 100% confidence
+          confidence_score: 99.99 // Manual entry = 99.99% confidence (max for DECIMAL(4,2))
         };
         
         // Save each entry to both storages

@@ -92,7 +92,6 @@ export const useCrossDeviceSync = () => {
     };
 
     const handleWebSocketMessage = (message: any) => {
-      console.log('WebSocket message received:', message);
       
       // Handle different message types
       switch (message.type) {
