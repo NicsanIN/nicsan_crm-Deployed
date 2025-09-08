@@ -8,15 +8,15 @@ dotenv.config();
 
 // Debug logging to verify environment variables are loaded
 console.log('🔍 Environment Check:');
-console.log('DB_HOST:', process.env.DB_HOST ? 'LOADED' : 'MISSING');
-console.log('DB_PORT:', process.env.DB_PORT ? 'LOADED' : 'MISSING');
-console.log('DB_NAME:', process.env.DB_NAME ? 'LOADED' : 'MISSING');
-console.log('DB_USER:', process.env.DB_USER ? 'LOADED' : 'MISSING');
-console.log('DB_PASSWORD:', process.env.DB_PASSWORD ? 'LOADED' : 'MISSING');
+console.log('PGHOST:', process.env.PGHOST ? 'LOADED' : 'MISSING');
+console.log('PGPORT:', process.env.PGPORT ? 'LOADED' : 'MISSING');
+console.log('PGDATABASE:', process.env.PGDATABASE ? 'LOADED' : 'MISSING');
+console.log('PGUSER:', process.env.PGUSER ? 'LOADED' : 'MISSING');
+console.log('PGPASSWORD:', process.env.PGPASSWORD ? 'LOADED' : 'MISSING');
+console.log('PGSSLMODE:', process.env.PGSSLMODE ? 'LOADED' : 'MISSING');
 console.log('JWT_SECRET:', process.env.JWT_SECRET ? 'LOADED' : 'MISSING');
 console.log('FRONTEND_URL:', process.env.FRONTEND_URL ? 'LOADED' : 'MISSING');
 console.log('FRONTEND_ORIGIN:', process.env.FRONTEND_ORIGIN ? 'LOADED' : 'MISSING');
-console.log('OPENAI_API_KEY:', process.env.OPENAI_API_KEY ? 'LOADED' : 'MISSING');
 console.log('NODE_ENV:', process.env.NODE_ENV || 'NOT SET');
 console.log('---');
 
