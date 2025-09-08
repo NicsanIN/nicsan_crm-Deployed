@@ -1543,7 +1543,7 @@ function PageManualForm() {
 
       // Submit to API
       console.log('🔍 Submitting policy data:', policyData);
-      const response = await NicsanCRMService.createPolicy(policyData);
+      const response = await NicsanCRMService.saveManualForm(policyData);
       console.log('🔍 API response:', response);
       
       if (response.success) {
@@ -2239,67 +2239,60 @@ function PageManualGrid() {
     setRowStatuses(newStatuses);
     
     try {
-      // Process all rows in parallel for better performance
-      const results = await Promise.allSettled(
-        rows.map(async (row, index) => {
-          try {
-        const policyData = {
-          // Basic Info
-          policy_number: row.policy,
-          vehicle_number: row.vehicle,
-          insurer: row.insurer,
-          
-          // Vehicle Details
-          product_type: row.productType || 'Private Car',
-          vehicle_type: row.vehicleType || 'Private Car',
-          make: row.make || 'Unknown',
-          model: row.model || '',
-          cc: row.cc || '',
-          manufacturing_year: row.manufacturingYear || '',
-          
-          // Dates
-          issue_date: row.issueDate || new Date().toISOString().split('T')[0],
-          expiry_date: row.expiryDate || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          
-          // Financial
-          idv: (parseFloat(row.idv) || 0).toString(),
-          ncb: (parseFloat(row.ncb) || 0).toString(),
-          discount: (parseFloat(row.discount) || 0).toString(),
-          net_od: (parseFloat(row.netOd) || 0).toString(),
-          ref: row.ref || '',
-          total_od: (parseFloat(row.totalOd) || 0).toString(),
-          net_premium: (parseFloat(row.netPremium) || 0).toString(),
-          total_premium: parseFloat(row.totalPremium).toString(),
-          cashback_percentage: (parseFloat(row.cashbackPct) || 0).toString(),
-          cashback_amount: (parseFloat(row.cashbackAmt) || 0).toString(),
-          customer_paid: (parseFloat(row.customerPaid) || 0).toString(),
-          brokerage: (parseFloat(row.brokerage) || 0).toString(),
-          
-          // Contact Info
-          executive: row.executive || 'Unknown',
-          caller_name: row.callerName || 'Unknown',
-          mobile: row.mobile || '0000000000',
-          
-          // Additional
-          rollover: row.rollover || '',
-          remark: row.remark || '',
-          cashback: (parseFloat(row.cashback) || 0).toString(),
-          source: 'MANUAL_GRID'
-        };
+      // Process all rows as batch for better performance
+      const policyDataArray = rows.map((row, index) => ({
+        // Basic Info
+        policy_number: row.policy,
+        vehicle_number: row.vehicle,
+        insurer: row.insurer,
         
-        await NicsanCRMService.createPolicy(policyData);
-            return { index, success: true };
-          } catch (error) {
-            console.error(`Failed to save row ${index}:`, error);
-            return { index, success: false, error };
-          }
-        })
-      );
+        // Vehicle Details
+        product_type: row.productType || 'Private Car',
+        vehicle_type: row.vehicleType || 'Private Car',
+        make: row.make || 'Unknown',
+        model: row.model || '',
+        cc: row.cc || '',
+        manufacturing_year: row.manufacturingYear || '',
+        
+        // Dates
+        issue_date: row.issueDate || new Date().toISOString().split('T')[0],
+        expiry_date: row.expiryDate || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        
+        // Financial
+        idv: (parseFloat(row.idv) || 0).toString(),
+        ncb: (parseFloat(row.ncb) || 0).toString(),
+        discount: (parseFloat(row.discount) || 0).toString(),
+        net_od: (parseFloat(row.netOd) || 0).toString(),
+        ref: row.ref || '',
+        total_od: (parseFloat(row.totalOd) || 0).toString(),
+        net_premium: (parseFloat(row.netPremium) || 0).toString(),
+        total_premium: parseFloat(row.totalPremium).toString(),
+        cashback_percentage: (parseFloat(row.cashbackPct) || 0).toString(),
+        cashback_amount: (parseFloat(row.cashbackAmt) || 0).toString(),
+        customer_paid: (parseFloat(row.customerPaid) || 0).toString(),
+        brokerage: (parseFloat(row.brokerage) || 0).toString(),
+        
+        // Contact Info
+        executive: row.executive || 'Unknown',
+        caller_name: row.callerName || 'Unknown',
+        mobile: row.mobile || '0000000000',
+        
+        // Additional
+        rollover: row.rollover || '',
+        remark: row.remark || '',
+        cashback: (parseFloat(row.cashback) || 0).toString(),
+        source: 'MANUAL_GRID'
+      }));
+      
+      await NicsanCRMService.saveGridEntries(policyDataArray);
+      
+      // All rows saved successfully
+      const results = rows.map((_, index) => ({ index, success: true }));
       
       // Update row statuses based on results
       const finalStatuses: {[key: number]: 'saved' | 'error'} = {};
       results.forEach((result, index) => {
-        if (result.status === 'fulfilled' && result.value.success) {
+        if (result.success) {
           finalStatuses[index] = 'saved';
         } else {
           finalStatuses[index] = 'error';
