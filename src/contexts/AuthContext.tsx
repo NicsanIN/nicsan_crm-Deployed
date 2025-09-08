@@ -73,8 +73,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // Backend returns: { success: true, data: { user: {...}, token: "..." } }
         const { token, user: userData } = response.data;
         
-        console.log('🔍 Debug: Login response:', response);
-        console.log('🔍 Debug: Token from response:', !!token, 'User from response:', !!userData);
         
         // Store token and user data
         authUtils.setToken(token);

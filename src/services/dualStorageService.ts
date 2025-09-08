@@ -36,7 +36,6 @@ class DualStorageService {
   ): Promise<DualStorageResult> {
     
     if (ENABLE_DEBUG) {
-      console.log(`🔄 Starting dual storage pattern for: ${operationName}`);
     }
 
     // Step 1: Try Backend API (Primary Storage)
@@ -45,24 +44,12 @@ class DualStorageService {
         const result = await backendMethod();
         
         if (ENABLE_DEBUG) {
-          console.log(`✅ ${operationName} - Retrieved from Backend API (Primary Storage)`);
         }
         
-        if (ENABLE_DEBUG) {
-          console.log('🔍 DualStorageService: Backend API result:', result);
-          console.log('🔍 DualStorageService: Result type:', typeof result, Array.isArray(result));
-        }
         
         // Extract the data from the BackendApiService response
         const actualData = result.data || result;
         
-        if (ENABLE_DEBUG) {
-          console.log('🔍 DualStorageService: Extracted actualData:', actualData);
-          console.log('🔍 DualStorageService: actualData type:', typeof actualData, Array.isArray(actualData));
-          if (Array.isArray(actualData) && actualData.length > 0) {
-            console.log('🔍 DualStorageService: First actualData item:', actualData[0]);
-          }
-        }
         
         return {
           success: true,
@@ -74,14 +61,12 @@ class DualStorageService {
       }
     } catch (backendError) {
       if (ENABLE_DEBUG) {
-        console.log(`⚠️ ${operationName} - Backend API retrieval failed, using mock data...`);
         console.error('Backend API Error:', backendError);
       }
     }
 
     // Step 2: Fallback to Mock Data
     if (ENABLE_DEBUG) {
-      console.log(`📋 ${operationName} - Using mock data fallback`);
     }
     
     return {

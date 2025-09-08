@@ -38,16 +38,10 @@ function LoginPage({ onLogin }: { onLogin: (user: { name: string; email: string;
       // Use smart API service with mock fallback
       const response = await NicsanCRMService.login({ email, password });
       
-      console.log('🔍 Full login response:', response);
-      console.log('🔍 Response data:', response.data);
-      console.log('🔍 Token:', response.data?.token);
-      console.log('🔍 User:', response.data?.user);
       
       if (response.success && response.data) {
         const { token, user: userData } = response.data;
         
-        console.log('🔍 Extracted token:', token);
-        console.log('🔍 Extracted user:', userData);
         
         if (!token) {
           setError('No token received from server');
@@ -55,23 +49,17 @@ function LoginPage({ onLogin }: { onLogin: (user: { name: string; email: string;
         }
         
         // Store token and user data
-        console.log('🔍 About to store token...');
         
         try {
           // Try authUtils first
-          console.log('🔍 Calling authUtils.setToken...');
           authUtils.setToken(token);
-          console.log('🔍 authUtils.setToken completed');
         } catch (error) {
           console.error('🔍 authUtils.setToken failed:', error);
         }
         
         try {
           // Also store directly to verify
-          console.log('🔍 Storing directly to localStorage...');
           localStorage.setItem('authToken', token);
-          console.log('🔍 Direct localStorage storage completed');
-          console.log('🔍 Verification - token in localStorage:', !!localStorage.getItem('authToken'));
         } catch (error) {
           console.error('🔍 Direct localStorage storage failed:', error);
         }
@@ -408,7 +396,6 @@ function PageUpload() {
             
             // Update localStorage with new status
             localStorage.setItem('nicsan_crm_uploads', JSON.stringify(updated));
-            console.log('🔄 Updated upload status in localStorage:', updated);
             
             return updated;
           });
@@ -1541,12 +1528,32 @@ function PageManualForm() {
         source: 'MANUAL_FORM'
       };
 
+      // Debug: Log the policy data being sent
+      console.log('🔍 Manual Form - Policy data being sent:', policyData);
+      console.log('🔍 Manual Form - Numeric values:', {
+        idv: policyData.idv,
+        ncb: policyData.ncb,
+        discount: policyData.discount,
+        net_od: policyData.net_od,
+        total_od: policyData.total_od,
+        net_premium: policyData.net_premium,
+        total_premium: policyData.total_premium,
+        cashback_percentage: policyData.cashback_percentage,
+        cashback_amount: policyData.cashback_amount,
+        customer_paid: policyData.customer_paid,
+        brokerage: policyData.brokerage,
+        cashback: policyData.cashback
+      });
+
       // Submit to API
-      console.log('🔍 Submitting policy data:', policyData);
       const response = await NicsanCRMService.saveManualForm(policyData);
-      console.log('🔍 API response:', response);
       
-      if (response.success) {
+      // Debug: Log the response
+      console.log('🔍 Manual Form - API Response:', response);
+      console.log('🔍 Manual Form - Response success:', response?.success);
+      console.log('🔍 Manual Form - Response data:', response?.data);
+      
+      if (response && response.success) {
         setSubmitMessage({ 
           type: 'success', 
           message: `Policy saved successfully! Policy ID: ${response.data?.id || 'N/A'}` 
@@ -1853,7 +1860,6 @@ function PageManualGrid() {
     const loadGridData = async () => {
       try {
         setIsLoading(true);
-        console.log('🔄 Loading Grid Entry data...');
         
         // Load all policies from backend
         const response = await NicsanCRMService.getPolicies(100, 0);
@@ -1863,7 +1869,6 @@ function PageManualGrid() {
           const gridPolicies = response.data.filter((p: any) => p.source === 'MANUAL_GRID');
           setSavedPolicies(gridPolicies);
           
-          console.log(`📋 Found ${gridPolicies.length} saved policies from grid`);
           
           // Show info message about saved policies
           if (gridPolicies.length > 0) {
@@ -1878,7 +1883,6 @@ function PageManualGrid() {
             });
           }
         } else {
-          console.log('📋 No policies found, starting with empty grid');
           setSaveMessage({ 
             type: 'info', 
             message: 'Grid is ready for new policy entries.' 
@@ -1996,7 +2000,6 @@ function PageManualGrid() {
     const clipboardData = e.clipboardData?.getData('text/plain');
     
     if (clipboardData) {
-      console.log('📋 Excel data pasted:', clipboardData);
       
       // Parse tab-separated values
       const rows = clipboardData.split('\n').filter(row => row.trim());
@@ -2081,7 +2084,6 @@ function PageManualGrid() {
           });
         }
         
-        console.log(`✅ Added ${newRows.length} rows from Excel paste (${validRows} valid, ${invalidRows} with errors)`);
       }
     }
   };
@@ -2718,7 +2720,6 @@ function PageReview() {
   useEffect(() => {
     const loadAvailableUploads = async () => {
       try {
-        console.log('🔄 Loading available uploads...');
         
         // First, try to get real uploads from localStorage (from PDF upload page)
         const storedUploads = localStorage.getItem('nicsan_crm_uploads');
@@ -2727,19 +2728,13 @@ function PageReview() {
         if (storedUploads) {
           try {
             realUploads = JSON.parse(storedUploads);
-            console.log('📋 Found stored uploads:', realUploads);
-            console.log('📋 Upload count:', realUploads.length);
-            console.log('📋 First upload structure:', realUploads[0]);
           } catch (e) {
             console.error('Failed to parse stored uploads:', e);
           }
-        } else {
-          console.log('📋 No uploads found in localStorage');
         }
         
         // If no real uploads, show mock data for demo
         if (realUploads.length === 0) {
-          console.log('📋 No real uploads found, showing mock data');
           setAvailableUploads([
             { 
               id: 'mock_1', 
@@ -2789,7 +2784,6 @@ function PageReview() {
         } else {
           // Show real uploads - filter out any mock uploads
           const filteredRealUploads = realUploads.filter((upload: any) => !upload.id.startsWith('mock_'));
-          console.log('📋 Showing real uploads:', filteredRealUploads);
           setAvailableUploads(filteredRealUploads);
         }
       } catch (error) {
@@ -3003,10 +2997,6 @@ function PageReview() {
     setSaveMessage(null);
     
     try {
-      console.log('🔍 Starting Confirm & Save process...');
-      console.log('🔍 Review data:', reviewData);
-      console.log('🔍 Upload ID:', reviewData?.id);
-      console.log('🔍 Editable data:', editableData);
       
       // Validate edited data before saving
       const validationErrors = validateEditedData();
@@ -3021,7 +3011,6 @@ function PageReview() {
       
       // Check if this is a mock upload
       if (reviewData.id.startsWith('mock_')) {
-        console.log('🎭 Processing mock upload...');
         // Simulate successful save for mock data
         await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API delay
         
@@ -3040,13 +3029,11 @@ function PageReview() {
         return;
       }
       
-      console.log('💾 Processing real upload with edited data...');
       // Send edited data to backend
       const result = await NicsanCRMService.confirmUploadAsPolicy(reviewData.id, {
         pdfData: editableData.pdfData,
         manualExtras: editableData.manualExtras
       });
-      console.log('🔍 API result:', result);
       
       if (result.success) {
         console.log('✅ Policy confirmed successfully with edited data!');
@@ -3157,7 +3144,6 @@ function PageReview() {
                 };
                 
                 localStorage.setItem('nicsan_crm_uploads', JSON.stringify([testUpload]));
-                console.log('🧪 Added test upload:', testUpload);
                 
                 // Force reload
                 window.location.reload();
@@ -3208,10 +3194,7 @@ function PageReview() {
                     const storedUploads = localStorage.getItem('nicsan_crm_uploads');
                     if (storedUploads) {
                       const realUploads = JSON.parse(storedUploads);
-                      console.log('🔄 Refreshed uploads from localStorage:', realUploads);
                       setAvailableUploads(realUploads);
-                    } else {
-                      console.log('📋 No uploads found in localStorage');
                     }
                   } catch (error) {
                     console.error('Failed to refresh uploads:', error);
@@ -3578,7 +3561,6 @@ function PagePolicyDetail() {
         setAvailablePolicies(response.data || []);
         
         if (ENABLE_DEBUG) {
-          console.log('📋 Policy Detail - Available policies:', response.data);
         }
       }
     } catch (error) {
@@ -3605,8 +3587,6 @@ function PagePolicyDetail() {
         setDataSource(response.source);
         
         if (ENABLE_DEBUG) {
-          console.log('📋 Policy Detail - Data source:', response.source);
-          console.log('📋 Policy Detail - Policy data:', response.data);
         }
       }
     } catch (error) {
@@ -4114,10 +4094,6 @@ function PageOverview() {
           setTrendData(transformedTrend);
           
           if (ENABLE_DEBUG) {
-            console.log('📊 Company Overview - Data source:', metricsResponse.source);
-            console.log('📊 Company Overview - Metrics data:', metricsResponse.data);
-            console.log('📊 Company Overview - Raw trend data:', metricsResponse.data.dailyTrend);
-            console.log('📊 Company Overview - Transformed trend data:', transformedTrend);
           }
         }
       } catch (error) {
@@ -4244,9 +4220,6 @@ function PageLeaderboard() {
         
         if (response.success) {
           if (ENABLE_DEBUG) {
-            console.log('🏆 Rep Leaderboard - Data source:', response.source);
-            console.log('🏆 Rep Leaderboard - Response data:', response.data);
-            console.log('🏆 Rep Leaderboard - Data type:', typeof response.data, Array.isArray(response.data));
           }
           setReps(Array.isArray(response.data) ? response.data : []);
           setDataSource(response.source);
@@ -4358,9 +4331,6 @@ function PageExplorer() {
         
         if (response.success) {
           if (ENABLE_DEBUG) {
-            console.log('🔍 Sales Explorer - Data source:', response.source);
-            console.log('🔍 Sales Explorer - Response data:', response.data);
-            console.log('🔍 Sales Explorer - Data type:', typeof response.data, Array.isArray(response.data));
           }
           setPolicies(Array.isArray(response.data) ? response.data : []);
           setDataSource(response.source);
@@ -4381,31 +4351,10 @@ function PageExplorer() {
     const insurerMatch = insurer === 'All' || p.insurer === insurer;
     const cashbackMatch = (p.cashbackPctAvg || 0) <= cashbackMax;
     
-    if (ENABLE_DEBUG && !makeMatch) {
-      console.log('🔍 Filter failed - Make:', { filter: make, data: p.make, match: makeMatch });
-    }
-    if (ENABLE_DEBUG && !modelMatch) {
-      console.log('🔍 Filter failed - Model:', { filter: model, data: p.model, match: modelMatch });
-    }
-    if (ENABLE_DEBUG && !insurerMatch) {
-      console.log('🔍 Filter failed - Insurer:', { filter: insurer, data: p.insurer, match: insurerMatch });
-    }
-    if (ENABLE_DEBUG && !cashbackMatch) {
-      console.log('🔍 Filter failed - Cashback:', { filter: cashbackMax, data: p.cashbackPctAvg, match: cashbackMatch });
-    }
     
     return makeMatch && modelMatch && insurerMatch && cashbackMatch;
   });
   
-  if (ENABLE_DEBUG) {
-    console.log('🔍 Sales Explorer - Policies state:', policies);
-    console.log('🔍 Sales Explorer - Filtered data:', filtered);
-    console.log('🔍 Sales Explorer - Filtered count:', filtered.length);
-    console.log('🔍 Sales Explorer - Filter values:', { make, model, insurer, cashbackMax });
-    if (policies.length > 0) {
-      console.log('🔍 Sales Explorer - First policy:', policies[0]);
-    }
-  }
   return (
     <>
       <Card title="Sales Explorer (Motor)" desc={`Filter by Make/Model; find reps with most sales and lowest cashback (Data Source: ${dataSource || 'Loading...'})`}>
@@ -4458,23 +4407,10 @@ function PageSources() {
         const response = await DualStorageService.getDataSources();
         
         if (response.success) {
-          if (ENABLE_DEBUG) {
-            console.log('📊 Data Sources - Data source:', response.source);
-            console.log('📊 Data Sources - Response data:', response.data);
-            console.log('📊 Data Sources - Data type:', typeof response.data, Array.isArray(response.data));
-            if (response.data && response.data.length > 0) {
-              console.log('📊 Data Sources - First item:', response.data[0]);
-            }
-          }
           const newDataSources = Array.isArray(response.data) ? response.data : [];
           setDataSources(newDataSources);
           setDataSource(response.source);
           
-          if (ENABLE_DEBUG) {
-            console.log('📊 Data Sources - Setting dataSources state:', newDataSources);
-            console.log('📊 Data Sources - dataSources.length:', newDataSources.length);
-            console.log('📊 Data Sources - Will use in chart:', newDataSources.length > 0 ? 'REAL DATA' : 'DEMO DATA');
-          }
         }
       } catch (error) {
         console.error('Failed to load data sources:', error);
@@ -4488,10 +4424,6 @@ function PageSources() {
 
   // Debug logging for chart data
   if (ENABLE_DEBUG) {
-    console.log('📊 Data Sources - Chart render - dataSources:', dataSources);
-    console.log('📊 Data Sources - Chart render - dataSources.length:', dataSources.length);
-    console.log('📊 Data Sources - Chart render - demoSources:', demoSources);
-    console.log('📊 Data Sources - Chart render - Final chart data:', dataSources.length > 0 ? dataSources : demoSources);
   }
 
   return (
@@ -4564,8 +4496,6 @@ function PageFounderSettings() {
         setDataSource(response.source || 'Unknown');
         
         if (ENABLE_DEBUG) {
-          console.log('📋 Settings - Data source:', response.source);
-          console.log('📋 Settings - Message:', response.message);
         }
       } else {
         setError(response.error || 'Failed to load settings');
@@ -4775,9 +4705,6 @@ function PageKPIs() {
           setDataSource(response.source);
           
           if (ENABLE_DEBUG) {
-            console.log('📈 KPI Dashboard - Data source:', response.source);
-            console.log('📈 KPI Dashboard - KPI data:', response.data);
-            console.log('📈 KPI Dashboard - Basic metrics:', response.data.basicMetrics);
           }
         }
       } catch (error) {
@@ -4956,7 +4883,6 @@ function NicsanCRMMock() {
       setBackendStatus(status);
       
       if (ENABLE_DEBUG) {
-        console.log('🔍 Backend status:', status);
       }
     };
     

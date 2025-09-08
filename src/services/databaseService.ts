@@ -42,7 +42,6 @@ class DatabaseService {
       this.isServiceAvailable = response.ok;
       
       if (ENABLE_DEBUG) {
-        console.log('🔍 Database availability check:', this.isServiceAvailable);
       }
     } catch (error) {
       this.isServiceAvailable = false;
@@ -90,7 +89,6 @@ class DatabaseService {
       const result = await this.makeDatabaseRequest('/dashboard/metrics');
       
       if (ENABLE_DEBUG) {
-        console.log('✅ Dashboard metrics retrieved from database');
       }
       
       return result;
@@ -105,7 +103,6 @@ class DatabaseService {
       const result = await this.makeDatabaseRequest('/dashboard/sales-reps');
       
       if (ENABLE_DEBUG) {
-        console.log('✅ Sales reps retrieved from database');
       }
       
       return result;
@@ -120,7 +117,6 @@ class DatabaseService {
       const result = await this.makeDatabaseRequest('/dashboard/sales-explorer');
       
       if (ENABLE_DEBUG) {
-        console.log('✅ Sales explorer retrieved from database');
       }
       
       return result;
@@ -135,7 +131,6 @@ class DatabaseService {
       const result = await this.makeDatabaseRequest('/dashboard/data-sources');
       
       if (ENABLE_DEBUG) {
-        console.log('✅ Data sources retrieved from database');
       }
       
       return result;
@@ -150,7 +145,6 @@ class DatabaseService {
       const result = await this.makeDatabaseRequest(`/policies/${policyId}`);
       
       if (ENABLE_DEBUG) {
-        console.log('✅ Policy detail retrieved from database');
       }
       
       return result;
@@ -165,7 +159,6 @@ class DatabaseService {
       const result = await this.makeDatabaseRequest('/policies');
       
       if (ENABLE_DEBUG) {
-        console.log('✅ All policies retrieved from database');
       }
       
       return result;

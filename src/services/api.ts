@@ -148,7 +148,6 @@ async function apiCall<T>(
 // Authentication API
 export const authAPI = {
   login: async (credentials: LoginRequest): Promise<ApiResponse<LoginResponse>> => {
-    console.log('🔍 Debug: Login API called with:', credentials);
     
     // Clear any existing invalid tokens before login
     authUtils.removeToken();
@@ -157,7 +156,6 @@ export const authAPI = {
       method: 'POST',
       body: JSON.stringify(credentials),
     });
-    console.log('🔍 Debug: Login API response:', response);
     return response;
   },
 
@@ -501,9 +499,7 @@ export const authUtils = {
   },
 
   setToken: (token: string): void => {
-    if (ENABLE_DEBUG) console.log('🔍 Debug: Setting token, length:', token.length);
     localStorage.setItem('authToken', token);
-    if (ENABLE_DEBUG) console.log('🔍 Debug: Token stored, verifying:', !!localStorage.getItem('authToken'));
   },
 
   removeToken: (): void => {
