@@ -724,9 +724,10 @@ class StorageService {
       const results = [];
       
       for (const entry of entries) {
-        // Add source metadata
+        // Add source metadata and handle field mapping
         const policyData = {
           ...entry,
+          caller_name: entry.caller_name || entry.callerName || '', // Map callerName to caller_name
           source: 'MANUAL_GRID',
           confidence_score: 100 // Manual entry = 100% confidence
         };

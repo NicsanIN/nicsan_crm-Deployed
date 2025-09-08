@@ -94,8 +94,14 @@ async function apiCall<T>(
         const payload = JSON.parse(atob(token.split('.')[1]));
         const currentTime = Date.now() / 1000;
         
-        // If token expires in next 5 minutes, try to refresh
-        if (payload.exp && (payload.exp - currentTime) < 300) {
+        // If token is already expired, remove it and don't try to refresh
+        if (payload.exp && payload.exp < currentTime) {
+          if (ENABLE_DEBUG) console.log('⚠️ Token expired, removing from storage');
+          authUtils.removeToken();
+          token = null;
+        }
+        // If token expires in next 5 minutes, try to refresh (but only for non-login endpoints)
+        else if (payload.exp && (payload.exp - currentTime) < 300 && !endpoint.includes('/login')) {
           if (ENABLE_DEBUG) console.log('🔄 Token expiring soon, attempting refresh...');
           const refreshResult = await authUtils.refreshToken();
           if (refreshResult.success) {
@@ -103,7 +109,9 @@ async function apiCall<T>(
           }
         }
       } catch (error) {
-        if (ENABLE_DEBUG) console.log('⚠️ Token validation failed, will attempt refresh');
+        if (ENABLE_DEBUG) console.log('⚠️ Token validation failed, removing invalid token');
+        authUtils.removeToken();
+        token = null;
       }
     }
     
@@ -141,6 +149,10 @@ async function apiCall<T>(
 export const authAPI = {
   login: async (credentials: LoginRequest): Promise<ApiResponse<LoginResponse>> => {
     console.log('🔍 Debug: Login API called with:', credentials);
+    
+    // Clear any existing invalid tokens before login
+    authUtils.removeToken();
+    
     const response = await apiCall<LoginResponse>('/auth/login', {
       method: 'POST',
       body: JSON.stringify(credentials),
@@ -505,23 +517,14 @@ export const authUtils = {
         return { success: false, error: 'No token to refresh' };
       }
 
-      // Try to get a new token using the current user info
-      const user = JSON.parse(localStorage.getItem('user') || '{}');
-      if (user.email) {
-        // For now, we'll try to login again with stored credentials
-        // In a real app, you'd have a refresh token endpoint
-        const response = await authAPI.login({ 
-          email: user.email, 
-          password: '***' // This won't work, but shows the pattern
-        });
-        
-        if (response.success) {
-          this.setToken(response.data.token);
-          return response;
-        }
-      }
-      
-      return { success: false, error: 'Token refresh failed' };
+      // For now, we'll just return the current token
+      // In a real app, you'd have a dedicated refresh token endpoint
+      // that doesn't require login credentials
+      return { 
+        success: true, 
+        data: { token: currentToken },
+        message: 'Token refresh not implemented - using current token'
+      };
     } catch (error) {
       return { success: false, error: 'Token refresh error' };
     }
