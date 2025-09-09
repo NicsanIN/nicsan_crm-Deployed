@@ -148,13 +148,13 @@ class AuthService {
       const defaultUsers = [
         {
           email: 'ops@nicsan.in',
-          password: 'ops123',
+          password: 'NicsanOps2024!@#',
           name: 'Operations User',
           role: 'ops'
         },
         {
           email: 'admin@nicsan.in',
-          password: 'admin123',
+          password: 'NicsanAdmin2024!@#',
           name: 'Founder User',
           role: 'founder'
         }
