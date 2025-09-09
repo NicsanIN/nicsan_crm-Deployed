@@ -84,7 +84,7 @@ function LoginPage({ onLogin }: { onLogin: (user: { name: string; email: string;
     <div className="min-h-screen grid place-items-center bg-zinc-50 p-6">
       <div className="w-full max-w-md bg-white rounded-2xl border border-zinc-100 shadow-sm p-6">
         <div className="flex items-center gap-2 text-lg font-semibold mb-1"><Lock className="w-5 h-5"/> Nicsan CRM v1</div>
-        <div className="text-sm text-zinc-500 mb-6">Real authentication with backend API</div>
+        
         
         {error && (
           <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg text-sm">
@@ -98,7 +98,7 @@ function LoginPage({ onLogin }: { onLogin: (user: { name: string; email: string;
             value={email} 
             onChange={e=>setEmail(e.target.value)} 
             className="w-full rounded-xl border border-zinc-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200" 
-            placeholder="ops@nicsan.in"
+            placeholder="Enter your email"
             disabled={isLoading}
           />
         </label>
@@ -122,12 +122,7 @@ function LoginPage({ onLogin }: { onLogin: (user: { name: string; email: string;
           {isLoading ? 'Signing in...' : 'Sign in'}
         </button>
         
-        <div className="text-xs text-zinc-500 mt-3 text-center">
-          Test credentials: ops@nicsan.in / ops123
-        </div>
-        <div className="text-xs text-zinc-500 mt-2 text-center">
-          Founder: admin@nicsan.in / admin123
-        </div>
+        
       </div>
     </div>
   )
