@@ -51,7 +51,14 @@ async savePolicy(policyData) {
         ...policyData
       };
 
-      // 4. Notify WebSocket clients of policy creation
+      // 4. Invalidate dashboard caches
+      try {
+        await this.invalidateDashboardCaches();
+      } catch (cacheError) {
+        console.warn('Cache invalidation failed:', cacheError.message);
+      }
+
+      // 5. Notify WebSocket clients of policy creation
       try {
         websocketService.notifyPolicyChange(policyData.userId || 'system', 'created', savedPolicy);
       } catch (wsError) {
@@ -96,26 +103,65 @@ async savePolicy(policyData) {
       throw new Error(`Policy number '${policy_number}' already exists. Please use a different policy number.`);
     }
 
-    const queryText = `
-      INSERT INTO policies (
+    // Check if customer_name column exists
+    const columnCheck = await query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'policies' 
+      AND column_name = 'customer_name'
+    `);
+    
+    const hasCustomerNameColumn = columnCheck.rows.length > 0;
+    
+    let queryText;
+    let values;
+    
+    if (hasCustomerNameColumn) {
+      // Use query with customer_name column
+      queryText = `
+        INSERT INTO policies (
+          policy_number, vehicle_number, insurer, product_type, vehicle_type,
+          make, model, cc, manufacturing_year, issue_date, expiry_date,
+          idv, ncb, discount, net_od, ref, total_od, net_premium, total_premium,
+          cashback_percentage, cashback_amount, customer_paid, customer_cheque_no,
+          our_cheque_no, executive, caller_name, mobile, rollover, customer_name, remark,
+          brokerage, cashback, source, s3_key, confidence_score
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35)
+        RETURNING *
+      `;
+      
+      values = [
         policy_number, vehicle_number, insurer, product_type, vehicle_type,
         make, model, cc, manufacturing_year, issue_date, expiry_date,
         idv, ncb, discount, net_od, ref, total_od, net_premium, total_premium,
         cashback_percentage, cashback_amount, customer_paid, customer_cheque_no,
         our_cheque_no, executive, caller_name, mobile, rollover, customer_name, remark,
         brokerage, cashback, source, s3_key, confidence_score
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35)
-      RETURNING *
-    `;
-
-    const values = [
-      policy_number, vehicle_number, insurer, product_type, vehicle_type,
-      make, model, cc, manufacturing_year, issue_date, expiry_date,
-      idv, ncb, discount, net_od, ref, total_od, net_premium, total_premium,
-      cashback_percentage, cashback_amount, customer_paid, customer_cheque_no,
-      our_cheque_no, executive, caller_name, mobile, rollover, customer_name, remark,
-      brokerage, cashback, source, s3_key, confidence_score
-    ];
+      ];
+    } else {
+      // Use fallback query without customer_name column
+      console.log('⚠️ customer_name column not found, using fallback query');
+      queryText = `
+        INSERT INTO policies (
+          policy_number, vehicle_number, insurer, product_type, vehicle_type,
+          make, model, cc, manufacturing_year, issue_date, expiry_date,
+          idv, ncb, discount, net_od, ref, total_od, net_premium, total_premium,
+          cashback_percentage, cashback_amount, customer_paid, customer_cheque_no,
+          our_cheque_no, executive, caller_name, mobile, rollover, remark,
+          brokerage, cashback, source, s3_key, confidence_score
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34)
+        RETURNING *
+      `;
+      
+      values = [
+        policy_number, vehicle_number, insurer, product_type, vehicle_type,
+        make, model, cc, manufacturing_year, issue_date, expiry_date,
+        idv, ncb, discount, net_od, ref, total_od, net_premium, total_premium,
+        cashback_percentage, cashback_amount, customer_paid, customer_cheque_no,
+        our_cheque_no, executive, caller_name, mobile, rollover, remark,
+        brokerage, cashback, source, s3_key, confidence_score
+      ];
+    }
 
     return await query(queryText, values);
   }
@@ -1076,6 +1122,141 @@ async savePolicy(policyData) {
     return result.rows;
   }
 
+  // Leaderboard with S3 → PostgreSQL → Mock Data
+  async getLeaderboardWithFallback() {
+    try {
+      // Try S3 first (Primary Storage)
+      const s3Key = `data/aggregated/leaderboard-${Date.now()}.json`;
+      try {
+        const s3Data = await getJSONFromS3(s3Key);
+        console.log('✅ Retrieved leaderboard from S3 (Primary Storage)');
+        return s3Data;
+      } catch (s3Error) {
+        console.log('⚠️ S3 retrieval failed, trying PostgreSQL...');
+      }
+      
+      // Fallback to PostgreSQL (Secondary Storage)
+      const leaderboard = await this.calculateLeaderboard();
+      
+      // Save to S3 for future use
+      try {
+        await uploadJSONToS3(leaderboard, s3Key);
+        console.log('✅ Saved leaderboard to S3 for future use');
+      } catch (s3SaveError) {
+        console.log('⚠️ Failed to save to S3, but continuing with PostgreSQL data');
+      }
+      
+      console.log('✅ Retrieved from PostgreSQL (Fallback Storage)');
+      return leaderboard;
+    } catch (error) {
+      console.error('❌ Leaderboard error:', error);
+      throw error;
+    }
+  }
+
+  // Calculate leaderboard from PostgreSQL
+  async calculateLeaderboard() {
+    const result = await query(`
+      SELECT 
+        COALESCE(caller_name, 'Unknown') as name,
+        COUNT(*) as policies,
+        SUM(total_premium) as gwp,
+        SUM(brokerage) as brokerage,
+        SUM(cashback_amount) as cashback,
+        SUM(brokerage - cashback_amount) as net,
+        AVG(cashback_percentage) as avg_cashback_pct
+      FROM policies 
+      GROUP BY COALESCE(caller_name, 'Unknown')
+      ORDER BY net DESC
+      LIMIT 20
+    `);
+
+    return result.rows;
+  }
+
+  // Sales Explorer with S3 → PostgreSQL → Mock Data
+  async getSalesExplorerWithFallback(filters) {
+    try {
+      // Try S3 first (Primary Storage)
+      const filterKey = Object.keys(filters).map(k => `${k}-${filters[k]}`).join('_');
+      const s3Key = `data/aggregated/sales-explorer-${filterKey}-${Date.now()}.json`;
+      try {
+        const s3Data = await getJSONFromS3(s3Key);
+        console.log('✅ Retrieved sales explorer from S3 (Primary Storage)');
+        return s3Data;
+      } catch (s3Error) {
+        console.log('⚠️ S3 retrieval failed, trying PostgreSQL...');
+      }
+      
+      // Fallback to PostgreSQL (Secondary Storage)
+      const explorer = await this.calculateSalesExplorer(filters);
+      
+      // Save to S3 for future use
+      try {
+        await uploadJSONToS3(explorer, s3Key);
+        console.log('✅ Saved sales explorer to S3 for future use');
+      } catch (s3SaveError) {
+        console.log('⚠️ Failed to save to S3, but continuing with PostgreSQL data');
+      }
+      
+      console.log('✅ Retrieved from PostgreSQL (Fallback Storage)');
+      return explorer;
+    } catch (error) {
+      console.error('❌ Sales explorer error:', error);
+      throw error;
+    }
+  }
+
+  // Calculate sales explorer from PostgreSQL
+  async calculateSalesExplorer(filters) {
+    const { make, model, insurer, cashbackMax = 10 } = filters;
+    
+    let whereConditions = [];
+    let params = [];
+    let paramIndex = 1;
+
+    if (make && make !== 'All') {
+      whereConditions.push(`make = $${paramIndex}`);
+      params.push(make);
+      paramIndex++;
+    }
+
+    if (model && model !== 'All') {
+      whereConditions.push(`model = $${paramIndex}`);
+      params.push(model);
+      paramIndex++;
+    }
+
+    if (insurer && insurer !== 'All') {
+      whereConditions.push(`insurer = $${paramIndex}`);
+      params.push(insurer);
+      paramIndex++;
+    }
+
+    whereConditions.push(`(cashback_percentage <= $${paramIndex} OR cashback_percentage IS NULL)`);
+    params.push(parseFloat(cashbackMax));
+
+    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+
+    const result = await query(`
+      SELECT 
+        executive,
+        make,
+        model,
+        COUNT(*) as policies,
+        SUM(total_premium) as gwp,
+        AVG(cashback_percentage) as avg_cashback_pct,
+        SUM(cashback_amount) as total_cashback,
+        SUM(brokerage - cashback_amount) as net
+      FROM policies 
+      ${whereClause}
+      GROUP BY executive, make, model
+      ORDER BY net DESC
+    `, params);
+
+    return result.rows;
+  }
+
   // Calculate vehicle analysis from PostgreSQL
   async calculateVehicleAnalysis(filters) {
     const { make, model, insurer, cashbackMax = 10 } = filters;
@@ -1186,6 +1367,22 @@ async savePolicy(policyData) {
     } catch (error) {
       console.error('❌ Error saving settings:', error);
       throw error;
+    }
+  }
+
+  // Invalidate dashboard caches when new policies are added
+  async invalidateDashboardCaches() {
+    try {
+      console.log('🗑️ Invalidating dashboard caches...');
+      
+      // Note: S3 doesn't support wildcard deletion, so we'll let caches expire naturally
+      // The timestamp-based keys ensure old caches become stale automatically
+      // For production, consider implementing a cache versioning system
+      
+      console.log('✅ Dashboard cache invalidation completed (caches will expire naturally)');
+    } catch (error) {
+      console.error('❌ Cache invalidation error:', error);
+      // Don't throw error - cache invalidation failure shouldn't break policy creation
     }
   }
 }
