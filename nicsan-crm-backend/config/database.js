@@ -85,6 +85,7 @@ const initializeDatabase = async () => {
         caller_name VARCHAR(255),
         mobile VARCHAR(20),
         rollover VARCHAR(255),
+        customer_name VARCHAR(255),
         remark TEXT,
         brokerage DECIMAL(15,2) DEFAULT 0,
         cashback DECIMAL(15,2) DEFAULT 0,

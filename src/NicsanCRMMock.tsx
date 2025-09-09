@@ -84,7 +84,7 @@ function LoginPage({ onLogin }: { onLogin: (user: { name: string; email: string;
     <div className="min-h-screen grid place-items-center bg-zinc-50 p-6">
       <div className="w-full max-w-md bg-white rounded-2xl border border-zinc-100 shadow-sm p-6">
         <div className="flex items-center gap-2 text-lg font-semibold mb-1"><Lock className="w-5 h-5"/> Nicsan CRM v1</div>
-        <div className="text-sm text-zinc-500 mb-6">Real authentication with backend API</div>
+        
         
         {error && (
           <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg text-sm">
@@ -98,7 +98,7 @@ function LoginPage({ onLogin }: { onLogin: (user: { name: string; email: string;
             value={email} 
             onChange={e=>setEmail(e.target.value)} 
             className="w-full rounded-xl border border-zinc-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200" 
-            placeholder="ops@nicsan.in"
+            placeholder="Enter your email"
             disabled={isLoading}
           />
         </label>
@@ -122,12 +122,7 @@ function LoginPage({ onLogin }: { onLogin: (user: { name: string; email: string;
           {isLoading ? 'Signing in...' : 'Sign in'}
         </button>
         
-        <div className="text-xs text-zinc-500 mt-3 text-center">
-          Test credentials: ops@nicsan.in / ops123
-        </div>
-        <div className="text-xs text-zinc-500 mt-2 text-center">
-          Founder: admin@nicsan.in / admin123
-        </div>
+        
       </div>
     </div>
   )
@@ -226,7 +221,8 @@ function PageUpload() {
     cashback: '',
     customerPaid: '',
     customerChequeNo: '',
-    ourChequeNo: ''
+    ourChequeNo: '',
+    customerName: ''
   });
   const [manualExtrasSaved, setManualExtrasSaved] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -310,6 +306,7 @@ function PageUpload() {
               total_od: 7200,
               net_premium: 10800,
               total_premium: 12150,
+              customer_name: 'John Doe',
               confidence_score: 0.86
             }
           }
@@ -336,7 +333,8 @@ function PageUpload() {
           cashback: '',
           customerPaid: '',
           customerChequeNo: '',
-          ourChequeNo: ''
+          ourChequeNo: '',
+          customerName: ''
         });
         setManualExtrasSaved(false);
       } else {
@@ -646,6 +644,16 @@ function PageUpload() {
                 placeholder="Your company's cheque number"
                 value={manualExtras.ourChequeNo}
                 onChange={(e) => handleManualExtrasChange('ourChequeNo', e.target.value)}
+                className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+              />
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-xs text-blue-700 mb-1">Customer Name</label>
+              <input 
+                type="text"
+                placeholder="Enter customer name"
+                value={manualExtras.customerName}
+                onChange={(e) => handleManualExtrasChange('customerName', e.target.value)}
                 className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
               />
             </div>
@@ -1023,10 +1031,11 @@ function PageManualForm() {
     executive: "",
     callerName: "",
     mobile: "",
-    rollover: "",
-    remark: "",
-    brokerage: "0",
-    cashback: "",
+            rollover: "",
+            remark: "",
+            brokerage: "0",
+            cashback: "",
+            customerName: ""
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState<{type: 'success' | 'error', message: string} | null>(null);
@@ -1076,13 +1085,13 @@ function PageManualForm() {
         }
         break;
         
-      case 'vehicleNumber':
-        if (!value) {
-          errors.push('Vehicle Number is required');
-        } else if (!/^[A-Z]{2}[0-9]{2}[A-Z]{2}[0-9]{4}$/.test(value)) {
-          errors.push('Vehicle Number must be in format: KA01AB1234');
-        }
-        break;
+        case 'vehicleNumber':
+          if (!value) {
+            errors.push('Vehicle Number is required');
+          } else if (!/^[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}$/.test(value.replace(/\s/g, ''))) {
+            errors.push('Vehicle Number must be in format: KA01AB1234 or KA 51 MM 1214');
+          }
+          break;
         
       case 'insurer':
         if (!value) {
@@ -1523,6 +1532,7 @@ function PageManualForm() {
         mobile: form.mobile || '0000000000',
         rollover: form.rollover || '',
         remark: form.remark || '',
+        customer_name: form.customerName || '',
         brokerage: (parseFloat(form.brokerage) || 0).toString(),
         cashback: (parseFloat(form.cashback) || 0).toString(),
         source: 'MANUAL_FORM'
@@ -1593,6 +1603,7 @@ function PageManualForm() {
             remark: "",
             brokerage: "",
             cashback: "",
+            customerName: "",
           });
         }
       } else {
@@ -1748,7 +1759,7 @@ function PageManualForm() {
         
         {/* Top row: Vehicle + QuickFill */}
         <div className="flex flex-col md:flex-row gap-3 mb-4">
-          <LabeledInput label="Vehicle Number" required placeholder="KA01AB1234" value={form.vehicleNumber} onChange={v=>set('vehicleNumber', v)}/>
+          <LabeledInput label="Vehicle Number" required placeholder="KA01AB1234 or KA 51 MM 1214" value={form.vehicleNumber} onChange={v=>set('vehicleNumber', v)}/>
           <button onClick={quickFill} className="px-4 py-2 rounded-xl bg-indigo-600 text-white h-[42px] mt-6">Prefill from last policy</button>
           <div className="ml-auto flex items-center gap-2 text-xs text-zinc-600"><Car className="w-4 h-4"/> Make/Model autofill in v1.1</div>
         </div>
@@ -1806,6 +1817,7 @@ function PageManualForm() {
           <AutocompleteInput label="Caller Name" value={form.callerName} onChange={v=>set('callerName', v)} getSuggestions={getFilteredCallerSuggestions}/>
           <LabeledInput label="Mobile Number" required placeholder="9xxxxxxxxx" value={form.mobile} onChange={v=>set('mobile', v)}/>
           <LabeledInput label="Rollover/Renewal" hint="internal code" value={form.rollover} onChange={v=>set('rollover', v)}/>
+          <LabeledInput label="Customer Name" value={form.customerName} onChange={v=>set('customerName', v)}/>
           <LabeledInput label="Remark" placeholder="Any note" value={form.remark} onChange={v=>set('remark', v)}/>
         </div>
 
@@ -1945,6 +1957,7 @@ function PageManualGrid() {
       rollover: "",
       remark: "",
       cashback: "", 
+      customerName: "",
       status: "OK" 
     };
     
@@ -1965,8 +1978,8 @@ function PageManualGrid() {
     // Vehicle Number validation
     if (!row.vehicle) {
       errors.push('Vehicle Number is required');
-    } else if (!/^[A-Z]{2}[0-9]{2}[A-Z]{2}[0-9]{4}$/.test(row.vehicle)) {
-      errors.push('Vehicle Number must be in format: KA01AB1234');
+    } else if (!/^[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}$/.test(row.vehicle.replace(/\s/g, ''))) {
+      errors.push('Vehicle Number must be in format: KA01AB1234 or KA 51 MM 1214');
     }
     
     // Insurer validation
@@ -2051,6 +2064,7 @@ function PageManualGrid() {
             rollover: cells[26] || "",
             remark: cells[27] || "",
             cashback: cells[28] || "", 
+            customerName: cells[29] || "",
             status: "OK" 
           };
           
@@ -2379,6 +2393,7 @@ function PageManualGrid() {
                 <th className="py-2 px-1">Source</th>
                 <th className="py-2 px-1">Policy No.</th>
                 <th className="py-2 px-1">Vehicle No.</th>
+                <th className="py-2 px-1">Insurer (Company)</th>
                 <th className="py-2 px-1">Product Type</th>
                 <th className="py-2 px-1">Vehicle Type</th>
                 <th className="py-2 px-1">Make</th>
@@ -2403,6 +2418,7 @@ function PageManualGrid() {
                 <th className="py-2 px-1">Caller Name</th>
                 <th className="py-2 px-1">Mobile</th>
                 <th className="py-2 px-1">Rollover</th>
+                <th className="py-2 px-1">Customer Name</th>
                 <th className="py-2 px-1">Remark</th>
                 <th className="py-2 px-1">Status</th>
               </tr>
@@ -2464,6 +2480,16 @@ function PageManualGrid() {
                     <input 
                       value={r.vehicle} 
                       onChange={(e) => updateRow(i, 'vehicle', e.target.value)}
+                      disabled={rowStatus === 'saving' || rowStatus === 'saved'}
+                      className={`w-full border-none outline-none bg-transparent text-sm ${
+                        rowStatus === 'saving' || rowStatus === 'saved' ? 'opacity-50 cursor-not-allowed' : ''
+                      }`}
+                    />
+                  </td>
+                  <td className="px-1">
+                    <input 
+                      value={r.insurer} 
+                      onChange={(e) => updateRow(i, 'insurer', e.target.value)}
                       disabled={rowStatus === 'saving' || rowStatus === 'saved'}
                       className={`w-full border-none outline-none bg-transparent text-sm ${
                         rowStatus === 'saving' || rowStatus === 'saved' ? 'opacity-50 cursor-not-allowed' : ''
@@ -2662,6 +2688,13 @@ function PageManualGrid() {
                   </td>
                   <td className="px-1">
                     <input 
+                      value={r.customerName} 
+                      onChange={(e) => updateRow(i, 'customerName', e.target.value)}
+                      className="w-full border-none outline-none bg-transparent text-sm"
+                    />
+                  </td>
+                  <td className="px-1">
+                    <input 
                       value={r.remark} 
                       onChange={(e) => updateRow(i, 'remark', e.target.value)}
                       className="w-full border-none outline-none bg-transparent text-sm"
@@ -2758,7 +2791,7 @@ function PageReview() {
                 },
                 extracted_data: {
                   policy_number: "TA-9921",
-                  vehicle_number: "KA01AB1234",
+                  vehicle_number: "KA 51 MM 1214",
                   insurer: "Tata AIG",
                   product_type: "Private Car",
                   vehicle_type: "Private Car",
@@ -2776,6 +2809,7 @@ function PageReview() {
                   total_od: 7200,
                   net_premium: 10800,
                   total_premium: 12150,
+                  customer_name: 'Jane Smith',
                   confidence_score: 0.86
                 }
               }
@@ -2948,8 +2982,8 @@ function PageReview() {
     }
     
     // Format validation
-    if (editableData.pdfData.vehicle_number && !/^[A-Z]{2}[0-9]{2}[A-Z]{2}[0-9]{4}$/.test(editableData.pdfData.vehicle_number)) {
-      errors.push('Invalid vehicle number format (e.g., KA01AB1234)');
+    if (editableData.pdfData.vehicle_number && !/^[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}$/.test(editableData.pdfData.vehicle_number.replace(/\s/g, ''))) {
+      errors.push('Invalid vehicle number format (e.g., KA01AB1234 or KA 51 MM 1214)');
     }
     
     // Mobile number validation
@@ -2980,8 +3014,8 @@ function PageReview() {
     }
     
     // Format validation
-    if (editableData.pdfData.vehicle_number && !/^[A-Z]{2}[0-9]{2}[A-Z]{2}[0-9]{4}$/.test(editableData.pdfData.vehicle_number)) {
-      errors.push('Invalid vehicle number format (e.g., KA01AB1234)');
+    if (editableData.pdfData.vehicle_number && !/^[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}$/.test(editableData.pdfData.vehicle_number.replace(/\s/g, ''))) {
+      errors.push('Invalid vehicle number format (e.g., KA01AB1234 or KA 51 MM 1214)');
     }
     
     // Mobile number validation
@@ -3120,7 +3154,7 @@ function PageReview() {
                     },
                     extracted_data: {
                       policy_number: "TA-TEST",
-                      vehicle_number: "KA01AB1234",
+                      vehicle_number: "KA 51 MM 1214",
                       insurer: "Tata AIG",
                       product_type: "Private Car",
                       vehicle_type: "Private Car",
@@ -3138,6 +3172,7 @@ function PageReview() {
                       total_od: 7200,
                       net_premium: 10800,
                       total_premium: 12150,
+                      customer_name: 'Mike Johnson',
                       confidence_score: 0.86
                     }
                   }
@@ -3429,6 +3464,11 @@ function PageReview() {
               onChange={(value) => updateManualExtras('rollover', value)}
               hint="internal code"
             />
+            <LabeledInput 
+              label="Customer Name" 
+              value={editableData.manualExtras.customerName || manualExtras.customerName}
+              onChange={(value) => updateManualExtras('customerName', value)}
+            />
             <div style={{ display: 'none' }}>
               <LabeledInput 
                 label="Brokerage (₹)" 
@@ -3567,7 +3607,7 @@ function PagePolicyDetail() {
       console.error('Failed to load available policies:', error);
       // Set mock policies as fallback
       setAvailablePolicies([
-        { id: '1', policy_number: 'TA-9921', vehicle_number: 'KA01AB1234', insurer: 'Tata AIG' },
+        { id: '1', policy_number: 'TA-9921', vehicle_number: 'KA 51 MM 1214', insurer: 'Tata AIG' },
         { id: '2', policy_number: 'TA-9922', vehicle_number: 'KA01AB5678', insurer: 'Tata AIG' },
         { id: '3', policy_number: 'TA-9923', vehicle_number: 'KA01AB9012', insurer: 'Tata AIG' }
       ]);
@@ -3703,11 +3743,12 @@ function PagePolicyDetail() {
 
   const policy = policyData || {
     policy_number: 'TA-9921',
-    vehicle_number: 'KA01AB1234',
+    vehicle_number: 'KA 51 MM 1214',
     insurer: 'Tata AIG',
     issue_date: '2025-08-10',
     expiry_date: '2026-08-09',
     total_premium: 12150,
+    customer_name: 'Sarah Wilson',
     ncb: 20,
     audit_trail: [
       { timestamp: '2025-08-12T15:54:00Z', action: 'PDF_PARSED', user: 'System', details: 'Parsed PDF (98% confidence)' },
@@ -3831,7 +3872,7 @@ function PagePolicyDetail() {
       </Card>
 
       {/* Policy Information */}
-      <Card title={`Policy: ${policy.policy_number || 'TA-9921'} — ${policy.vehicle_number || 'KA01AB1234'}`} desc="Comprehensive policy details">
+      <Card title={`Policy: ${policy.policy_number || 'TA-9921'} — ${policy.vehicle_number || 'KA 51 MM 1214'}`} desc="Comprehensive policy details">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Basic Information */}
         <div className="bg-zinc-50 rounded-xl p-4">
@@ -3843,7 +3884,7 @@ function PagePolicyDetail() {
               </div>
               <div className="flex justify-between">
                 <span>Vehicle Number:</span>
-                <span className="font-medium">{policy.vehicle_number || 'KA01AB1234'}</span>
+                <span className="font-medium">{policy.vehicle_number || 'KA 51 MM 1214'}</span>
               </div>
               <div className="flex justify-between">
                 <span>Insurer:</span>
