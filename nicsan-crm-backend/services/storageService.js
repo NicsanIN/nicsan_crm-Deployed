@@ -962,6 +962,30 @@ async savePolicy(policyData) {
     }
   }
 
+  // Sales Explorer with PostgreSQL → S3 → Mock Data
+  async getSalesExplorerWithFallback(filters) {
+    try {
+      // Try PostgreSQL first (Primary Storage)
+      const explorer = await this.calculateSalesExplorer(filters);
+      console.log('✅ Retrieved sales explorer from PostgreSQL (Primary Storage)');
+      
+      // Save to S3 for future use (Secondary Storage)
+      const filterKey = Object.keys(filters).map(k => `${k}-${filters[k]}`).join('_');
+      const s3Key = `data/aggregated/sales-explorer-${filterKey}-${Date.now()}.json`;
+      try {
+        await uploadJSONToS3(explorer, s3Key);
+        console.log('✅ Saved sales explorer to S3 (Secondary Storage)');
+      } catch (s3SaveError) {
+        console.log('⚠️ Failed to save to S3, but continuing with PostgreSQL data');
+      }
+      
+      return explorer;
+    } catch (error) {
+      console.error('❌ Sales explorer error:', error);
+      throw error;
+    }
+  }
+
   // Calculate dashboard metrics from PostgreSQL
   async calculateDashboardMetrics(period = '14d') {
     const now = new Date();
@@ -1136,6 +1160,56 @@ async savePolicy(policyData) {
       FROM policies 
       ${whereClause}
       GROUP BY caller_name, make, model
+      ORDER BY net DESC
+    `, params);
+
+    return result.rows;
+  }
+
+  // Calculate sales explorer from PostgreSQL
+  async calculateSalesExplorer(filters) {
+    const { make, model, insurer, cashbackMax = 10 } = filters;
+    
+    let whereConditions = [];
+    let params = [];
+    let paramIndex = 1;
+
+    if (make && make !== 'All') {
+      whereConditions.push(`make = $${paramIndex}`);
+      params.push(make);
+      paramIndex++;
+    }
+
+    if (model && model !== 'All') {
+      whereConditions.push(`model = $${paramIndex}`);
+      params.push(model);
+      paramIndex++;
+    }
+
+    if (insurer && insurer !== 'All') {
+      whereConditions.push(`insurer = $${paramIndex}`);
+      params.push(insurer);
+      paramIndex++;
+    }
+
+    whereConditions.push(`(cashback_percentage <= $${paramIndex} OR cashback_percentage IS NULL)`);
+    params.push(parseFloat(cashbackMax));
+
+    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+
+    const result = await query(`
+      SELECT 
+        executive,
+        make,
+        model,
+        COUNT(*) as policies,
+        SUM(total_premium) as gwp,
+        AVG(cashback_percentage) as avg_cashback_pct,
+        SUM(cashback_amount) as total_cashback,
+        SUM(brokerage - cashback_amount) as net
+      FROM policies 
+      ${whereClause}
+      GROUP BY executive, make, model
       ORDER BY net DESC
     `, params);
 

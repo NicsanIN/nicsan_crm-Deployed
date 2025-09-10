@@ -255,6 +255,45 @@ class DualStorageService {
     );
   }
 
+  // Settings with dual storage
+  async getSettings(): Promise<DualStorageResult> {
+    const mockData = {
+      brokeragePercent: '15',
+      repDailyCost: '2000',
+      expectedConversion: '25',
+      premiumGrowth: '10'
+    };
+
+    return this.executeDualStoragePattern(
+      () => this.backendApiService.getSettings(),
+      mockData,
+      'Settings'
+    );
+  }
+
+  async saveSettings(settings: any): Promise<DualStorageResult> {
+    return this.executeDualStoragePattern(
+      () => this.backendApiService.saveSettings(settings),
+      settings,
+      'Save Settings'
+    );
+  }
+
+  async resetSettings(): Promise<DualStorageResult> {
+    const defaultSettings = {
+      brokeragePercent: '15',
+      repDailyCost: '2000',
+      expectedConversion: '25',
+      premiumGrowth: '10'
+    };
+
+    return this.executeDualStoragePattern(
+      () => this.backendApiService.resetSettings(),
+      defaultSettings,
+      'Reset Settings'
+    );
+  }
+
   // Get storage status
   getStorageStatus(): { s3: boolean; database: boolean } {
     return {

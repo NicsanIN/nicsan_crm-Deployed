@@ -4530,7 +4530,7 @@ function PageFounderSettings() {
   const loadSettings = async () => {
     try {
       setIsLoading(true);
-      const response = await NicsanCRMService.getSettings();
+      const response = await DualStorageService.getSettings();
       if (response.success) {
         setSettings(response.data);
         setHasChanges(false);
@@ -4615,10 +4615,10 @@ function PageFounderSettings() {
       }
       
       // Save settings
-      const response = await NicsanCRMService.saveSettings(settings);
+      const response = await DualStorageService.saveSettings(settings);
       
       if (response.success) {
-        setSuccess(`Settings saved successfully! (${response.message || 'Saved'})`);
+        setSuccess(`Settings saved successfully! (${response.source || 'Saved'})`);
         setHasChanges(false);
         setValidationErrors({});
         setDataSource(response.source || 'Unknown');
@@ -4642,13 +4642,13 @@ function PageFounderSettings() {
       setSuccess(null);
       
       // Reset settings
-      const response = await NicsanCRMService.resetSettings();
+      const response = await DualStorageService.resetSettings();
       
       if (response.success) {
         setSettings(response.data);
         setHasChanges(false);
         setValidationErrors({});
-        setSuccess(`Settings reset to defaults! (${response.message || 'Reset'})`);
+        setSuccess(`Settings reset to defaults! (${response.source || 'Reset'})`);
         setDataSource(response.source || 'Unknown');
         
         // Clear success message after 3 seconds
