@@ -1,0 +1,32 @@
+name: Run Staging DB Migrations
+
+on:
+  workflow_dispatch:
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install deps (clean)
+        run: npm ci
+
+      - name: Run migrations
+        env:
+          DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+          PGSSLMODE: require
+        run: npx knex migrate:latest
+
+      # Uncomment if you have seeds set up
+      # - name: Seed data
+      #   env:
+      #     DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+      #     PGSSLMODE: require
+      #   run: npx knex seed:run
