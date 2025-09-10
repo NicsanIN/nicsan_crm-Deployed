@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import NicsanCRMService from '../services/api-integration';
+import DualStorageService from '../services/dualStorageService';
 
 interface Settings {
   brokeragePercent: string;
@@ -31,7 +31,7 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
     try {
       setIsLoading(true);
       setError(null);
-      const response = await NicsanCRMService.getSettings();
+      const response = await DualStorageService.getSettings();
       if (response.success) {
         setSettings(response.data);
       } else {

@@ -1202,6 +1202,7 @@ async savePolicy(policyData) {
         executive,
         make,
         model,
+        insurer,
         COUNT(*) as policies,
         SUM(total_premium) as gwp,
         AVG(cashback_percentage) as avg_cashback_pct,
@@ -1209,7 +1210,7 @@ async savePolicy(policyData) {
         SUM(brokerage - cashback_amount) as net
       FROM policies 
       ${whereClause}
-      GROUP BY executive, make, model
+      GROUP BY executive, make, model, insurer
       ORDER BY net DESC
     `, params);
 

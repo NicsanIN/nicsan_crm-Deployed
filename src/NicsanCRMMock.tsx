@@ -2,7 +2,6 @@ import React, { useMemo, useState, useRef, useEffect } from "react";
 import { Upload, FileText, CheckCircle2, AlertTriangle, Table2, Settings, LayoutDashboard, Users, BarChart3, BadgeInfo, Filter, Lock, LogOut, Car, SlidersHorizontal, TrendingUp, RefreshCw } from "lucide-react";
 import { ResponsiveContainer, CartesianGrid, BarChart, Bar, Legend, Area, AreaChart, XAxis, YAxis, Tooltip } from "recharts";
 import { authUtils } from './services/api';
-import NicsanCRMService from './services/api-integration';
 import { policiesAPI } from './services/api';
 import DualStorageService from './services/dualStorageService';
 import CrossDeviceSyncDemo from './components/CrossDeviceSyncDemo';
@@ -36,7 +35,7 @@ function LoginPage({ onLogin }: { onLogin: (user: { name: string; email: string;
 
     try {
       // Use smart API service with mock fallback
-      const response = await NicsanCRMService.login({ email, password });
+      const response = await DualStorageService.login({ email, password });
       
       
       if (response.success && response.data) {
@@ -257,7 +256,7 @@ function PageUpload() {
         }
       });
       
-      const result = await NicsanCRMService.uploadPDF(file, manualExtras, selectedInsurer);
+      const result = await DualStorageService.uploadPDF(file, manualExtras, selectedInsurer);
       
       if (result.success) {
         setUploadStatus('Upload successful! Processing with Textract...');
@@ -374,7 +373,7 @@ function PageUpload() {
     
     const poll = async () => {
       try {
-        const response = await NicsanCRMService.getUploadById(uploadId);
+        const response = await DualStorageService.getUploadById(uploadId);
         
         if (response.success) {
           const status = response.data.status;
@@ -476,7 +475,7 @@ function PageUpload() {
   }, []);
 
   // Smart suggestions for caller names
-  const getSmartSuggestions = (fieldName: string) => {
+  const _getSmartSuggestions = (fieldName: string) => {
     if (fieldName === 'callerName') {
       return callerNames; // Real caller names from database
     }
@@ -880,7 +879,7 @@ function AutocompleteInput({
   // Debounced suggestions loading
   const debouncedGetSuggestions = useMemo(
     () => {
-      let timeoutId: NodeJS.Timeout;
+      let timeoutId: number;
       return (input: string) => {
         clearTimeout(timeoutId);
         timeoutId = setTimeout(async () => {
@@ -1039,7 +1038,7 @@ function PageManualForm() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState<{type: 'success' | 'error', message: string} | null>(null);
-  const [validationHistory, setValidationHistory] = useState<any[]>([]);
+  const [_validationHistory, setValidationHistory] = useState<any[]>([]);
   const [fieldTouched, setFieldTouched] = useState<{[key: string]: boolean}>({});
   const [validationMode, setValidationMode] = useState<'progressive' | 'strict'>('progressive');
   const [callerNames, setCallerNames] = useState<string[]>([]);
@@ -1068,7 +1067,7 @@ function PageManualForm() {
   }
 
   // Advanced validation engine with business rules
-  const validateField = (fieldName: string, value: any, context?: any) => {
+  const validateField = (fieldName: string, value: any, _context?: any) => {
     const errors: string[] = [];
     
     // Progressive validation - only validate touched fields or all fields in strict mode
@@ -1373,7 +1372,7 @@ function PageManualForm() {
   };
 
   // Get field-specific errors for progressive validation
-  const getFieldErrors = (fieldName: string) => {
+  const _getFieldErrors = (fieldName: string) => {
     if (validationMode === 'progressive' && !fieldTouched[fieldName]) {
       return [];
     }
@@ -1388,7 +1387,7 @@ function PageManualForm() {
   };
 
   // Smart suggestions based on patterns
-  const getSmartSuggestions = (fieldName: string) => {
+  const _getSmartSuggestions = (fieldName: string) => {
     const suggestions: string[] = [];
     
     switch (fieldName) {
@@ -1556,7 +1555,7 @@ function PageManualForm() {
       });
 
       // Submit to API
-      const response = await NicsanCRMService.saveManualForm(policyData);
+      const response = await DualStorageService.saveManualForm(policyData);
       
       // Debug: Log the response
       console.log('🔍 Manual Form - API Response:', response);
@@ -1874,7 +1873,7 @@ function PageManualGrid() {
         setIsLoading(true);
         
         // Load all policies from backend
-        const response = await NicsanCRMService.getPolicies(100, 0);
+        const response = await DualStorageService.getAllPolicies();
         
         if (response.success && Array.isArray(response.data)) {
           // Filter policies that were saved from grid
@@ -2184,7 +2183,7 @@ function PageManualGrid() {
             source: 'MANUAL_GRID'
           };
           
-          await NicsanCRMService.createPolicy(policyData);
+          await DualStorageService.createPolicy(policyData);
           return { originalIndex, success: true };
         } catch (error) {
           return { originalIndex, success: false, error };
@@ -2256,7 +2255,7 @@ function PageManualGrid() {
     
     try {
       // Process all rows as batch for better performance
-      const policyDataArray = rows.map((row, index) => ({
+      const policyDataArray = rows.map((row, _index) => ({
         // Basic Info
         policy_number: row.policy,
         vehicle_number: row.vehicle,
@@ -2300,7 +2299,7 @@ function PageManualGrid() {
         source: 'MANUAL_GRID'
       }));
       
-      await NicsanCRMService.saveGridEntries(policyDataArray);
+      await DualStorageService.saveGridEntries(policyDataArray);
       
       // All rows saved successfully
       const results = rows.map((_, index) => ({ index, success: true }));
@@ -2739,7 +2738,7 @@ function PageManualGrid() {
 function PageReview() {
   const [reviewData, setReviewData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [saveMessage, setSaveMessage] = useState<{type: 'success' | 'error', message: string} | null>(null);
+  const [_saveMessage, setSaveMessage] = useState<{type: 'success' | 'error', message: string} | null>(null);
   const [submitMessage, setSubmitMessage] = useState<{type: 'success' | 'error', message: string} | null>(null);
   const [availableUploads, setAvailableUploads] = useState<any[]>([]);
   const [selectedUpload, setSelectedUpload] = useState<string>('');
@@ -2855,7 +2854,7 @@ function PageReview() {
   }, []);
 
   // Smart suggestions for caller names
-  const getSmartSuggestions = (fieldName: string) => {
+  const _getSmartSuggestions = (fieldName: string) => {
     if (fieldName === 'callerName') {
       return callerNames; // Real caller names from database
     }
@@ -2911,7 +2910,7 @@ function PageReview() {
       }
       
       // Try to get real data from backend for real uploads
-      const response = await NicsanCRMService.getUploadForReview(uploadId);
+      const response = await DualStorageService.getUploadForReview(uploadId);
       
       if (response.success) {
         const upload = response.data;
@@ -2964,7 +2963,7 @@ function PageReview() {
     }));
   };
 
-  const validateData = () => {
+  const _validateData = () => {
     const errors = [];
     
     // Required fields validation
@@ -3064,7 +3063,7 @@ function PageReview() {
       }
       
       // Send edited data to backend
-      const result = await NicsanCRMService.confirmUploadAsPolicy(reviewData.id, {
+      const result = await DualStorageService.confirmUploadAsPolicy(reviewData.id, {
         pdfData: editableData.pdfData,
         manualExtras: editableData.manualExtras
       });
@@ -3693,7 +3692,7 @@ function PagePolicyDetail() {
   // Debounced search
   const debouncedSearch = useMemo(
     () => {
-      let timeoutId: NodeJS.Timeout;
+      let timeoutId: number;
       return (query: string) => {
         clearTimeout(timeoutId);
         timeoutId = setTimeout(() => handleSearch(query), 300);
@@ -4357,7 +4356,7 @@ function PageExplorer() {
   const [make, setMake] = useState("All");
   const [model, setModel] = useState("All");
   const [insurer, setInsurer] = useState("All");
-  const [cashbackMax, setCashbackMax] = useState(5);
+  const [cashbackMax, setCashbackMax] = useState(20);
   const [policies, setPolicies] = useState<any[]>([]);
   const [dataSource, setDataSource] = useState<string>('');
   const makes = ["All","Maruti","Hyundai","Tata","Toyota"];
@@ -4920,7 +4919,7 @@ function NicsanCRMMock() {
   // Check backend status on component mount
   useEffect(() => {
     const checkBackendStatus = async () => {
-      const status = NicsanCRMService.getEnvironmentInfo();
+      const status = DualStorageService.getEnvironmentInfo();
       setBackendStatus(status);
       
       if (ENABLE_DEBUG) {

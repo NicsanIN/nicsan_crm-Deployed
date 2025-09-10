@@ -3,6 +3,13 @@
 
 import BackendApiService from './backendApiService';
 
+interface BackendApiResult {
+  success: boolean;
+  data: any;
+  source: 'BACKEND_API';
+  error?: string;
+}
+
 // Environment variables
 const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
 
@@ -30,9 +37,9 @@ class DualStorageService {
 
   // Core dual storage pattern: Backend API → Mock Data
   private async executeDualStoragePattern<T>(
-    backendMethod: () => Promise<T>,
+    backendMethod: () => Promise<BackendApiResult>,
     mockData: T,
-    operationName: string
+    _operationName: string
   ): Promise<DualStorageResult> {
     
     if (ENABLE_DEBUG) {
@@ -46,14 +53,9 @@ class DualStorageService {
         if (ENABLE_DEBUG) {
         }
         
-        
-        // Extract the data from the BackendApiService response
-        const actualData = result.data || result;
-        
-        
         return {
-          success: true,
-          data: actualData,
+          success: result.success,
+          data: result.data,
           source: 'BACKEND_API'
         };
       } else {
@@ -295,16 +297,255 @@ class DualStorageService {
   }
 
   // Get storage status
-  getStorageStatus(): { s3: boolean; database: boolean } {
+  getStorageStatus(): { backend: boolean } {
     return {
-      s3: this.s3Service.isAvailable(),
-      database: this.databaseService.isAvailable()
+      backend: this.backendApiService.isAvailable()
     };
   }
 
   // Refresh storage availability
   async refreshStorageStatus(): Promise<void> {
-    await this.databaseService.refreshAvailability();
+    // Backend availability is checked on each request
+    // No need for separate refresh method
+  }
+
+  // Upload PDF with dual storage
+  async uploadPDF(file: File, manualExtras?: any, insurer?: string): Promise<DualStorageResult> {
+    const mockData = {
+      uploadId: `mock_${Date.now()}`,
+      s3Key: `uploads/${insurer}/${Date.now()}_${file.name}`,
+      status: 'UPLOADED',
+      message: 'PDF uploaded successfully (mock)'
+    };
+
+    return this.executeDualStoragePattern(
+      () => this.backendApiService.uploadPDF(file, manualExtras, insurer),
+      mockData,
+      'Upload PDF'
+    );
+  }
+
+  // Get uploads with dual storage
+  async getUploads(page: number = 1, limit: number = 20): Promise<DualStorageResult> {
+    const mockData = [
+      {
+        id: 'mock_1',
+        filename: 'policy_TA_9921.pdf',
+        status: 'UPLOADED',
+        insurer: 'TATA_AIG',
+        s3_key: 'uploads/TATA_AIG/1234567890_policy_TA_9921.pdf',
+        time: '10:30 AM',
+        size: '2.5 MB',
+        extracted_data: {
+          insurer: 'TATA_AIG',
+          status: 'UPLOADED',
+          manual_extras: {
+            executive: 'Priya Singh',
+            callerName: 'John Doe',
+            mobile: '9876543210'
+          },
+          extracted_data: {
+            policy_number: 'TA-9921',
+            vehicle_number: 'KA01AB1234',
+            insurer: 'Tata AIG',
+            total_premium: 12150
+          }
+        }
+      }
+    ];
+
+    return this.executeDualStoragePattern(
+      () => this.backendApiService.getUploads(page, limit),
+      mockData,
+      'Get Uploads'
+    );
+  }
+
+  // Get upload by ID with dual storage
+  async getUploadById(uploadId: string): Promise<DualStorageResult> {
+    const mockData = {
+      id: uploadId,
+      filename: 'policy_TA_9921.pdf',
+      status: 'UPLOADED',
+      insurer: 'TATA_AIG',
+      s3_key: 'uploads/TATA_AIG/1234567890_policy_TA_9921.pdf',
+      time: '10:30 AM',
+      size: '2.5 MB',
+      extracted_data: {
+        insurer: 'TATA_AIG',
+        status: 'UPLOADED',
+        manual_extras: {
+          executive: 'Priya Singh',
+          callerName: 'John Doe',
+          mobile: '9876543210'
+        },
+        extracted_data: {
+          policy_number: 'TA-9921',
+          vehicle_number: 'KA01AB1234',
+          insurer: 'Tata AIG',
+          total_premium: 12150
+        }
+      }
+    };
+
+    return this.executeDualStoragePattern(
+      () => this.backendApiService.getUploadById(uploadId),
+      mockData,
+      'Get Upload by ID'
+    );
+  }
+
+  // Get upload for review with dual storage
+  async getUploadForReview(uploadId: string): Promise<DualStorageResult> {
+    const mockData = {
+      id: uploadId,
+      filename: 'policy_TA_9921.pdf',
+      status: 'UPLOADED',
+      insurer: 'TATA_AIG',
+      s3_key: 'uploads/TATA_AIG/1234567890_policy_TA_9921.pdf',
+      time: '10:30 AM',
+      size: '2.5 MB',
+      extracted_data: {
+        insurer: 'TATA_AIG',
+        status: 'UPLOADED',
+        manual_extras: {
+          executive: 'Priya Singh',
+          callerName: 'John Doe',
+          mobile: '9876543210',
+          brokerage: '0',
+          cashback: '',
+          customerPaid: '',
+          customerChequeNo: '',
+          ourChequeNo: '',
+          customerName: ''
+        },
+        extracted_data: {
+          policy_number: 'TA-9921',
+          vehicle_number: 'KA01AB1234',
+          insurer: 'Tata AIG',
+          product_type: 'Private Car',
+          vehicle_type: 'Private Car',
+          make: 'Maruti',
+          model: 'Swift',
+          cc: '1197',
+          manufacturing_year: '2021',
+          issue_date: '2025-08-10',
+          expiry_date: '2026-08-09',
+          idv: 495000,
+          ncb: 20,
+          discount: 0,
+          net_od: 5400,
+          ref: '',
+          total_od: 7200,
+          net_premium: 10800,
+          total_premium: 12150,
+          customer_name: 'John Doe',
+          confidence_score: 0.86
+        }
+      }
+    };
+
+    return this.executeDualStoragePattern(
+      () => this.backendApiService.getUploadForReview(uploadId),
+      mockData,
+      'Get Upload for Review'
+    );
+  }
+
+  // Confirm upload as policy with dual storage
+  async confirmUploadAsPolicy(uploadId: string, editedData?: any): Promise<DualStorageResult> {
+    const mockData = {
+      success: true,
+      policyId: `POL_${Date.now()}`,
+      message: 'Upload confirmed as policy successfully (mock)'
+    };
+
+    return this.executeDualStoragePattern(
+      () => this.backendApiService.confirmUploadAsPolicy(uploadId, editedData),
+      mockData,
+      'Confirm Upload as Policy'
+    );
+  }
+
+  // Save manual form with dual storage
+  async saveManualForm(formData: any): Promise<DualStorageResult> {
+    const mockData = {
+      id: Date.now().toString(),
+      ...formData,
+      source: 'MANUAL_FORM',
+      created_at: new Date().toISOString(),
+      message: 'Manual form saved successfully (mock)'
+    };
+
+    return this.executeDualStoragePattern(
+      () => this.backendApiService.saveManualForm(formData),
+      mockData,
+      'Save Manual Form'
+    );
+  }
+
+  // Save grid entries with dual storage
+  async saveGridEntries(entries: any[]): Promise<DualStorageResult> {
+    const mockData = {
+      success: true,
+      savedCount: entries.length,
+      message: `${entries.length} grid entries saved successfully (mock)`,
+      entries: entries.map((entry, index) => ({
+        id: `GRID_${Date.now()}_${index}`,
+        ...entry,
+        source: 'MANUAL_GRID',
+        created_at: new Date().toISOString()
+      }))
+    };
+
+    return this.executeDualStoragePattern(
+      () => this.backendApiService.saveGridEntries(entries),
+      mockData,
+      'Save Grid Entries'
+    );
+  }
+
+  // Create policy with dual storage
+  async createPolicy(policyData: any): Promise<DualStorageResult> {
+    const mockData = {
+      id: Date.now().toString(),
+      ...policyData,
+      created_at: new Date().toISOString(),
+      status: 'SAVED'
+    };
+
+    return this.executeDualStoragePattern(
+      () => this.backendApiService.createPolicy(policyData),
+      mockData,
+      'Create Policy'
+    );
+  }
+
+  // Login with dual storage
+  async login(credentials: { email: string; password: string }): Promise<DualStorageResult> {
+    const mockData = {
+      success: true,
+      data: {
+        user: {
+          id: '1',
+          email: credentials.email,
+          name: 'Mock User',
+          role: 'founder'
+        },
+        token: 'mock-token-' + Date.now()
+      }
+    };
+
+    return this.executeDualStoragePattern(
+      () => this.backendApiService.login(credentials),
+      mockData,
+      'Login'
+    );
+  }
+
+  // Get environment info
+  getEnvironmentInfo(): any {
+    return this.backendApiService.getEnvironmentInfo();
   }
 }
 

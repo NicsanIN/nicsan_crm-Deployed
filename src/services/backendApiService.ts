@@ -29,8 +29,9 @@ class BackendApiService {
 
   // Check if backend API is available
   isAvailable(): boolean {
-    const token = localStorage.getItem('authToken');
-    return !!token; // Available if user is authenticated
+    // Always return true for login operations
+    // The availability check should be based on server reachability, not authentication status
+    return true;
   }
 
   // Dashboard Metrics from backend
@@ -135,7 +136,7 @@ class BackendApiService {
       if (ENABLE_DEBUG) {
       }
 
-      const response = await fetch('http://localhost:3001/api/dashboard/vehicle-analysis', {
+      const response = await fetch('http://localhost:3001/api/dashboard/explorer', {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
@@ -154,13 +155,13 @@ class BackendApiService {
 
       // Transform backend data to match frontend expectations
       const transformedData = (result.data || []).map((policy: any) => ({
-        rep: policy.rep || 'Unknown',  // Use caller_name field for telecaller names
+        rep: policy.executive || 'Unknown',  // Use executive field for sales rep names
         make: policy.make || 'Unknown',
         model: policy.model || 'Unknown',
         policies: parseInt(policy.policies) || 0,  // Convert string to number
         gwp: parseFloat(policy.gwp) || 0,  // Convert string to number
         cashbackPctAvg: parseFloat(policy.cashbackPctAvg || policy.avg_cashback_pct || 0),  // Handle both field names and convert to number
-        cashback: parseFloat(policy.cashback) || 0,  // Convert string to number
+        cashback: parseFloat(policy.total_cashback) || 0,  // Convert string to number
         net: parseFloat(policy.net) || 0,  // Convert string to number
         insurer: policy.insurer || 'Unknown'  // Add missing insurer field
       }));
@@ -414,6 +415,392 @@ class BackendApiService {
       }
       throw error;
     }
+  }
+
+  // Upload PDF from backend
+  async uploadPDF(file: File, manualExtras?: any, insurer?: string): Promise<BackendApiResult> {
+    try {
+      if (ENABLE_DEBUG) {
+        console.log('🔄 BackendApiService: Uploading PDF...');
+      }
+
+      const formData = new FormData();
+      formData.append('pdf', file);
+      if (insurer) formData.append('insurer', insurer);
+      
+      if (manualExtras) {
+        Object.entries(manualExtras).forEach(([key, value]) => {
+          if (value) {
+            formData.append(`manual_${key}`, value);
+          }
+        });
+      }
+
+      const response = await fetch('http://localhost:3001/api/upload/pdf', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      
+      if (ENABLE_DEBUG) {
+        console.log('✅ BackendApiService: PDF uploaded successfully');
+      }
+
+      return {
+        success: true,
+        data: result.data,
+        source: 'BACKEND_API'
+      };
+    } catch (error) {
+      if (ENABLE_DEBUG) {
+        console.error('❌ BackendApiService: PDF upload failed:', error);
+      }
+      throw error;
+    }
+  }
+
+  // Get uploads from backend
+  async getUploads(page: number = 1, limit: number = 20): Promise<BackendApiResult> {
+    try {
+      if (ENABLE_DEBUG) {
+        console.log('🔄 BackendApiService: Getting uploads...');
+      }
+
+      const offset = (page - 1) * limit;
+      const params = new URLSearchParams({
+        limit: limit.toString(),
+        offset: offset.toString(),
+      });
+
+      const response = await fetch(`http://localhost:3001/api/upload?${params}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      
+      if (ENABLE_DEBUG) {
+        console.log('✅ BackendApiService: Uploads retrieved successfully');
+      }
+
+      return {
+        success: true,
+        data: result.data,
+        source: 'BACKEND_API'
+      };
+    } catch (error) {
+      if (ENABLE_DEBUG) {
+        console.error('❌ BackendApiService: Get uploads failed:', error);
+      }
+      throw error;
+    }
+  }
+
+  // Get upload by ID from backend
+  async getUploadById(uploadId: string): Promise<BackendApiResult> {
+    try {
+      if (ENABLE_DEBUG) {
+        console.log('🔄 BackendApiService: Getting upload by ID...');
+      }
+
+      const response = await fetch(`http://localhost:3001/api/upload/${uploadId}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      
+      if (ENABLE_DEBUG) {
+        console.log('✅ BackendApiService: Upload retrieved successfully');
+      }
+
+      return {
+        success: true,
+        data: result.data,
+        source: 'BACKEND_API'
+      };
+    } catch (error) {
+      if (ENABLE_DEBUG) {
+        console.error('❌ BackendApiService: Get upload by ID failed:', error);
+      }
+      throw error;
+    }
+  }
+
+  // Get upload for review from backend
+  async getUploadForReview(uploadId: string): Promise<BackendApiResult> {
+    try {
+      if (ENABLE_DEBUG) {
+        console.log('🔄 BackendApiService: Getting upload for review...');
+      }
+
+      const response = await fetch(`http://localhost:3001/api/upload/${uploadId}/review`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      
+      if (ENABLE_DEBUG) {
+        console.log('✅ BackendApiService: Upload for review retrieved successfully');
+      }
+
+      return {
+        success: true,
+        data: result.data,
+        source: 'BACKEND_API'
+      };
+    } catch (error) {
+      if (ENABLE_DEBUG) {
+        console.error('❌ BackendApiService: Get upload for review failed:', error);
+      }
+      throw error;
+    }
+  }
+
+  // Confirm upload as policy from backend
+  async confirmUploadAsPolicy(uploadId: string, editedData?: any): Promise<BackendApiResult> {
+    try {
+      if (ENABLE_DEBUG) {
+        console.log('🔄 BackendApiService: Confirming upload as policy...');
+      }
+
+      const requestBody = editedData ? {
+        editedData: {
+          pdfData: editedData.pdfData,
+          manualExtras: editedData.manualExtras
+        }
+      } : {};
+
+      const response = await fetch(`http://localhost:3001/api/upload/${uploadId}/confirm`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      
+      if (ENABLE_DEBUG) {
+        console.log('✅ BackendApiService: Upload confirmed as policy successfully');
+      }
+
+      return {
+        success: true,
+        data: result.data,
+        source: 'BACKEND_API'
+      };
+    } catch (error) {
+      if (ENABLE_DEBUG) {
+        console.error('❌ BackendApiService: Confirm upload as policy failed:', error);
+      }
+      throw error;
+    }
+  }
+
+  // Save manual form from backend
+  async saveManualForm(formData: any): Promise<BackendApiResult> {
+    try {
+      if (ENABLE_DEBUG) {
+        console.log('🔄 BackendApiService: Saving manual form...');
+      }
+
+      const response = await fetch('http://localhost:3001/api/policies/manual', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      
+      if (ENABLE_DEBUG) {
+        console.log('✅ BackendApiService: Manual form saved successfully');
+      }
+
+      return {
+        success: true,
+        data: result.data,
+        source: 'BACKEND_API'
+      };
+    } catch (error) {
+      if (ENABLE_DEBUG) {
+        console.error('❌ BackendApiService: Save manual form failed:', error);
+      }
+      throw error;
+    }
+  }
+
+  // Save grid entries from backend
+  async saveGridEntries(entries: any[]): Promise<BackendApiResult> {
+    try {
+      if (ENABLE_DEBUG) {
+        console.log('🔄 BackendApiService: Saving grid entries...');
+      }
+
+      const response = await fetch('http://localhost:3001/api/policies/grid', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ entries }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      
+      if (ENABLE_DEBUG) {
+        console.log('✅ BackendApiService: Grid entries saved successfully');
+      }
+
+      return {
+        success: true,
+        data: result.data,
+        source: 'BACKEND_API'
+      };
+    } catch (error) {
+      if (ENABLE_DEBUG) {
+        console.error('❌ BackendApiService: Save grid entries failed:', error);
+      }
+      throw error;
+    }
+  }
+
+  // Create policy from backend
+  async createPolicy(policyData: any): Promise<BackendApiResult> {
+    try {
+      if (ENABLE_DEBUG) {
+        console.log('🔄 BackendApiService: Creating policy...');
+      }
+
+      const response = await fetch('http://localhost:3001/api/policies', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(policyData),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      
+      if (ENABLE_DEBUG) {
+        console.log('✅ BackendApiService: Policy created successfully');
+      }
+
+      return {
+        success: true,
+        data: result.data,
+        source: 'BACKEND_API'
+      };
+    } catch (error) {
+      if (ENABLE_DEBUG) {
+        console.error('❌ BackendApiService: Create policy failed:', error);
+      }
+      throw error;
+    }
+  }
+
+  // Login from backend
+  async login(credentials: { email: string; password: string }): Promise<BackendApiResult> {
+    try {
+      if (ENABLE_DEBUG) {
+        console.log('🔄 BackendApiService: Logging in...');
+      }
+
+      const response = await fetch('http://localhost:3001/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(credentials),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      
+      if (ENABLE_DEBUG) {
+        console.log('✅ BackendApiService: Login successful');
+      }
+
+      return {
+        success: true,
+        data: result.data,
+        source: 'BACKEND_API'
+      };
+    } catch (error) {
+      if (ENABLE_DEBUG) {
+        console.error('❌ BackendApiService: Login failed:', error);
+      }
+      throw error;
+    }
+  }
+
+  // Get environment info
+  getEnvironmentInfo(): BackendApiResult {
+    return {
+      success: true,
+      data: {
+        backendAvailable: this.isAvailable(),
+        healthUrl: 'http://localhost:3001/health',
+        checkInterval: 30000,
+        enableDebug: ENABLE_DEBUG,
+        enableMockData: import.meta.env.VITE_ENABLE_MOCK_DATA === 'true'
+      },
+      source: 'BACKEND_API'
+    };
   }
 }
 
