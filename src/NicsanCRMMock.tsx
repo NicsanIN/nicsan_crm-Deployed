@@ -1768,7 +1768,7 @@ function PageManualForm() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <LabeledInput label="Policy Number" required value={form.policyNumber} onChange={v=>set('policyNumber', v)}/>
           <LabeledInput label="Insurer (Company)" required placeholder="e.g., Tata AIG" value={form.insurer} onChange={v=>set('insurer', v)}/>
-          <LabeledSelect label="Product Type" value={form.productType} onChange={v=>set('productType', v)} options={["Private Car", "Commercial", "Two Wheeler", "Three Wheeler", "Bus", "Truck"]}/>
+          <LabeledSelect label="Product Type" value={form.productType} onChange={v=>set('productType', v)} options={["Life Insurance", "Motor Insurance", "Health Insurance", "Travel Insurance", "Home Insurance", "Cyber Insurance"]}/>
           <LabeledSelect label="Vehicle Type" value={form.vehicleType} onChange={v=>set('vehicleType', v)} options={["Private Car","GCV", "LCV", "MCV", "HCV"]}/>
           <LabeledInput label="Make" placeholder="Maruti / Hyundai / …" value={form.make} onChange={v=>set('make', v)}/>
           <LabeledInput label="Model" placeholder="Swift / i20 / …" value={form.model} onChange={v=>set('model', v)}/>
@@ -1783,7 +1783,7 @@ function PageManualForm() {
           <LabeledInput label="IDV (₹)" value={form.idv} onChange={v=>set('idv', v)}/>
           <LabeledInput label="NCB (%)" value={form.ncb} onChange={v=>set('ncb', v)}/>
           <LabeledInput label="DIS (%)" hint="discount" value={form.discount} onChange={v=>set('discount', v)}/>
-          <LabeledInput label="REF" hint="reference" value={form.ref} onChange={v=>set('ref', v)}/>
+          <LabeledInput label="Net Addon" hint="net addon" value={form.ref} onChange={v=>set('ref', v)}/>
         </div>
 
         {/* Premiums */}
@@ -2406,7 +2406,7 @@ function PageManualGrid() {
                 <th className="py-2 px-1">NCB (%)</th>
                 <th className="py-2 px-1">DIS (%)</th>
                 <th className="py-2 px-1">Net OD (₹)</th>
-                <th className="py-2 px-1">REF</th>
+                <th className="py-2 px-1">Net Addon</th>
                 <th className="py-2 px-1">Total OD (₹)</th>
                 <th className="py-2 px-1">Net Premium (₹)</th>
                 <th className="py-2 px-1">Total Premium (₹)</th>
@@ -3988,7 +3988,7 @@ function PagePolicyDetail() {
                 <span className="font-medium">₹{(policy.discount || 0).toLocaleString()}</span>
               </div>
               <div className="flex justify-between">
-                <span>Reference:</span>
+                <span>Net Addon:</span>
                 <span className="font-medium">{policy.ref || 'N/A'}</span>
               </div>
             </div>

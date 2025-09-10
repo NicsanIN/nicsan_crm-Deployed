@@ -51,14 +51,7 @@ async savePolicy(policyData) {
         ...policyData
       };
 
-      // 4. Invalidate dashboard caches
-      try {
-        await this.invalidateDashboardCaches();
-      } catch (cacheError) {
-        console.warn('Cache invalidation failed:', cacheError.message);
-      }
-
-      // 5. Notify WebSocket clients of policy creation
+      // 4. Notify WebSocket clients of policy creation
       try {
         websocketService.notifyPolicyChange(policyData.userId || 'system', 'created', savedPolicy);
       } catch (wsError) {
@@ -440,7 +433,7 @@ async savePolicy(policyData) {
         model: openaiResult.model || 'Swift',
         cc: openaiResult.cc || '1197',
         manufacturing_year: openaiResult.manufacturing_year || '2021',
-        issue_date: openaiResult.issue_date || new Date().toISOString().split('T')[0],
+        issue_date: null, // Issue date not extracted from PDF - manual entry only
         expiry_date: openaiResult.expiry_date || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
         idv: parseInt(correctedIdv) || 495000,
         ncb: openaiResult.ncb !== null && openaiResult.ncb !== undefined ? parseInt(openaiResult.ncb) : 0,
@@ -839,27 +832,29 @@ async savePolicy(policyData) {
   // Get policy from dual storage with fallback strategy
   async getPolicyWithFallback(id) {
     try {
-      // Try S3 first (Primary Storage)
-      try {
-        const policy = await this.getPolicy(id);
-        if (policy.s3_data) {
-          console.log('✅ Retrieved from S3 (Primary Storage)');
-          return policy;
-        }
-      } catch (s3Error) {
-        console.log('⚠️ S3 retrieval failed, trying PostgreSQL...');
-      }
-      
-      // Fallback to PostgreSQL (Secondary Storage)
+      // Try PostgreSQL first (Primary Storage)
       const queryText = 'SELECT * FROM policies WHERE id = $1';
       const result = await query(queryText, [id]);
       
       if (!result.rows[0]) {
-        throw new Error('Policy not found in either storage');
+        throw new Error('Policy not found in PostgreSQL');
       }
       
-      console.log('✅ Retrieved from PostgreSQL (Fallback Storage)');
-      return result.rows[0];
+      const policy = result.rows[0];
+      console.log('✅ Retrieved from PostgreSQL (Primary Storage)');
+      
+      // Try to enrich with S3 data (Secondary Storage)
+      if (policy.s3_key) {
+        try {
+          const s3Data = await getJSONFromS3(policy.s3_key);
+          policy.s3_data = s3Data;
+          console.log('✅ Enriched with S3 data (Secondary Storage)');
+        } catch (s3Error) {
+          console.log('⚠️ S3 enrichment failed, using PostgreSQL data only');
+        }
+      }
+      
+      return policy;
     } catch (error) {
       console.error('❌ Get policy with fallback error:', error);
       throw error;
@@ -869,10 +864,11 @@ async savePolicy(policyData) {
   // Bulk retrieve policies with dual storage
   async getPoliciesWithFallback(limit = 100, offset = 0) {
     try {
-      // Get from PostgreSQL first
+      // Get from PostgreSQL first (Primary Storage)
       const policies = await this.getAllPolicies(limit, offset);
+      console.log(`✅ Retrieved ${policies.length} policies from PostgreSQL (Primary Storage)`);
       
-      // Try to enrich with S3 data where available
+      // Try to enrich with S3 data where available (Secondary Storage)
       const enrichedPolicies = await Promise.all(
         policies.map(async (policy) => {
           if (policy.s3_key) {
@@ -880,7 +876,7 @@ async savePolicy(policyData) {
               const s3Data = await getJSONFromS3(policy.s3_key);
               return { ...policy, s3_data: s3Data };
             } catch (s3Error) {
-              console.log(`⚠️ S3 retrieval failed for policy ${policy.id}, using PostgreSQL data`);
+              console.log(`⚠️ S3 enrichment failed for policy ${policy.id}, using PostgreSQL data only`);
               return policy;
             }
           }
@@ -888,6 +884,7 @@ async savePolicy(policyData) {
         })
       );
       
+      console.log('✅ Policy enrichment completed');
       return enrichedPolicies;
     } catch (error) {
       console.error('❌ Get policies with fallback error:', error);
@@ -895,31 +892,22 @@ async savePolicy(policyData) {
     }
   }
 
-  // Dashboard Metrics with S3 → PostgreSQL → Mock Data
+  // Dashboard Metrics with PostgreSQL → S3 → Mock Data
   async getDashboardMetricsWithFallback(period = '14d') {
     try {
-      // Try S3 first (Primary Storage)
+      // Try PostgreSQL first (Primary Storage)
+      const metrics = await this.calculateDashboardMetrics(period);
+      console.log('✅ Retrieved dashboard metrics from PostgreSQL (Primary Storage)');
+      
+      // Save to S3 for future use (Secondary Storage)
       const s3Key = `data/aggregated/dashboard-metrics-${period}-${Date.now()}.json`;
       try {
-        const s3Data = await getJSONFromS3(s3Key);
-        console.log('✅ Retrieved dashboard metrics from S3 (Primary Storage)');
-        return s3Data;
-      } catch (s3Error) {
-        console.log('⚠️ S3 retrieval failed, trying PostgreSQL...');
-      }
-      
-      // Fallback to PostgreSQL (Secondary Storage)
-      const metrics = await this.calculateDashboardMetrics(period);
-      
-      // Save to S3 for future use
-      try {
         await uploadJSONToS3(metrics, s3Key);
-        console.log('✅ Saved dashboard metrics to S3 for future use');
+        console.log('✅ Saved dashboard metrics to S3 (Secondary Storage)');
       } catch (s3SaveError) {
         console.log('⚠️ Failed to save to S3, but continuing with PostgreSQL data');
       }
       
-      console.log('✅ Retrieved from PostgreSQL (Fallback Storage)');
       return metrics;
     } catch (error) {
       console.error('❌ Dashboard metrics error:', error);
@@ -927,31 +915,22 @@ async savePolicy(policyData) {
     }
   }
 
-  // Sales Reps with S3 → PostgreSQL → Mock Data
+  // Sales Reps with PostgreSQL → S3 → Mock Data
   async getSalesRepsWithFallback() {
     try {
-      // Try S3 first (Primary Storage)
+      // Try PostgreSQL first (Primary Storage)
+      const reps = await this.calculateSalesReps();
+      console.log('✅ Retrieved sales reps from PostgreSQL (Primary Storage)');
+      
+      // Save to S3 for future use (Secondary Storage)
       const s3Key = `data/aggregated/sales-reps-${Date.now()}.json`;
       try {
-        const s3Data = await getJSONFromS3(s3Key);
-        console.log('✅ Retrieved sales reps from S3 (Primary Storage)');
-        return s3Data;
-      } catch (s3Error) {
-        console.log('⚠️ S3 retrieval failed, trying PostgreSQL...');
-      }
-      
-      // Fallback to PostgreSQL (Secondary Storage)
-      const reps = await this.calculateSalesReps();
-      
-      // Save to S3 for future use
-      try {
         await uploadJSONToS3(reps, s3Key);
-        console.log('✅ Saved sales reps to S3 for future use');
+        console.log('✅ Saved sales reps to S3 (Secondary Storage)');
       } catch (s3SaveError) {
         console.log('⚠️ Failed to save to S3, but continuing with PostgreSQL data');
       }
       
-      console.log('✅ Retrieved from PostgreSQL (Fallback Storage)');
       return reps;
     } catch (error) {
       console.error('❌ Sales reps error:', error);
@@ -959,32 +938,23 @@ async savePolicy(policyData) {
     }
   }
 
-  // Vehicle Analysis with S3 → PostgreSQL → Mock Data
+  // Vehicle Analysis with PostgreSQL → S3 → Mock Data
   async getVehicleAnalysisWithFallback(filters) {
     try {
-      // Try S3 first (Primary Storage)
+      // Try PostgreSQL first (Primary Storage)
+      const analysis = await this.calculateVehicleAnalysis(filters);
+      console.log('✅ Retrieved vehicle analysis from PostgreSQL (Primary Storage)');
+      
+      // Save to S3 for future use (Secondary Storage)
       const filterKey = Object.keys(filters).map(k => `${k}-${filters[k]}`).join('_');
       const s3Key = `data/aggregated/vehicle-analysis-${filterKey}-${Date.now()}.json`;
       try {
-        const s3Data = await getJSONFromS3(s3Key);
-        console.log('✅ Retrieved vehicle analysis from S3 (Primary Storage)');
-        return s3Data;
-      } catch (s3Error) {
-        console.log('⚠️ S3 retrieval failed, trying PostgreSQL...');
-      }
-      
-      // Fallback to PostgreSQL (Secondary Storage)
-      const analysis = await this.calculateVehicleAnalysis(filters);
-      
-      // Save to S3 for future use
-      try {
         await uploadJSONToS3(analysis, s3Key);
-        console.log('✅ Saved vehicle analysis to S3 for future use');
+        console.log('✅ Saved vehicle analysis to S3 (Secondary Storage)');
       } catch (s3SaveError) {
         console.log('⚠️ Failed to save to S3, but continuing with PostgreSQL data');
       }
       
-      console.log('✅ Retrieved from PostgreSQL (Fallback Storage)');
       return analysis;
     } catch (error) {
       console.error('❌ Vehicle analysis error:', error);
@@ -1122,141 +1092,6 @@ async savePolicy(policyData) {
     return result.rows;
   }
 
-  // Leaderboard with S3 → PostgreSQL → Mock Data
-  async getLeaderboardWithFallback() {
-    try {
-      // Try S3 first (Primary Storage)
-      const s3Key = `data/aggregated/leaderboard-${Date.now()}.json`;
-      try {
-        const s3Data = await getJSONFromS3(s3Key);
-        console.log('✅ Retrieved leaderboard from S3 (Primary Storage)');
-        return s3Data;
-      } catch (s3Error) {
-        console.log('⚠️ S3 retrieval failed, trying PostgreSQL...');
-      }
-      
-      // Fallback to PostgreSQL (Secondary Storage)
-      const leaderboard = await this.calculateLeaderboard();
-      
-      // Save to S3 for future use
-      try {
-        await uploadJSONToS3(leaderboard, s3Key);
-        console.log('✅ Saved leaderboard to S3 for future use');
-      } catch (s3SaveError) {
-        console.log('⚠️ Failed to save to S3, but continuing with PostgreSQL data');
-      }
-      
-      console.log('✅ Retrieved from PostgreSQL (Fallback Storage)');
-      return leaderboard;
-    } catch (error) {
-      console.error('❌ Leaderboard error:', error);
-      throw error;
-    }
-  }
-
-  // Calculate leaderboard from PostgreSQL
-  async calculateLeaderboard() {
-    const result = await query(`
-      SELECT 
-        COALESCE(caller_name, 'Unknown') as name,
-        COUNT(*) as policies,
-        SUM(total_premium) as gwp,
-        SUM(brokerage) as brokerage,
-        SUM(cashback_amount) as cashback,
-        SUM(brokerage - cashback_amount) as net,
-        AVG(cashback_percentage) as avg_cashback_pct
-      FROM policies 
-      GROUP BY COALESCE(caller_name, 'Unknown')
-      ORDER BY net DESC
-      LIMIT 20
-    `);
-
-    return result.rows;
-  }
-
-  // Sales Explorer with S3 → PostgreSQL → Mock Data
-  async getSalesExplorerWithFallback(filters) {
-    try {
-      // Try S3 first (Primary Storage)
-      const filterKey = Object.keys(filters).map(k => `${k}-${filters[k]}`).join('_');
-      const s3Key = `data/aggregated/sales-explorer-${filterKey}-${Date.now()}.json`;
-      try {
-        const s3Data = await getJSONFromS3(s3Key);
-        console.log('✅ Retrieved sales explorer from S3 (Primary Storage)');
-        return s3Data;
-      } catch (s3Error) {
-        console.log('⚠️ S3 retrieval failed, trying PostgreSQL...');
-      }
-      
-      // Fallback to PostgreSQL (Secondary Storage)
-      const explorer = await this.calculateSalesExplorer(filters);
-      
-      // Save to S3 for future use
-      try {
-        await uploadJSONToS3(explorer, s3Key);
-        console.log('✅ Saved sales explorer to S3 for future use');
-      } catch (s3SaveError) {
-        console.log('⚠️ Failed to save to S3, but continuing with PostgreSQL data');
-      }
-      
-      console.log('✅ Retrieved from PostgreSQL (Fallback Storage)');
-      return explorer;
-    } catch (error) {
-      console.error('❌ Sales explorer error:', error);
-      throw error;
-    }
-  }
-
-  // Calculate sales explorer from PostgreSQL
-  async calculateSalesExplorer(filters) {
-    const { make, model, insurer, cashbackMax = 10 } = filters;
-    
-    let whereConditions = [];
-    let params = [];
-    let paramIndex = 1;
-
-    if (make && make !== 'All') {
-      whereConditions.push(`make = $${paramIndex}`);
-      params.push(make);
-      paramIndex++;
-    }
-
-    if (model && model !== 'All') {
-      whereConditions.push(`model = $${paramIndex}`);
-      params.push(model);
-      paramIndex++;
-    }
-
-    if (insurer && insurer !== 'All') {
-      whereConditions.push(`insurer = $${paramIndex}`);
-      params.push(insurer);
-      paramIndex++;
-    }
-
-    whereConditions.push(`(cashback_percentage <= $${paramIndex} OR cashback_percentage IS NULL)`);
-    params.push(parseFloat(cashbackMax));
-
-    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
-
-    const result = await query(`
-      SELECT 
-        executive,
-        make,
-        model,
-        COUNT(*) as policies,
-        SUM(total_premium) as gwp,
-        AVG(cashback_percentage) as avg_cashback_pct,
-        SUM(cashback_amount) as total_cashback,
-        SUM(brokerage - cashback_amount) as net
-      FROM policies 
-      ${whereClause}
-      GROUP BY executive, make, model
-      ORDER BY net DESC
-    `, params);
-
-    return result.rows;
-  }
-
   // Calculate vehicle analysis from PostgreSQL
   async calculateVehicleAnalysis(filters) {
     const { make, model, insurer, cashbackMax = 10 } = filters;
@@ -1307,25 +1142,12 @@ async savePolicy(policyData) {
     return result.rows;
   }
 
-  // Settings methods - Dual Storage Pattern (S3 Primary, PostgreSQL Secondary)
+  // Settings methods - Dual Storage Pattern (PostgreSQL Primary, S3 Secondary)
   async getSettings() {
     try {
       console.log('💾 Loading settings from dual storage...');
       
-      // 1. Try to get from S3 (Primary Storage)
-      try {
-        const s3Key = 'settings/business_settings.json';
-        const s3Data = await getJSONFromS3(s3Key);
-        
-        if (s3Data) {
-          console.log('✅ Settings loaded from S3 (Primary Storage)');
-          return s3Data;
-        }
-      } catch (s3Error) {
-        console.log('⚠️ S3 unavailable, trying database...');
-      }
-      
-      // 2. Fallback to PostgreSQL (Secondary Storage)
+      // 1. Try PostgreSQL first (Primary Storage)
       const result = await query('SELECT key, value FROM settings');
       
       const settings = {};
@@ -1333,7 +1155,17 @@ async savePolicy(policyData) {
         settings[row.key] = row.value;
       });
       
-      console.log('✅ Settings loaded from PostgreSQL (Secondary Storage)');
+      console.log('✅ Settings loaded from PostgreSQL (Primary Storage)');
+      
+      // 2. Save to S3 for future use (Secondary Storage)
+      try {
+        const s3Key = 'settings/business_settings.json';
+        await uploadJSONToS3(settings, s3Key);
+        console.log('✅ Settings saved to S3 (Secondary Storage)');
+      } catch (s3SaveError) {
+        console.log('⚠️ Failed to save to S3, but continuing with PostgreSQL data');
+      }
+      
       return settings;
     } catch (error) {
       console.error('❌ Error getting settings:', error);
@@ -1345,16 +1177,7 @@ async savePolicy(policyData) {
     try {
       console.log('💾 Saving settings to dual storage...');
       
-      // 1. Save to S3 (Primary Storage)
-      try {
-        const s3Key = 'settings/business_settings.json';
-        await uploadJSONToS3(settings, s3Key);
-        console.log('✅ Settings saved to S3 (Primary Storage)');
-      } catch (s3Error) {
-        console.log('⚠️ S3 save failed, continuing with database...');
-      }
-      
-      // 2. Save to PostgreSQL (Secondary Storage)
+      // 1. Save to PostgreSQL first (Primary Storage)
       for (const [key, value] of Object.entries(settings)) {
         await query(
           'INSERT INTO settings (key, value, updated_at) VALUES ($1, $2, CURRENT_TIMESTAMP) ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = CURRENT_TIMESTAMP',
@@ -1362,27 +1185,21 @@ async savePolicy(policyData) {
         );
       }
       
-      console.log('✅ Settings saved to PostgreSQL (Secondary Storage)');
+      console.log('✅ Settings saved to PostgreSQL (Primary Storage)');
+      
+      // 2. Save to S3 (Secondary Storage)
+      try {
+        const s3Key = 'settings/business_settings.json';
+        await uploadJSONToS3(settings, s3Key);
+        console.log('✅ Settings saved to S3 (Secondary Storage)');
+      } catch (s3Error) {
+        console.log('⚠️ S3 save failed, but PostgreSQL save succeeded');
+      }
+      
       return settings;
     } catch (error) {
       console.error('❌ Error saving settings:', error);
       throw error;
-    }
-  }
-
-  // Invalidate dashboard caches when new policies are added
-  async invalidateDashboardCaches() {
-    try {
-      console.log('🗑️ Invalidating dashboard caches...');
-      
-      // Note: S3 doesn't support wildcard deletion, so we'll let caches expire naturally
-      // The timestamp-based keys ensure old caches become stale automatically
-      // For production, consider implementing a cache versioning system
-      
-      console.log('✅ Dashboard cache invalidation completed (caches will expire naturally)');
-    } catch (error) {
-      console.error('❌ Cache invalidation error:', error);
-      // Don't throw error - cache invalidation failure shouldn't break policy creation
     }
   }
 }

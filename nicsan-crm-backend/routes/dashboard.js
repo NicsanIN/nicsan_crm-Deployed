@@ -32,16 +32,57 @@ router.get('/metrics', authenticateToken, requireFounder, async (req, res) => {
   }
 });
 
-// Get sales explorer data with dual storage (S3 → PostgreSQL → Mock Data)
+// Get sales explorer data
 router.get('/explorer', authenticateToken, requireFounder, async (req, res) => {
   try {
     const { make, model, insurer, cashbackMax = 10 } = req.query;
-    const filters = { make, model, insurer, cashbackMax };
-    const explorer = await storageService.getSalesExplorerWithFallback(filters);
     
+    let whereConditions = [];
+    let params = [];
+    let paramIndex = 1;
+
+    if (make && make !== 'All') {
+      whereConditions.push(`make = $${paramIndex}`);
+      params.push(make);
+      paramIndex++;
+    }
+
+    if (model && model !== 'All') {
+      whereConditions.push(`model = $${paramIndex}`);
+      params.push(model);
+      paramIndex++;
+    }
+
+    if (insurer && insurer !== 'All') {
+      whereConditions.push(`insurer = $${paramIndex}`);
+      params.push(insurer);
+      paramIndex++;
+    }
+
+    whereConditions.push(`(cashback_percentage <= $${paramIndex} OR cashback_percentage IS NULL)`);
+    params.push(parseFloat(cashbackMax));
+
+    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+
+    const result = await query(`
+      SELECT 
+        executive,
+        make,
+        model,
+        COUNT(*) as policies,
+        SUM(total_premium) as gwp,
+        AVG(cashback_percentage) as avg_cashback_pct,
+        SUM(cashback_amount) as total_cashback,
+        SUM(brokerage - cashback_amount) as net
+      FROM policies 
+      ${whereClause}
+      GROUP BY executive, make, model
+      ORDER BY net DESC
+    `, params);
+
     res.json({
       success: true,
-      data: explorer
+      data: result.rows
     });
   } catch (error) {
     console.error('Sales explorer error:', error);
@@ -52,14 +93,28 @@ router.get('/explorer', authenticateToken, requireFounder, async (req, res) => {
   }
 });
 
-// Get leaderboard data with dual storage (S3 → PostgreSQL → Mock Data)
+// Get leaderboard data
 router.get('/leaderboard', authenticateToken, requireFounder, async (req, res) => {
   try {
-    const leaderboard = await storageService.getLeaderboardWithFallback();
-    
+    // Removed date filter to show all-time rep performance (consistent with Sales Explorer)
+    const result = await query(`
+      SELECT 
+        COALESCE(caller_name, 'Unknown') as name,
+        COUNT(*) as policies,
+        SUM(total_premium) as gwp,
+        SUM(brokerage) as brokerage,
+        SUM(cashback_amount) as cashback,
+        SUM(brokerage - cashback_amount) as net,
+        AVG(cashback_percentage) as avg_cashback_pct
+      FROM policies 
+      GROUP BY COALESCE(caller_name, 'Unknown')
+      ORDER BY net DESC
+      LIMIT 20
+    `);
+
     res.json({
       success: true,
-      data: leaderboard
+      data: result.rows
     });
   } catch (error) {
     console.error('Leaderboard error:', error);
