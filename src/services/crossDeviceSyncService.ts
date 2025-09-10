@@ -94,7 +94,6 @@ class CrossDeviceSyncService {
 
   private async syncAllData(): Promise<void> {
     try {
-      console.log('🔄 Starting cross-device sync...');
       
       const syncData = await this.fetchAllData();
       
@@ -104,7 +103,6 @@ class CrossDeviceSyncService {
         this.notifyDataChange(syncData);
         this.notifyStatusChange();
         
-        console.log('✅ Cross-device sync completed successfully');
       }
     } catch (error) {
       console.error('❌ Cross-device sync failed:', error);
@@ -114,11 +112,6 @@ class CrossDeviceSyncService {
 
   private async fetchAllData(): Promise<SyncData | null> {
     try {
-      console.log('🔍 Debug: NicsanCRMService methods:', {
-        getPolicies: typeof NicsanCRMService.getPolicies,
-        getUploads: typeof NicsanCRMService.getUploads,
-        getDashboardMetrics: typeof NicsanCRMService.getDashboardMetrics
-      });
       
       const [policiesResponse, uploadsResponse, dashboardResponse] = await Promise.all([
         NicsanCRMService.getPolicies(),
@@ -133,14 +126,6 @@ class CrossDeviceSyncService {
         lastUpdated: Date.now()
       };
 
-      console.log('🔍 Debug: Sync data fetched:', {
-        policiesCount: syncData.policies.length,
-        uploadsCount: syncData.uploads.length,
-        hasDashboard: !!syncData.dashboard,
-        policiesResponse: policiesResponse,
-        uploadsResponse: uploadsResponse,
-        dashboardResponse: dashboardResponse
-      });
 
       return syncData;
     } catch (error) {

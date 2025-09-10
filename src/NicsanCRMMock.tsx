@@ -38,16 +38,10 @@ function LoginPage({ onLogin }: { onLogin: (user: { name: string; email: string;
       // Use smart API service with mock fallback
       const response = await NicsanCRMService.login({ email, password });
       
-      console.log('🔍 Full login response:', response);
-      console.log('🔍 Response data:', response.data);
-      console.log('🔍 Token:', response.data?.token);
-      console.log('🔍 User:', response.data?.user);
       
       if (response.success && response.data) {
         const { token, user: userData } = response.data;
         
-        console.log('🔍 Extracted token:', token);
-        console.log('🔍 Extracted user:', userData);
         
         if (!token) {
           setError('No token received from server');
@@ -55,23 +49,17 @@ function LoginPage({ onLogin }: { onLogin: (user: { name: string; email: string;
         }
         
         // Store token and user data
-        console.log('🔍 About to store token...');
         
         try {
           // Try authUtils first
-          console.log('🔍 Calling authUtils.setToken...');
           authUtils.setToken(token);
-          console.log('🔍 authUtils.setToken completed');
         } catch (error) {
           console.error('🔍 authUtils.setToken failed:', error);
         }
         
         try {
           // Also store directly to verify
-          console.log('🔍 Storing directly to localStorage...');
           localStorage.setItem('authToken', token);
-          console.log('🔍 Direct localStorage storage completed');
-          console.log('🔍 Verification - token in localStorage:', !!localStorage.getItem('authToken'));
         } catch (error) {
           console.error('🔍 Direct localStorage storage failed:', error);
         }
@@ -96,7 +84,7 @@ function LoginPage({ onLogin }: { onLogin: (user: { name: string; email: string;
     <div className="min-h-screen grid place-items-center bg-zinc-50 p-6">
       <div className="w-full max-w-md bg-white rounded-2xl border border-zinc-100 shadow-sm p-6">
         <div className="flex items-center gap-2 text-lg font-semibold mb-1"><Lock className="w-5 h-5"/> Nicsan CRM v1</div>
-        <div className="text-sm text-zinc-500 mb-6">Real authentication with backend API</div>
+        
         
         {error && (
           <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg text-sm">
@@ -110,7 +98,7 @@ function LoginPage({ onLogin }: { onLogin: (user: { name: string; email: string;
             value={email} 
             onChange={e=>setEmail(e.target.value)} 
             className="w-full rounded-xl border border-zinc-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200" 
-            placeholder="ops@nicsan.in"
+            placeholder="Enter your email"
             disabled={isLoading}
           />
         </label>
@@ -134,12 +122,7 @@ function LoginPage({ onLogin }: { onLogin: (user: { name: string; email: string;
           {isLoading ? 'Signing in...' : 'Sign in'}
         </button>
         
-        <div className="text-xs text-zinc-500 mt-3 text-center">
-          Test credentials: ops@nicsan.in / ops123
-        </div>
-        <div className="text-xs text-zinc-500 mt-2 text-center">
-          Founder: admin@nicsan.in / admin123
-        </div>
+        
       </div>
     </div>
   )
@@ -238,7 +221,8 @@ function PageUpload() {
     cashback: '',
     customerPaid: '',
     customerChequeNo: '',
-    ourChequeNo: ''
+    ourChequeNo: '',
+    customerName: ''
   });
   const [manualExtrasSaved, setManualExtrasSaved] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -322,6 +306,7 @@ function PageUpload() {
               total_od: 7200,
               net_premium: 10800,
               total_premium: 12150,
+              customer_name: 'John Doe',
               confidence_score: 0.86
             }
           }
@@ -348,7 +333,8 @@ function PageUpload() {
           cashback: '',
           customerPaid: '',
           customerChequeNo: '',
-          ourChequeNo: ''
+          ourChequeNo: '',
+          customerName: ''
         });
         setManualExtrasSaved(false);
       } else {
@@ -408,7 +394,6 @@ function PageUpload() {
             
             // Update localStorage with new status
             localStorage.setItem('nicsan_crm_uploads', JSON.stringify(updated));
-            console.log('🔄 Updated upload status in localStorage:', updated);
             
             return updated;
           });
@@ -659,6 +644,16 @@ function PageUpload() {
                 placeholder="Your company's cheque number"
                 value={manualExtras.ourChequeNo}
                 onChange={(e) => handleManualExtrasChange('ourChequeNo', e.target.value)}
+                className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+              />
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-xs text-blue-700 mb-1">Customer Name</label>
+              <input 
+                type="text"
+                placeholder="Enter customer name"
+                value={manualExtras.customerName}
+                onChange={(e) => handleManualExtrasChange('customerName', e.target.value)}
                 className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
               />
             </div>
@@ -1036,10 +1031,11 @@ function PageManualForm() {
     executive: "",
     callerName: "",
     mobile: "",
-    rollover: "",
-    remark: "",
-    brokerage: "0",
-    cashback: "",
+            rollover: "",
+            remark: "",
+            brokerage: "0",
+            cashback: "",
+            customerName: ""
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState<{type: 'success' | 'error', message: string} | null>(null);
@@ -1089,13 +1085,13 @@ function PageManualForm() {
         }
         break;
         
-      case 'vehicleNumber':
-        if (!value) {
-          errors.push('Vehicle Number is required');
-        } else if (!/^[A-Z]{2}[0-9]{2}[A-Z]{2}[0-9]{4}$/.test(value)) {
-          errors.push('Vehicle Number must be in format: KA01AB1234');
-        }
-        break;
+        case 'vehicleNumber':
+          if (!value) {
+            errors.push('Vehicle Number is required');
+          } else if (!/^[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}$/.test(value.replace(/\s/g, ''))) {
+            errors.push('Vehicle Number must be in format: KA01AB1234 or KA 51 MM 1214');
+          }
+          break;
         
       case 'insurer':
         if (!value) {
@@ -1536,17 +1532,38 @@ function PageManualForm() {
         mobile: form.mobile || '0000000000',
         rollover: form.rollover || '',
         remark: form.remark || '',
+        customer_name: form.customerName || '',
         brokerage: (parseFloat(form.brokerage) || 0).toString(),
         cashback: (parseFloat(form.cashback) || 0).toString(),
         source: 'MANUAL_FORM'
       };
 
+      // Debug: Log the policy data being sent
+      console.log('🔍 Manual Form - Policy data being sent:', policyData);
+      console.log('🔍 Manual Form - Numeric values:', {
+        idv: policyData.idv,
+        ncb: policyData.ncb,
+        discount: policyData.discount,
+        net_od: policyData.net_od,
+        total_od: policyData.total_od,
+        net_premium: policyData.net_premium,
+        total_premium: policyData.total_premium,
+        cashback_percentage: policyData.cashback_percentage,
+        cashback_amount: policyData.cashback_amount,
+        customer_paid: policyData.customer_paid,
+        brokerage: policyData.brokerage,
+        cashback: policyData.cashback
+      });
+
       // Submit to API
-      console.log('🔍 Submitting policy data:', policyData);
-      const response = await NicsanCRMService.createPolicy(policyData);
-      console.log('🔍 API response:', response);
+      const response = await NicsanCRMService.saveManualForm(policyData);
       
-      if (response.success) {
+      // Debug: Log the response
+      console.log('🔍 Manual Form - API Response:', response);
+      console.log('🔍 Manual Form - Response success:', response?.success);
+      console.log('🔍 Manual Form - Response data:', response?.data);
+      
+      if (response && response.success) {
         setSubmitMessage({ 
           type: 'success', 
           message: `Policy saved successfully! Policy ID: ${response.data?.id || 'N/A'}` 
@@ -1586,6 +1603,7 @@ function PageManualForm() {
             remark: "",
             brokerage: "",
             cashback: "",
+            customerName: "",
           });
         }
       } else {
@@ -1741,7 +1759,7 @@ function PageManualForm() {
         
         {/* Top row: Vehicle + QuickFill */}
         <div className="flex flex-col md:flex-row gap-3 mb-4">
-          <LabeledInput label="Vehicle Number" required placeholder="KA01AB1234" value={form.vehicleNumber} onChange={v=>set('vehicleNumber', v)}/>
+          <LabeledInput label="Vehicle Number" required placeholder="KA01AB1234 or KA 51 MM 1214" value={form.vehicleNumber} onChange={v=>set('vehicleNumber', v)}/>
           <button onClick={quickFill} className="px-4 py-2 rounded-xl bg-indigo-600 text-white h-[42px] mt-6">Prefill from last policy</button>
           <div className="ml-auto flex items-center gap-2 text-xs text-zinc-600"><Car className="w-4 h-4"/> Make/Model autofill in v1.1</div>
         </div>
@@ -1799,6 +1817,7 @@ function PageManualForm() {
           <AutocompleteInput label="Caller Name" value={form.callerName} onChange={v=>set('callerName', v)} getSuggestions={getFilteredCallerSuggestions}/>
           <LabeledInput label="Mobile Number" required placeholder="9xxxxxxxxx" value={form.mobile} onChange={v=>set('mobile', v)}/>
           <LabeledInput label="Rollover/Renewal" hint="internal code" value={form.rollover} onChange={v=>set('rollover', v)}/>
+          <LabeledInput label="Customer Name" value={form.customerName} onChange={v=>set('customerName', v)}/>
           <LabeledInput label="Remark" placeholder="Any note" value={form.remark} onChange={v=>set('remark', v)}/>
         </div>
 
@@ -1853,7 +1872,6 @@ function PageManualGrid() {
     const loadGridData = async () => {
       try {
         setIsLoading(true);
-        console.log('🔄 Loading Grid Entry data...');
         
         // Load all policies from backend
         const response = await NicsanCRMService.getPolicies(100, 0);
@@ -1863,7 +1881,6 @@ function PageManualGrid() {
           const gridPolicies = response.data.filter((p: any) => p.source === 'MANUAL_GRID');
           setSavedPolicies(gridPolicies);
           
-          console.log(`📋 Found ${gridPolicies.length} saved policies from grid`);
           
           // Show info message about saved policies
           if (gridPolicies.length > 0) {
@@ -1878,7 +1895,6 @@ function PageManualGrid() {
             });
           }
         } else {
-          console.log('📋 No policies found, starting with empty grid');
           setSaveMessage({ 
             type: 'info', 
             message: 'Grid is ready for new policy entries.' 
@@ -1941,6 +1957,7 @@ function PageManualGrid() {
       rollover: "",
       remark: "",
       cashback: "", 
+      customerName: "",
       status: "OK" 
     };
     
@@ -1961,8 +1978,8 @@ function PageManualGrid() {
     // Vehicle Number validation
     if (!row.vehicle) {
       errors.push('Vehicle Number is required');
-    } else if (!/^[A-Z]{2}[0-9]{2}[A-Z]{2}[0-9]{4}$/.test(row.vehicle)) {
-      errors.push('Vehicle Number must be in format: KA01AB1234');
+    } else if (!/^[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}$/.test(row.vehicle.replace(/\s/g, ''))) {
+      errors.push('Vehicle Number must be in format: KA01AB1234 or KA 51 MM 1214');
     }
     
     // Insurer validation
@@ -1996,7 +2013,6 @@ function PageManualGrid() {
     const clipboardData = e.clipboardData?.getData('text/plain');
     
     if (clipboardData) {
-      console.log('📋 Excel data pasted:', clipboardData);
       
       // Parse tab-separated values
       const rows = clipboardData.split('\n').filter(row => row.trim());
@@ -2048,6 +2064,7 @@ function PageManualGrid() {
             rollover: cells[26] || "",
             remark: cells[27] || "",
             cashback: cells[28] || "", 
+            customerName: cells[29] || "",
             status: "OK" 
           };
           
@@ -2081,7 +2098,6 @@ function PageManualGrid() {
           });
         }
         
-        console.log(`✅ Added ${newRows.length} rows from Excel paste (${validRows} valid, ${invalidRows} with errors)`);
       }
     }
   };
@@ -2239,67 +2255,60 @@ function PageManualGrid() {
     setRowStatuses(newStatuses);
     
     try {
-      // Process all rows in parallel for better performance
-      const results = await Promise.allSettled(
-        rows.map(async (row, index) => {
-          try {
-        const policyData = {
-          // Basic Info
-          policy_number: row.policy,
-          vehicle_number: row.vehicle,
-          insurer: row.insurer,
-          
-          // Vehicle Details
-          product_type: row.productType || 'Private Car',
-          vehicle_type: row.vehicleType || 'Private Car',
-          make: row.make || 'Unknown',
-          model: row.model || '',
-          cc: row.cc || '',
-          manufacturing_year: row.manufacturingYear || '',
-          
-          // Dates
-          issue_date: row.issueDate || new Date().toISOString().split('T')[0],
-          expiry_date: row.expiryDate || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          
-          // Financial
-          idv: (parseFloat(row.idv) || 0).toString(),
-          ncb: (parseFloat(row.ncb) || 0).toString(),
-          discount: (parseFloat(row.discount) || 0).toString(),
-          net_od: (parseFloat(row.netOd) || 0).toString(),
-          ref: row.ref || '',
-          total_od: (parseFloat(row.totalOd) || 0).toString(),
-          net_premium: (parseFloat(row.netPremium) || 0).toString(),
-          total_premium: parseFloat(row.totalPremium).toString(),
-          cashback_percentage: (parseFloat(row.cashbackPct) || 0).toString(),
-          cashback_amount: (parseFloat(row.cashbackAmt) || 0).toString(),
-          customer_paid: (parseFloat(row.customerPaid) || 0).toString(),
-          brokerage: (parseFloat(row.brokerage) || 0).toString(),
-          
-          // Contact Info
-          executive: row.executive || 'Unknown',
-          caller_name: row.callerName || 'Unknown',
-          mobile: row.mobile || '0000000000',
-          
-          // Additional
-          rollover: row.rollover || '',
-          remark: row.remark || '',
-          cashback: (parseFloat(row.cashback) || 0).toString(),
-          source: 'MANUAL_GRID'
-        };
+      // Process all rows as batch for better performance
+      const policyDataArray = rows.map((row, index) => ({
+        // Basic Info
+        policy_number: row.policy,
+        vehicle_number: row.vehicle,
+        insurer: row.insurer,
         
-        await NicsanCRMService.createPolicy(policyData);
-            return { index, success: true };
-          } catch (error) {
-            console.error(`Failed to save row ${index}:`, error);
-            return { index, success: false, error };
-          }
-        })
-      );
+        // Vehicle Details
+        product_type: row.productType || 'Private Car',
+        vehicle_type: row.vehicleType || 'Private Car',
+        make: row.make || 'Unknown',
+        model: row.model || '',
+        cc: row.cc || '',
+        manufacturing_year: row.manufacturingYear || '',
+        
+        // Dates
+        issue_date: row.issueDate || new Date().toISOString().split('T')[0],
+        expiry_date: row.expiryDate || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        
+        // Financial
+        idv: (parseFloat(row.idv) || 0).toString(),
+        ncb: (parseFloat(row.ncb) || 0).toString(),
+        discount: (parseFloat(row.discount) || 0).toString(),
+        net_od: (parseFloat(row.netOd) || 0).toString(),
+        ref: row.ref || '',
+        total_od: (parseFloat(row.totalOd) || 0).toString(),
+        net_premium: (parseFloat(row.netPremium) || 0).toString(),
+        total_premium: parseFloat(row.totalPremium).toString(),
+        cashback_percentage: (parseFloat(row.cashbackPct) || 0).toString(),
+        cashback_amount: (parseFloat(row.cashbackAmt) || 0).toString(),
+        customer_paid: (parseFloat(row.customerPaid) || 0).toString(),
+        brokerage: (parseFloat(row.brokerage) || 0).toString(),
+        
+        // Contact Info
+        executive: row.executive || 'Unknown',
+        caller_name: row.callerName || 'Unknown',
+        mobile: row.mobile || '0000000000',
+        
+        // Additional
+        rollover: row.rollover || '',
+        remark: row.remark || '',
+        cashback: (parseFloat(row.cashback) || 0).toString(),
+        source: 'MANUAL_GRID'
+      }));
+      
+      await NicsanCRMService.saveGridEntries(policyDataArray);
+      
+      // All rows saved successfully
+      const results = rows.map((_, index) => ({ index, success: true }));
       
       // Update row statuses based on results
       const finalStatuses: {[key: number]: 'saved' | 'error'} = {};
       results.forEach((result, index) => {
-        if (result.status === 'fulfilled' && result.value.success) {
+        if (result.success) {
           finalStatuses[index] = 'saved';
         } else {
           finalStatuses[index] = 'error';
@@ -2384,6 +2393,7 @@ function PageManualGrid() {
                 <th className="py-2 px-1">Source</th>
                 <th className="py-2 px-1">Policy No.</th>
                 <th className="py-2 px-1">Vehicle No.</th>
+                <th className="py-2 px-1">Insurer (Company)</th>
                 <th className="py-2 px-1">Product Type</th>
                 <th className="py-2 px-1">Vehicle Type</th>
                 <th className="py-2 px-1">Make</th>
@@ -2408,6 +2418,7 @@ function PageManualGrid() {
                 <th className="py-2 px-1">Caller Name</th>
                 <th className="py-2 px-1">Mobile</th>
                 <th className="py-2 px-1">Rollover</th>
+                <th className="py-2 px-1">Customer Name</th>
                 <th className="py-2 px-1">Remark</th>
                 <th className="py-2 px-1">Status</th>
               </tr>
@@ -2469,6 +2480,16 @@ function PageManualGrid() {
                     <input 
                       value={r.vehicle} 
                       onChange={(e) => updateRow(i, 'vehicle', e.target.value)}
+                      disabled={rowStatus === 'saving' || rowStatus === 'saved'}
+                      className={`w-full border-none outline-none bg-transparent text-sm ${
+                        rowStatus === 'saving' || rowStatus === 'saved' ? 'opacity-50 cursor-not-allowed' : ''
+                      }`}
+                    />
+                  </td>
+                  <td className="px-1">
+                    <input 
+                      value={r.insurer} 
+                      onChange={(e) => updateRow(i, 'insurer', e.target.value)}
                       disabled={rowStatus === 'saving' || rowStatus === 'saved'}
                       className={`w-full border-none outline-none bg-transparent text-sm ${
                         rowStatus === 'saving' || rowStatus === 'saved' ? 'opacity-50 cursor-not-allowed' : ''
@@ -2667,6 +2688,13 @@ function PageManualGrid() {
                   </td>
                   <td className="px-1">
                     <input 
+                      value={r.customerName} 
+                      onChange={(e) => updateRow(i, 'customerName', e.target.value)}
+                      className="w-full border-none outline-none bg-transparent text-sm"
+                    />
+                  </td>
+                  <td className="px-1">
+                    <input 
                       value={r.remark} 
                       onChange={(e) => updateRow(i, 'remark', e.target.value)}
                       className="w-full border-none outline-none bg-transparent text-sm"
@@ -2725,7 +2753,6 @@ function PageReview() {
   useEffect(() => {
     const loadAvailableUploads = async () => {
       try {
-        console.log('🔄 Loading available uploads...');
         
         // First, try to get real uploads from localStorage (from PDF upload page)
         const storedUploads = localStorage.getItem('nicsan_crm_uploads');
@@ -2734,19 +2761,13 @@ function PageReview() {
         if (storedUploads) {
           try {
             realUploads = JSON.parse(storedUploads);
-            console.log('📋 Found stored uploads:', realUploads);
-            console.log('📋 Upload count:', realUploads.length);
-            console.log('📋 First upload structure:', realUploads[0]);
           } catch (e) {
             console.error('Failed to parse stored uploads:', e);
           }
-        } else {
-          console.log('📋 No uploads found in localStorage');
         }
         
         // If no real uploads, show mock data for demo
         if (realUploads.length === 0) {
-          console.log('📋 No real uploads found, showing mock data');
           setAvailableUploads([
             { 
               id: 'mock_1', 
@@ -2770,7 +2791,7 @@ function PageReview() {
                 },
                 extracted_data: {
                   policy_number: "TA-9921",
-                  vehicle_number: "KA01AB1234",
+                  vehicle_number: "KA 51 MM 1214",
                   insurer: "Tata AIG",
                   product_type: "Private Car",
                   vehicle_type: "Private Car",
@@ -2788,6 +2809,7 @@ function PageReview() {
                   total_od: 7200,
                   net_premium: 10800,
                   total_premium: 12150,
+                  customer_name: 'Jane Smith',
                   confidence_score: 0.86
                 }
               }
@@ -2796,7 +2818,6 @@ function PageReview() {
         } else {
           // Show real uploads - filter out any mock uploads
           const filteredRealUploads = realUploads.filter((upload: any) => !upload.id.startsWith('mock_'));
-          console.log('📋 Showing real uploads:', filteredRealUploads);
           setAvailableUploads(filteredRealUploads);
         }
       } catch (error) {
@@ -2961,8 +2982,8 @@ function PageReview() {
     }
     
     // Format validation
-    if (editableData.pdfData.vehicle_number && !/^[A-Z]{2}[0-9]{2}[A-Z]{2}[0-9]{4}$/.test(editableData.pdfData.vehicle_number)) {
-      errors.push('Invalid vehicle number format (e.g., KA01AB1234)');
+    if (editableData.pdfData.vehicle_number && !/^[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}$/.test(editableData.pdfData.vehicle_number.replace(/\s/g, ''))) {
+      errors.push('Invalid vehicle number format (e.g., KA01AB1234 or KA 51 MM 1214)');
     }
     
     // Mobile number validation
@@ -2993,8 +3014,8 @@ function PageReview() {
     }
     
     // Format validation
-    if (editableData.pdfData.vehicle_number && !/^[A-Z]{2}[0-9]{2}[A-Z]{2}[0-9]{4}$/.test(editableData.pdfData.vehicle_number)) {
-      errors.push('Invalid vehicle number format (e.g., KA01AB1234)');
+    if (editableData.pdfData.vehicle_number && !/^[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}$/.test(editableData.pdfData.vehicle_number.replace(/\s/g, ''))) {
+      errors.push('Invalid vehicle number format (e.g., KA01AB1234 or KA 51 MM 1214)');
     }
     
     // Mobile number validation
@@ -3010,10 +3031,6 @@ function PageReview() {
     setSaveMessage(null);
     
     try {
-      console.log('🔍 Starting Confirm & Save process...');
-      console.log('🔍 Review data:', reviewData);
-      console.log('🔍 Upload ID:', reviewData?.id);
-      console.log('🔍 Editable data:', editableData);
       
       // Validate edited data before saving
       const validationErrors = validateEditedData();
@@ -3028,7 +3045,6 @@ function PageReview() {
       
       // Check if this is a mock upload
       if (reviewData.id.startsWith('mock_')) {
-        console.log('🎭 Processing mock upload...');
         // Simulate successful save for mock data
         await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API delay
         
@@ -3047,13 +3063,11 @@ function PageReview() {
         return;
       }
       
-      console.log('💾 Processing real upload with edited data...');
       // Send edited data to backend
       const result = await NicsanCRMService.confirmUploadAsPolicy(reviewData.id, {
         pdfData: editableData.pdfData,
         manualExtras: editableData.manualExtras
       });
-      console.log('🔍 API result:', result);
       
       if (result.success) {
         console.log('✅ Policy confirmed successfully with edited data!');
@@ -3140,7 +3154,7 @@ function PageReview() {
                     },
                     extracted_data: {
                       policy_number: "TA-TEST",
-                      vehicle_number: "KA01AB1234",
+                      vehicle_number: "KA 51 MM 1214",
                       insurer: "Tata AIG",
                       product_type: "Private Car",
                       vehicle_type: "Private Car",
@@ -3158,13 +3172,13 @@ function PageReview() {
                       total_od: 7200,
                       net_premium: 10800,
                       total_premium: 12150,
+                      customer_name: 'Mike Johnson',
                       confidence_score: 0.86
                     }
                   }
                 };
                 
                 localStorage.setItem('nicsan_crm_uploads', JSON.stringify([testUpload]));
-                console.log('🧪 Added test upload:', testUpload);
                 
                 // Force reload
                 window.location.reload();
@@ -3215,10 +3229,7 @@ function PageReview() {
                     const storedUploads = localStorage.getItem('nicsan_crm_uploads');
                     if (storedUploads) {
                       const realUploads = JSON.parse(storedUploads);
-                      console.log('🔄 Refreshed uploads from localStorage:', realUploads);
                       setAvailableUploads(realUploads);
-                    } else {
-                      console.log('📋 No uploads found in localStorage');
                     }
                   } catch (error) {
                     console.error('Failed to refresh uploads:', error);
@@ -3453,6 +3464,11 @@ function PageReview() {
               onChange={(value) => updateManualExtras('rollover', value)}
               hint="internal code"
             />
+            <LabeledInput 
+              label="Customer Name" 
+              value={editableData.manualExtras.customerName || manualExtras.customerName}
+              onChange={(value) => updateManualExtras('customerName', value)}
+            />
             <div style={{ display: 'none' }}>
               <LabeledInput 
                 label="Brokerage (₹)" 
@@ -3585,14 +3601,13 @@ function PagePolicyDetail() {
         setAvailablePolicies(response.data || []);
         
         if (ENABLE_DEBUG) {
-          console.log('📋 Policy Detail - Available policies:', response.data);
         }
       }
     } catch (error) {
       console.error('Failed to load available policies:', error);
       // Set mock policies as fallback
       setAvailablePolicies([
-        { id: '1', policy_number: 'TA-9921', vehicle_number: 'KA01AB1234', insurer: 'Tata AIG' },
+        { id: '1', policy_number: 'TA-9921', vehicle_number: 'KA 51 MM 1214', insurer: 'Tata AIG' },
         { id: '2', policy_number: 'TA-9922', vehicle_number: 'KA01AB5678', insurer: 'Tata AIG' },
         { id: '3', policy_number: 'TA-9923', vehicle_number: 'KA01AB9012', insurer: 'Tata AIG' }
       ]);
@@ -3612,8 +3627,6 @@ function PagePolicyDetail() {
         setDataSource(response.source);
         
         if (ENABLE_DEBUG) {
-          console.log('📋 Policy Detail - Data source:', response.source);
-          console.log('📋 Policy Detail - Policy data:', response.data);
         }
       }
     } catch (error) {
@@ -3730,11 +3743,12 @@ function PagePolicyDetail() {
 
   const policy = policyData || {
     policy_number: 'TA-9921',
-    vehicle_number: 'KA01AB1234',
+    vehicle_number: 'KA 51 MM 1214',
     insurer: 'Tata AIG',
     issue_date: '2025-08-10',
     expiry_date: '2026-08-09',
     total_premium: 12150,
+    customer_name: 'Sarah Wilson',
     ncb: 20,
     audit_trail: [
       { timestamp: '2025-08-12T15:54:00Z', action: 'PDF_PARSED', user: 'System', details: 'Parsed PDF (98% confidence)' },
@@ -3858,7 +3872,7 @@ function PagePolicyDetail() {
       </Card>
 
       {/* Policy Information */}
-      <Card title={`Policy: ${policy.policy_number || 'TA-9921'} — ${policy.vehicle_number || 'KA01AB1234'}`} desc="Comprehensive policy details">
+      <Card title={`Policy: ${policy.policy_number || 'TA-9921'} — ${policy.vehicle_number || 'KA 51 MM 1214'}`} desc="Comprehensive policy details">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Basic Information */}
         <div className="bg-zinc-50 rounded-xl p-4">
@@ -3870,7 +3884,7 @@ function PagePolicyDetail() {
               </div>
               <div className="flex justify-between">
                 <span>Vehicle Number:</span>
-                <span className="font-medium">{policy.vehicle_number || 'KA01AB1234'}</span>
+                <span className="font-medium">{policy.vehicle_number || 'KA 51 MM 1214'}</span>
               </div>
               <div className="flex justify-between">
                 <span>Insurer:</span>
@@ -4121,10 +4135,6 @@ function PageOverview() {
           setTrendData(transformedTrend);
           
           if (ENABLE_DEBUG) {
-            console.log('📊 Company Overview - Data source:', metricsResponse.source);
-            console.log('📊 Company Overview - Metrics data:', metricsResponse.data);
-            console.log('📊 Company Overview - Raw trend data:', metricsResponse.data.dailyTrend);
-            console.log('📊 Company Overview - Transformed trend data:', transformedTrend);
           }
         }
       } catch (error) {
@@ -4251,9 +4261,6 @@ function PageLeaderboard() {
         
         if (response.success) {
           if (ENABLE_DEBUG) {
-            console.log('🏆 Rep Leaderboard - Data source:', response.source);
-            console.log('🏆 Rep Leaderboard - Response data:', response.data);
-            console.log('🏆 Rep Leaderboard - Data type:', typeof response.data, Array.isArray(response.data));
           }
           setReps(Array.isArray(response.data) ? response.data : []);
           setDataSource(response.source);
@@ -4365,9 +4372,6 @@ function PageExplorer() {
         
         if (response.success) {
           if (ENABLE_DEBUG) {
-            console.log('🔍 Sales Explorer - Data source:', response.source);
-            console.log('🔍 Sales Explorer - Response data:', response.data);
-            console.log('🔍 Sales Explorer - Data type:', typeof response.data, Array.isArray(response.data));
           }
           setPolicies(Array.isArray(response.data) ? response.data : []);
           setDataSource(response.source);
@@ -4388,31 +4392,10 @@ function PageExplorer() {
     const insurerMatch = insurer === 'All' || p.insurer === insurer;
     const cashbackMatch = (p.cashbackPctAvg || 0) <= cashbackMax;
     
-    if (ENABLE_DEBUG && !makeMatch) {
-      console.log('🔍 Filter failed - Make:', { filter: make, data: p.make, match: makeMatch });
-    }
-    if (ENABLE_DEBUG && !modelMatch) {
-      console.log('🔍 Filter failed - Model:', { filter: model, data: p.model, match: modelMatch });
-    }
-    if (ENABLE_DEBUG && !insurerMatch) {
-      console.log('🔍 Filter failed - Insurer:', { filter: insurer, data: p.insurer, match: insurerMatch });
-    }
-    if (ENABLE_DEBUG && !cashbackMatch) {
-      console.log('🔍 Filter failed - Cashback:', { filter: cashbackMax, data: p.cashbackPctAvg, match: cashbackMatch });
-    }
     
     return makeMatch && modelMatch && insurerMatch && cashbackMatch;
   });
   
-  if (ENABLE_DEBUG) {
-    console.log('🔍 Sales Explorer - Policies state:', policies);
-    console.log('🔍 Sales Explorer - Filtered data:', filtered);
-    console.log('🔍 Sales Explorer - Filtered count:', filtered.length);
-    console.log('🔍 Sales Explorer - Filter values:', { make, model, insurer, cashbackMax });
-    if (policies.length > 0) {
-      console.log('🔍 Sales Explorer - First policy:', policies[0]);
-    }
-  }
   return (
     <>
       <Card title="Sales Explorer (Motor)" desc={`Filter by Make/Model; find reps with most sales and lowest cashback (Data Source: ${dataSource || 'Loading...'})`}>
@@ -4465,23 +4448,10 @@ function PageSources() {
         const response = await DualStorageService.getDataSources();
         
         if (response.success) {
-          if (ENABLE_DEBUG) {
-            console.log('📊 Data Sources - Data source:', response.source);
-            console.log('📊 Data Sources - Response data:', response.data);
-            console.log('📊 Data Sources - Data type:', typeof response.data, Array.isArray(response.data));
-            if (response.data && response.data.length > 0) {
-              console.log('📊 Data Sources - First item:', response.data[0]);
-            }
-          }
           const newDataSources = Array.isArray(response.data) ? response.data : [];
           setDataSources(newDataSources);
           setDataSource(response.source);
           
-          if (ENABLE_DEBUG) {
-            console.log('📊 Data Sources - Setting dataSources state:', newDataSources);
-            console.log('📊 Data Sources - dataSources.length:', newDataSources.length);
-            console.log('📊 Data Sources - Will use in chart:', newDataSources.length > 0 ? 'REAL DATA' : 'DEMO DATA');
-          }
         }
       } catch (error) {
         console.error('Failed to load data sources:', error);
@@ -4495,10 +4465,6 @@ function PageSources() {
 
   // Debug logging for chart data
   if (ENABLE_DEBUG) {
-    console.log('📊 Data Sources - Chart render - dataSources:', dataSources);
-    console.log('📊 Data Sources - Chart render - dataSources.length:', dataSources.length);
-    console.log('📊 Data Sources - Chart render - demoSources:', demoSources);
-    console.log('📊 Data Sources - Chart render - Final chart data:', dataSources.length > 0 ? dataSources : demoSources);
   }
 
   return (
@@ -4571,8 +4537,6 @@ function PageFounderSettings() {
         setDataSource(response.source || 'Unknown');
         
         if (ENABLE_DEBUG) {
-          console.log('📋 Settings - Data source:', response.source);
-          console.log('📋 Settings - Message:', response.message);
         }
       } else {
         setError(response.error || 'Failed to load settings');
@@ -4782,9 +4746,6 @@ function PageKPIs() {
           setDataSource(response.source);
           
           if (ENABLE_DEBUG) {
-            console.log('📈 KPI Dashboard - Data source:', response.source);
-            console.log('📈 KPI Dashboard - KPI data:', response.data);
-            console.log('📈 KPI Dashboard - Basic metrics:', response.data.basicMetrics);
           }
         }
       } catch (error) {
@@ -4963,7 +4924,6 @@ function NicsanCRMMock() {
       setBackendStatus(status);
       
       if (ENABLE_DEBUG) {
-        console.log('🔍 Backend status:', status);
       }
     };
     

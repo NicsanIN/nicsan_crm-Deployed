@@ -18,6 +18,7 @@ const mockData = {
       vehicle_number: 'KA01AB1234',
       insurer: 'Tata AIG',
       total_premium: 12150,
+      customer_name: 'John Doe',
       cashback: 600,
       status: 'SAVED',
       source: 'PDF_UPLOAD',
@@ -71,13 +72,9 @@ export class NicsanCRMService {
       
       if (ENABLE_DEBUG) {
         if (this.isBackendAvailable && !wasAvailable) {
-          console.log('✅ Backend became available');
         } else if (!this.isBackendAvailable && wasAvailable) {
-          console.log('⚠️ Backend became unavailable');
         } else if (this.isBackendAvailable) {
-          console.log('✅ Backend is available');
         } else {
-          console.log('⚠️ Backend not available, using mock data');
         }
       }
     } catch (error) {
@@ -85,7 +82,6 @@ export class NicsanCRMService {
       this.isBackendAvailable = false;
       
       if (ENABLE_DEBUG && wasAvailable) {
-        console.log('⚠️ Backend connection lost:', (error as any).message);
       }
     }
   }
@@ -215,7 +211,7 @@ export class NicsanCRMService {
     if (this.isBackendAvailable) {
       try {
         const response = await policiesAPI.saveManualForm(formData);
-        return response.data;
+        return response; // Return full response with success property
       } catch (error) {
         console.error('Save manual form error:', error);
         throw error;
@@ -238,7 +234,7 @@ export class NicsanCRMService {
     if (this.isBackendAvailable) {
       try {
         const response = await policiesAPI.saveGridEntries(entries);
-        return response.data;
+        return response; // Return full response with success property
       } catch (error) {
         console.error('Save grid entries error:', error);
         throw error;
@@ -675,6 +671,7 @@ export class NicsanCRMService {
             total_od: 7200,
             net_premium: 10800,
             total_premium: 12150,
+            customer_name: 'Jane Smith',
             confidence_score: 0.86
           }
         }
@@ -837,6 +834,7 @@ export class NicsanCRMService {
             total_od: 7200,
             net_premium: 10800,
             total_premium: 12150,
+            customer_name: 'Jane Smith',
             confidence_score: 0.86
           }
         }
@@ -946,7 +944,6 @@ export class NicsanCRMService {
   async refreshBackendStatus(): Promise<void> {
     await this.checkBackendAvailability();
     if (ENABLE_DEBUG) {
-      console.log('🔄 Backend status refreshed:', this.isBackendAvailable);
     }
   }
 

@@ -201,10 +201,11 @@ router.post('/:uploadId/confirm', authenticateToken, requireOps, async (req, res
     let policyData;
     
     if (editedData && editedData.pdfData && editedData.manualExtras) {
-      // Use edited data
+      // Use edited data with field mapping
       policyData = {
         ...editedData.pdfData,
         ...editedData.manualExtras,
+        caller_name: editedData.manualExtras.caller_name || editedData.manualExtras.callerName || '', // Map callerName to caller_name
         source: 'PDF_UPLOAD',
         s3_key: upload.s3_key,
         confidence_score: upload.extracted_data?.extracted_data?.confidence_score || 0.8
@@ -212,10 +213,11 @@ router.post('/:uploadId/confirm', authenticateToken, requireOps, async (req, res
       
       console.log('✅ Using edited data for policy creation');
     } else {
-      // Fallback to original data
+      // Fallback to original data with field mapping
       policyData = {
         ...upload.extracted_data.extracted_data,
         ...upload.extracted_data.manual_extras,
+        caller_name: upload.extracted_data.manual_extras?.caller_name || upload.extracted_data.manual_extras?.callerName || '', // Map callerName to caller_name
         source: 'PDF_UPLOAD',
         s3_key: upload.s3_key
       };
