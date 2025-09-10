@@ -61,8 +61,9 @@ const deleteFromS3 = async (key) => {
 };
 
 const getS3Url = (key) => {
+  const region = process.env.AWS_REGION || 'ap-south-1';
   const prefixedKey = withPrefix(key);
-  return `https://${process.env.AWS_S3_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/${prefixedKey}`;
+  return `https://${process.env.AWS_S3_BUCKET}.s3.${region}.amazonaws.com/${prefixedKey}`;
 };
 
 // OpenAI Helper Functions (replaces Textract)
