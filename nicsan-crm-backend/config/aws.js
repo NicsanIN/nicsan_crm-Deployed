@@ -1,4 +1,8 @@
 const AWS = require('aws-sdk');
+const { withPrefix } = require('../utils/s3Prefix');
+
+// Startup log for S3 configuration
+console.log(`[S3] bucket=${process.env.AWS_S3_BUCKET}, prefix=${process.env.S3_PREFIX || '(none)'}`);
 
 // AWS Configuration (Primary Storage)
 const s3 = new AWS.S3({
@@ -18,9 +22,10 @@ const textract = new AWS.Textract({
 // S3 Helper Functions
 const uploadToS3 = async (file, key) => {
   try {
+    const prefixedKey = withPrefix(key);
     const params = {
       Bucket: process.env.AWS_S3_BUCKET,
-      Key: key,
+      Key: prefixedKey,
       Body: file.buffer,
       ContentType: file.mimetype,
       Metadata: {
@@ -40,13 +45,14 @@ const uploadToS3 = async (file, key) => {
 
 const deleteFromS3 = async (key) => {
   try {
+    const prefixedKey = withPrefix(key);
     const params = {
       Bucket: process.env.AWS_S3_BUCKET,
-      Key: key
+      Key: prefixedKey
     };
 
     await s3.deleteObject(params).promise();
-    console.log('✅ File deleted from S3:', key);
+    console.log('✅ File deleted from S3:', prefixedKey);
     return true;
   } catch (error) {
     console.error('❌ S3 delete error:', error);
@@ -55,7 +61,9 @@ const deleteFromS3 = async (key) => {
 };
 
 const getS3Url = (key) => {
-  return `https://${process.env.AWS_S3_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
+  const region = process.env.AWS_REGION || 'ap-south-1';
+  const prefixedKey = withPrefix(key);
+  return `https://${process.env.AWS_S3_BUCKET}.s3.${region}.amazonaws.com/${prefixedKey}`;
 };
 
 // OpenAI Helper Functions (replaces Textract)
@@ -118,9 +126,10 @@ const generatePolicyS3Key = (policyId, source = 'PDF_UPLOAD') => {
 // Upload JSON data to S3
 const uploadJSONToS3 = async (data, key) => {
   try {
+    const prefixedKey = withPrefix(key);
     const params = {
       Bucket: process.env.AWS_S3_BUCKET,
-      Key: key,
+      Key: prefixedKey,
       Body: JSON.stringify(data, null, 2),
       ContentType: 'application/json',
       Metadata: {
@@ -141,14 +150,15 @@ const uploadJSONToS3 = async (data, key) => {
 // Get JSON data from S3
 const getJSONFromS3 = async (key) => {
   try {
+    const prefixedKey = withPrefix(key);
     const params = {
       Bucket: process.env.AWS_S3_BUCKET,
-      Key: key
+      Key: prefixedKey
     };
 
     const result = await s3.getObject(params).promise();
     const data = JSON.parse(result.Body.toString());
-    console.log('✅ JSON data retrieved from S3:', key);
+    console.log('✅ JSON data retrieved from S3:', prefixedKey);
     return data;
   } catch (error) {
     console.error('❌ S3 JSON retrieval error:', error);
