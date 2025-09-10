@@ -1,43 +1,44 @@
-// Frontend S3 Service for Cloud Storage Retrieval
-// Implements direct S3 access for data retrieval
+// src/services/S3Service.ts
+// Frontend S3 Service for Cloud Storage Retrieval (with simple prefix support)
 
 import { authUtils } from './api';
 
-// Environment variables
-const AWS_REGION = import.meta.env.VITE_AWS_REGION || 'us-east-1';
-const AWS_S3_BUCKET = import.meta.env.VITE_AWS_S3_BUCKET || 'nicsan-crm-data';
+// === Env ===
+const AWS_REGION = import.meta.env.VITE_AWS_REGION || 'ap-south-1';
+const AWS_S3_BUCKET = import.meta.env.VITE_AWS_S3_BUCKET || 'nicsan-crm-pdfs';
 const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
 
-// AWS SDK configuration
+// Prefix: prod="" | staging="staging/"
+const RAW_PREFIX = (import.meta.env.VITE_S3_PREFIX || '').trim();
+const S3_PREFIX = RAW_PREFIX ? RAW_PREFIX.replace(/^\/+/, '').replace(/\/+$/, '') + '/' : '';
+
+// Helper to prepend the prefix
+const withPrefix = (path: string) => `${S3_PREFIX}${path}`;
+
 declare global {
-  interface Window {
-    AWS: any;
-  }
+  interface Window { AWS: any }
 }
 
 class S3Service {
   private static instance: S3Service;
   private s3: any = null;
-  private isInitialized: boolean = false;
+  private isInitialized = false;
 
   private constructor() {
     this.initializeAWS();
   }
 
   static getInstance(): S3Service {
-    if (!S3Service.instance) {
-      S3Service.instance = new S3Service();
-    }
+    if (!S3Service.instance) S3Service.instance = new S3Service();
     return S3Service.instance;
   }
 
   private async initializeAWS() {
     try {
-      // For now, we'll simulate S3 service as unavailable
-      // In a real implementation, you would load the AWS SDK here
+      // NOTE: Fallback mode (AWS SDK not loaded on frontend)
       this.isInitialized = false;
       this.s3 = null;
-      
+
       if (ENABLE_DEBUG) {
         console.log('⚠️ S3 Service initialized in fallback mode (AWS SDK not loaded)');
       }
@@ -48,131 +49,62 @@ class S3Service {
     }
   }
 
-  // Get JSON data from S3
-  async getJSONFromS3(key: string): Promise<any> {
+  // Core JSON getter (expects initialized AWS SDK; will throw in fallback)
+  private async getJSONFromS3(key: string): Promise<any> {
     try {
       if (!this.isInitialized || !this.s3) {
         throw new Error('S3 service not initialized');
       }
 
-      const params = {
-        Bucket: AWS_S3_BUCKET,
-        Key: key
-      };
-
+      const params = { Bucket: AWS_S3_BUCKET, Key: key };
       const result = await this.s3.getObject(params).promise();
       const data = JSON.parse(result.Body.toString());
-      
-      if (ENABLE_DEBUG) {
-        console.log('✅ JSON data retrieved from S3:', key);
-      }
-      
+
+      if (ENABLE_DEBUG) console.log('✅ JSON from S3:', key);
       return data;
     } catch (error) {
-      if (ENABLE_DEBUG) {
-        console.error('❌ S3 JSON retrieval error:', error);
-      }
+      if (ENABLE_DEBUG) console.error('❌ S3 JSON retrieval error:', key, error);
       throw error;
     }
   }
 
-  // Get dashboard metrics from S3
-  async getDashboardMetricsFromS3(): Promise<any> {
-    try {
-      const key = 'data/dashboard/metrics.json';
-      const data = await this.getJSONFromS3(key);
-      
-      return {
-        success: true,
-        data: data,
-        source: 'S3_CLOUD_STORAGE'
-      };
-    } catch (error) {
-      throw new Error(`Failed to get dashboard metrics from S3: ${error}`);
-    }
+  // === Public helpers (now all keys are prefixed) ===
+  async getDashboardMetricsFromS3() {
+    const key = withPrefix('data/dashboard/metrics.json');
+    const data = await this.getJSONFromS3(key);
+    return { success: true, data, source: 'S3_CLOUD_STORAGE' };
   }
 
-  // Get sales reps data from S3
-  async getSalesRepsFromS3(): Promise<any> {
-    try {
-      const key = 'data/dashboard/sales-reps.json';
-      const data = await this.getJSONFromS3(key);
-      
-      return {
-        success: true,
-        data: data,
-        source: 'S3_CLOUD_STORAGE'
-      };
-    } catch (error) {
-      throw new Error(`Failed to get sales reps from S3: ${error}`);
-    }
+  async getSalesRepsFromS3() {
+    const key = withPrefix('data/dashboard/sales-reps.json');
+    const data = await this.getJSONFromS3(key);
+    return { success: true, data, source: 'S3_CLOUD_STORAGE' };
   }
 
-  // Get sales explorer data from S3
-  async getSalesExplorerFromS3(): Promise<any> {
-    try {
-      const key = 'data/dashboard/sales-explorer.json';
-      const data = await this.getJSONFromS3(key);
-      
-      return {
-        success: true,
-        data: data,
-        source: 'S3_CLOUD_STORAGE'
-      };
-    } catch (error) {
-      throw new Error(`Failed to get sales explorer from S3: ${error}`);
-    }
+  async getSalesExplorerFromS3() {
+    const key = withPrefix('data/dashboard/sales-explorer.json');
+    const data = await this.getJSONFromS3(key);
+    return { success: true, data, source: 'S3_CLOUD_STORAGE' };
   }
 
-  // Get data sources from S3
-  async getDataSourcesFromS3(): Promise<any> {
-    try {
-      const key = 'data/dashboard/data-sources.json';
-      const data = await this.getJSONFromS3(key);
-      
-      return {
-        success: true,
-        data: data,
-        source: 'S3_CLOUD_STORAGE'
-      };
-    } catch (error) {
-      throw new Error(`Failed to get data sources from S3: ${error}`);
-    }
+  async getDataSourcesFromS3() {
+    const key = withPrefix('data/dashboard/data-sources.json');
+    const data = await this.getJSONFromS3(key);
+    return { success: true, data, source: 'S3_CLOUD_STORAGE' };
   }
 
-  // Get policy detail from S3
-  async getPolicyDetailFromS3(policyId: string): Promise<any> {
-    try {
-      const key = `data/policies/${policyId}.json`;
-      const data = await this.getJSONFromS3(key);
-      
-      return {
-        success: true,
-        data: data,
-        source: 'S3_CLOUD_STORAGE'
-      };
-    } catch (error) {
-      throw new Error(`Failed to get policy detail from S3: ${error}`);
-    }
+  async getPolicyDetailFromS3(policyId: string) {
+    const key = withPrefix(`data/policies/${policyId}.json`);
+    const data = await this.getJSONFromS3(key);
+    return { success: true, data, source: 'S3_CLOUD_STORAGE' };
   }
 
-  // Get all policies from S3
-  async getAllPoliciesFromS3(): Promise<any> {
-    try {
-      const key = 'data/policies/all-policies.json';
-      const data = await this.getJSONFromS3(key);
-      
-      return {
-        success: true,
-        data: data,
-        source: 'S3_CLOUD_STORAGE'
-      };
-    } catch (error) {
-      throw new Error(`Failed to get all policies from S3: ${error}`);
-    }
+  async getAllPoliciesFromS3() {
+    const key = withPrefix('data/policies/all-policies.json');
+    const data = await this.getJSONFromS3(key);
+    return { success: true, data, source: 'S3_CLOUD_STORAGE' };
   }
 
-  // Check if S3 service is available
   isAvailable(): boolean {
     return this.isInitialized && this.s3 !== null;
   }
