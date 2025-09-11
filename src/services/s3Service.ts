@@ -1,7 +1,7 @@
 // src/services/S3Service.ts
 // Frontend S3 Service for Cloud Storage Retrieval (with simple prefix support)
 
-import { authUtils } from './api';
+// import { authUtils } from './api';
 
 // === Env ===
 const AWS_REGION = import.meta.env.VITE_AWS_REGION || 'ap-south-1';

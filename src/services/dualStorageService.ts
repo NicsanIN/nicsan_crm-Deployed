@@ -2,6 +2,8 @@
 // This is the core service that all pages will use for identical data flow
 
 import BackendApiService from './backendApiService';
+import S3Service from './s3Service';
+import DatabaseService from './databaseService';
 
 interface BackendApiResult {
   success: boolean;
@@ -23,9 +25,13 @@ interface DualStorageResult {
 class DualStorageService {
   private static instance: DualStorageService;
   private backendApiService: BackendApiService;
+  private s3Service: S3Service;
+  private databaseService: DatabaseService;
 
   private constructor() {
     this.backendApiService = BackendApiService.getInstance();
+    this.s3Service = S3Service.getInstance();
+    this.databaseService = DatabaseService.getInstance();
   }
 
   static getInstance(): DualStorageService {
@@ -52,7 +58,6 @@ class DualStorageService {
         
         if (ENABLE_DEBUG) {
         }
-        
         return {
           success: result.success,
           data: result.data,
@@ -92,7 +97,7 @@ class DualStorageService {
 
     return this.executeDualStoragePattern(
       () => this.backendApiService.getDashboardMetrics(),
-      mockData,
+      { success: true, data: mockData, source: 'mock' },
       'Dashboard Metrics'
     );
   }
@@ -140,7 +145,7 @@ class DualStorageService {
 
     return this.executeDualStoragePattern(
       () => this.backendApiService.getSalesReps(),
-      mockData,
+      { success: true, data: mockData, source: 'mock' },
       'Sales Reps'
     );
   }
@@ -156,7 +161,7 @@ class DualStorageService {
 
     return this.executeDualStoragePattern(
       () => this.backendApiService.getSalesExplorer(),
-      mockData,
+      { success: true, data: mockData, source: 'mock' },
       'Sales Explorer'
     );
   }
@@ -173,7 +178,7 @@ class DualStorageService {
 
     return this.executeDualStoragePattern(
       () => this.backendApiService.getDataSources(),
-      mockData,
+      { success: true, data: mockData, source: 'mock' },
       'Data Sources'
     );
   }
@@ -217,7 +222,7 @@ class DualStorageService {
 
     return this.executeDualStoragePattern(
       () => this.backendApiService.getPolicyDetail(policyId),
-      mockData,
+      { success: true, data: mockData, source: 'mock' },
       'Policy Detail'
     );
   }
@@ -252,7 +257,7 @@ class DualStorageService {
 
     return this.executeDualStoragePattern(
       () => this.backendApiService.getAllPolicies(),
-      mockData,
+      { success: true, data: mockData, source: 'mock' },
       'All Policies'
     );
   }

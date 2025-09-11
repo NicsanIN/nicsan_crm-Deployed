@@ -1,7 +1,7 @@
 // Backend API Service - Connects frontend to backend APIs
 // This replaces the direct S3/Database access with proper backend API calls
 
-import { authAPI, policiesAPI } from './api';
+// import { authAPI, policiesAPI } from './api';
 
 // Environment variables
 const API_BASE = import.meta.env.VITE_API_BASE_URL;
@@ -138,11 +138,7 @@ class BackendApiService {
       if (ENABLE_DEBUG) {
       }
 
- kumar-dev
-      const response = await fetch('http://localhost:3001/api/dashboard/explorer', {
-
       const response = await fetch(`${API_BASE}/dashboard/vehicle-analysis`, {
- main
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
