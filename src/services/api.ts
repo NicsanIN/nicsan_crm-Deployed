@@ -1,7 +1,8 @@
 // API Service Layer for Nicsan CRM
 // Handles all communication with the backend
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+const API_BASE = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_BACKEND_URL + '/api';
+const WS_URL   = import.meta.env.VITE_WEBSOCKET_URL || import.meta.env.VITE_WS_URL;
 const API_TIMEOUT = parseInt(import.meta.env.VITE_API_TIMEOUT || '30000');
 const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
 
