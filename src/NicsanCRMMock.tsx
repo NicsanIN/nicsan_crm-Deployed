@@ -1992,7 +1992,7 @@ function PageManualGrid() {
 
   // Delete empty rows (rows with no policy number)
   const deleteEmptyRows = () => {
-    const emptyRows = rows.filter((row, index) => !row.policy || row.policy.trim() === '');
+    const emptyRows = rows.filter((row) => !row.policy || row.policy.trim() === '');
     if (emptyRows.length === 0) {
       setSaveMessage({ type: 'info', message: 'No empty rows found.' });
       return;
@@ -2014,7 +2014,6 @@ function PageManualGrid() {
     }));
     
     const rowsWithErrors = validationResults.filter(result => result.errors.length > 0);
-    const validRows = validationResults.filter(result => result.errors.length === 0);
     
     if (rowsWithErrors.length === 0) {
       setSaveMessage({ type: 'success', message: `All ${rows.length} rows are valid!` });
