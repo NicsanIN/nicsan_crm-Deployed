@@ -100,15 +100,26 @@ export const CrossDeviceSyncProvider: React.FC<CrossDeviceSyncProviderProps> = (
   };
 
   const notifyPolicyChange = (type: 'created' | 'updated' | 'deleted', policy: any) => {
-    wsService.notifyPolicyChange(type, policy);
+    if (type === 'created') {
+      wsService.notifyPolicyCreated(policy);
+    } else if (type === 'updated') {
+      wsService.notifyPolicyUpdated(policy);
+    } else if (type === 'deleted') {
+      wsService.notifyPolicyDeleted(policy.id);
+    }
   };
 
   const notifyUploadChange = (type: 'created' | 'updated', upload: any) => {
-    wsService.notifyUploadChange(type, upload);
+    if (type === 'created') {
+      wsService.notifyUploadCreated(upload);
+    } else if (type === 'updated') {
+      wsService.notifyUploadUpdated(upload);
+    }
   };
 
   const notifyDashboardChange = (dashboard: any) => {
-    wsService.notifyDashboardChange(dashboard);
+    // Dashboard change notification not implemented in WebSocket service
+    console.log('Dashboard change:', dashboard);
   };
 
   const contextValue: CrossDeviceSyncContextType = {

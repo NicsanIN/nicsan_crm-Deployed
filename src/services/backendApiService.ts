@@ -1,7 +1,7 @@
 // Backend API Service - Connects frontend to backend APIs
 // This replaces the direct S3/Database access with proper backend API calls
 
-import { authAPI, policiesAPI } from './api';
+// import { authAPI, policiesAPI } from './api';
 
 // Environment variables
 const API_BASE = import.meta.env.VITE_API_BASE_URL;

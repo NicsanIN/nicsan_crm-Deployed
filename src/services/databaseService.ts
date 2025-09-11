@@ -26,11 +26,11 @@ class DatabaseService {
     try {
       const token = authUtils.getToken();
       if (!token) {
-        this.isAvailable = false;
+        this.isAvailable = () => false;
         return;
       }
 
-      const baseUrl = DB_API_BASE_URL.replace('/api', '');
+      const baseUrl = (import.meta.env.VITE_DB_API_BASE_URL || 'http://localhost:3001').replace('/api', '');
       const response = await fetch(`${baseUrl}/health`, {
         method: 'GET',
         headers: {

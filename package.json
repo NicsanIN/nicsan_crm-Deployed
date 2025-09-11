@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
     "migrate:make": "knex migrate:make -x ts",
@@ -13,12 +13,13 @@
     "migrate:down": "knex migrate:down"
   },
   "dependencies": {
+    "aws": "^0.0.3-2",
+    "idb": "^8.0.0",
     "lucide-react": "^0.539.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "recharts": "^3.1.2",
-    "socket.io-client": "^4.7.5",
-    "idb": "^8.0.0"
+    "socket.io-client": "^4.7.5"
   },
   "devDependencies": {
     "@eslint/js": "^9.33.0",

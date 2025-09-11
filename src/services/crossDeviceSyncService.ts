@@ -237,7 +237,7 @@ class CrossDeviceSyncService {
     this.notifyStatusChange();
   }
 
-  public resolveConflict(conflictId: string, resolution: any): void {
+  public resolveConflict(conflictId: string): void {
     const index = this.conflicts.findIndex(c => c.id === conflictId);
     if (index > -1) {
       this.conflicts.splice(index, 1);
