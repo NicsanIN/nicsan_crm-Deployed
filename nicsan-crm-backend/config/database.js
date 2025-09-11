@@ -1,14 +1,26 @@
 const { Pool } = require('pg');
 
 // PostgreSQL Configuration (Secondary Storage)
-// Use PostgreSQL standard environment variables with fallbacks
+// Validate required environment variables
+const requiredEnvVars = ['DB_HOST', 'DB_PORT', 'DB_NAME', 'DB_USER', 'DB_PASSWORD'];
+const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
+
+if (missingVars.length > 0) {
+  console.error('❌ Missing required database environment variables:', missingVars.join(', '));
+  console.error('Please set the following environment variables:');
+  missingVars.forEach(varName => {
+    console.error(`  ${varName}=your_value_here`);
+  });
+  process.exit(1);
+}
+
 const pool = new Pool({
-  host: process.env.PGHOST || process.env.DB_HOST,
-  port: parseInt(process.env.PGPORT || process.env.DB_PORT || 5432),
-  database: process.env.PGDATABASE || process.env.DB_NAME,
-  user: process.env.PGUSER || process.env.DB_USER,
-  password: process.env.PGPASSWORD || process.env.DB_PASSWORD,
-  ssl: (process.env.PGSSLMODE === 'require' || process.env.DB_SSL === 'true') ? { rejectUnauthorized: false } : false,
+  host: process.env.DB_HOST,
+  port: parseInt(process.env.DB_PORT),
+  database: process.env.DB_NAME,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
   max: 20, // Maximum number of clients in the pool
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 2000,
