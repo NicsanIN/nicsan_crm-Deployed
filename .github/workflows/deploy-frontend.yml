@@ -2,7 +2,7 @@ name: Deploy Frontend to S3 + CloudFront (OIDC)
 
 on:
   push:
-    branches: [ main ]   # change if your prod branch is different
+    branches: [ kumar2.0-dev ]   # change if your prod branch is different
 
 permissions:
   id-token: write   # required for OIDC
