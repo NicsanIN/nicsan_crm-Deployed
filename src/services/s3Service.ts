@@ -1,10 +1,10 @@
 // Frontend S3 Service for Cloud Storage Retrieval
 // Implements direct S3 access for data retrieval
 
-import { authUtils } from './api';
+// import { authUtils } from './api';
 
 // Environment variables
-const AWS_REGION = import.meta.env.VITE_AWS_REGION || 'us-east-1';
+// const AWS_REGION = import.meta.env.VITE_AWS_REGION || 'us-east-1';
 const AWS_S3_BUCKET = import.meta.env.VITE_AWS_S3_BUCKET || 'nicsan-crm-data';
 const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
 

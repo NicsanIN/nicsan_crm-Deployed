@@ -1,7 +1,7 @@
 // Backend API Service - Connects frontend to backend APIs
 // This replaces the direct S3/Database access with proper backend API calls
 
-import { authAPI, policiesAPI } from './api';
+// import { authAPI, policiesAPI } from './api';
 
 const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
 
@@ -131,12 +131,26 @@ class BackendApiService {
   }
 
   // Sales Explorer from backend
-  async getSalesExplorer(): Promise<BackendApiResult> {
+  async getSalesExplorer(filters: any = {}): Promise<BackendApiResult> {
     try {
       if (ENABLE_DEBUG) {
+        console.log('🔍 BackendApiService: getSalesExplorer called with filters:', filters);
       }
 
-      const response = await fetch('http://localhost:3001/api/dashboard/explorer', {
+      // Build query parameters
+      const queryParams = new URLSearchParams();
+      if (filters.make && filters.make !== 'All') queryParams.append('make', filters.make);
+      if (filters.model && filters.model !== 'All') queryParams.append('model', filters.model);
+      if (filters.insurer && filters.insurer !== 'All') queryParams.append('insurer', filters.insurer);
+      if (filters.cashbackMax) queryParams.append('cashbackMax', filters.cashbackMax.toString());
+
+      const url = `http://localhost:3001/api/dashboard/explorer${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+      
+      if (ENABLE_DEBUG) {
+        console.log('🔍 BackendApiService: Calling URL:', url);
+      }
+
+      const response = await fetch(url, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
@@ -431,7 +445,7 @@ class BackendApiService {
       if (manualExtras) {
         Object.entries(manualExtras).forEach(([key, value]) => {
           if (value) {
-            formData.append(`manual_${key}`, value);
+            formData.append(`manual_${key}`, String(value));
           }
         });
       }

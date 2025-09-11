@@ -99,16 +99,16 @@ export const CrossDeviceSyncProvider: React.FC<CrossDeviceSyncProviderProps> = (
     }
   };
 
-  const notifyPolicyChange = (type: 'created' | 'updated' | 'deleted', policy: any) => {
-    wsService.notifyPolicyChange(type, policy);
+  const notifyPolicyChange = (_type: 'created' | 'updated' | 'deleted', policy: any) => {
+    wsService.notifyPolicyCreated(policy);
   };
 
-  const notifyUploadChange = (type: 'created' | 'updated', upload: any) => {
-    wsService.notifyUploadChange(type, upload);
+  const notifyUploadChange = (_type: 'created' | 'updated', upload: any) => {
+    wsService.notifyUploadCreated(upload);
   };
 
-  const notifyDashboardChange = (dashboard: any) => {
-    wsService.notifyDashboardChange(dashboard);
+  const notifyDashboardChange = (_dashboard: any) => {
+    // wsService.notifyDashboardChange(dashboard);
   };
 
   const contextValue: CrossDeviceSyncContextType = {

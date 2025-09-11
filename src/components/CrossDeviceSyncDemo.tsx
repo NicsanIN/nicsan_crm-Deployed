@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 
 const CrossDeviceSyncDemo: React.FC = () => {
-  const { user } = useAuth();
+  const { } = useAuth();
   const {
     syncStatus,
     syncData,
@@ -31,7 +31,7 @@ const CrossDeviceSyncDemo: React.FC = () => {
     forceSync,
     getDeviceId,
     notifyPolicyChange,
-    notifyUploadChange
+    // notifyUploadChange
   } = useCrossDeviceSync();
 
   const [demoPolicies, setDemoPolicies] = useState<any[]>([]);

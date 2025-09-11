@@ -3,19 +3,19 @@
 
 import React from 'react';
 import { useCrossDeviceSync } from '../hooks/useCrossDeviceSync';
-import { Wifi, WifiOff, RefreshCw, AlertTriangle, CheckCircle, Clock } from 'lucide-react';
+import { Wifi, WifiOff, AlertTriangle, CheckCircle } from 'lucide-react';
 
 const SyncStatusIndicator: React.FC = () => {
   const {
     syncStatus,
-    isLoading,
+    // isLoading,
     error,
     hasConflicts,
-    hasPendingChanges,
+    // hasPendingChanges,
     isFullyConnected,
-    lastSyncFormatted,
-    forceSync,
-    getDeviceId
+    // lastSyncFormatted,
+    // forceSync,
+    // getDeviceId
   } = useCrossDeviceSync();
 
   const getStatusColor = () => {
@@ -42,13 +42,13 @@ const SyncStatusIndicator: React.FC = () => {
     return 'Offline';
   };
 
-  const handleForceSync = async () => {
-    try {
-      await forceSync();
-    } catch (err) {
-      console.error('Force sync failed:', err);
-    }
-  };
+  // const _handleForceSync = async () => {
+  //   try {
+  //     await forceSync();
+  //   } catch (err) {
+  //     console.error('Force sync failed:', err);
+  //   }
+  // };
 
   // Return a minimal, non-intrusive indicator
   return (

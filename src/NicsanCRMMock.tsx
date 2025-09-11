@@ -225,7 +225,7 @@ function PageUpload() {
   });
   const [manualExtrasSaved, setManualExtrasSaved] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [callerNames, setCallerNames] = useState<string[]>([]);
+  const [_callerNames, setCallerNames] = useState<string[]>([]);
 
   const handleFiles = async (files: FileList) => {
     const file = files[0];
@@ -475,12 +475,12 @@ function PageUpload() {
   }, []);
 
   // Smart suggestions for caller names
-  const _getSmartSuggestions = (fieldName: string) => {
-    if (fieldName === 'callerName') {
-      return callerNames; // Real caller names from database
-    }
-    return [];
-  };
+  // const __getSmartSuggestions = (fieldName: string) => {
+  //   if (fieldName === 'callerName') {
+  //     return callerNames; // Real caller names from database
+  //   }
+  //   return [];
+  // };
 
   // Filtered caller suggestions for autocomplete
   const getFilteredCallerSuggestions = async (input: string): Promise<string[]> => {
@@ -1041,7 +1041,7 @@ function PageManualForm() {
   const [_validationHistory, setValidationHistory] = useState<any[]>([]);
   const [fieldTouched, setFieldTouched] = useState<{[key: string]: boolean}>({});
   const [validationMode, setValidationMode] = useState<'progressive' | 'strict'>('progressive');
-  const [callerNames, setCallerNames] = useState<string[]>([]);
+  const [_callerNames, setCallerNames] = useState<string[]>([]);
   
   const set = (k:string,v:any)=> {
     setForm((f:any)=>({ ...f, [k]: v }));
@@ -1372,44 +1372,44 @@ function PageManualForm() {
   };
 
   // Get field-specific errors for progressive validation
-  const _getFieldErrors = (fieldName: string) => {
-    if (validationMode === 'progressive' && !fieldTouched[fieldName]) {
-      return [];
-    }
-    
-    // For policy number, return async errors
-    if (fieldName === 'policyNumber') {
-      return asyncErrors[fieldName] || [];
-    }
-    
-    // For other fields, return synchronous validation
-    return validateField(fieldName, form[fieldName]);
-  };
+  // const __getFieldErrors = (fieldName: string) => {
+  //   if (validationMode === 'progressive' && !fieldTouched[fieldName]) {
+  //     return [];
+  //   }
+  //   
+  //   // For policy number, return async errors
+  //   if (fieldName === 'policyNumber') {
+  //     return asyncErrors[fieldName] || [];
+  //   }
+  //   
+  //   // For other fields, return synchronous validation
+  //   return validateField(fieldName, form[fieldName]);
+  // };
 
   // Smart suggestions based on patterns
-  const _getSmartSuggestions = (fieldName: string) => {
-    const suggestions: string[] = [];
-    
-    switch (fieldName) {
-      case 'make':
-        suggestions.push('Maruti', 'Hyundai', 'Honda', 'Tata', 'Mahindra', 'Toyota', 'Ford', 'Nissan');
-        break;
-      case 'model':
-        if (form.make === 'Maruti') {
-          suggestions.push('Swift', 'Dzire', 'Alto', 'WagonR', 'Baleno', 'Ertiga');
-        } else if (form.make === 'Hyundai') {
-          suggestions.push('i20', 'i10', 'Verna', 'Creta', 'Venue', 'Santro');
-        }
-        break;
-      case 'insurer':
-        suggestions.push('Tata AIG', 'ICICI Lombard', 'Bajaj Allianz', 'HDFC Ergo', 'Reliance General', 'Oriental Insurance');
-        break;
-      case 'callerName':
-        return callerNames; // Real caller names from database
-    }
-    
-    return suggestions;
-  };
+  // const __getSmartSuggestions = (fieldName: string) => {
+  //   const suggestions: string[] = [];
+  //   
+  //   switch (fieldName) {
+  //     case 'make':
+  //       suggestions.push('Maruti', 'Hyundai', 'Honda', 'Tata', 'Mahindra', 'Toyota', 'Ford', 'Nissan');
+  //       break;
+  //     case 'model':
+  //       if (form.make === 'Maruti') {
+  //         suggestions.push('Swift', 'Dzire', 'Alto', 'WagonR', 'Baleno', 'Ertiga');
+  //       } else if (form.make === 'Hyundai') {
+  //         suggestions.push('i20', 'i10', 'Verna', 'Creta', 'Venue', 'Santro');
+  //       }
+  //       break;
+  //     case 'insurer':
+  //       suggestions.push('Tata AIG', 'ICICI Lombard', 'Bajaj Allianz', 'HDFC Ergo', 'Reliance General', 'Oriental Insurance');
+  //       break;
+  //     case 'callerName':
+  //       return callerNames; // Real caller names from database
+  //   }
+  //   
+  //   return suggestions;
+  // };
 
   // Filtered caller suggestions for autocomplete
   const getFilteredCallerSuggestions = async (input: string): Promise<string[]> => {
@@ -2746,7 +2746,7 @@ function PageReview() {
     pdfData: {},
     manualExtras: {}
   });
-  const [callerNames, setCallerNames] = useState<string[]>([]);
+  const [_callerNames, setCallerNames] = useState<string[]>([]);
 
   // Load available uploads for review
   useEffect(() => {
@@ -2854,12 +2854,12 @@ function PageReview() {
   }, []);
 
   // Smart suggestions for caller names
-  const _getSmartSuggestions = (fieldName: string) => {
-    if (fieldName === 'callerName') {
-      return callerNames; // Real caller names from database
-    }
-    return [];
-  };
+  // const __getSmartSuggestions = (fieldName: string) => {
+  //   if (fieldName === 'callerName') {
+  //     return callerNames; // Real caller names from database
+  //   }
+  //   return [];
+  // };
 
   // Filtered caller suggestions for autocomplete
   const getFilteredCallerSuggestions = async (input: string): Promise<string[]> => {
@@ -2963,35 +2963,35 @@ function PageReview() {
     }));
   };
 
-  const _validateData = () => {
-    const errors = [];
-    
-    // Required fields validation
-    if (!editableData.pdfData.policy_number) {
-      errors.push('Policy Number is required');
-    }
-    if (!editableData.pdfData.vehicle_number) {
-      errors.push('Vehicle Number is required');
-    }
-    if (!editableData.manualExtras.executive) {
-      errors.push('Executive name is required');
-    }
-    if (!editableData.manualExtras.mobile) {
-      errors.push('Mobile number is required');
-    }
-    
-    // Format validation
-    if (editableData.pdfData.vehicle_number && !/^[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}$/.test(editableData.pdfData.vehicle_number.replace(/\s/g, ''))) {
-      errors.push('Invalid vehicle number format (e.g., KA01AB1234 or KA 51 MM 1214)');
-    }
-    
-    // Mobile number validation
-    if (editableData.manualExtras.mobile && !/^[6-9]\d{9}$/.test(editableData.manualExtras.mobile)) {
-      errors.push('Invalid mobile number format (10 digits starting with 6-9)');
-    }
-    
-    return errors;
-  };
+  // const __validateData = () => {
+  //   const errors = [];
+  //   
+  //   // Required fields validation
+  //   if (!editableData.pdfData.policy_number) {
+  //     errors.push('Policy Number is required');
+  //   }
+  //   if (!editableData.pdfData.vehicle_number) {
+  //     errors.push('Vehicle Number is required');
+  //   }
+  //   if (!editableData.manualExtras.executive) {
+  //     errors.push('Executive name is required');
+  //   }
+  //   if (!editableData.manualExtras.mobile) {
+  //     errors.push('Mobile number is required');
+  //   }
+  //   
+  //   // Format validation
+  //   if (editableData.pdfData.vehicle_number && !/^[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}$/.test(editableData.pdfData.vehicle_number.replace(/\s/g, ''))) {
+  //     errors.push('Invalid vehicle number format (e.g., KA01AB1234 or KA 51 MM 1214)');
+  //   }
+  //   
+  //   // Mobile number validation
+  //   if (editableData.manualExtras.mobile && !/^[6-9]\d{9}$/.test(editableData.manualExtras.mobile)) {
+  //     errors.push('Invalid mobile number format (10 digits starting with 6-9)');
+  //   }
+  //   
+  //   return errors;
+  // };
 
   const validateEditedData = () => {
     const errors = [];
@@ -4367,12 +4367,22 @@ function PageExplorer() {
     const loadSalesExplorer = async () => {
       try {
         // Use dual storage pattern: S3 → Database → Mock Data
-        const response = await DualStorageService.getSalesExplorer();
+        const filters = { make, model, insurer, cashbackMax };
+        const response = await DualStorageService.getSalesExplorer(filters);
         
         if (response.success) {
+          const data = Array.isArray(response.data) ? response.data : [];
+          
           if (ENABLE_DEBUG) {
+            console.log('🔍 Sales Explorer: Loaded data', {
+              source: response.source,
+              filters: filters,
+              dataCount: data.length,
+              data: data
+            });
           }
-          setPolicies(Array.isArray(response.data) ? response.data : []);
+          
+          setPolicies(data);
           setDataSource(response.source);
         }
       } catch (error) {
@@ -4383,7 +4393,7 @@ function PageExplorer() {
     };
     
     loadSalesExplorer();
-  }, []);
+  }, [make, model, insurer, cashbackMax]);
 
   const filtered = (policies || []).filter(p => {
     const makeMatch = make === 'All' || p.make === make;
@@ -4391,8 +4401,18 @@ function PageExplorer() {
     const insurerMatch = insurer === 'All' || p.insurer === insurer;
     const cashbackMatch = (p.cashbackPctAvg || 0) <= cashbackMax;
     
+    const passes = makeMatch && modelMatch && insurerMatch && cashbackMatch;
     
-    return makeMatch && modelMatch && insurerMatch && cashbackMatch;
+    if (ENABLE_DEBUG && !passes) {
+      console.log('🔍 Sales Explorer: Filtered out policy', {
+        policy: p,
+        filters: { make, model, insurer, cashbackMax },
+        matches: { makeMatch, modelMatch, insurerMatch, cashbackMatch },
+        passes
+      });
+    }
+    
+    return passes;
   });
   
   return (
@@ -4431,6 +4451,25 @@ function PageExplorer() {
           </table>
         </div>
         <div className="text-xs text-zinc-600 mt-2">Tip: Sort by <b>Net per ₹ Cashback</b> to find "most sales with least cashback".</div>
+        
+        {/* Debug Info */}
+        {ENABLE_DEBUG && (
+          <div className="mt-4 p-3 bg-zinc-100 rounded-lg text-xs">
+            <div className="font-medium text-zinc-700 mb-2">🔍 Debug Info:</div>
+            <div>• Total policies loaded: {policies.length}</div>
+            <div>• Filtered policies: {filtered.length}</div>
+            <div>• Data source: {dataSource}</div>
+            <div>• Current filters: Make={make}, Model={model}, Insurer={insurer}, CashbackMax={cashbackMax}%</div>
+            {policies.length > 0 && (
+              <div className="mt-2">
+                <div className="font-medium">Raw data:</div>
+                <pre className="text-xs bg-white p-2 rounded border overflow-auto max-h-32">
+                  {JSON.stringify(policies, null, 2)}
+                </pre>
+              </div>
+            )}
+          </div>
+        )}
       </Card>
     </>
   )

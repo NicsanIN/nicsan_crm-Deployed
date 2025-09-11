@@ -2,7 +2,7 @@
 // Provides real-time data sync across multiple devices
 // Updated: Fixed import and method calls
 
-import NicsanCRMService from './api-integration';
+// import NicsanCRMService from './api-integration';
 import DualStorageService from './dualStorageService';
 
 interface SyncStatus {
@@ -238,7 +238,7 @@ class CrossDeviceSyncService {
     this.notifyStatusChange();
   }
 
-  public resolveConflict(conflictId: string, resolution: any): void {
+  public resolveConflict(conflictId: string, _resolution: any): void {
     const index = this.conflicts.findIndex(c => c.id === conflictId);
     if (index > -1) {
       this.conflicts.splice(index, 1);

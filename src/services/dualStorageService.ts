@@ -146,7 +146,7 @@ class DualStorageService {
   }
 
   // Sales Explorer with dual storage
-  async getSalesExplorer(): Promise<DualStorageResult> {
+  async getSalesExplorer(filters: any = {}): Promise<DualStorageResult> {
     const mockData = [
       { rep: 'Asha', make: 'Maruti', model: 'Swift', policies: 12, gwp: 130000, cashbackPctAvg: 2.4, cashback: 3100, net: 16900 },
       { rep: 'Asha', make: 'Hyundai', model: 'i20', policies: 10, gwp: 130000, cashbackPctAvg: 1.9, cashback: 2500, net: 17500 },
@@ -154,11 +154,41 @@ class DualStorageService {
       { rep: 'Meera', make: 'Maruti', model: 'Baleno', policies: 11, gwp: 125000, cashbackPctAvg: 0.9, cashback: 1100, net: 17800 }
     ];
 
-    return this.executeDualStoragePattern(
-      () => this.backendApiService.getSalesExplorer(),
+    const result = await this.executeDualStoragePattern(
+      () => this.backendApiService.getSalesExplorer(filters),
       mockData,
       'Sales Explorer'
     );
+
+    // Fix field name mapping for backend data
+    if (result.success && result.source === 'BACKEND_API' && Array.isArray(result.data)) {
+      const mappedData = result.data.map((item: any) => ({
+        rep: item.executive || item.rep,
+        make: item.make,
+        model: item.model,
+        insurer: item.insurer,
+        policies: item.policies,
+        gwp: item.gwp,
+        cashbackPctAvg: item.avg_cashback_pct || item.cashbackPctAvg || 0,
+        cashback: item.total_cashback || item.cashback || 0,
+        net: item.net
+      }));
+
+      if (ENABLE_DEBUG) {
+        console.log('🔧 Sales Explorer: Fixed field name mapping', {
+          original: result.data,
+          mapped: mappedData
+        });
+      }
+
+      return {
+        success: true,
+        data: mappedData,
+        source: result.source
+      };
+    }
+
+    return result;
   }
 
   // Data Sources with dual storage

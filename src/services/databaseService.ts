@@ -26,7 +26,7 @@ class DatabaseService {
     try {
       const token = authUtils.getToken();
       if (!token) {
-        this.isAvailable = false;
+        this.isAvailable = () => false;
         return;
       }
 

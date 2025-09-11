@@ -211,9 +211,9 @@ class WebSocketSyncService {
     return this.isConnected;
   }
 
-  public getDeviceId(): string {
-    return this.deviceId;
-  }
+  // public getDeviceId(): string {
+  //   return this.deviceId;
+  // }
 
   public onSyncMessage(callback: (message: SyncMessage) => void): void {
     this.messageCallbacks.push(callback);
