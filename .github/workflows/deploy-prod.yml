@@ -33,7 +33,7 @@ jobs:
 
       - name: Sync to S3 (prod)
         run: |
-          aws s3 sync dist/ s3://nicsan-crm-pdfs/ --delete
+          aws s3 sync dist/ s3://nicsan-crm-frontend/ --delete
 
       - name: Invalidate CloudFront cache (prod)
         run: |
