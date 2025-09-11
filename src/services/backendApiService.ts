@@ -42,7 +42,7 @@ class BackendApiService {
       if (ENABLE_DEBUG) {
       }
 
-      const response = await fetch('${API_BASE_URL}/dashboard/metrics', {
+      const response = await fetch(`${API_BASE_URL}/dashboard/metrics`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
@@ -90,7 +90,7 @@ class BackendApiService {
       if (ENABLE_DEBUG) {
       }
 
-      const response = await fetch('${API_BASE_URL}/dashboard/sales-reps', {
+      const response = await fetch(`${API_BASE_URL}/dashboard/sales-reps`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
@@ -240,7 +240,7 @@ class BackendApiService {
       if (ENABLE_DEBUG) {
       }
 
-      const response = await fetch('${API_BASE_URL}/dashboard/metrics', {
+      const response = await fetch(`${API_BASE_URL}/dashboard/metrics`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
@@ -290,7 +290,7 @@ class BackendApiService {
       if (ENABLE_DEBUG) {
       }
 
-      const response = await fetch('${API_BASE_URL}/policies', {
+      const response = await fetch(`${API_BASE_URL}/policies`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
@@ -327,7 +327,7 @@ class BackendApiService {
         console.log('🔄 BackendApiService: Getting settings...');
       }
 
-      const response = await fetch('${API_BASE_URL}/settings', {
+      const response = await fetch(`${API_BASE_URL}/settings`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
@@ -364,7 +364,7 @@ class BackendApiService {
         console.log('🔄 BackendApiService: Saving settings...');
       }
 
-      const response = await fetch('${API_BASE_URL}/settings', {
+      const response = await fetch(`${API_BASE_URL}/settings`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
@@ -402,7 +402,7 @@ class BackendApiService {
         console.log('🔄 BackendApiService: Resetting settings...');
       }
 
-      const response = await fetch('${API_BASE_URL}/settings/reset', {
+      const response = await fetch(`${API_BASE_URL}/settings/reset`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
@@ -452,7 +452,7 @@ class BackendApiService {
         });
       }
 
-      const response = await fetch('${API_BASE_URL}/upload/pdf', {
+      const response = await fetch(`${API_BASE_URL}/upload/pdf`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
@@ -656,7 +656,7 @@ class BackendApiService {
         console.log('🔄 BackendApiService: Saving manual form...');
       }
 
-      const response = await fetch('${API_BASE_URL}/policies/manual', {
+      const response = await fetch(`${API_BASE_URL}/policies/manual`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
@@ -695,7 +695,7 @@ class BackendApiService {
         console.log('🔄 BackendApiService: Saving grid entries...');
       }
 
-      const response = await fetch('${API_BASE_URL}/policies/grid', {
+      const response = await fetch(`${API_BASE_URL}/policies/grid`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
@@ -734,7 +734,7 @@ class BackendApiService {
         console.log('🔄 BackendApiService: Creating policy...');
       }
 
-      const response = await fetch('${API_BASE_URL}/policies', {
+      const response = await fetch(`${API_BASE_URL}/policies`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
@@ -773,7 +773,7 @@ class BackendApiService {
         console.log('🔄 BackendApiService: Logging in...');
       }
 
-      const response = await fetch('${API_BASE_URL}/auth/login', {
+      const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
