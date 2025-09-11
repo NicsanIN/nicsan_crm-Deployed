@@ -810,7 +810,7 @@ class BackendApiService {
       success: true,
       data: {
         backendAvailable: this.isAvailable(),
-        healthUrl: '${BACKEND_URL}/health',
+        healthUrl: `${BACKEND_URL}/health`,
         checkInterval: 30000,
         enableDebug: ENABLE_DEBUG,
         enableMockData: import.meta.env.VITE_ENABLE_MOCK_DATA === 'true'
