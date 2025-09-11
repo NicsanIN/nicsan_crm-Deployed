@@ -138,11 +138,7 @@ class BackendApiService {
       if (ENABLE_DEBUG) {
       }
 
- kumar-dev
-      const response = await fetch('http://localhost:3001/api/dashboard/explorer', {
-
       const response = await fetch(`${API_BASE}/dashboard/vehicle-analysis`, {
- main
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
