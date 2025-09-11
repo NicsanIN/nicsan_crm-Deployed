@@ -3,6 +3,9 @@
 
 import { io, Socket } from 'socket.io-client';
 
+// Environment variables
+const WS_URL = import.meta.env.VITE_WEBSOCKET_URL;
+
 interface WebSocketSyncConfig {
   serverUrl: string;
   reconnectAttempts: number;
@@ -29,7 +32,7 @@ class WebSocketSyncService {
 
   private constructor() {
     this.config = {
-      serverUrl: import.meta.env.VITE_WEBSOCKET_URL || 'http://localhost:3001',
+      serverUrl: WS_URL,
       reconnectAttempts: 5,
       reconnectDelay: 1000
     };

@@ -3,6 +3,8 @@
 
 import { authAPI, policiesAPI } from './api';
 
+// Environment variables
+const API_BASE = import.meta.env.VITE_API_BASE_URL;
 const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
 
 interface BackendApiResult {
@@ -40,7 +42,7 @@ class BackendApiService {
       if (ENABLE_DEBUG) {
       }
 
-      const response = await fetch('http://localhost:3001/api/dashboard/metrics', {
+      const response = await fetch(`${API_BASE}/dashboard/metrics`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
@@ -88,7 +90,7 @@ class BackendApiService {
       if (ENABLE_DEBUG) {
       }
 
-      const response = await fetch('http://localhost:3001/api/dashboard/sales-reps', {
+      const response = await fetch(`${API_BASE}/dashboard/sales-reps`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
@@ -136,7 +138,11 @@ class BackendApiService {
       if (ENABLE_DEBUG) {
       }
 
+ kumar-dev
       const response = await fetch('http://localhost:3001/api/dashboard/explorer', {
+
+      const response = await fetch(`${API_BASE}/dashboard/vehicle-analysis`, {
+ main
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
@@ -188,7 +194,7 @@ class BackendApiService {
       if (ENABLE_DEBUG) {
       }
 
-      const response = await fetch(`http://localhost:3001/api/policies/${policyId}`, {
+      const response = await fetch(`${API_BASE}/policies/${policyId}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
@@ -224,7 +230,7 @@ class BackendApiService {
       if (ENABLE_DEBUG) {
       }
 
-      const response = await fetch('http://localhost:3001/api/dashboard/metrics', {
+      const response = await fetch(`${API_BASE}/dashboard/metrics`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
@@ -274,7 +280,7 @@ class BackendApiService {
       if (ENABLE_DEBUG) {
       }
 
-      const response = await fetch('http://localhost:3001/api/policies', {
+      const response = await fetch(`${API_BASE}/policies`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,

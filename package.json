@@ -7,7 +7,10 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "migrate:make": "knex migrate:make -x ts",
+    "migrate:up": "knex migrate:latest",
+    "migrate:down": "knex migrate:down"
   },
   "dependencies": {
     "lucide-react": "^0.539.0",

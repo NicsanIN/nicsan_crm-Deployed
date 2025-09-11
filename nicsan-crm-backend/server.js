@@ -6,6 +6,20 @@ const http = require('http');
 // Load environment variables
 dotenv.config();
 
+// Debug logging to verify environment variables are loaded
+console.log('🔍 Environment Check:');
+console.log('PGHOST:', process.env.PGHOST ? 'LOADED' : 'MISSING');
+console.log('PGPORT:', process.env.PGPORT ? 'LOADED' : 'MISSING');
+console.log('PGDATABASE:', process.env.PGDATABASE ? 'LOADED' : 'MISSING');
+console.log('PGUSER:', process.env.PGUSER ? 'LOADED' : 'MISSING');
+console.log('PGPASSWORD:', process.env.PGPASSWORD ? 'LOADED' : 'MISSING');
+console.log('PGSSLMODE:', process.env.PGSSLMODE ? 'LOADED' : 'MISSING');
+console.log('JWT_SECRET:', process.env.JWT_SECRET ? 'LOADED' : 'MISSING');
+console.log('FRONTEND_URL:', process.env.FRONTEND_URL ? 'LOADED' : 'MISSING');
+console.log('FRONTEND_ORIGIN:', process.env.FRONTEND_ORIGIN ? 'LOADED' : 'MISSING');
+console.log('NODE_ENV:', process.env.NODE_ENV || 'NOT SET');
+console.log('---');
+
 const app = express();
 const server = http.createServer(app);
 const PORT = process.env.PORT || 3001;
