@@ -81,13 +81,13 @@ class DualStorageService {
   // Dashboard Metrics with dual storage
   async getDashboardMetrics(): Promise<DualStorageResult> {
     const mockData = {
-      total_policies: 150,
-      total_gwp: 2500000,
-      total_brokerage: 375000,
-      total_cashback: 75000,
-      net_revenue: 300000,
+      total_policies: 2,
+      total_gwp: 23650,
+      total_brokerage: 3547,
+      total_cashback: 1100,
+      net_revenue: 2447,
       conversion_rate: 0.65,
-      avg_premium: 16667
+      avg_premium: 11825
     };
 
     return this.executeDualStoragePattern(

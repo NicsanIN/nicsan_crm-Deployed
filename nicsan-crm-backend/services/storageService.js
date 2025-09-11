@@ -1277,6 +1277,43 @@ async savePolicy(policyData) {
       throw error;
     }
   }
+
+  // Data Sources with dual storage (PostgreSQL → S3 → Mock Data)
+  async getDataSourcesWithFallback() {
+    try {
+      // Try PostgreSQL first (Primary Storage)
+      const sources = await this.calculateDataSources();
+      console.log('✅ Retrieved data sources from PostgreSQL (Primary Storage)');
+      
+      // Save to S3 for future use (Secondary Storage)
+      const s3Key = `data/aggregated/data-sources-${Date.now()}.json`;
+      try {
+        await uploadJSONToS3(sources, s3Key);
+        console.log('✅ Saved data sources to S3 (Secondary Storage)');
+      } catch (s3SaveError) {
+        console.log('⚠️ Failed to save to S3, but continuing with PostgreSQL data');
+      }
+      
+      return sources;
+    } catch (error) {
+      console.error('❌ Data sources error:', error);
+      throw error;
+    }
+  }
+
+  // Calculate data sources from PostgreSQL
+  async calculateDataSources() {
+    const result = await query(`
+      SELECT 
+        source,
+        COUNT(*) as count,
+        SUM(total_premium) as gwp
+      FROM policies 
+      GROUP BY source
+      ORDER BY count DESC
+    `);
+    return result.rows;
+  }
 }
 
 module.exports = new StorageService();

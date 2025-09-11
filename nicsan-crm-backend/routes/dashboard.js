@@ -35,7 +35,7 @@ router.get('/metrics', authenticateToken, requireFounder, async (req, res) => {
 // Get sales explorer data
 router.get('/explorer', authenticateToken, requireFounder, async (req, res) => {
   try {
-    const { make, model, insurer, cashbackMax = 10 } = req.query;
+    const { make, model, insurer, cashbackMax = 20 } = req.query;
     const filters = { make, model, insurer, cashbackMax };
     const explorer = await storageService.getSalesExplorerWithFallback(filters);
     
@@ -118,6 +118,24 @@ router.get('/vehicle-analysis', authenticateToken, requireFounder, async (req, r
     res.status(500).json({
       success: false,
       error: error.message || 'Failed to get vehicle analysis data'
+    });
+  }
+});
+
+// Get data sources with dual storage (S3 → PostgreSQL → Mock Data)
+router.get('/data-sources', authenticateToken, requireFounder, async (req, res) => {
+  try {
+    const sources = await storageService.getDataSourcesWithFallback();
+    
+    res.json({
+      success: true,
+      data: sources
+    });
+  } catch (error) {
+    console.error('Data sources error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to get data sources'
     });
   }
 });
