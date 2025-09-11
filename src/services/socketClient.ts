@@ -4,7 +4,12 @@
 import { io, Socket } from 'socket.io-client';
 
 // Environment variables
-const WEBSOCKET_URL = import.meta.env.VITE_WEBSOCKET_URL || 'ws://localhost:3001';
+// Prefer explicit WS env; fallback derives from API base
+const WEBSOCKET_URL =
+  import.meta.env.VITE_WEBSOCKET_URL ||
+  (import.meta.env.VITE_API_BASE_URL
+    ? import.meta.env.VITE_API_BASE_URL.replace(/^http/, "ws").replace(/\/+$/, "").replace(/\/api$/, "")
+    : "ws://localhost:3001");
 const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
 
 // WebSocket client configuration
