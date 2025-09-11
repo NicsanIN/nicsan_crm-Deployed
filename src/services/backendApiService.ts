@@ -3,9 +3,9 @@
 
 // import { authAPI, policiesAPI } from './api';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || `${API_BASE_URL}`;
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || `${BACKEND_URL}`;
-const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
+const API_BASE_URL: string = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
+const BACKEND_URL: string = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
+const ENABLE_DEBUG: boolean = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
 
 interface BackendApiResult {
   success: boolean;
