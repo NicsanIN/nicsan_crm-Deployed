@@ -1963,6 +1963,73 @@ function PageManualGrid() {
     setRows(prev => [...prev, newRow]);
   };
 
+  // Delete individual row
+  const deleteRow = (rowIndex: number) => {
+    setRows(prev => prev.filter((_, index) => index !== rowIndex));
+    setRowStatuses(prev => {
+      const newStatuses = { ...prev };
+      delete newStatuses[rowIndex];
+      // Shift all statuses after deleted row
+      Object.keys(newStatuses).forEach(key => {
+        const index = Number(key);
+        if (index > rowIndex) {
+          newStatuses[index - 1] = newStatuses[index];
+          delete newStatuses[index];
+        }
+      });
+      return newStatuses;
+    });
+  };
+
+  // Clear all rows
+  const clearAllRows = () => {
+    if (window.confirm('Are you sure you want to clear all rows? This action cannot be undone.')) {
+      setRows([]);
+      setRowStatuses({});
+      setSaveMessage(null);
+    }
+  };
+
+  // Delete empty rows (rows with no policy number)
+  const deleteEmptyRows = () => {
+    const emptyRows = rows.filter((row, index) => !row.policy || row.policy.trim() === '');
+    if (emptyRows.length === 0) {
+      setSaveMessage({ type: 'info', message: 'No empty rows found.' });
+      return;
+    }
+    
+    if (window.confirm(`Delete ${emptyRows.length} empty row(s)?`)) {
+      setRows(prev => prev.filter(row => row.policy && row.policy.trim() !== ''));
+      setRowStatuses({});
+      setSaveMessage({ type: 'success', message: `Deleted ${emptyRows.length} empty row(s).` });
+    }
+  };
+
+  // Validate all rows
+  const handleValidate = () => {
+    const validationResults = rows.map((row, index) => ({
+      rowIndex: index,
+      policy: row.policy,
+      errors: validateGridRow(row)
+    }));
+    
+    const rowsWithErrors = validationResults.filter(result => result.errors.length > 0);
+    const validRows = validationResults.filter(result => result.errors.length === 0);
+    
+    if (rowsWithErrors.length === 0) {
+      setSaveMessage({ type: 'success', message: `All ${rows.length} rows are valid!` });
+    } else {
+      const errorDetails = rowsWithErrors.map(result => 
+        `Row ${result.rowIndex + 1} (${result.policy || 'No Policy'}): ${result.errors.join(', ')}`
+      ).join('\n');
+      
+      setSaveMessage({ 
+        type: 'error', 
+        message: `${rowsWithErrors.length} row(s) have errors:\n${errorDetails}` 
+      });
+    }
+  };
+
   // Validation function for grid rows (reused from Manual Form)
   const validateGridRow = (row: any) => {
     const errors: string[] = [];
@@ -1988,6 +2055,13 @@ function PageManualGrid() {
       errors.push('Insurer name must be at least 3 characters');
     }
     
+    // Caller Name validation
+    if (!row.callerName) {
+      errors.push('Caller Name is required');
+    } else if (row.callerName.length < 2) {
+      errors.push('Caller Name must be at least 2 characters');
+    }
+    
     // Make validation
     if (row.make && row.make.length < 2) {
       errors.push('Make must be at least 2 characters');
@@ -2003,7 +2077,62 @@ function PageManualGrid() {
       errors.push('Total Premium must be a valid positive number');
     }
     
+    // Date validation
+    if (row.issueDate) {
+      const issueDate = new Date(row.issueDate);
+      if (isNaN(issueDate.getTime())) {
+        errors.push('Issue Date must be a valid date');
+      }
+    }
+    
+    if (row.expiryDate) {
+      const expiryDate = new Date(row.expiryDate);
+      const issueDate = row.issueDate ? new Date(row.issueDate) : new Date();
+      if (isNaN(expiryDate.getTime()) || expiryDate <= issueDate) {
+        errors.push('Expiry Date must be after Issue Date');
+      }
+    }
+    
+    // Date relationship validation
+    if (row.issueDate && row.expiryDate) {
+      const issueDate = new Date(row.issueDate);
+      const expiryDate = new Date(row.expiryDate);
+      const diffTime = expiryDate.getTime() - issueDate.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      
+      if (diffDays < 30) {
+        errors.push('Policy duration must be at least 30 days');
+      }
+    }
+    
     return errors;
+  };
+
+  // Convert DD-MM-YYYY to YYYY-MM-DD format
+  const convertDateFormat = (dateStr: string) => {
+    if (!dateStr || dateStr.trim() === "") return "";
+    
+    // Handle DD-MM-YYYY format
+    const parts = dateStr.trim().split('-');
+    if (parts.length === 3) {
+      const [day, month, year] = parts;
+      // Validate parts are numbers
+      if (!isNaN(Number(day)) && !isNaN(Number(month)) && !isNaN(Number(year))) {
+        return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+      }
+    }
+    
+    // Handle DD/MM/YYYY format
+    const slashParts = dateStr.trim().split('/');
+    if (slashParts.length === 3) {
+      const [day, month, year] = slashParts;
+      if (!isNaN(Number(day)) && !isNaN(Number(month)) && !isNaN(Number(year))) {
+        return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+      }
+    }
+    
+    // Return as-is if no conversion needed
+    return dateStr;
   };
 
   // Handle Excel copy-paste functionality
@@ -2020,7 +2149,7 @@ function PageManualGrid() {
         const newRows = rows.map((row) => {
           const cells = row.split('\t');
           
-          // Map Excel columns to grid fields
+          // Map Excel columns to grid fields (aligned with your Excel structure)
           const newRow = {
       // Basic Info
       src: "MANUAL_GRID", 
@@ -2036,9 +2165,9 @@ function PageManualGrid() {
             cc: cells[7] || "",
             manufacturingYear: cells[8] || "",
       
-      // Dates
-            issueDate: cells[9] || "",
-            expiryDate: cells[10] || "",
+      // Dates (convert from DD-MM-YYYY to YYYY-MM-DD)
+            issueDate: convertDateFormat(cells[9]) || "",
+            expiryDate: convertDateFormat(cells[10]) || "",
       
       // Financial
             idv: cells[11] || "",
@@ -2052,20 +2181,32 @@ function PageManualGrid() {
             cashbackPct: cells[19] || "",
             cashbackAmt: cells[20] || "",
             customerPaid: cells[21] || "",
-            brokerage: cells[22] || "",
+            brokerage: "", // Not in Excel - keep empty
       
       // Contact Info
-            executive: cells[23] || "",
-            callerName: cells[24] || "",
-            mobile: cells[25] || "",
+            executive: cells[22] || "",
+            callerName: cells[23] || "",
+            mobile: cells[24] || "",
       
       // Additional
-            rollover: cells[26] || "",
+            rollover: cells[25] || "",
+            customerName: cells[26] || "",
             remark: cells[27] || "",
-            cashback: cells[28] || "", 
-            customerName: cells[29] || "",
+            cashback: "", // Not in Excel - keep empty
             status: "OK" 
           };
+          
+          // Debug logging for dates
+          if (newRow.issueDate || newRow.expiryDate) {
+            console.log('Date conversion debug:', {
+              originalIssue: cells[9],
+              convertedIssue: newRow.issueDate,
+              originalExpiry: cells[10],
+              convertedExpiry: newRow.expiryDate,
+              issueDateObj: new Date(newRow.issueDate),
+              expiryDateObj: new Date(newRow.expiryDate)
+            });
+          }
           
           // Validate the row
           const validationErrors = validateGridRow(newRow);
@@ -2699,14 +2840,25 @@ function PageManualGrid() {
                       className="w-full border-none outline-none bg-transparent text-sm"
                     />
                   </td>
-                  <td className="px-1">{getStatusIndicator()}</td>
+                  <td className="px-1">
+                    <div className="flex items-center gap-2">
+                      {getStatusIndicator()}
+                      <button 
+                        onClick={() => deleteRow(i)}
+                        className="text-red-500 hover:text-red-700 text-xs p-1 rounded hover:bg-red-50"
+                        title="Delete row"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  </td>
                 </tr>
                 );
               })}
             </tbody>
           </table>
         </div>
-        <div className="flex gap-3 mt-4">
+        <div className="flex gap-3 mt-4 flex-wrap">
           <button 
             onClick={addNewRow}
             className="px-4 py-2 rounded-xl bg-blue-600 text-white hover:bg-blue-700"
@@ -2728,7 +2880,24 @@ function PageManualGrid() {
               Retry Failed ({Object.values(rowStatuses).filter(s => s === 'error').length})
             </button>
           )}
-          <button className="px-4 py-2 rounded-xl bg-white border">Validate</button>
+          <button 
+            onClick={handleValidate}
+            className="px-4 py-2 rounded-xl bg-white border hover:bg-gray-50"
+          >
+            Validate All
+          </button>
+          <button 
+            onClick={deleteEmptyRows}
+            className="px-4 py-2 rounded-xl bg-yellow-600 text-white hover:bg-yellow-700"
+          >
+            Delete Empty
+          </button>
+          <button 
+            onClick={clearAllRows}
+            className="px-4 py-2 rounded-xl bg-red-600 text-white hover:bg-red-700"
+          >
+            Clear All
+          </button>
         </div>
       </Card>
     </>
