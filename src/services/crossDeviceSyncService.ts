@@ -3,6 +3,7 @@
 // Updated: Fixed import and method calls
 
 import NicsanCRMService from './api-integration';
+import DualStorageService from './dualStorageService';
 
 interface SyncStatus {
   isOnline: boolean;
@@ -114,9 +115,9 @@ class CrossDeviceSyncService {
     try {
       
       const [policiesResponse, uploadsResponse, dashboardResponse] = await Promise.all([
-        NicsanCRMService.getPolicies(),
-        NicsanCRMService.getUploads(),
-        NicsanCRMService.getDashboardMetrics()
+        DualStorageService.getAllPolicies(),
+        DualStorageService.getUploads(),
+        DualStorageService.getDashboardMetrics()
       ]);
 
       const syncData: SyncData = {

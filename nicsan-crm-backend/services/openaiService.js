@@ -111,7 +111,6 @@ class OpenAIService {
   "model": "string",
   "cc": "string",
   "manufacturing_year": "string",
-  "issue_date": "string",
   "expiry_date": "string",
   "idv": "number",
   "ncb": "number",
@@ -156,7 +155,7 @@ CRITICAL EXTRACTION RULES:
 12. For NCB: Extract percentage value, use 0 if not found (not 20)
 13. For CUSTOMER_NAME: Extract customer name from policy holder information, insured name, or customer details section. Look for fields like "Policy Holder Name", "Insured Name", "Customer Name", "Name of Insured", etc.
 
-For ${insurer} insurance policies. If a field is not found, use null. For dates, use YYYY-MM-DD format. For numbers, use actual numbers not strings.
+For ${insurer} insurance policies. If a field is not found, use null. For dates (except issue_date which is not extracted), use YYYY-MM-DD format. For numbers, use actual numbers not strings.
 
 Text to analyze:
 ${pdfText}`;
