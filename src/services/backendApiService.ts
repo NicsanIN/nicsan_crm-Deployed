@@ -7,12 +7,6 @@ const API_BASE_URL: string = import.meta.env.VITE_API_BASE_URL || 'http://localh
 const BACKEND_URL: string = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
 const ENABLE_DEBUG: boolean = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
 
-// Debug: Log environment variables
-console.log('🔍 Environment Variables Debug:');
-console.log('VITE_API_BASE_URL:', import.meta.env.VITE_API_BASE_URL);
-console.log('VITE_BACKEND_URL:', import.meta.env.VITE_BACKEND_URL);
-console.log('API_BASE_URL (resolved):', API_BASE_URL);
-console.log('BACKEND_URL (resolved):', BACKEND_URL);
 
 interface BackendApiResult {
   success: boolean;
