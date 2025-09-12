@@ -2,12 +2,14 @@ const { Pool } = require('pg');
 
 // PostgreSQL Configuration (Secondary Storage)
 const pool = new Pool({
-  host: process.env.DB_HOST || 'localhost',
-  port: process.env.DB_PORT || 5432,
-  database: process.env.DB_NAME || 'nicsan_crm',
-  user: process.env.DB_USER || 'postgres',
-  password: process.env.DB_PASSWORD || 'your_password',
-  ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
+  // Use DATABASE_URL if available, otherwise fall back to individual variables
+  connectionString: process.env.DATABASE_URL || undefined,
+  host: process.env.DB_HOST || process.env.PGHOST || 'localhost',
+  port: process.env.DB_PORT || process.env.PGPORT || 5432,
+  database: process.env.DB_NAME || process.env.PGDATABASE || 'nicsan_crm',
+  user: process.env.DB_USER || process.env.PGUSER || 'postgres',
+  password: process.env.DB_PASSWORD || process.env.PGPASSWORD || 'your_password',
+  ssl: process.env.DB_SSL === 'true' || process.env.PGSSL === 'true' ? { rejectUnauthorized: false } : false,
   max: 20, // Maximum number of clients in the pool
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 2000,
