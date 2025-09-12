@@ -80,6 +80,56 @@ app.use((err, req, res, next) => {
   });
 });
 
+// --- DEBUG: DB connectivity probe (remove after use) ---
+app.get('/api/debug/db-connect', async (_req, res) => {
+  const { Client } = require('pg');
+
+  const url = process.env.DATABASE_URL || null;
+  let sslMode = null;
+  try { if (url) sslMode = new URL(url).searchParams.get('sslmode') || null; } catch {}
+
+  async function tryConnect(connStr, sslOption) {
+    const client = new Client({
+      connectionString: connStr,
+      ssl: sslOption
+    });
+    const t0 = Date.now();
+    try {
+      await client.connect();
+      const r = await client.query('select now() as now, current_user as db_user');
+      await client.end();
+      return { ok: true, ms: Date.now() - t0, sample: r.rows[0] };
+    } catch (e) {
+      return { ok: false, ms: Date.now() - t0, code: e.code, message: e.message };
+    }
+  }
+
+  const attempts = [];
+  // 1) As-is (what your app currently uses)
+  attempts.push({
+    label: 'as-is',
+    ssl: sslMode ?? '(default verify)',
+    result: await tryConnect(url, sslMode
+      ? (sslMode === 'disable' ? false :
+         (sslMode === 'no-verify' ? { rejectUnauthorized: false } : { rejectUnauthorized: true }))
+      : { rejectUnauthorized: true })
+  });
+
+  // 2) Forced no-verify (probe only)
+  attempts.push({
+    label: 'forced-no-verify',
+    ssl: 'rejectUnauthorized=false',
+    result: await tryConnect(url, { rejectUnauthorized: false })
+  });
+
+  res.status(attempts[0].result.ok ? 200 : 500).json({
+    env: {
+      DATABASE_URL: url ? '(set)' : '(not set)',
+      sslMode
+    },
+    attempts
+  });
+});
 
 // 404 handler
 app.use('*', (req, res) => {
