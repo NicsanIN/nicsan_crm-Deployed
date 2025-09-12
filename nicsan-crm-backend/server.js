@@ -97,6 +97,18 @@ app.use((err, req, res, next) => {
 app.get('/health', (_req, res) => res.status(200).json({ status: 'ok' }));
 app.get('/api/health', (_req, res) => res.status(200).json({ status: 'ok' }));
 
+// CF path echo (TEMP)
+app.get('/api/echo', (req, res) => {
+  res.json({
+    ok: true,
+    method: req.method,
+    originalUrl: req.originalUrl,   // exact path your app sees
+    host: req.headers.host,
+    xForwardedHost: req.headers['x-forwarded-host'] || null,
+    xForwardedProto: req.headers['x-forwarded-proto'] || null
+  });
+});
+
 // 404 handler
 app.use('*', (req, res) => {
   res.status(404).json({ 
