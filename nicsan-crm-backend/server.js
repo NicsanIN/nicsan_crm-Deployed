@@ -17,19 +17,6 @@ app.use(express.urlencoded({ extended: true })); // parse form bodies (just in c
 app.get('/api/health', (_req, res) => res.status(200).json({ status: 'ok' }));
 app.get('/health', (_req, res) => res.status(200).json({ status: 'ok' }));
 
-// Initialize Socket.IO
-const io = socketIo(server, {
-  cors: {
-    origin: [
-      'https://app.nicsanin.com',
-      'https://staging.nicsanin.com',
-      'http://localhost:3000',
-      'http://localhost:5173'
-    ],
-    credentials: true
-  }
-});
-
 // Set port
 const PORT = process.env.PORT || 3001;
 
@@ -56,6 +43,15 @@ app.use('/api/policies', require('./routes/policies'));
 app.use('/api/upload', require('./routes/upload'));
 app.use('/api/dashboard', require('./routes/dashboard'));
 app.use('/api/settings', require('./routes/settings'));
+
+// Initialize Socket.IO (after API routes are mounted)
+const io = socketIo(server, {
+  path: '/socket.io',
+  cors: { 
+    origin: ["https://staging.nicsanin.com", "https://app.nicsanin.com"], 
+    credentials: true 
+  }
+});
 
 // CORS configuration
 const corsOptions = {
