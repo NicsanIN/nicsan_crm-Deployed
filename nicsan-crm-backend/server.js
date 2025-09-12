@@ -9,6 +9,10 @@ require('dotenv').config();
 const app = express();
 const server = http.createServer(app);
 
+// CF health must be first so no router/catch-all swallows it
+app.get('/api/health', (_req, res) => res.status(200).json({ status: 'ok' }));
+app.get('/health', (_req, res) => res.status(200).json({ status: 'ok' }));
+
 // Initialize Socket.IO
 const io = socketIo(server, {
   cors: {
@@ -65,10 +69,6 @@ app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Health checks (works with CF /api/* behavior)
-app.get(['/health', '/api/health'], (_req, res) => {
-  res.status(200).json({ status: 'ok' });
-});
 
 // DEBUG: auth probe (TEMP - staging only)
 app.get('/api/debug/auth', (req, res) => {
@@ -93,9 +93,6 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Health checks (must be before any 404/catch-all)
-app.get('/health', (_req, res) => res.status(200).json({ status: 'ok' }));
-app.get('/api/health', (_req, res) => res.status(200).json({ status: 'ok' }));
 
 // CF path echo (TEMP)
 app.get('/api/echo', (req, res) => {
