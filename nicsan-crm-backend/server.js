@@ -33,6 +33,23 @@ const io = socketIo(server, {
 // Set port
 const PORT = process.env.PORT || 3001;
 
+// DEBUG: observe what CF sends to backend for /api/*
+app.use((req, res, next) => {
+  if (req.originalUrl.startsWith('/api/') && req.originalUrl !== '/api/health') {
+    return res.json({
+      ok: true,
+      seenAt: new Date().toISOString(),
+      originalUrl: req.originalUrl,
+      method: req.method,
+      host: req.headers.host,
+      xForwardedHost: req.headers['x-forwarded-host'] || null,
+      xForwardedProto: req.headers['x-forwarded-proto'] || null,
+      ua: req.headers['user-agent'] || null
+    });
+  }
+  next();
+});
+
 // API Routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/policies', require('./routes/policies'));
