@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const storageService = require('../services/storageService');
 const { authenticateToken, requireOps } = require('../middleware/auth');
+const { query } = require('../config/database');
 
 // Create policy (with dual storage)
 router.post('/', authenticateToken, requireOps, async (req, res) => {
@@ -146,20 +147,15 @@ router.get('/search/vehicle/:vehicleNumber', authenticateToken, async (req, res)
     }
     
     // Search policies by vehicle number (partial match)
-    const query = `
-      SELECT 
-        p.*,
-        pd.document_name,
-        pd.document_type,
-        pd.s3_key
-      FROM policies p
-      LEFT JOIN policy_documents pd ON p.id = pd.policy_id
-      WHERE LOWER(p.vehicle_number) LIKE LOWER($1)
-      ORDER BY p.vehicle_number, p.created_at DESC
+    const searchQuery = `
+      SELECT *
+      FROM policies
+      WHERE LOWER(vehicle_number) LIKE LOWER($1)
+      ORDER BY created_at DESC
       LIMIT 20
     `;
     
-    const result = await storageService.db.query(query, [`%${vehicleNumber}%`]);
+    const result = await query(searchQuery, [`%${vehicleNumber}%`]);
     
     res.json({
       success: true,

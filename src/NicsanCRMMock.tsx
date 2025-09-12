@@ -212,6 +212,7 @@ function PageUpload() {
   const [selectedInsurer, setSelectedInsurer] = useState<'TATA_AIG' | 'DIGIT' | 'RELIANCE_GENERAL'>('TATA_AIG');
   const [manualExtras, setManualExtras] = useState({
     executive: '',
+    opsExecutive: '',
     callerName: '',
     mobile: '',
     rollover: '',
@@ -325,6 +326,7 @@ function PageUpload() {
         // Clear manual extras after successful upload
         setManualExtras({
           executive: '',
+          opsExecutive: '',
           callerName: '',
           mobile: '',
           rollover: '',
@@ -565,6 +567,16 @@ function PageUpload() {
                 placeholder="Sales rep name"
                 value={manualExtras.executive}
                 onChange={(e) => handleManualExtrasChange('executive', e.target.value)}
+                className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-blue-700 mb-1">Ops Executive</label>
+              <input 
+                type="text" 
+                placeholder="Ops executive name"
+                value={manualExtras.opsExecutive}
+                onChange={(e) => handleManualExtrasChange('opsExecutive', e.target.value)}
                 className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
               />
             </div>
@@ -1046,6 +1058,7 @@ function PageManualForm() {
     customerChequeNo: "",
     ourChequeNo: "",
     executive: "",
+    opsExecutive: "",
     callerName: "",
     mobile: "",
             rollover: "",
@@ -1059,6 +1072,8 @@ function PageManualForm() {
   const [submitMessage, setSubmitMessage] = useState<{type: 'success' | 'error', message: string} | null>(null);
   const [_validationHistory, setValidationHistory] = useState<any[]>([]);
   const [fieldTouched, setFieldTouched] = useState<{[key: string]: boolean}>({});
+  const [vehicleSearchResults, setVehicleSearchResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
   const [validationMode, setValidationMode] = useState<'progressive' | 'strict'>('progressive');
   const [_callerNames, setCallerNames] = useState<string[]>([]);
   
@@ -1454,8 +1469,72 @@ function PageManualForm() {
     );
   };
 
-  const quickFill = ()=> {
-    // Demo: pretend we fetched last year policy by vehicle no
+  const handleVehicleNumberChange = async (vehicleNumber: string) => {
+    set('vehicleNumber', vehicleNumber);
+    
+    if (vehicleNumber && vehicleNumber.length >= 4) {
+      setIsSearching(true);
+      try {
+        const token = localStorage.getItem('authToken');
+        const response = await fetch(`/api/policies/search/vehicle/${encodeURIComponent(vehicleNumber)}`, {
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        if (data.success) {
+          setVehicleSearchResults(data.data || []);
+        } else {
+          setVehicleSearchResults([]);
+        }
+      } catch (error) {
+        console.error('Vehicle search failed:', error);
+        setVehicleSearchResults([]);
+      } finally {
+        setIsSearching(false);
+      }
+    } else {
+      setVehicleSearchResults([]);
+    }
+  };
+
+  const quickFill = async () => {
+    if (vehicleSearchResults.length > 0) {
+      // Use most recent policy data (already sorted by created_at DESC)
+      const lastPolicy = vehicleSearchResults[0];
+      
+      setForm((f: any) => ({
+        ...f,
+        insurer: lastPolicy.insurer || f.insurer,
+        productType: lastPolicy.product_type || f.productType,
+        vehicleType: lastPolicy.vehicle_type || f.vehicleType,
+        make: lastPolicy.make || f.make,
+        model: lastPolicy.model || f.model,
+        cc: lastPolicy.cc || f.cc,
+        manufacturingYear: lastPolicy.manufacturing_year || f.manufacturingYear,
+        idv: lastPolicy.idv || f.idv,
+        ncb: lastPolicy.ncb || f.ncb,
+        discount: lastPolicy.discount || f.discount,
+        netOd: lastPolicy.net_od || f.netOd,
+        ref: lastPolicy.ref || f.ref,
+        totalOd: lastPolicy.total_od || f.totalOd,
+        netPremium: lastPolicy.net_premium || f.netPremium,
+        totalPremium: lastPolicy.total_premium || f.totalPremium,
+        brokerage: lastPolicy.brokerage || f.brokerage,
+        cashback: lastPolicy.cashback_amount || f.cashback,
+        branch: lastPolicy.branch || f.branch,
+        rollover: lastPolicy.rollover || f.rollover,
+        callerName: lastPolicy.caller_name || f.callerName,
+        executive: lastPolicy.executive || f.executive,
+        opsExecutive: lastPolicy.ops_executive || f.opsExecutive,
+      }));
+    } else {
+      // Fallback to demo data if no search results
     setForm((f:any)=> ({ ...f,
       insurer: f.insurer || "Tata AIG",
       productType: f.productType || "Private Car",
@@ -1475,6 +1554,7 @@ function PageManualForm() {
       brokerage: f.brokerage || "500",
       cashback: f.cashback || "600",
     }))
+    }
   }
 
   // Form submission handlers
@@ -1782,10 +1862,41 @@ function PageManualForm() {
         
         {/* Top row: Vehicle + QuickFill */}
         <div className="flex flex-col md:flex-row gap-3 mb-4">
-          <LabeledInput label="Vehicle Number" required placeholder="KA01AB1234 or KA 51 MM 1214" value={form.vehicleNumber} onChange={v=>set('vehicleNumber', v)}/>
+          <LabeledInput label="Vehicle Number" required placeholder="KA01AB1234 or KA 51 MM 1214" value={form.vehicleNumber} onChange={handleVehicleNumberChange}/>
           <button onClick={quickFill} className="px-4 py-2 rounded-xl bg-indigo-600 text-white h-[42px] mt-6">Prefill from last policy</button>
           <div className="ml-auto flex items-center gap-2 text-xs text-zinc-600"><Car className="w-4 h-4"/> Make/Model autofill in v1.1</div>
         </div>
+
+        {/* Vehicle Search Results */}
+        {isSearching && (
+          <div className="mb-4 p-3 bg-blue-50 rounded-lg">
+            <div className="text-sm text-blue-600 flex items-center gap-2">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+              Searching for previous policies...
+            </div>
+          </div>
+        )}
+
+        {vehicleSearchResults.length > 0 && !isSearching && (
+          <div className="mb-4 p-3 bg-green-50 rounded-lg">
+            <div className="text-sm font-medium text-green-800 mb-2">
+              Found {vehicleSearchResults.length} previous policy(ies) for this vehicle:
+            </div>
+            {vehicleSearchResults.slice(0, 3).map((policy, index) => (
+              <div key={policy.id} className="text-xs text-green-700 mb-1">
+                {index + 1}. Policy: {policy.policy_number} | 
+                Insurer: {policy.insurer} | 
+                Date: {new Date(policy.created_at).toLocaleDateString()}
+              </div>
+            ))}
+            <button 
+              onClick={quickFill}
+              className="mt-2 px-3 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700"
+            >
+              Use Most Recent Policy Data
+            </button>
+          </div>
+        )}
 
         {/* Policy & Vehicle */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1837,6 +1948,7 @@ function PageManualForm() {
         {/* People & Notes */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
           <LabeledInput label="Executive" value={form.executive} onChange={v=>set('executive', v)}/>
+          <LabeledInput label="Ops Executive" value={form.opsExecutive} onChange={v=>set('opsExecutive', v)}/>
           <AutocompleteInput label="Caller Name" value={form.callerName} onChange={v=>set('callerName', v)} getSuggestions={getFilteredCallerSuggestions}/>
           <LabeledInput label="Mobile Number" required placeholder="9xxxxxxxxx" value={form.mobile} onChange={v=>set('mobile', v)}/>
           <LabeledInput label="Rollover/Renewal" hint="internal code" value={form.rollover} onChange={v=>set('rollover', v)}/>
@@ -1974,6 +2086,7 @@ function PageManualGrid() {
       
       // Contact Info
       executive: "",
+      opsExecutive: "",
       callerName: "",
       mobile: "",
       
@@ -2358,6 +2471,7 @@ function PageManualGrid() {
             customer_paid: row.customerPaid || '',
             brokerage: (parseFloat(row.brokerage) || 0).toString(),
             executive: row.executive || 'Unknown',
+            ops_executive: row.opsExecutive || '',
             caller_name: row.callerName || 'Unknown',
             mobile: row.mobile || '0000000000',
             rollover: row.rollover || '',
@@ -2474,6 +2588,7 @@ function PageManualGrid() {
         
         // Contact Info
         executive: row.executive || 'Unknown',
+        ops_executive: row.opsExecutive || '',
         caller_name: row.callerName || 'Unknown',
         mobile: row.mobile || '0000000000',
         
@@ -2523,11 +2638,17 @@ function PageManualGrid() {
           message: `Saved ${savedCount} policies successfully. ${errorCount} failed - please check and retry.` 
         });
       } else {
-        // Check if it was a backend issue or data validation issue
+        // Check if it was a backend issue, data validation issue, or specific error
         if (saveResult.source === 'MOCK_DATA') {
           setSaveMessage({ 
             type: 'error', 
             message: 'Failed to save policies: Backend server is unavailable. Please check your connection and try again.' 
+          });
+        } else if (saveResult.source === 'ERROR' && saveResult.error) {
+          // Show specific error message from backend
+          setSaveMessage({ 
+            type: 'error', 
+            message: saveResult.error 
           });
         } else {
           setSaveMessage({ type: 'error', message: 'Failed to save any policies. Please check the data and try again.' });
@@ -2536,7 +2657,27 @@ function PageManualGrid() {
       
     } catch (error) {
       console.error('Error saving grid data:', error);
-      setSaveMessage({ type: 'error', message: 'Failed to save policies. Please try again.' });
+      
+      // Parse error message to show specific errors
+      let errorMessage = 'Failed to save policies. Please try again.';
+      
+      if (error instanceof Error) {
+        if (error.message.includes('already exists') || error.message.includes('duplicate')) {
+          errorMessage = `Policy number already exists. Please use a different policy number.`;
+        } else if (error.message.includes('HTTP 400')) {
+          errorMessage = `Invalid data provided. Please check your inputs and try again.`;
+        } else if (error.message.includes('HTTP 401')) {
+          errorMessage = `Authentication failed. Please login again.`;
+        } else if (error.message.includes('HTTP 403')) {
+          errorMessage = `Access denied. You don't have permission to save policies.`;
+        } else if (error.message.includes('HTTP 500')) {
+          errorMessage = `Server error occurred. Please try again later.`;
+        } else {
+          errorMessage = `Failed to save policies: ${error.message}`;
+        }
+      }
+      
+      setSaveMessage({ type: 'error', message: errorMessage });
       setRowStatuses({});
     } finally {
       setIsSaving(false);
@@ -2612,6 +2753,7 @@ function PageManualGrid() {
                 <th className="py-2 px-1">Customer Paid (₹)</th>
                 <th className="py-2 px-1" style={{ display: 'none' }}>Brokerage (₹)</th>
                 <th className="py-2 px-1">Executive</th>
+                <th className="py-2 px-1">Ops Executive</th>
                 <th className="py-2 px-1">Caller Name</th>
                 <th className="py-2 px-1">Mobile</th>
                 <th className="py-2 px-1">Rollover</th>
@@ -2860,6 +3002,13 @@ function PageManualGrid() {
                     <input 
                       value={r.executive} 
                       onChange={(e) => updateRow(i, 'executive', e.target.value)}
+                      className="w-full border-none outline-none bg-transparent text-sm"
+                    />
+                  </td>
+                  <td className="px-1">
+                    <input 
+                      value={r.opsExecutive} 
+                      onChange={(e) => updateRow(i, 'opsExecutive', e.target.value)}
                       className="w-full border-none outline-none bg-transparent text-sm"
                     />
                   </td>
@@ -3681,6 +3830,12 @@ function PageReview() {
               onChange={(value) => updateManualExtras('executive', value)}
               hint="sales rep name"
             />
+            <LabeledInput 
+              label="Ops Executive" 
+              value={editableData.manualExtras.opsExecutive || manualExtras.opsExecutive}
+              onChange={(value) => updateManualExtras('opsExecutive', value)}
+              hint="ops executive name"
+            />
             <AutocompleteInput 
               label="Caller Name" 
               value={editableData.manualExtras.callerName || manualExtras.callerName}
@@ -4194,6 +4349,10 @@ function PagePolicyDetail() {
                 <span className="font-medium">{policy.executive || "N/A"}</span>
               </div>
               <div className="flex justify-between">
+                <span>Ops Executive:</span>
+                <span className="font-medium">{policy.ops_executive || "N/A"}</span>
+              </div>
+              <div className="flex justify-between">
                 <span>Caller Name:</span>
                 <span className="font-medium">{policy.caller_name || "N/A"}</span>
               </div>
@@ -4633,31 +4792,136 @@ function PageExplorer() {
   const [make, setMake] = useState("All");
   const [model, setModel] = useState("All");
   const [insurer, setInsurer] = useState("All");
+  const [branch, setBranch] = useState("All");
+  const [rollover, setRollover] = useState("All");
+  const [rep, setRep] = useState("All");
+  const [vehiclePrefix, setVehiclePrefix] = useState("All");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
   const [cashbackMax, setCashbackMax] = useState(20);
+
+  const handleRefresh = () => {
+    setMake('All');
+    setModel('All');
+    setInsurer('All');
+    setCashbackMax(20);
+    setBranch('All');
+    setRollover('All');
+    setRep('All');
+    setVehiclePrefix('All');
+    setFromDate('');
+    setToDate('');
+  };
+
+  const downloadCSV = () => {
+    const headers = ['Rep', 'Make', 'Model', 'Insurer', 'Issue Date', 'Rollover', 'Branch', '# Policies', 'GWP', 'Avg Cashback %', 'Cashback (₹)', 'Net (₹)'];
+    const csvContent = [
+      headers.join(','),
+      ...filtered.map(row => [
+        row.rep,
+        `"${row.make}"`,
+        `"${row.model}"`,
+        `"${row.insurer}"`,
+        row.issueDate && row.issueDate !== 'N/A' ? new Date(row.issueDate).toLocaleDateString('en-GB') : 'N/A',
+        row.rollover,
+        row.branch,
+        row.policies,
+        row.gwp,
+        parseFloat(row.cashbackPctAvg || 0).toFixed(1),
+        row.cashback,
+        row.net
+      ].join(','))
+    ].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `sales-explorer-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
   const [policies, setPolicies] = useState<any[]>([]);
   const [dataSource, setDataSource] = useState<string>('');
-  const makes = ["All","Maruti","Hyundai","Tata","Toyota"];
-  const models = ["All","Swift","Baleno","i20","Altroz"];
-  const insurers = ["All","Tata AIG","Digit","ICICI"];
+  const [makes, setMakes] = useState(["All"]);
+  const [models, setModels] = useState(["All"]);
+  const [insurers, setInsurers] = useState(["All"]);
+  const [branches, setBranches] = useState(["All"]);
+  const [rollovers, setRollovers] = useState(["All"]);
+  const [reps, setReps] = useState(["All"]);
+  const [vehiclePrefixes, setVehiclePrefixes] = useState(["All"]);
+
+  // Extract unique prefixes from vehicle numbers
+  const extractPrefixes = (data: any[]) => {
+    const prefixes = data.map(item => {
+      const cleaned = item.vehicleNumber.replace(/\s/g, "").toUpperCase();
+      return cleaned.substring(0, 2);
+    }).filter(Boolean);
+    
+    const uniquePrefixes = ["All", ...new Set(prefixes)];
+    setVehiclePrefixes(uniquePrefixes);
+  };
+
+  // Get state name for prefix
+  const getStateName = (prefix: string) => {
+    const stateNames: { [key: string]: string } = {
+      "KA": "Karnataka",
+      "TN": "Tamil Nadu",
+      "MH": "Maharashtra",
+      "DL": "Delhi",
+      "GJ": "Gujarat",
+      "WB": "West Bengal",
+      "AP": "Andhra Pradesh",
+      "UP": "Uttar Pradesh",
+      "MP": "Madhya Pradesh",
+      "RJ": "Rajasthan",
+      "KL": "Kerala",
+      "PB": "Punjab",
+      "HR": "Haryana",
+      "BR": "Bihar",
+      "OR": "Odisha",
+      "AS": "Assam",
+      "JK": "Jammu & Kashmir",
+      "HP": "Himachal Pradesh",
+      "UT": "Uttarakhand",
+      "CH": "Chandigarh",
+      "PY": "Puducherry",
+      "GA": "Goa",
+      "AN": "Andaman & Nicobar",
+      "LD": "Lakshadweep",
+      "DN": "Dadra & Nagar Haveli",
+      "DD": "Daman & Diu"
+    };
+    return stateNames[prefix] || "Unknown State";
+  };
 
   useEffect(() => {
     const loadSalesExplorer = async () => {
       try {
         // Use dual storage pattern: S3 → Database → Mock Data
-        const filters = { make, model, insurer, cashbackMax };
+        const filters = { make, model, insurer, cashbackMax, branch, rollover, rep, vehiclePrefix, fromDate, toDate };
         const response = await DualStorageService.getSalesExplorer(filters);
         
         if (response.success) {
           const data = Array.isArray(response.data) ? response.data : [];
           
-          if (ENABLE_DEBUG) {
-            console.log('🔍 Sales Explorer: Loaded data', {
-              source: response.source,
-              filters: filters,
-              dataCount: data.length,
-              data: data
-            });
-          }
+          // Extract unique values for dynamic filters
+          const uniqueMakes = ["All", ...new Set(data.map(item => item.make).filter(Boolean))];
+          const uniqueModels = ["All", ...new Set(data.map(item => item.model).filter(Boolean))];
+          const uniqueInsurers = ["All", ...new Set(data.map(item => item.insurer).filter(Boolean))];
+          const uniqueBranches = ["All", ...new Set(data.map(item => item.branch).filter(Boolean))];
+          const uniqueRollovers = ["All", ...new Set(data.map(item => item.rollover).filter(Boolean))];
+          const uniqueReps = ["All", ...new Set(data.map(item => item.rep).filter(Boolean))];
+          
+          setMakes(uniqueMakes);
+          setModels(uniqueModels);
+          setInsurers(uniqueInsurers);
+          setBranches(uniqueBranches);
+          setRollovers(uniqueRollovers);
+          setReps(uniqueReps);
+          
+          // Extract unique prefixes from vehicle numbers
+          extractPrefixes(data);
           
           setPolicies(data);
           setDataSource(response.source);
@@ -4670,21 +4934,25 @@ function PageExplorer() {
     };
     
     loadSalesExplorer();
-  }, [make, model, insurer, cashbackMax]);
+  }, [make, model, insurer, cashbackMax, branch, rollover, rep, vehiclePrefix, fromDate, toDate]);
 
   const filtered = (policies || []).filter(p => {
     const makeMatch = make === 'All' || p.make === make;
     const modelMatch = model === 'All' || p.model === model;
     const insurerMatch = insurer === 'All' || p.insurer === insurer;
+    const branchMatch = branch === 'All' || p.branch === branch;
+    const rolloverMatch = rollover === 'All' || p.rollover === rollover;
+    const repMatch = rep === 'All' || p.rep === rep;
+    const vehicleMatch = vehiclePrefix === 'All' || p.vehicleNumber.toUpperCase().startsWith(vehiclePrefix);
     const cashbackMatch = (p.cashbackPctAvg || 0) <= cashbackMax;
     
-    const passes = makeMatch && modelMatch && insurerMatch && cashbackMatch;
+    const passes = makeMatch && modelMatch && insurerMatch && branchMatch && rolloverMatch && repMatch && vehicleMatch && cashbackMatch;
     
     if (ENABLE_DEBUG && !passes) {
       console.log('🔍 Sales Explorer: Filtered out policy', {
         policy: p,
-        filters: { make, model, insurer, cashbackMax },
-        matches: { makeMatch, modelMatch, insurerMatch, cashbackMatch },
+        filters: { make, model, insurer, cashbackMax, branch, rollover, rep, vehiclePrefix },
+        matches: { makeMatch, modelMatch, insurerMatch, branchMatch, rolloverMatch, repMatch, vehicleMatch, cashbackMatch },
         passes
       });
     }
@@ -4695,20 +4963,103 @@ function PageExplorer() {
   return (
     <>
       <Card title="Sales Explorer (Motor)" desc={`Filter by Make/Model; find reps with most sales and lowest cashback (Data Source: ${dataSource || 'Loading...'})`}>
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-3">
-          <label className="text-sm">Make<select value={make} onChange={e=>setMake(e.target.value)} className="w-full border rounded-xl px-2 py-2 mt-1">{makes.map(m=><option key={m}>{m}</option>)}</select></label>
-          <label className="text-sm">Model<select value={model} onChange={e=>setModel(e.target.value)} className="w-full border rounded-xl px-2 py-2 mt-1">{models.map(m=><option key={m}>{m}</option>)}</select></label>
-          <label className="text-sm">Insurer<select value={insurer} onChange={e=>setInsurer(e.target.value)} className="w-full border rounded-xl px-2 py-2 mt-1">{insurers.map(m=><option key={m}>{m}</option>)}</select></label>
-          <label className="text-sm col-span-2">Max Cashback %
-            <input type="range" min={0} max={20} value={cashbackMax} onChange={e=>setCashbackMax(parseInt(e.target.value))} className="w-full"/>
-            <div className="text-xs text-zinc-600 mt-1">{cashbackMax}%</div>
-          </label>
+        <div className="space-y-4 mb-6">
+          {/* Primary Filters Row */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">Make</label>
+              <select value={make} onChange={e=>setMake(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                {makes.map(m=><option key={m}>{m}</option>)}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">Model</label>
+              <select value={model} onChange={e=>setModel(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                {models.map(m=><option key={m}>{m}</option>)}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">Insurer</label>
+              <select value={insurer} onChange={e=>setInsurer(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                {insurers.map(m=><option key={m}>{m}</option>)}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <label className="text-sm font-medium text-gray-700">Max Cashback %</label>
+                <div className="flex gap-1">
+                  <button 
+                    onClick={handleRefresh}
+                    className="px-2 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600 focus:ring-1 focus:ring-blue-500 transition-colors"
+                  >
+                    🔄
+                  </button>
+                  <button 
+                    onClick={downloadCSV}
+                    className="px-2 py-1 bg-green-500 text-white rounded text-xs hover:bg-green-600 focus:ring-1 focus:ring-green-500 transition-colors"
+                  >
+                    📥
+                  </button>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <input type="range" min={0} max={20} value={cashbackMax} onChange={e=>setCashbackMax(parseInt(e.target.value))} className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"/>
+                <div className="text-sm text-gray-600 text-center font-medium">{cashbackMax}%</div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Secondary Filters Row */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-600">Branch</label>
+              <select value={branch} onChange={e=>setBranch(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                {branches.map(m=><option key={m}>{m}</option>)}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-600">Rollover</label>
+              <select value={rollover} onChange={e=>setRollover(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                {rollovers.map(m=><option key={m}>{m}</option>)}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-600">Rep</label>
+              <select value={rep} onChange={e=>setRep(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                {reps.map(m=><option key={m}>{m}</option>)}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-600">Vehicle State</label>
+              <select value={vehiclePrefix} onChange={e=>setVehiclePrefix(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                {vehiclePrefixes.map(prefix => (
+                  <option key={prefix} value={prefix}>
+                    {prefix === "All" ? "All States" : `${prefix} (${getStateName(prefix)})`}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          
+          {/* Date Filters Row */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-600">From Date</label>
+              <input type="date" value={fromDate} onChange={e=>setFromDate(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"/>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-600">To Date</label>
+              <input type="date" value={toDate} onChange={e=>setToDate(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"/>
+            </div>
+            <div></div>
+            <div></div>
+          </div>
         </div>
         <div className="overflow-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-zinc-500">
-                <th className="py-2">Rep</th><th>Make</th><th>Model</th><th># Policies</th><th>GWP</th><th>Avg Cashback %</th><th>Cashback (₹)</th><th>Net (₹)</th>
+                <th className="py-2">Rep</th><th>Make</th><th>Model</th><th>Insurer</th><th>Issue Date</th><th>Rollover</th><th>Branch</th><th># Policies</th><th>GWP</th><th>Avg Cashback %</th><th>Cashback (₹)</th><th>Net (₹)</th>
               </tr>
             </thead>
             <tbody>
@@ -4717,9 +5068,13 @@ function PageExplorer() {
                   <td className="py-2 font-medium">{r.rep}</td>
                   <td>{r.make}</td>
                   <td>{r.model}</td>
+                  <td>{r.insurer}</td>
+                  <td>{r.issueDate && r.issueDate !== 'N/A' ? new Date(r.issueDate).toLocaleDateString('en-GB') : 'N/A'}</td>
+                  <td>{r.rollover}</td>
+                  <td>{r.branch}</td>
                   <td>{r.policies}</td>
                   <td>₹{(r.gwp/1000).toFixed(1)}k</td>
-                  <td>{r.cashbackPctAvg}%</td>
+                  <td>{parseFloat(r.cashbackPctAvg || 0).toFixed(1)}%</td>
                   <td>₹{r.cashback}</td>
                   <td>₹{r.net}</td>
                 </tr>

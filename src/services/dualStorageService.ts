@@ -65,9 +65,19 @@ class DualStorageService {
       if (ENABLE_DEBUG) {
         console.error('Backend API Error:', backendError);
       }
+      
+      // For save operations, propagate the error instead of falling back to mock data
+      if (_operationName.includes('Save') || _operationName.includes('Create')) {
+        return {
+          success: false,
+          data: null,
+          source: 'ERROR',
+          error: backendError.message || 'Backend operation failed'
+        };
+      }
     }
 
-    // Step 2: Fallback to Mock Data
+    // Step 2: Fallback to Mock Data (only for read operations)
     if (ENABLE_DEBUG) {
     }
     
@@ -148,17 +158,19 @@ class DualStorageService {
   // Sales Explorer with dual storage
   async getSalesExplorer(filters: any = {}): Promise<DualStorageResult> {
     const mockData = [
-      { rep: 'Asha', make: 'Maruti', model: 'Swift', policies: 12, gwp: 130000, cashbackPctAvg: 2.4, cashback: 3100, net: 16900 },
-      { rep: 'Asha', make: 'Hyundai', model: 'i20', policies: 10, gwp: 130000, cashbackPctAvg: 1.9, cashback: 2500, net: 17500 },
-      { rep: 'Vikram', make: 'Hyundai', model: 'i20', policies: 9, gwp: 115000, cashbackPctAvg: 1.1, cashback: 1200, net: 17100 },
-      { rep: 'Meera', make: 'Maruti', model: 'Baleno', policies: 11, gwp: 125000, cashbackPctAvg: 0.9, cashback: 1100, net: 17800 }
+      { rep: 'Asha', make: 'Maruti', model: 'Swift', vehicleNumber: 'KA01AB1234', rollover: 'New', branch: 'Bangalore', issueDate: '2025-01-15', policies: 12, gwp: 130000, cashbackPctAvg: 2.4, cashback: 3100, net: 16900 },
+      { rep: 'Asha', make: 'Hyundai', model: 'i20', vehicleNumber: 'KA02CD5678', rollover: 'Renewal', branch: 'Bangalore', issueDate: '2025-02-20', policies: 10, gwp: 130000, cashbackPctAvg: 1.9, cashback: 2500, net: 17500 },
+      { rep: 'Vikram', make: 'Hyundai', model: 'i20', vehicleNumber: 'MH01EF9012', rollover: 'New', branch: 'Mumbai', issueDate: '2025-03-10', policies: 9, gwp: 115000, cashbackPctAvg: 1.1, cashback: 1200, net: 17100 },
+      { rep: 'Meera', make: 'Maruti', model: 'Baleno', vehicleNumber: 'DL01GH3456', rollover: 'Renewal', branch: 'Delhi', issueDate: '2025-04-05', policies: 11, gwp: 125000, cashbackPctAvg: 0.9, cashback: 1100, net: 17800 }
     ];
+
 
     const result = await this.executeDualStoragePattern(
       () => this.backendApiService.getSalesExplorer(filters),
       mockData,
       'Sales Explorer'
     );
+
 
     // Fix field name mapping for backend data
     if (result.success && result.source === 'BACKEND_API' && Array.isArray(result.data)) {
@@ -167,6 +179,10 @@ class DualStorageService {
         make: item.make,
         model: item.model,
         insurer: item.insurer,
+        vehicleNumber: item.vehicle_number || 'N/A',
+        rollover: item.rollover || 'N/A',
+        branch: item.branch || 'N/A',
+        issueDate: item.issue_date || 'N/A',
         policies: item.policies,
         gwp: item.gwp,
         cashbackPctAvg: item.avg_cashback_pct || item.cashbackPctAvg || 0,
@@ -174,12 +190,6 @@ class DualStorageService {
         net: item.net
       }));
 
-      if (ENABLE_DEBUG) {
-        console.log('🔧 Sales Explorer: Fixed field name mapping', {
-          original: result.data,
-          mapped: mappedData
-        });
-      }
 
       return {
         success: true,
@@ -187,6 +197,7 @@ class DualStorageService {
         source: result.source
       };
     }
+
 
     return result;
   }

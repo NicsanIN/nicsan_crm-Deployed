@@ -86,7 +86,7 @@ async savePolicy(policyData) {
       make, model, cc, manufacturing_year, issue_date, expiry_date,
       idv, ncb, discount, net_od, ref, total_od, net_premium, total_premium,
       cashback_percentage, cashback_amount, customer_paid, customer_cheque_no,
-      our_cheque_no, executive, caller_name, mobile, rollover, customer_name, branch, remark,
+      our_cheque_no, executive, ops_executive, caller_name, mobile, rollover, customer_name, branch, remark,
       brokerage, cashback, source, s3_key, confidence_score
     } = policyData;
 
@@ -117,9 +117,9 @@ async savePolicy(policyData) {
           make, model, cc, manufacturing_year, issue_date, expiry_date,
           idv, ncb, discount, net_od, ref, total_od, net_premium, total_premium,
           cashback_percentage, cashback_amount, customer_paid, customer_cheque_no,
-          our_cheque_no, executive, caller_name, mobile, rollover, customer_name, branch, remark,
+          our_cheque_no, executive, ops_executive, caller_name, mobile, rollover, customer_name, branch, remark,
           brokerage, cashback, source, s3_key, confidence_score
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37)
         RETURNING *
       `;
       
@@ -128,7 +128,7 @@ async savePolicy(policyData) {
         make, model, cc, manufacturing_year, issue_date, expiry_date,
         idv, ncb, discount, net_od, ref, total_od, net_premium, total_premium,
         cashback_percentage, cashback_amount, customer_paid, customer_cheque_no,
-        our_cheque_no, executive, caller_name, mobile, rollover, customer_name, branch, remark,
+        our_cheque_no, executive, ops_executive, caller_name, mobile, rollover, customer_name, branch, remark,
         brokerage, cashback, source, s3_key, confidence_score
       ];
     } else {
@@ -140,9 +140,9 @@ async savePolicy(policyData) {
           make, model, cc, manufacturing_year, issue_date, expiry_date,
           idv, ncb, discount, net_od, ref, total_od, net_premium, total_premium,
           cashback_percentage, cashback_amount, customer_paid, customer_cheque_no,
-          our_cheque_no, executive, caller_name, mobile, rollover, remark,
+          our_cheque_no, executive, ops_executive, caller_name, mobile, rollover, remark,
           brokerage, cashback, source, s3_key, confidence_score
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35)
         RETURNING *
       `;
       
@@ -151,7 +151,7 @@ async savePolicy(policyData) {
         make, model, cc, manufacturing_year, issue_date, expiry_date,
         idv, ncb, discount, net_od, ref, total_od, net_premium, total_premium,
         cashback_percentage, cashback_amount, customer_paid, customer_cheque_no,
-        our_cheque_no, executive, caller_name, mobile, rollover, remark,
+        our_cheque_no, executive, ops_executive, caller_name, mobile, rollover, remark,
         brokerage, cashback, source, s3_key, confidence_score
       ];
     }
@@ -1168,7 +1168,7 @@ async savePolicy(policyData) {
 
   // Calculate sales explorer from PostgreSQL
   async calculateSalesExplorer(filters) {
-    const { make, model, insurer, cashbackMax = 10 } = filters;
+    const { make, model, insurer, cashbackMax = 10, branch, rollover, rep, vehiclePrefix, fromDate, toDate } = filters;
     
     let whereConditions = [];
     let params = [];
@@ -1192,6 +1192,55 @@ async savePolicy(policyData) {
       paramIndex++;
     }
 
+    if (branch && branch !== 'All') {
+      whereConditions.push(`branch = $${paramIndex}`);
+      params.push(branch);
+      paramIndex++;
+    }
+
+    if (rollover && rollover !== 'All') {
+      whereConditions.push(`rollover = $${paramIndex}`);
+      params.push(rollover);
+      paramIndex++;
+    }
+
+    if (rep && rep !== 'All') {
+      whereConditions.push(`caller_name = $${paramIndex}`);
+      params.push(rep);
+      paramIndex++;
+    }
+
+    if (vehiclePrefix && vehiclePrefix !== 'All') {
+      whereConditions.push(`vehicle_number ILIKE $${paramIndex}`);
+      params.push(`${vehiclePrefix}%`);
+      paramIndex++;
+    }
+
+    // Date filtering logic
+    if (fromDate && toDate) {
+      if (fromDate === toDate) {
+        // Same date - single day filter
+        whereConditions.push(`DATE(issue_date) = $${paramIndex}`);
+        params.push(fromDate);
+        paramIndex++;
+      } else {
+        // Date range filter
+        whereConditions.push(`issue_date >= $${paramIndex} AND issue_date <= $${paramIndex + 1}`);
+        params.push(fromDate, toDate);
+        paramIndex += 2;
+      }
+    } else if (fromDate) {
+      // Only from date
+      whereConditions.push(`issue_date >= $${paramIndex}`);
+      params.push(fromDate);
+      paramIndex++;
+    } else if (toDate) {
+      // Only to date
+      whereConditions.push(`issue_date <= $${paramIndex}`);
+      params.push(toDate);
+      paramIndex++;
+    }
+
     whereConditions.push(`(cashback_percentage <= $${paramIndex} OR cashback_percentage IS NULL)`);
     params.push(parseFloat(cashbackMax));
 
@@ -1203,6 +1252,10 @@ async savePolicy(policyData) {
         make,
         model,
         insurer,
+        vehicle_number,
+        rollover,
+        branch,
+        issue_date,
         COUNT(*) as policies,
         SUM(total_premium) as gwp,
         AVG(cashback_percentage) as avg_cashback_pct,
@@ -1210,7 +1263,7 @@ async savePolicy(policyData) {
         SUM(brokerage - cashback_amount) as net
       FROM policies 
       ${whereClause}
-      GROUP BY caller_name, make, model, insurer
+      GROUP BY caller_name, make, model, insurer, vehicle_number, rollover, branch, issue_date
       ORDER BY net DESC
     `, params);
 
