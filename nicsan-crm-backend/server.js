@@ -93,6 +93,10 @@ app.use((err, req, res, next) => {
   });
 });
 
+// Health checks (must be before any 404/catch-all)
+app.get('/health', (_req, res) => res.status(200).json({ status: 'ok' }));
+app.get('/api/health', (_req, res) => res.status(200).json({ status: 'ok' }));
+
 // 404 handler
 app.use('*', (req, res) => {
   res.status(404).json({ 
