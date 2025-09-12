@@ -110,6 +110,38 @@ app.get('/api/echo', (req, res) => {
   });
 });
 
+// DEBUG: show which DB host the app is using (safe: redacts secrets)
+app.get('/api/debug/db-env', (_req, res) => {
+  try {
+    const vars = ['DATABASE_URL','PGHOST','PGPORT','PGDATABASE','PGUSER'];
+    const env = Object.fromEntries(vars.map(k => [k, process.env[k] ? '(set)' : '(not set)']));
+
+    let host = null, port = null, db = null, user = null;
+    if (process.env.DATABASE_URL) {
+      try {
+        const u = new URL(process.env.DATABASE_URL);
+        host = u.hostname;
+        port = u.port || '5432';
+        db   = u.pathname.replace(/^\//,'') || null;
+        user = u.username || null;
+      } catch (_) {}
+    } else {
+      host = process.env.PGHOST || null;
+      port = process.env.PGPORT || null;
+      db   = process.env.PGDATABASE || null;
+      user = process.env.PGUSER || null;
+    }
+
+    res.json({
+      ok: true,
+      envSummary: env,
+      resolved: { host, port, db, user }
+    });
+  } catch (e) {
+    res.status(500).json({ ok:false, error: e.message });
+  }
+});
+
 // 404 handler
 app.use('*', (req, res) => {
   res.status(404).json({ 
