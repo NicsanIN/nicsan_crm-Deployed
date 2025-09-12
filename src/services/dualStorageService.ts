@@ -163,7 +163,7 @@ class DualStorageService {
     // Fix field name mapping for backend data
     if (result.success && result.source === 'BACKEND_API' && Array.isArray(result.data)) {
       const mappedData = result.data.map((item: any) => ({
-        rep: item.executive || item.rep,
+        rep: item.caller_name || item.rep,
         make: item.make,
         model: item.model,
         insurer: item.insurer,

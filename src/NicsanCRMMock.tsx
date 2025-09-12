@@ -221,7 +221,8 @@ function PageUpload() {
     customerPaid: '',
     customerChequeNo: '',
     ourChequeNo: '',
-    customerName: ''
+    customerName: '',
+    branch: ''
   });
   const [manualExtrasSaved, setManualExtrasSaved] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -599,7 +600,7 @@ function PageUpload() {
             <div style={{ display: 'none' }}>
               <label className="block text-xs text-blue-700 mb-1">Brokerage (₹)</label>
               <input 
-                type="number" 
+                type="text" 
                 placeholder="Commission amount"
                 value={manualExtras.brokerage}
                 onChange={(e) => handleManualExtrasChange('brokerage', e.target.value)}
@@ -609,7 +610,7 @@ function PageUpload() {
             <div>
               <label className="block text-xs text-blue-700 mb-1">Cashback (₹)</label>
               <input 
-                type="number" 
+                type="text" 
                 placeholder="Total cashback"
                 value={manualExtras.cashback}
                 onChange={(e) => handleManualExtrasChange('cashback', e.target.value)}
@@ -619,8 +620,8 @@ function PageUpload() {
             <div>
               <label className="block text-xs text-blue-700 mb-1">Customer Paid (₹)</label>
               <input 
-                type="number" 
-                placeholder="Amount customer paid"
+                type="text" 
+                placeholder="Amount or text (e.g., 5000 or Pending)"
                 value={manualExtras.customerPaid}
                 onChange={(e) => handleManualExtrasChange('customerPaid', e.target.value)}
                 className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
@@ -656,6 +657,17 @@ function PageUpload() {
                 className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
               />
             </div>
+            <div>
+              <label className="block text-xs text-blue-700 mb-1">Branch <span className="text-red-500">*</span></label>
+              <input 
+                type="text"
+                placeholder="Enter branch name"
+                value={manualExtras.branch}
+                onChange={(e) => handleManualExtrasChange('branch', e.target.value)}
+                className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                required
+              />
+            </div>
             <div className="md:col-span-2">
               <label className="block text-xs text-blue-700 mb-1">Remark</label>
               <textarea 
@@ -673,6 +685,12 @@ function PageUpload() {
               onClick={() => {
                 // Show preview of what will be submitted
                 const filledFields = Object.entries(manualExtras).filter(([, value]) => value.trim() !== '');
+                // Validate required branch field
+                if (!manualExtras.branch || manualExtras.branch.trim() === '') {
+                  alert('Branch field is required! Please enter branch name.');
+                  return;
+                }
+                
                 if (filledFields.length === 0) {
                   alert('Please fill at least one manual field before proceeding');
                   return;
@@ -1034,7 +1052,8 @@ function PageManualForm() {
             remark: "",
             brokerage: "0",
             cashback: "",
-            customerName: ""
+            customerName: "",
+            branch: ""
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState<{type: 'success' | 'error', message: string} | null>(null);
@@ -1079,8 +1098,8 @@ function PageManualForm() {
       case 'policyNumber':
         if (!value) {
           errors.push('Policy Number is required');
-        } else if (!/^[A-Z0-9\-_]{3,20}$/.test(value)) {
-          errors.push('Policy Number must be 3-20 characters (letters, numbers, hyphens, underscores)');
+        } else if (!/^[A-Z0-9\-_\/ ]{3,50}$/.test(value)) {
+          errors.push('Policy Number must be 3-50 characters (letters, numbers, hyphens, underscores, forward slashes, spaces)');
         }
         break;
         
@@ -1232,15 +1251,11 @@ function PageManualForm() {
         
       case 'customerPaid':
         if (!value) {
-          errors.push('Customer Paid (₹) is required');
-        } else {
-          const customerPaid = number(value);
-          const totalPremium = number(form.totalPremium);
-          if (customerPaid < 0 || customerPaid > 1000000) {
-            errors.push('Customer Paid must be between ₹0 and ₹10 lakh');
-          } else if (customerPaid > totalPremium) {
-            errors.push('Customer Paid cannot exceed Total Premium');
-          }
+          errors.push('Customer Paid is required');
+        } else if (value.length < 1) {
+          errors.push('Customer Paid must be at least 1 character');
+        } else if (value.length > 50) {
+          errors.push('Customer Paid must be less than 50 characters');
         }
         break;
         
@@ -1491,6 +1506,13 @@ function PageManualForm() {
     // Clear previous messages
     setSubmitMessage(null);
     
+    // Validate required branch field
+    if (!form.branch || form.branch.trim() === '') {
+      setSubmitMessage({ type: 'error', message: 'Branch field is required! Please enter branch name.' });
+      setIsSubmitting(false);
+      return;
+    }
+    
     // Validate form
     if (errors.length > 0) {
       setSubmitMessage({ type: 'error', message: 'Please fix the errors before saving' });
@@ -1523,7 +1545,7 @@ function PageManualForm() {
         total_premium: parseFloat(form.totalPremium).toString(),
         cashback_percentage: (parseFloat(form.cashbackPct) || 0).toString(),
         cashback_amount: (parseFloat(form.cashbackAmt) || 0).toString(),
-        customer_paid: (parseFloat(form.customerPaid) || 0).toString(),
+        customer_paid: form.customerPaid || '',
         customer_cheque_no: form.customerChequeNo || '',
         our_cheque_no: form.ourChequeNo || '',
         executive: form.executive || 'Unknown',
@@ -1532,6 +1554,7 @@ function PageManualForm() {
         rollover: form.rollover || '',
         remark: form.remark || '',
         customer_name: form.customerName || '',
+        branch: form.branch || '',
         brokerage: (parseFloat(form.brokerage) || 0).toString(),
         cashback: (parseFloat(form.cashback) || 0).toString(),
         source: 'MANUAL_FORM'
@@ -1603,6 +1626,7 @@ function PageManualForm() {
             brokerage: "",
             cashback: "",
             customerName: "",
+            branch: "",
           });
         }
       } else {
@@ -1690,7 +1714,7 @@ function PageManualForm() {
       return errors;
     }
     
-    if (!/^[A-Z0-9\-_]{3,20}$/.test(value)) {
+    if (!/^[A-Z0-9\-_\/ ]{3,50}$/.test(value)) {
       return errors; // Format validation handled by sync validation
     }
     
@@ -1817,6 +1841,7 @@ function PageManualForm() {
           <LabeledInput label="Mobile Number" required placeholder="9xxxxxxxxx" value={form.mobile} onChange={v=>set('mobile', v)}/>
           <LabeledInput label="Rollover/Renewal" hint="internal code" value={form.rollover} onChange={v=>set('rollover', v)}/>
           <LabeledInput label="Customer Name" value={form.customerName} onChange={v=>set('customerName', v)}/>
+          <LabeledInput label="Branch" required value={form.branch} onChange={v=>set('branch', v)}/>
           <LabeledInput label="Remark" placeholder="Any note" value={form.remark} onChange={v=>set('remark', v)}/>
         </div>
 
@@ -1957,6 +1982,7 @@ function PageManualGrid() {
       remark: "",
       cashback: "", 
       customerName: "",
+      branch: "",
       status: "OK" 
     };
     
@@ -2036,8 +2062,8 @@ function PageManualGrid() {
     // Policy Number validation
     if (!row.policy) {
       errors.push('Policy Number is required');
-    } else if (!/^[A-Z0-9\-_]{3,20}$/.test(row.policy)) {
-      errors.push('Policy Number must be 3-20 characters (letters, numbers, hyphens, underscores)');
+    } else if (!/^[A-Z0-9\-_\/ ]{3,50}$/.test(row.policy)) {
+      errors.push('Policy Number must be 3-50 characters (letters, numbers, hyphens, underscores, forward slashes, spaces)');
     }
     
     // Vehicle Number validation
@@ -2059,6 +2085,13 @@ function PageManualGrid() {
       errors.push('Caller Name is required');
     } else if (row.callerName.length < 2) {
       errors.push('Caller Name must be at least 2 characters');
+    }
+    
+    // Branch validation
+    if (!row.branch) {
+      errors.push('Branch is required');
+    } else if (row.branch.length < 2) {
+      errors.push('Branch must be at least 2 characters');
     }
     
     // Make validation
@@ -2102,6 +2135,15 @@ function PageManualGrid() {
       if (diffDays < 30) {
         errors.push('Policy duration must be at least 30 days');
       }
+    }
+    
+    // Customer Paid validation
+    if (!row.customerPaid) {
+      errors.push('Customer Paid is required');
+    } else if (row.customerPaid.length < 1) {
+      errors.push('Customer Paid must be at least 1 character');
+    } else if (row.customerPaid.length > 50) {
+      errors.push('Customer Paid must be less than 50 characters');
     }
     
     return errors;
@@ -2190,7 +2232,8 @@ function PageManualGrid() {
       // Additional
             rollover: cells[25] || "",
             customerName: cells[26] || "",
-            remark: cells[27] || "",
+            branch: cells[27] || "",
+            remark: cells[28] || "",
             cashback: "", // Not in Excel - keep empty
             status: "OK" 
           };
@@ -2312,12 +2355,14 @@ function PageManualGrid() {
             total_premium: parseFloat(row.totalPremium).toString(),
             cashback_percentage: (parseFloat(row.cashbackPct) || 0).toString(),
             cashback_amount: (parseFloat(row.cashbackAmt) || 0).toString(),
-            customer_paid: (parseFloat(row.customerPaid) || 0).toString(),
+            customer_paid: row.customerPaid || '',
             brokerage: (parseFloat(row.brokerage) || 0).toString(),
             executive: row.executive || 'Unknown',
             caller_name: row.callerName || 'Unknown',
             mobile: row.mobile || '0000000000',
             rollover: row.rollover || '',
+            customer_name: row.customerName || '',
+            branch: row.branch || '',
             remark: row.remark || '',
             cashback: (parseFloat(row.cashback) || 0).toString(),
             source: 'MANUAL_GRID'
@@ -2424,7 +2469,7 @@ function PageManualGrid() {
         total_premium: parseFloat(row.totalPremium).toString(),
         cashback_percentage: (parseFloat(row.cashbackPct) || 0).toString(),
         cashback_amount: (parseFloat(row.cashbackAmt) || 0).toString(),
-        customer_paid: (parseFloat(row.customerPaid) || 0).toString(),
+        customer_paid: row.customerPaid || '',
         brokerage: (parseFloat(row.brokerage) || 0).toString(),
         
         // Contact Info
@@ -2434,15 +2479,20 @@ function PageManualGrid() {
         
         // Additional
         rollover: row.rollover || '',
+        customer_name: row.customerName || '',
+        branch: row.branch || '',
         remark: row.remark || '',
         cashback: (parseFloat(row.cashback) || 0).toString(),
         source: 'MANUAL_GRID'
       }));
       
-      await DualStorageService.saveGridEntries(policyDataArray);
+      const saveResult = await DualStorageService.saveGridEntries(policyDataArray);
       
-      // All rows saved successfully
-      const results = rows.map((_, index) => ({ index, success: true }));
+      // Check if data came from backend API (actual database save) or mock data fallback
+      const results = rows.map((_, index) => ({ 
+        index, 
+        success: saveResult.source === 'BACKEND_API' 
+      }));
       
       // Update row statuses based on results
       const finalStatuses: {[key: number]: 'saved' | 'error'} = {};
@@ -2466,14 +2516,22 @@ function PageManualGrid() {
       const errorCount = Object.values(finalStatuses).filter(s => s === 'error').length;
       
       if (savedCount === rows.length) {
-        setSaveMessage({ type: 'success', message: `Successfully saved all ${rows.length} policies!` });
+        setSaveMessage({ type: 'success', message: `Successfully saved all ${rows.length} policies to database!` });
       } else if (savedCount > 0) {
         setSaveMessage({ 
           type: 'success', 
           message: `Saved ${savedCount} policies successfully. ${errorCount} failed - please check and retry.` 
         });
       } else {
-        setSaveMessage({ type: 'error', message: 'Failed to save any policies. Please check the data and try again.' });
+        // Check if it was a backend issue or data validation issue
+        if (saveResult.source === 'MOCK_DATA') {
+          setSaveMessage({ 
+            type: 'error', 
+            message: 'Failed to save policies: Backend server is unavailable. Please check your connection and try again.' 
+          });
+        } else {
+          setSaveMessage({ type: 'error', message: 'Failed to save any policies. Please check the data and try again.' });
+        }
       }
       
     } catch (error) {
@@ -2558,6 +2616,7 @@ function PageManualGrid() {
                 <th className="py-2 px-1">Mobile</th>
                 <th className="py-2 px-1">Rollover</th>
                 <th className="py-2 px-1">Customer Name</th>
+                <th className="py-2 px-1">Branch <span className="text-red-500">*</span></th>
                 <th className="py-2 px-1">Remark</th>
                 <th className="py-2 px-1">Status</th>
               </tr>
@@ -2704,7 +2763,7 @@ function PageManualGrid() {
                   </td>
                   <td className="px-1">
                     <input 
-                      type="number"
+                      type="text"
                       value={r.idv} 
                       onChange={(e) => updateRow(i, 'idv', e.target.value)}
                       className="w-full border-none outline-none bg-transparent text-sm"
@@ -2712,7 +2771,7 @@ function PageManualGrid() {
                   </td>
                   <td className="px-1">
                     <input 
-                      type="number"
+                      type="text"
                       value={r.ncb} 
                       onChange={(e) => updateRow(i, 'ncb', e.target.value)}
                       className="w-full border-none outline-none bg-transparent text-sm"
@@ -2720,7 +2779,7 @@ function PageManualGrid() {
                   </td>
                   <td className="px-1">
                     <input 
-                      type="number"
+                      type="text"
                       value={r.discount} 
                       onChange={(e) => updateRow(i, 'discount', e.target.value)}
                       className="w-full border-none outline-none bg-transparent text-sm"
@@ -2728,7 +2787,7 @@ function PageManualGrid() {
                   </td>
                   <td className="px-1">
                     <input 
-                      type="number"
+                      type="text"
                       value={r.netOd} 
                       onChange={(e) => updateRow(i, 'netOd', e.target.value)}
                       className="w-full border-none outline-none bg-transparent text-sm"
@@ -2743,7 +2802,7 @@ function PageManualGrid() {
                   </td>
                   <td className="px-1">
                     <input 
-                      type="number"
+                      type="text"
                       value={r.totalOd} 
                       onChange={(e) => updateRow(i, 'totalOd', e.target.value)}
                       className="w-full border-none outline-none bg-transparent text-sm"
@@ -2751,7 +2810,7 @@ function PageManualGrid() {
                   </td>
                   <td className="px-1">
                     <input 
-                      type="number"
+                      type="text"
                       value={r.netPremium} 
                       onChange={(e) => updateRow(i, 'netPremium', e.target.value)}
                       className="w-full border-none outline-none bg-transparent text-sm"
@@ -2759,7 +2818,7 @@ function PageManualGrid() {
                   </td>
                   <td className="px-1">
                     <input 
-                      type="number"
+                      type="text"
                       value={r.totalPremium} 
                       onChange={(e) => updateRow(i, 'totalPremium', e.target.value)}
                       className="w-full border-none outline-none bg-transparent text-sm"
@@ -2767,7 +2826,7 @@ function PageManualGrid() {
                   </td>
                   <td className="px-1">
                     <input 
-                      type="number"
+                      type="text"
                       value={r.cashbackPct} 
                       onChange={(e) => updateRow(i, 'cashbackPct', e.target.value)}
                       className="w-full border-none outline-none bg-transparent text-sm"
@@ -2775,7 +2834,7 @@ function PageManualGrid() {
                   </td>
                   <td className="px-1">
                     <input 
-                      type="number"
+                      type="text"
                       value={r.cashbackAmt} 
                       onChange={(e) => updateRow(i, 'cashbackAmt', e.target.value)}
                       className="w-full border-none outline-none bg-transparent text-sm"
@@ -2783,7 +2842,7 @@ function PageManualGrid() {
                   </td>
                   <td className="px-1">
                     <input 
-                      type="number"
+                      type="text"
                       value={r.customerPaid} 
                       onChange={(e) => updateRow(i, 'customerPaid', e.target.value)}
                       className="w-full border-none outline-none bg-transparent text-sm"
@@ -2791,7 +2850,7 @@ function PageManualGrid() {
                   </td>
                   <td className="px-1" style={{ display: 'none' }}>
                     <input 
-                      type="number"
+                      type="text"
                       value={r.brokerage} 
                       onChange={(e) => updateRow(i, 'brokerage', e.target.value)}
                       className="w-full border-none outline-none bg-transparent text-sm"
@@ -2830,6 +2889,15 @@ function PageManualGrid() {
                       value={r.customerName} 
                       onChange={(e) => updateRow(i, 'customerName', e.target.value)}
                       className="w-full border-none outline-none bg-transparent text-sm"
+                    />
+                  </td>
+                  <td className="px-1">
+                    <input 
+                      value={r.branch} 
+                      onChange={(e) => updateRow(i, 'branch', e.target.value)}
+                      className="w-full border-none outline-none bg-transparent text-sm"
+                      placeholder="Required"
+                      required
                     />
                   </td>
                   <td className="px-1">
@@ -3636,6 +3704,12 @@ function PageReview() {
               value={editableData.manualExtras.customerName || manualExtras.customerName}
               onChange={(value) => updateManualExtras('customerName', value)}
             />
+            <LabeledInput 
+              label="Branch" 
+              value={editableData.manualExtras.branch || manualExtras.branch}
+              onChange={(value) => updateManualExtras('branch', value)}
+              required
+            />
             <div style={{ display: 'none' }}>
               <LabeledInput 
                 label="Brokerage (₹)" 
@@ -4103,6 +4177,41 @@ function PagePolicyDetail() {
               <div className="flex justify-between">
                 <span>IDV:</span>
                 <span className="font-medium">₹{(policy.idv || 495000).toLocaleString()}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Customer Information */}
+          <div className="bg-zinc-50 rounded-xl p-4">
+            <div className="text-sm font-medium mb-3 text-zinc-700">Customer Information</div>
+            <div className="grid grid-cols-1 gap-2 text-sm">
+              <div className="flex justify-between">
+                <span>Customer Name:</span>
+                <span className="font-medium">{policy.customer_name || "N/A"}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Executive:</span>
+                <span className="font-medium">{policy.executive || "N/A"}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Caller Name:</span>
+                <span className="font-medium">{policy.caller_name || "N/A"}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Mobile:</span>
+                <span className="font-medium">{policy.mobile || "N/A"}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Branch:</span>
+                <span className="font-medium">{policy.branch || "N/A"}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Rollover:</span>
+                <span className="font-medium">{policy.rollover || "N/A"}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Remark:</span>
+                <span className="font-medium">{policy.remark || "N/A"}</span>
               </div>
             </div>
           </div>

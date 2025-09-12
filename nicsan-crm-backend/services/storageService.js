@@ -86,7 +86,7 @@ async savePolicy(policyData) {
       make, model, cc, manufacturing_year, issue_date, expiry_date,
       idv, ncb, discount, net_od, ref, total_od, net_premium, total_premium,
       cashback_percentage, cashback_amount, customer_paid, customer_cheque_no,
-      our_cheque_no, executive, caller_name, mobile, rollover, customer_name, remark,
+      our_cheque_no, executive, caller_name, mobile, rollover, customer_name, branch, remark,
       brokerage, cashback, source, s3_key, confidence_score
     } = policyData;
 
@@ -117,9 +117,9 @@ async savePolicy(policyData) {
           make, model, cc, manufacturing_year, issue_date, expiry_date,
           idv, ncb, discount, net_od, ref, total_od, net_premium, total_premium,
           cashback_percentage, cashback_amount, customer_paid, customer_cheque_no,
-          our_cheque_no, executive, caller_name, mobile, rollover, customer_name, remark,
+          our_cheque_no, executive, caller_name, mobile, rollover, customer_name, branch, remark,
           brokerage, cashback, source, s3_key, confidence_score
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36)
         RETURNING *
       `;
       
@@ -128,7 +128,7 @@ async savePolicy(policyData) {
         make, model, cc, manufacturing_year, issue_date, expiry_date,
         idv, ncb, discount, net_od, ref, total_od, net_premium, total_premium,
         cashback_percentage, cashback_amount, customer_paid, customer_cheque_no,
-        our_cheque_no, executive, caller_name, mobile, rollover, customer_name, remark,
+        our_cheque_no, executive, caller_name, mobile, rollover, customer_name, branch, remark,
         brokerage, cashback, source, s3_key, confidence_score
       ];
     } else {
@@ -1199,7 +1199,7 @@ async savePolicy(policyData) {
 
     const result = await query(`
       SELECT 
-        executive,
+        caller_name,
         make,
         model,
         insurer,
@@ -1210,7 +1210,7 @@ async savePolicy(policyData) {
         SUM(brokerage - cashback_amount) as net
       FROM policies 
       ${whereClause}
-      GROUP BY executive, make, model, insurer
+      GROUP BY caller_name, make, model, insurer
       ORDER BY net DESC
     `, params);
 
