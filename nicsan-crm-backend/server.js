@@ -9,6 +9,10 @@ require('dotenv').config();
 const app = express();
 const server = http.createServer(app);
 
+// ✅ JSON/body parsers MUST be before routes
+app.use(express.json());                         // parse application/json
+app.use(express.urlencoded({ extended: true })); // parse form bodies (just in case)
+
 // CF health must be first so no router/catch-all swallows it
 app.get('/api/health', (_req, res) => res.status(200).json({ status: 'ok' }));
 app.get('/health', (_req, res) => res.status(200).json({ status: 'ok' }));
