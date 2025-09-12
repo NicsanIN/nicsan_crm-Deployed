@@ -1,4 +1,29 @@
 
+const express = require('express');
+const cors = require('cors');
+const http = require('http');
+const socketIo = require('socket.io');
+require('dotenv').config();
+
+// Initialize Express app
+const app = express();
+const server = http.createServer(app);
+
+// Initialize Socket.IO
+const io = socketIo(server, {
+  cors: {
+    origin: [
+      'https://app.nicsanin.com',
+      'https://staging.nicsanin.com',
+      'http://localhost:3000',
+      'http://localhost:5173'
+    ],
+    credentials: true
+  }
+});
+
+// Set port
+const PORT = process.env.PORT || 3001;
 
 // API Routes
 app.use('/api/auth', require('./routes/auth'));
