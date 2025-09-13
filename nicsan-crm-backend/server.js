@@ -1,4 +1,3 @@
-
 const express = require('express');
 const cors = require('cors');
 const http = require('http');
@@ -19,6 +18,18 @@ app.get('/health', (_req, res) => res.status(200).json({ status: 'ok' }));
 
 // Set port
 const PORT = process.env.PORT || 3001;
+
+// DEBUG: echo key headers to verify CloudFront forwarding
+app.get('/api/debug/headers', (req, res) => {
+  res.json({
+    authorization: req.headers['authorization'] || null,
+    cookie: req.headers['cookie'] ? '(set)' : null,
+    host: req.headers['host'],
+    via: req.headers['via'] || null,
+    xForwardedFor: req.headers['x-forwarded-for'] || null,
+    xAmzCfId: req.headers['x-amz-cf-id'] || null
+  });
+});
 
 // API Routes
 app.use('/api/auth', require('./routes/auth'));
@@ -54,7 +65,7 @@ const corsOptions = {
     if (allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
-      console.warn('�� CORS blocked origin: ' + origin);
+      console.warn('🚫 CORS blocked origin: ' + origin);
       callback(new Error('Not allowed by CORS'));
     }
   },
@@ -141,11 +152,11 @@ app.use('*', (req, res) => {
 
 // Start server
 server.listen(PORT, () => {
-  console.log(' Nicsan CRM Backend running on port ' + PORT);
-  console.log(' Health check: http://localhost:' + PORT + '/health');
-  console.log(' API base: http://localhost:' + PORT + '/api');
-  console.log(' WebSocket server: ws://localhost:' + PORT);
-  console.log(' CORS enabled for: https://app.nicsanin.com, https://staging.nicsanin.com');
+  console.log('🚀 Nicsan CRM Backend running on port ' + PORT);
+  console.log('🏥 Health check: http://localhost:' + PORT + '/health');
+  console.log('🔗 API base: http://localhost:' + PORT + '/api');
+  console.log('🔌 WebSocket server: ws://localhost:' + PORT);
+  console.log('🌐 CORS enabled for: https://app.nicsanin.com, https://staging.nicsanin.com');
 });
 
 module.exports = { app, server };
