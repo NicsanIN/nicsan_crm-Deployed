@@ -18,6 +18,7 @@ const textract = new AWS.Textract({
 
 // Log S3 configuration on startup
 console.log(`[S3] bucket=${process.env.AWS_S3_BUCKET}, prefix=${process.env.S3_PREFIX || '(none)'}`);
+console.log(`[S3] using prefix: ${process.env.S3_PREFIX || '(none)'}`);
 
 // S3 Helper Functions
 const uploadToS3 = async (file, key) => {

@@ -1,5 +1,6 @@
 const { query } = require('../config/database');
 const { uploadToS3, deleteFromS3, extractTextFromPDF, generateS3Key, generatePolicyS3Key, uploadJSONToS3, getJSONFromS3 } = require('../config/aws');
+const { withPrefix } = require('../utils/s3Prefix');
 const websocketService = require('./websocketService');
 
 class StorageService {
@@ -900,7 +901,7 @@ async savePolicy(policyData) {
       console.log('✅ Retrieved dashboard metrics from PostgreSQL (Primary Storage)');
       
       // Save to S3 for future use (Secondary Storage)
-      const s3Key = `data/aggregated/dashboard-metrics-${period}-${Date.now()}.json`;
+      const s3Key = withPrefix(`data/aggregated/dashboard-metrics-${period}-${Date.now()}.json`);
       try {
         await uploadJSONToS3(metrics, s3Key);
         console.log('✅ Saved dashboard metrics to S3 (Secondary Storage)');
@@ -923,7 +924,7 @@ async savePolicy(policyData) {
       console.log('✅ Retrieved sales reps from PostgreSQL (Primary Storage)');
       
       // Save to S3 for future use (Secondary Storage)
-      const s3Key = `data/aggregated/sales-reps-${Date.now()}.json`;
+      const s3Key = withPrefix(`data/aggregated/sales-reps-${Date.now()}.json`);
       try {
         await uploadJSONToS3(reps, s3Key);
         console.log('✅ Saved sales reps to S3 (Secondary Storage)');
@@ -947,7 +948,7 @@ async savePolicy(policyData) {
       
       // Save to S3 for future use (Secondary Storage)
       const filterKey = Object.keys(filters).map(k => `${k}-${filters[k]}`).join('_');
-      const s3Key = `data/aggregated/vehicle-analysis-${filterKey}-${Date.now()}.json`;
+      const s3Key = withPrefix(`data/aggregated/vehicle-analysis-${filterKey}-${Date.now()}.json`);
       try {
         await uploadJSONToS3(analysis, s3Key);
         console.log('✅ Saved vehicle analysis to S3 (Secondary Storage)');
@@ -971,7 +972,7 @@ async savePolicy(policyData) {
       
       // Save to S3 for future use (Secondary Storage)
       const filterKey = Object.keys(filters).map(k => `${k}-${filters[k]}`).join('_');
-      const s3Key = `data/aggregated/sales-explorer-${filterKey}-${Date.now()}.json`;
+      const s3Key = withPrefix(`data/aggregated/sales-explorer-${filterKey}-${Date.now()}.json`);
       try {
         await uploadJSONToS3(explorer, s3Key);
         console.log('✅ Saved sales explorer to S3 (Secondary Storage)');
@@ -1286,7 +1287,7 @@ async savePolicy(policyData) {
       console.log('✅ Retrieved data sources from PostgreSQL (Primary Storage)');
       
       // Save to S3 for future use (Secondary Storage)
-      const s3Key = `data/aggregated/data-sources-${Date.now()}.json`;
+      const s3Key = withPrefix(`data/aggregated/data-sources-${Date.now()}.json`);
       try {
         await uploadJSONToS3(sources, s3Key);
         console.log('✅ Saved data sources to S3 (Secondary Storage)');
