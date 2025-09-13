@@ -164,7 +164,7 @@ async savePolicy(policyData) {
   async saveToS3(policyData) {
     if (!policyData.file) return null;
     
-    const s3Key = generateS3Key(policyData.file.originalname, policyData.insurer);
+    const s3Key = generatePolicyS3Key(policyData.policyId || Date.now(), 'manual'); 
     return await uploadToS3(policyData.file, s3Key);
   }
 
@@ -214,12 +214,14 @@ async savePolicy(policyData) {
       
       const { file, insurer, manualExtras } = uploadData;
       
+      // Generate upload ID first
+      const uploadId = `upload_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+      
       // 1. Upload to S3 (Primary Storage) with insurer detection
-      const s3Key = await generateS3Key(file.originalname, insurer, file.buffer);
+      const s3Key = generatePolicyS3Key(uploadId, 'manual'); 
       const s3Result = await uploadToS3(file, s3Key);
       
       // 2. Save metadata to PostgreSQL (Secondary Storage)
-      const uploadId = `upload_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
       
       const pgQuery = `
         INSERT INTO pdf_uploads (upload_id, filename, s3_key, insurer, status, manual_extras)
