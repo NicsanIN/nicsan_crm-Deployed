@@ -16,26 +16,6 @@ app.use(express.urlencoded({ extended: true })); // parse form bodies (just in c
 app.get('/api/health', (_req, res) => res.status(200).json({ status: 'ok' }));
 app.get('/health', (_req, res) => res.status(200).json({ status: 'ok' }));
 
-// TEMP: Test S3 key generation (no auth required)
-app.get('/api/test-s3-keys', (_req, res) => {
-  try {
-    const { generateS3Key, generatePolicyS3Key } = require('./config/aws');
-    
-    const testKey1 = generateS3Key('test-file.pdf', 'test-insurer');
-    const testKey2 = generatePolicyS3Key('test-policy-123', 'manual');
-    
-    res.json({
-      success: true,
-      s3Prefix: process.env.S3_PREFIX || '(none)',
-      testKeys: {
-        generateS3Key: testKey1,
-        generatePolicyS3Key: testKey2
-      }
-    });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
 
 // Set port
 const PORT = process.env.PORT || 3001;
