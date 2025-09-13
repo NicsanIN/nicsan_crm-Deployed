@@ -40,8 +40,6 @@ class BackendApiService {
   // Dashboard Metrics from backend
   async getDashboardMetrics(): Promise<BackendApiResult> {
     try {
-      if (ENABLE_DEBUG) {
-      }
 
       const response = await fetch(`${API_BASE_URL}/dashboard/metrics`, {
         method: 'GET',
@@ -69,8 +67,6 @@ class BackendApiService {
         
       }
       
-      if (ENABLE_DEBUG) {
-      }
 
       return {
         success: true,
@@ -88,8 +84,6 @@ class BackendApiService {
   // Sales Reps from backend
   async getSalesReps(): Promise<BackendApiResult> {
     try {
-      if (ENABLE_DEBUG) {
-      }
 
       const response = await fetch(`${API_BASE_URL}/dashboard/sales-reps`, {
         method: 'GET',
@@ -105,8 +99,6 @@ class BackendApiService {
 
       const result = await response.json();
       
-      if (ENABLE_DEBUG) {
-      }
 
       // Transform backend data to match frontend expectations
       const transformedData = (result.data || []).map((rep: any) => ({
@@ -146,6 +138,12 @@ class BackendApiService {
       if (filters.model && filters.model !== 'All') queryParams.append('model', filters.model);
       if (filters.insurer && filters.insurer !== 'All') queryParams.append('insurer', filters.insurer);
       if (filters.cashbackMax) queryParams.append('cashbackMax', filters.cashbackMax.toString());
+      if (filters.branch && filters.branch !== 'All') queryParams.append('branch', filters.branch);
+      if (filters.rollover && filters.rollover !== 'All') queryParams.append('rollover', filters.rollover);
+      if (filters.rep && filters.rep !== 'All') queryParams.append('rep', filters.rep);
+      if (filters.vehiclePrefix && filters.vehiclePrefix !== 'All') queryParams.append('vehiclePrefix', filters.vehiclePrefix);
+      if (filters.fromDate) queryParams.append('fromDate', filters.fromDate);
+      if (filters.toDate) queryParams.append('toDate', filters.toDate);
 
       const url = `${API_BASE_URL}/dashboard/explorer${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
       
@@ -167,28 +165,11 @@ class BackendApiService {
 
       const result = await response.json();
       
-      if (ENABLE_DEBUG) {
-      }
 
-      // Transform backend data to match frontend expectations
-      const transformedData = (result.data || []).map((policy: any) => ({
-        rep: policy.executive || 'Unknown',  // Use executive field for sales rep names
-        make: policy.make || 'Unknown',
-        model: policy.model || 'Unknown',
-        policies: parseInt(policy.policies) || 0,  // Convert string to number
-        gwp: parseFloat(policy.gwp) || 0,  // Convert string to number
-        cashbackPctAvg: parseFloat(policy.cashbackPctAvg || policy.avg_cashback_pct || 0),  // Handle both field names and convert to number
-        cashback: parseFloat(policy.total_cashback) || 0,  // Convert string to number
-        net: parseFloat(policy.net) || 0,  // Convert string to number
-        insurer: policy.insurer || 'Unknown'  // Add missing insurer field
-      }));
-
-      if (ENABLE_DEBUG) {
-      }
 
       return {
         success: true,
-        data: transformedData,
+        data: result.data, // Return raw data, let DualStorageService handle transformation
         source: 'BACKEND_API'
       };
     } catch (error) {
@@ -202,8 +183,6 @@ class BackendApiService {
   // Policy Detail from backend
   async getPolicyDetail(policyId: string): Promise<BackendApiResult> {
     try {
-      if (ENABLE_DEBUG) {
-      }
 
       const response = await fetch(`${API_BASE_URL}/policies/${policyId}`, {
         method: 'GET',
@@ -219,8 +198,6 @@ class BackendApiService {
 
       const result = await response.json();
       
-      if (ENABLE_DEBUG) {
-      }
 
       return {
         success: true,
@@ -238,8 +215,6 @@ class BackendApiService {
   // Data Sources from backend
   async getDataSources(): Promise<BackendApiResult> {
     try {
-      if (ENABLE_DEBUG) {
-      }
 
       const response = await fetch(`${API_BASE_URL}/dashboard/metrics`, {
         method: 'GET',
@@ -255,13 +230,9 @@ class BackendApiService {
 
       const result = await response.json();
       
-      if (ENABLE_DEBUG) {
-      }
 
       // Transform sourceMetrics to match frontend expectations
       const sourceMetrics = result.data?.sourceMetrics || [];
-      if (ENABLE_DEBUG) {
-      }
       
       const transformedData = sourceMetrics.map((source: any) => ({
         name: source.source || 'Unknown',
@@ -269,8 +240,6 @@ class BackendApiService {
         gwp: parseFloat(source.gwp) || 0
       }));
 
-      if (ENABLE_DEBUG) {
-      }
 
       return {
         success: true,
@@ -288,8 +257,6 @@ class BackendApiService {
   // All Policies from backend
   async getAllPolicies(): Promise<BackendApiResult> {
     try {
-      if (ENABLE_DEBUG) {
-      }
 
       const response = await fetch(`${API_BASE_URL}/policies`, {
         method: 'GET',
@@ -305,8 +272,6 @@ class BackendApiService {
 
       const result = await response.json();
       
-      if (ENABLE_DEBUG) {
-      }
 
       return {
         success: true,
@@ -706,6 +671,21 @@ class BackendApiService {
       });
 
       if (!response.ok) {
+        // Try to parse error response from backend
+        try {
+          const errorData = await response.json();
+          if (ENABLE_DEBUG) {
+            console.log('Backend error response:', errorData);
+          }
+          if (errorData.error) {
+            throw new Error(errorData.error);
+          }
+        } catch (parseError) {
+          if (ENABLE_DEBUG) {
+            console.log('Error parsing backend response:', parseError);
+          }
+          // If parsing fails, use generic error
+        }
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 

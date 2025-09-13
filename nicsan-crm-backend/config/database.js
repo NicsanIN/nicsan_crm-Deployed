@@ -87,6 +87,7 @@ const initializeDatabase = async () => {
         mobile VARCHAR(20),
         rollover VARCHAR(255),
         customer_name VARCHAR(255),
+        branch VARCHAR(255),
         remark TEXT,
         brokerage DECIMAL(15,2) DEFAULT 0,
         cashback DECIMAL(15,2) DEFAULT 0,
@@ -124,6 +125,12 @@ const initializeDatabase = async () => {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
+    `);
+
+    // Add branch column if it doesn't exist (migration)
+    await query(`
+      ALTER TABLE policies 
+      ADD COLUMN IF NOT EXISTS branch VARCHAR(255)
     `);
 
     // Insert default settings
