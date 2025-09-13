@@ -336,7 +336,8 @@ function PageUpload() {
           customerPaid: '',
           customerChequeNo: '',
           ourChequeNo: '',
-          customerName: ''
+          customerName: '',
+          branch: ''
         });
         setManualExtrasSaved(false);
       } else {
@@ -1510,28 +1511,28 @@ function PageManualForm() {
       
       setForm((f: any) => ({
         ...f,
-        insurer: lastPolicy.insurer || f.insurer,
-        productType: lastPolicy.product_type || f.productType,
-        vehicleType: lastPolicy.vehicle_type || f.vehicleType,
-        make: lastPolicy.make || f.make,
-        model: lastPolicy.model || f.model,
-        cc: lastPolicy.cc || f.cc,
-        manufacturingYear: lastPolicy.manufacturing_year || f.manufacturingYear,
-        idv: lastPolicy.idv || f.idv,
-        ncb: lastPolicy.ncb || f.ncb,
-        discount: lastPolicy.discount || f.discount,
-        netOd: lastPolicy.net_od || f.netOd,
-        ref: lastPolicy.ref || f.ref,
-        totalOd: lastPolicy.total_od || f.totalOd,
-        netPremium: lastPolicy.net_premium || f.netPremium,
-        totalPremium: lastPolicy.total_premium || f.totalPremium,
-        brokerage: lastPolicy.brokerage || f.brokerage,
-        cashback: lastPolicy.cashback_amount || f.cashback,
-        branch: lastPolicy.branch || f.branch,
-        rollover: lastPolicy.rollover || f.rollover,
-        callerName: lastPolicy.caller_name || f.callerName,
-        executive: lastPolicy.executive || f.executive,
-        opsExecutive: lastPolicy.ops_executive || f.opsExecutive,
+        insurer: (lastPolicy as any).insurer || f.insurer,
+        productType: (lastPolicy as any).product_type || f.productType,
+        vehicleType: (lastPolicy as any).vehicle_type || f.vehicleType,
+        make: (lastPolicy as any).make || f.make,
+        model: (lastPolicy as any).model || f.model,
+        cc: (lastPolicy as any).cc || f.cc,
+        manufacturingYear: (lastPolicy as any).manufacturing_year || f.manufacturingYear,
+        idv: (lastPolicy as any).idv || f.idv,
+        ncb: (lastPolicy as any).ncb || f.ncb,
+        discount: (lastPolicy as any).discount || f.discount,
+        netOd: (lastPolicy as any).net_od || f.netOd,
+        ref: (lastPolicy as any).ref || f.ref,
+        totalOd: (lastPolicy as any).total_od || f.totalOd,
+        netPremium: (lastPolicy as any).net_premium || f.netPremium,
+        totalPremium: (lastPolicy as any).total_premium || f.totalPremium,
+        brokerage: (lastPolicy as any).brokerage || f.brokerage,
+        cashback: (lastPolicy as any).cashback_amount || f.cashback,
+        branch: (lastPolicy as any).branch || f.branch,
+        rollover: (lastPolicy as any).rollover || f.rollover,
+        callerName: (lastPolicy as any).caller_name || f.callerName,
+        executive: (lastPolicy as any).executive || f.executive,
+        opsExecutive: (lastPolicy as any).ops_executive || f.opsExecutive,
       }));
     } else {
       // Fallback to demo data if no search results
@@ -1883,10 +1884,10 @@ function PageManualForm() {
               Found {vehicleSearchResults.length} previous policy(ies) for this vehicle:
             </div>
             {vehicleSearchResults.slice(0, 3).map((policy, index) => (
-              <div key={policy.id} className="text-xs text-green-700 mb-1">
-                {index + 1}. Policy: {policy.policy_number} | 
-                Insurer: {policy.insurer} | 
-                Date: {new Date(policy.created_at).toLocaleDateString()}
+              <div key={(policy as any).id} className="text-xs text-green-700 mb-1">
+                {index + 1}. Policy: {(policy as any).policy_number} | 
+                Insurer: {(policy as any).insurer} | 
+                Date: {new Date((policy as any).created_at).toLocaleDateString()}
               </div>
             ))}
             <button 
