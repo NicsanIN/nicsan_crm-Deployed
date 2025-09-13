@@ -15,6 +15,9 @@ const textract = new AWS.Textract({
   region: process.env.AWS_REGION || 'us-east-1' // Use same region as S3
 });
 
+// Log S3 configuration on startup
+console.log(`[S3] bucket=${process.env.AWS_S3_BUCKET}, prefix=${process.env.S3_PREFIX || '(none)'}`);
+
 // S3 Helper Functions
 const uploadToS3 = async (file, key) => {
   try {
