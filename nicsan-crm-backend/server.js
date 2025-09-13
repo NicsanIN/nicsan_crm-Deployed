@@ -12,10 +12,20 @@ const server = http.createServer(app);
 app.use(express.json());                         // parse application/json
 app.use(express.urlencoded({ extended: true })); // parse form bodies (just in case)
 
+// REST CORS
+const allowed = [
+  'https://app.nicsanin.com',
+  'https://staging.nicsanin.com',
+  'https://crm.nicsanin.com' // keep if you still use it
+];
+app.use(require('cors')({
+  origin: allowed,
+  credentials: true
+}));
+
 // CF health must be first so no router/catch-all swallows it
 app.get('/api/health', (_req, res) => res.status(200).json({ status: 'ok' }));
 app.get('/health', (_req, res) => res.status(200).json({ status: 'ok' }));
-
 
 // Set port
 const PORT = process.env.PORT || 3001;
@@ -43,44 +53,11 @@ app.use('/api/debug', require('./routes/debug'));
 // Initialize Socket.IO (after API routes are mounted)
 const io = socketIo(server, {
   path: '/socket.io',
-  cors: { 
-    origin: ["https://staging.nicsanin.com", "https://app.nicsanin.com"], 
-    credentials: true 
+  cors: {
+    origin: allowed,
+    credentials: true
   }
 });
-
-// CORS configuration
-const corsOptions = {
-  origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
-    
-    const allowedOrigins = [
-      'https://app.nicsanin.com',
-      'https://staging.nicsanin.com',
-      'http://localhost:3000',
-      'http://localhost:5173',
-      'http://127.0.0.1:3000',
-      'http://127.0.0.1:5173'
-    ];
-    
-    if (allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      console.warn('🚫 CORS blocked origin: ' + origin);
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-  optionsSuccessStatus: 200
-};
-
-// Middleware
-app.use(cors(corsOptions));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
 
 
 // Error handling middleware
