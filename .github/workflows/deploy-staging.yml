@@ -41,6 +41,7 @@ jobs:
             VITE_NODE_ENV: staging
             VITE_ENABLE_DEBUG_LOGGING: "true"
             VITE_ENABLE_MOCK_DATA: "false"
+            VITE_BUILD_TIMESTAMP: "2025-09-15-13-10"
 
       - run: if grep -R "localhost:3001" dist; then echo "❌ localhost found" && exit 1; fi
       - run: aws s3 sync dist/ s3://nicsan-frontend-staging/ --delete
