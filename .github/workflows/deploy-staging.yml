@@ -39,6 +39,8 @@ jobs:
             VITE_WEBSOCKET_URL: wss://nicsan-backend-staging-alb-2024475140.ap-south-1.elb.amazonaws.com/socket.io
             VITE_WS_URL: wss://nicsan-backend-staging-alb-2024475140.ap-south-1.elb.amazonaws.com/socket.io
             VITE_NODE_ENV: staging
+            VITE_ENABLE_DEBUG_LOGGING: "true"
+            VITE_ENABLE_MOCK_DATA: "false"
 
       - run: if grep -R "localhost:3001" dist; then echo "❌ localhost found" && exit 1; fi
       - run: aws s3 sync dist/ s3://nicsan-frontend-staging/ --delete
