@@ -4,13 +4,12 @@ on:
   push:
     branches:
       - kumar2.0-dev
-      - staging
       - main
   pull_request:
     branches:
       - kumar2.0-dev
-      - staging
       - main
+  workflow_dispatch:
 
 jobs:
   validate-backend:

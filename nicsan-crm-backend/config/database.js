@@ -9,7 +9,11 @@ const pool = new Pool({
   database: process.env.DB_NAME || process.env.PGDATABASE || 'nicsan_crm',
   user: process.env.DB_USER || process.env.PGUSER || 'postgres',
   password: process.env.DB_PASSWORD || process.env.PGPASSWORD || 'your_password',
-  ssl: process.env.DB_SSL === 'true' || process.env.PGSSL === 'true' ? { rejectUnauthorized: false } : false,
+  ssl: process.env.NODE_ENV === 'production' ? { 
+    rejectUnauthorized: false,
+    checkServerIdentity: () => undefined,
+    secureProtocol: 'TLSv1_2_method'
+  } : (process.env.DB_SSL === 'true' || process.env.PGSSL === 'true' || process.env.PGSSLMODE === 'require' ? { rejectUnauthorized: false } : false),
   max: 20, // Maximum number of clients in the pool
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 2000,
