@@ -41,7 +41,7 @@ jobs:
             VITE_WEBSOCKET_URL: wss://staging-api.nicsanin.com/socket.io
             VITE_WS_URL: wss://staging-api.nicsanin.com/socket.io
             VITE_NODE_ENV: staging
-            VITE_ENABLE_DEBUG_LOGGING: "true"
+            VITE_ENABLE_DEBUG_LOGGING: "false"
             VITE_ENABLE_MOCK_DATA: "false"
             VITE_BUILD_TIMESTAMP: "2025-09-15-15-45"
 
