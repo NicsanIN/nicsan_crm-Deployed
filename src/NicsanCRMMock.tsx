@@ -5612,11 +5612,11 @@ function NicsanCRMMock() {
       {/* Backend Status Indicator */}
       {ENABLE_DEBUG && backendStatus && (
         <div className={`px-4 py-2 text-xs font-medium ${
-          backendStatus.backendAvailable 
+          backendStatus.data?.backendAvailable 
             ? 'bg-green-100 text-green-800' 
             : 'bg-red-100 text-red-800'
         }`}>
-          🔗 Backend: {backendStatus.backendAvailable ? 'Connected' : 'Disconnected'} 
+          🔗 Backend: {backendStatus.data?.backendAvailable ? 'Connected' : 'Disconnected'} 
           | Mock: {ENABLE_MOCK_DATA ? 'Enabled' : 'Disabled'}
           | Debug: {ENABLE_DEBUG ? 'On' : 'Off'}
         </div>
