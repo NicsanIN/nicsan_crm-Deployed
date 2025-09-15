@@ -37,12 +37,13 @@ jobs:
             VITE_API_BASE_URL: https://staging-api.nicsanin.com/api
             VITE_BACKEND_URL: https://staging-api.nicsanin.com
             VITE_BACKEND_HEALTH_URL: https://staging-api.nicsanin.com/api/health
+            VITE_DB_API_BASE_URL: https://staging-api.nicsanin.com/api
             VITE_WEBSOCKET_URL: wss://staging-api.nicsanin.com/socket.io
             VITE_WS_URL: wss://staging-api.nicsanin.com/socket.io
             VITE_NODE_ENV: staging
             VITE_ENABLE_DEBUG_LOGGING: "true"
             VITE_ENABLE_MOCK_DATA: "false"
-            VITE_BUILD_TIMESTAMP: "2025-09-15-15-00"
+            VITE_BUILD_TIMESTAMP: "2025-09-15-15-45"
 
       - run: if grep -R "localhost:3001" dist; then echo "❌ localhost found" && exit 1; fi
       - run: aws s3 sync dist/ s3://nicsan-frontend-staging/ --delete
