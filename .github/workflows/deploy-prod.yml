@@ -35,6 +35,8 @@ jobs:
           VITE_NODE_ENV: production
           VITE_ENABLE_DEBUG_LOGGING: "false"
           VITE_ENABLE_MOCK_DATA: "false"
+          VITE_APP_TITLE: "Nicsan CRM"
+          VITE_APP_LOGO: "Logo-05.svg"
 
       - name: Verify bundle has no localhost
         run: |
