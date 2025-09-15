@@ -1,0 +1,86 @@
+[
+  {
+    "name": "backend",
+    "image": "132418765186.dkr.ecr.ap-south-1.amazonaws.com/nicsan-crm-api:staging-fix",
+    "cpu": 0,
+    "portMappings": [
+      {
+        "containerPort": 3001,
+        "hostPort": 3001,
+        "protocol": "tcp",
+        "name": "backend-3001-tcp",
+        "appProtocol": "http"
+      }
+    ],
+    "essential": true,
+    "environment": [
+      {
+        "name": "AWS_REGION",
+        "value": "ap-south-1"
+      },
+      {
+        "name": "AWS_S3_BUCKET",
+        "value": "nicsan-crm-pdfs"
+      },
+      {
+        "name": "VITE_S3_PREFIX",
+        "value": "staging/"
+      },
+      {
+        "name": "NODE_ENV",
+        "value": "staging"
+      },
+      {
+        "name": "JWT_EXPIRES_IN",
+        "value": "24h"
+      },
+      {
+        "name": "CORS_ORIGINS",
+        "value": "*"
+      },
+      {
+        "name": "DISABLE_S3",
+        "value": "false"
+      },
+      {
+        "name": "FRONTEND_ORIGIN",
+        "value": ""
+      },
+      {
+        "name": "FRONTEND_URL",
+        "value": "https://staging.nicsanin.com"
+      }
+    ],
+    "mountPoints": [],
+    "volumesFrom": [],
+    "secrets": [
+      {
+        "name": "DATABASE_URL",
+        "valueFrom": "/nicsan/staging/DATABASE_URL"
+      },
+      {
+        "name": "JWT_SECRET",
+        "valueFrom": "arn:aws:ssm:ap-south-1:132418765186:parameter/nicsan/backend/JWT_SECRET"
+      },
+      {
+        "name": "OPENAI_API_KEY",
+        "valueFrom": "arn:aws:ssm:ap-south-1:132418765186:parameter/nicsan/backend/OPENAI_API_KEY"
+      },
+      {
+        "name": "S3_PREFIX",
+        "valueFrom": "/nicsan/staging/S3_PREFIX"
+      }
+    ],
+    "logConfiguration": {
+      "logDriver": "awslogs",
+      "options": {
+        "awslogs-group": "/ecs/nicsan-backend-staging",
+        "awslogs-create-group": "true",
+        "awslogs-region": "ap-south-1",
+        "awslogs-stream-prefix": "backend"
+      },
+      "secretOptions": []
+    },
+    "systemControls": []
+  }
+]

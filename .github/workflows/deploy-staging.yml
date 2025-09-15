@@ -33,11 +33,11 @@ jobs:
       - name: Build (staging)
         run: npm run build -- --mode staging
         env:
-            VITE_API_URL: https://staging.nicsanin.com/api
-            VITE_API_BASE_URL: https://staging.nicsanin.com/api
-            VITE_BACKEND_URL: https://staging.nicsanin.com
-            VITE_WEBSOCKET_URL: wss://staging.nicsanin.com/socket.io
-            VITE_WS_URL: wss://staging.nicsanin.com/socket.io
+            VITE_API_URL: https://nicsan-backend-staging-alb-2024475140.ap-south-1.elb.amazonaws.com/api
+            VITE_API_BASE_URL: https://nicsan-backend-staging-alb-2024475140.ap-south-1.elb.amazonaws.com/api
+            VITE_BACKEND_URL: https://nicsan-backend-staging-alb-2024475140.ap-south-1.elb.amazonaws.com
+            VITE_WEBSOCKET_URL: wss://nicsan-backend-staging-alb-2024475140.ap-south-1.elb.amazonaws.com/socket.io
+            VITE_WS_URL: wss://nicsan-backend-staging-alb-2024475140.ap-south-1.elb.amazonaws.com/socket.io
             VITE_NODE_ENV: staging
 
       - run: if grep -R "localhost:3001" dist; then echo "❌ localhost found" && exit 1; fi
