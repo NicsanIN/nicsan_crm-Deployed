@@ -1,7 +1,7 @@
 [
   {
     "name": "backend",
-    "image": "132418765186.dkr.ecr.ap-south-1.amazonaws.com/nicsan-crm-api:staging-fix-v2",
+    "image": "132418765186.dkr.ecr.ap-south-1.amazonaws.com/nicsan-crm-api:staging-fix-v3",
     "cpu": 0,
     "portMappings": [
       {
