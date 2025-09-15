@@ -1,7 +1,7 @@
 [
   {
     "name": "backend",
-    "image": "132418765186.dkr.ecr.ap-south-1.amazonaws.com/nicsan-crm-api:staging-fix-v3",
+    "image": "132418765186.dkr.ecr.ap-south-1.amazonaws.com/nicsan-crm-api:production-ssl-fix-v2",
     "cpu": 0,
     "portMappings": [
       {
@@ -15,20 +15,28 @@
     "essential": true,
     "environment": [
       {
-        "name": "AWS_REGION",
-        "value": "ap-south-1"
+        "name": "PGHOST",
+        "value": "nicsan-crm-db.cdu4ium6ws7v.ap-south-1.rds.amazonaws.com"
       },
       {
-        "name": "AWS_S3_BUCKET",
-        "value": "nicsan-crm-pdfs"
+        "name": "PORT",
+        "value": "3001"
       },
       {
-        "name": "VITE_S3_PREFIX",
-        "value": "staging/"
+        "name": "PGUSER",
+        "value": "nicsanadmin"
+      },
+      {
+        "name": "PGSSLMODE",
+        "value": "require"
+      },
+      {
+        "name": "PGPORT",
+        "value": "5432"
       },
       {
         "name": "NODE_ENV",
-        "value": "staging"
+        "value": "production"
       },
       {
         "name": "JWT_EXPIRES_IN",
@@ -36,7 +44,7 @@
       },
       {
         "name": "CORS_ORIGINS",
-        "value": "*"
+        "value": "https://app.nicsanin.com,http://localhost:5173"
       },
       {
         "name": "DISABLE_S3",
@@ -48,15 +56,13 @@
       },
       {
         "name": "FRONTEND_URL",
-        "value": "https://staging.nicsanin.com"
+        "value": "https://app.nicsanin.com"
       }
     ],
-    "mountPoints": [],
-    "volumesFrom": [],
     "secrets": [
       {
         "name": "DATABASE_URL",
-        "valueFrom": "/nicsan/staging/DATABASE_URL"
+        "valueFrom": "arn:aws:ssm:ap-south-1:132418765186:parameter/nicsan/backend/DATABASE_URL"
       },
       {
         "name": "JWT_SECRET",
@@ -65,16 +71,12 @@
       {
         "name": "OPENAI_API_KEY",
         "valueFrom": "arn:aws:ssm:ap-south-1:132418765186:parameter/nicsan/backend/OPENAI_API_KEY"
-      },
-      {
-        "name": "S3_PREFIX",
-        "valueFrom": "/nicsan/staging/S3_PREFIX"
       }
     ],
     "logConfiguration": {
       "logDriver": "awslogs",
       "options": {
-        "awslogs-group": "/ecs/nicsan-backend-staging",
+        "awslogs-group": "/ecs/nicsan-backend",
         "awslogs-create-group": "true",
         "awslogs-region": "ap-south-1",
         "awslogs-stream-prefix": "backend"
