@@ -1,7 +1,6 @@
 const express = require('express');
 const cors = require('cors');
 const http = require('http');
-const socketIo = require('socket.io');
 require('dotenv').config();
 
 // Initialize Express app
@@ -69,14 +68,9 @@ app.use('/api/dashboard', require('./routes/dashboard'));
 app.use('/api/settings', require('./routes/settings'));
 app.use('/api/debug', require('./routes/debug'));
 
-// Initialize Socket.IO (after API routes are mounted)
-const io = socketIo(server, {
-  path: '/socket.io',
-  cors: { 
-    origin: ["https://staging.nicsanin.com", "https://app.nicsanin.com"], 
-    credentials: true 
-  }
-});
+// Initialize WebSocket Service (handles Socket.IO internally)
+const wsService = require('./services/websocketService');
+wsService.initialize(server);
 
 // Middleware already configured above
 
