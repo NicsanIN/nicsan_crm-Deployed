@@ -33,11 +33,11 @@ jobs:
       - name: Build (staging)
         run: npm run build -- --mode staging
         env:
-            VITE_API_URL: https://nicsan-backend-staging-alb-2024475140.ap-south-1.elb.amazonaws.com/api
-            VITE_API_BASE_URL: https://nicsan-backend-staging-alb-2024475140.ap-south-1.elb.amazonaws.com/api
-            VITE_BACKEND_URL: https://nicsan-backend-staging-alb-2024475140.ap-south-1.elb.amazonaws.com
-            VITE_WEBSOCKET_URL: wss://nicsan-backend-staging-alb-2024475140.ap-south-1.elb.amazonaws.com/socket.io
-            VITE_WS_URL: wss://nicsan-backend-staging-alb-2024475140.ap-south-1.elb.amazonaws.com/socket.io
+            VITE_API_URL: https://staging-api.nicsanin.com/api
+            VITE_API_BASE_URL: https://staging-api.nicsanin.com/api
+            VITE_BACKEND_URL: https://staging-api.nicsanin.com
+            VITE_WEBSOCKET_URL: wss://staging-api.nicsanin.com/socket.io
+            VITE_WS_URL: wss://staging-api.nicsanin.com/socket.io
             VITE_NODE_ENV: staging
             VITE_ENABLE_DEBUG_LOGGING: "true"
             VITE_ENABLE_MOCK_DATA: "false"
