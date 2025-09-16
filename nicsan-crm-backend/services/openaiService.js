@@ -46,10 +46,10 @@ class OpenAIService {
     try {
       console.log('🔄 Starting multi-phase DIGIT extraction...');
       
-      // Phase 1: Extract "Own Damage Premium" for first three fields
-      const totalOdPremiumPrompt = `Find "Own Damage Premium" value in this text. Return ONLY the number.
-      Look for patterns like: "Own Damage Premium: 4902" or "Own Damage Premium (₹): 4902"
-      DO NOT use "Net Premium (₹)" or "Total Basic Own Damage Premium" - only "Own Damage Premium"
+      // Phase 1: Extract "Total OD Premium" for first three fields
+      const totalOdPremiumPrompt = `Find "Total OD Premium" value in this text. Return ONLY the number.
+      Look for patterns like: "Total OD Premium: 4902" or "Total OD Premium (₹): 4902"
+      DO NOT use "Net Premium (₹)" or "Final Premium" - only "Total OD Premium"
       Text: ${pdfText}`;
       
       const totalOdPremiumResponse = await this.client.chat.completions.create({
@@ -61,10 +61,10 @@ class OpenAIService {
       
       const totalOdPremium = parseInt(totalOdPremiumResponse.choices[0].message.content.trim());
       
-      // Phase 2: Extract "Total Basic Own Damage Premium"
-      const finalPremiumPrompt = `Find "Total Basic Own Damage Premium" value in this text. Return ONLY the number.
-      Look for patterns like: "Total Basic Own Damage Premium: 6500" or "Total Basic Own Damage Premium (₹): 6500"
-      DO NOT use "Net Premium (₹)" or "Own Damage Premium" - only "Total Basic Own Damage Premium"
+      // Phase 2: Extract "Final Premium"
+      const finalPremiumPrompt = `Find "Final Premium" value in this text. Return ONLY the number.
+      Look for patterns like: "Final Premium: 6500" or "Final Premium (₹): 6500"
+      DO NOT use "Net Premium (₹)" or "Total OD Premium" - only "Final Premium"
       Text: ${pdfText}`;
       
       const finalPremiumResponse = await this.client.chat.completions.create({
@@ -78,7 +78,7 @@ class OpenAIService {
       
       // Phase 3: Validate and return
       if (totalOdPremium && finalPremium && totalOdPremium !== finalPremium) {
-        console.log(`✅ Multi-phase extraction successful: Own Damage Premium=${totalOdPremium}, Total Basic Own Damage Premium=${finalPremium}`);
+        console.log(`✅ Multi-phase extraction successful: Total OD Premium=${totalOdPremium}, Final Premium=${finalPremium}`);
         return {
           net_od: totalOdPremium,
           total_od: totalOdPremium,
@@ -133,8 +133,9 @@ CRITICAL EXTRACTION RULES:
 6. Policy year and IDV can be combined - extract policy year context when available
 7. For table data, extract IDV column value AND policy year when present
 8. For TATA_AIG policies specifically: PRIORITIZE "Total IDV (₹)" as the primary source over "Vehicle IDV (₹)"
-8. For NET OD: Extract "Total Own Damage Premium (A)" values - this is the NET OD in TATA AIG
-9. For TOTAL OD: Extract "Total Premium" or "Total Amount" values - this is the TOTAL OD in TATA AIG
+8. For TATA_AIG policies specifically:
+    - Net OD (₹): Extract "Total Own Damage Premium (A)" values - this is the NET OD in TATA AIG
+    - Total OD (₹): Extract "Total Premium" or "Total Amount" values - this is the TOTAL OD in TATA AIG
 10. For DIGIT policies specifically:
     - Net OD (₹): Extract from "Total OD Premium" values
     - Total OD (₹): Extract from "Total OD Premium" values  

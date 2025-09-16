@@ -7,6 +7,7 @@
 // const AWS_REGION = import.meta.env.VITE_AWS_REGION || 'us-east-1';
 const AWS_S3_BUCKET = import.meta.env.VITE_AWS_S3_BUCKET || 'nicsan-crm-data';
 const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
+const ENVIRONMENT = import.meta.env.VITE_ENVIRONMENT || 'production';
 
 // AWS SDK configuration
 declare global {
@@ -55,9 +56,13 @@ class S3Service {
         throw new Error('S3 service not initialized');
       }
 
+      // Add environment prefix for staging
+      const envPrefix = ENVIRONMENT === 'staging' ? 'local-staging/' : '';
+      const fullKey = `${envPrefix}${key}`;
+
       const params = {
         Bucket: AWS_S3_BUCKET,
-        Key: key
+        Key: fullKey
       };
 
       const result = await this.s3.getObject(params).promise();

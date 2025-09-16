@@ -44,6 +44,9 @@ AWS_SECRET_ACCESS_KEY=your_secret_key
 AWS_REGION=us-east-1
 AWS_S3_BUCKET=nicsan-crm-uploads
 
+# Environment Configuration
+ENVIRONMENT=staging
+
 # JWT
 JWT_SECRET=your_jwt_secret_key
 JWT_EXPIRES_IN=24h
