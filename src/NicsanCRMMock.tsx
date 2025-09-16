@@ -2342,11 +2342,7 @@ function PageManualGrid() {
             executive: cells[22] || "",
             opsExecutive: cells[23] || "",
             callerName: cells[24] || "",
-            operations/grid/ops-executive
             mobile: cells[25] || "",
-
-            mobile: cells[25] || "",
-            develop
       
       // Additional
             rollover: cells[26] || "",
