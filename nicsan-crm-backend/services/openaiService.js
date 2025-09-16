@@ -46,25 +46,25 @@ class OpenAIService {
     try {
       console.log('🔄 Starting multi-phase DIGIT extraction...');
       
-      // Phase 1: Extract "Net Premium (₹)" for first three fields
-      const netPremiumPrompt = `Find "Net Premium (₹)" value in this text. Return ONLY the number.
-      Look for patterns like: "Net Premium (₹): 4902" or "Net Premium: 4902"
-      DO NOT use "Total OD Premium" or "Own Damage Premium" - only "Net Premium (₹)"
+      // Phase 1: Extract "Own Damage Premium" for first three fields
+      const totalOdPremiumPrompt = `Find "Own Damage Premium" value in this text. Return ONLY the number.
+      Look for patterns like: "Own Damage Premium: 4902" or "Own Damage Premium (₹): 4902"
+      DO NOT use "Net Premium (₹)" or "Total Basic Own Damage Premium" - only "Own Damage Premium"
       Text: ${pdfText}`;
       
-      const netPremiumResponse = await this.client.chat.completions.create({
+      const totalOdPremiumResponse = await this.client.chat.completions.create({
         model: process.env.OPENAI_MODEL_FAST || 'gpt-4o-mini',
-        messages: [{ role: "user", content: netPremiumPrompt }],
+        messages: [{ role: "user", content: totalOdPremiumPrompt }],
         temperature: 0.1,
         max_tokens: 50
       });
       
-      const netPremium = parseInt(netPremiumResponse.choices[0].message.content.trim());
+      const totalOdPremium = parseInt(totalOdPremiumResponse.choices[0].message.content.trim());
       
-      // Phase 2: Extract "Final Premium"
-      const finalPremiumPrompt = `Find "Final Premium" value in this text. Return ONLY the number.
-      Look for patterns like: "Final Premium: 6500" or "Final Premium (₹): 6500"
-      DO NOT use "Net Premium (₹)" or "Total OD Premium" - only "Final Premium"
+      // Phase 2: Extract "Total Basic Own Damage Premium"
+      const finalPremiumPrompt = `Find "Total Basic Own Damage Premium" value in this text. Return ONLY the number.
+      Look for patterns like: "Total Basic Own Damage Premium: 6500" or "Total Basic Own Damage Premium (₹): 6500"
+      DO NOT use "Net Premium (₹)" or "Own Damage Premium" - only "Total Basic Own Damage Premium"
       Text: ${pdfText}`;
       
       const finalPremiumResponse = await this.client.chat.completions.create({
@@ -77,12 +77,12 @@ class OpenAIService {
       const finalPremium = parseInt(finalPremiumResponse.choices[0].message.content.trim());
       
       // Phase 3: Validate and return
-      if (netPremium && finalPremium && netPremium !== finalPremium) {
-        console.log(`✅ Multi-phase extraction successful: Net Premium (₹)=${netPremium}, Final Premium=${finalPremium}`);
+      if (totalOdPremium && finalPremium && totalOdPremium !== finalPremium) {
+        console.log(`✅ Multi-phase extraction successful: Own Damage Premium=${totalOdPremium}, Total Basic Own Damage Premium=${finalPremium}`);
         return {
-          net_od: netPremium,
-          total_od: netPremium,
-          net_premium: netPremium,
+          net_od: totalOdPremium,
+          total_od: totalOdPremium,
+          net_premium: totalOdPremium,
           total_premium: finalPremium,
           extraction_method: 'MULTI_PHASE'
         };
@@ -136,17 +136,17 @@ CRITICAL EXTRACTION RULES:
 8. For NET OD: Extract "Total Own Damage Premium (A)" values - this is the NET OD in TATA AIG
 9. For TOTAL OD: Extract "Total Premium" or "Total Amount" values - this is the TOTAL OD in TATA AIG
 10. For DIGIT policies specifically:
-    - Net OD (₹): Extract from "Net Premium (₹)" values
-    - Total OD (₹): Extract from "Net Premium (₹)" values  
-    - Net Premium (₹): Extract from "Net Premium (₹)" values
+    - Net OD (₹): Extract from "Total OD Premium" values
+    - Total OD (₹): Extract from "Total OD Premium" values  
+    - Net Premium (₹): Extract from "Total OD Premium" values
     - Total Premium (₹): Extract from "Final Premium" values
     
-    CRITICAL DIGIT RULE: "Net Premium (₹)" and "Final Premium" are DIFFERENT fields!
-    - "Net Premium (₹)" is typically smaller (e.g., 4902)
+    CRITICAL DIGIT RULE: "Total OD Premium" and "Final Premium" are DIFFERENT fields!
+    - "Total OD Premium" is typically smaller (e.g., 4902)
     - "Final Premium" is typically larger (e.g., 6500)
     - These values should be DIFFERENT!
     - Look for "Final Premium" or "Total Premium Payable" for total_premium
-    - DO NOT use "Net Premium (₹)" value for total_premium!
+    - DO NOT use "Total OD Premium" value for total_premium!
 11. For RELIANCE_GENERAL policies specifically:
     - Net OD (₹): Extract from "Total Own Damage Premium" values
     - Total OD (₹): Extract from "Total Own Damage Premium" values  
@@ -198,7 +198,7 @@ ${pdfText}`;
           console.log('⚠️ DIGIT Bug detected: All premium fields are equal!');
           console.log('🔍 This indicates OpenAI extracted total_premium from wrong source');
         } else {
-          console.log('✅ DIGIT extraction appears correct: total_premium differs from other premium fields');
+          console.log('✅ DIGIT extraction appears correct: total_premium differs from Total OD Premium fields');
         }
       }
       

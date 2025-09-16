@@ -2339,14 +2339,15 @@ function PageManualGrid() {
       
       // Contact Info
             executive: cells[22] || "",
-            callerName: cells[23] || "",
-            mobile: cells[24] || "",
+            opsExecutive: cells[23] || "",
+            callerName: cells[24] || "",
+            mobile: cells[25] || "",
       
       // Additional
-            rollover: cells[25] || "",
-            customerName: cells[26] || "",
-            branch: cells[27] || "",
-            remark: cells[28] || "",
+            rollover: cells[26] || "",
+            customerName: cells[27] || "",
+            branch: cells[28] || "",
+            remark: cells[29] || "",
             cashback: "", // Not in Excel - keep empty
             status: "OK" 
           };
