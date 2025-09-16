@@ -64,11 +64,7 @@
       },
       {
         "name": "AWS_S3_BUCKET",
-        "value": "nicsan-crm-data"
-      },
-      {
-        "name": "S3_PREFIX",
-        "value": "production"
+        "value": "nicsan-crm-pdfs"
       }
     ],
     "secrets": [
@@ -85,12 +81,8 @@
         "valueFrom": "arn:aws:ssm:ap-south-1:132418765186:parameter/nicsan/backend/OPENAI_API_KEY"
       },
       {
-        "name": "AWS_ACCESS_KEY_ID",
-        "valueFrom": "arn:aws:ssm:ap-south-1:132418765186:parameter/nicsan/backend/AWS_ACCESS_KEY_ID"
-      },
-      {
-        "name": "AWS_SECRET_ACCESS_KEY",
-        "valueFrom": "arn:aws:ssm:ap-south-1:132418765186:parameter/nicsan/backend/AWS_SECRET_ACCESS_KEY"
+        "name": "S3_PREFIX",
+        "valueFrom": "arn:aws:ssm:ap-south-1:132418765186:parameter/nicsan/production/S3_PREFIX"
       }
     ],
     "logConfiguration": {
