@@ -2354,7 +2354,7 @@ function PageManualGrid() {
             branch: cells[28] || "",
             remark: cells[29] || "",
             cashback: "", // Not in Excel - keep empty
-            status: "OK"
+            status: "OK"
           };
           
           // Debug logging for dates
