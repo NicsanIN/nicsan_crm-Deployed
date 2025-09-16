@@ -671,21 +671,6 @@ class BackendApiService {
       });
 
       if (!response.ok) {
-        // Try to parse error response from backend
-        try {
-          const errorData = await response.json();
-          if (ENABLE_DEBUG) {
-            console.log('Backend error response:', errorData);
-          }
-          if (errorData.error) {
-            throw new Error(errorData.error);
-          }
-        } catch (parseError) {
-          if (ENABLE_DEBUG) {
-            console.log('Error parsing backend response:', parseError);
-          }
-          // If parsing fails, use generic error
-        }
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
