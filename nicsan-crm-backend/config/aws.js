@@ -1,4 +1,5 @@
 const AWS = require('aws-sdk');
+const { withPrefix } = require('../utils/s3Prefix');
 
 // AWS Configuration (Primary Storage)
 const s3 = new AWS.S3({
@@ -14,6 +15,11 @@ const textract = new AWS.Textract({
   secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
   region: process.env.AWS_REGION || 'us-east-1' // Use same region as S3
 });
+
+// S3 Configuration Logging (for startup sanity checks)
+console.log('[S3] bucket:', process.env.AWS_S3_BUCKET);
+console.log('[S3] prefix:', process.env.S3_PREFIX || '(none)');
+console.log('[S3] region:', process.env.AWS_REGION || 'us-east-1');
 
 // S3 Helper Functions
 const uploadToS3 = async (file, key) => {
@@ -87,14 +93,14 @@ const generateS3Key = async (filename, selectedInsurer, fileBuffer) => {
     
     console.log(`📁 S3 Key: Using ${insurer} for file ${filename} (detected: ${detectedInsurer}, selected: ${selectedInsurer})`);
     
-    return `uploads/${insurer}/${timestamp}_${randomId}.${extension}`;
+    return withPrefix(`uploads/${insurer}/${timestamp}_${randomId}.${extension}`);
   } catch (error) {
     console.error('❌ Insurer detection failed, using selected insurer:', error);
     // Fallback to selected insurer if detection fails
     const timestamp = Date.now();
     const randomId = Math.random().toString(36).substring(2, 15);
     const extension = filename.split('.').pop();
-    return `uploads/${selectedInsurer}/${timestamp}_${randomId}.${extension}`;
+    return withPrefix(`uploads/${selectedInsurer}/${timestamp}_${randomId}.${extension}`);
   }
 };
 
@@ -105,13 +111,13 @@ const generatePolicyS3Key = (policyId, source = 'PDF_UPLOAD') => {
   
   switch (source) {
     case 'PDF_UPLOAD':
-      return `data/policies/confirmed/POL${policyId}_${timestamp}_${randomId}.json`;
+      return withPrefix(`data/policies/confirmed/POL${policyId}_${timestamp}_${randomId}.json`);
     case 'MANUAL_FORM':
-      return `data/policies/manual/POL${policyId}_${timestamp}_${randomId}.json`;
+      return withPrefix(`data/policies/manual/POL${policyId}_${timestamp}_${randomId}.json`);
     case 'MANUAL_GRID':
-      return `data/policies/bulk/BATCH${policyId}_${timestamp}_${randomId}.json`;
+      return withPrefix(`data/policies/bulk/BATCH${policyId}_${timestamp}_${randomId}.json`);
     default:
-      return `data/policies/other/POL${policyId}_${timestamp}_${randomId}.json`;
+      return withPrefix(`data/policies/other/POL${policyId}_${timestamp}_${randomId}.json`);
   }
 };
 

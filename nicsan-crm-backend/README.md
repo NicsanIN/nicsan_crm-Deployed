@@ -58,7 +58,26 @@ npm run init-db
 npm run init-users
 ```
 
-### 4. Start Server
+### 4. Database Migrations
+```bash
+# For teammates (local development)
+npm run migrate:latest          # Run all pending migrations
+npm run migrate:rollback        # Rollback last migration
+npm run migrate:status          # Check migration status
+npm run migrate:make <name>     # Create new migration
+
+# For staging environment (RDS)
+npm run migrate:staging         # Run migrations on staging RDS
+npm run migrate:staging:rollback # Rollback staging migration
+npm run migrate:staging:status  # Check staging migration status
+
+# For production environment (RDS)
+npm run migrate:production      # Run migrations on production RDS
+npm run migrate:production:rollback # Rollback production migration
+npm run migrate:production:status  # Check production migration status
+```
+
+### 5. Start Server
 ```bash
 # Development mode
 npm run dev

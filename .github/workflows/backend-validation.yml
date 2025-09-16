@@ -1,0 +1,88 @@
+name: Backend Validation
+
+on:
+  push:
+    branches:
+      - kumar2.0-dev
+      - main
+  pull_request:
+    branches:
+      - kumar2.0-dev
+      - main
+  workflow_dispatch:
+
+jobs:
+  validate-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install backend dependencies
+        run: |
+          cd nicsan-crm-backend
+          npm ci
+
+      - name: Check withPrefix import in config/aws.js
+        run: |
+          if ! grep -q "withPrefix" nicsan-crm-backend/config/aws.js; then
+            echo "❌ withPrefix not imported in config/aws.js"
+            exit 1
+          fi
+          echo "✅ withPrefix import found in config/aws.js"
+
+      - name: Check for hardcoded S3 paths
+        run: |
+          # Check for hardcoded data/ paths (excluding test files)
+          if grep -r "const.*= \`data/" nicsan-crm-backend --exclude="*.test.js" --exclude="test-*.js" --exclude="debug-*.js"; then
+            echo "❌ Hardcoded data/ paths found in backend"
+            exit 1
+          fi
+          
+          # Check for hardcoded uploads/ paths (excluding test files)
+          if grep -r "const.*= \`uploads/" nicsan-crm-backend --exclude="*.test.js" --exclude="test-*.js" --exclude="debug-*.js"; then
+            echo "❌ Hardcoded uploads/ paths found in backend"
+            exit 1
+          fi
+          
+          echo "✅ No hardcoded S3 paths found"
+
+      - name: Validate S3 prefix utility
+        run: |
+          cd nicsan-crm-backend
+          node -e "
+            const { withPrefix } = require('./utils/s3Prefix');
+            
+            // Test basic functionality
+            const result1 = withPrefix('test/key');
+            if (result1 !== 'test/key') {
+              console.error('❌ withPrefix failed basic test');
+              process.exit(1);
+            }
+            
+            // Test with prefix
+            process.env.S3_PREFIX = 'staging';
+            const result2 = withPrefix('test/key');
+            if (result2 !== 'staging/test/key') {
+              console.error('❌ withPrefix failed prefix test');
+              process.exit(1);
+            }
+            
+            console.log('✅ S3 prefix utility validation passed');
+          "
+
+      - name: Check for localhost references
+        run: |
+          if grep -r "localhost:3001" nicsan-crm-backend --exclude="*.test.js" --exclude="test-*.js" --exclude="debug-*.js"; then
+            echo "❌ localhost:3001 found in backend code"
+            exit 1
+          fi
+          echo "✅ No localhost references found"
+
+      - name: Backend validation complete
+        run: echo "✅ All backend validations passed"

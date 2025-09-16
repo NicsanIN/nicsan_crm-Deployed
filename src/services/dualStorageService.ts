@@ -72,7 +72,7 @@ class DualStorageService {
           success: false,
           data: null,
           source: 'ERROR',
-          error: backendError.message || 'Backend operation failed'
+          error: (backendError as Error).message || 'Backend operation failed'
         };
       }
     }
