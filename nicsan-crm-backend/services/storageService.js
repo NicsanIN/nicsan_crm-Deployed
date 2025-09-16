@@ -34,17 +34,32 @@ async savePolicy(policyData) {
       const pgResult = await this.saveToPostgreSQL(policyData);
       const policyId = pgResult.rows[0].id;
       
-      // 2. Save to S3 (Primary Storage) - JSON data
-      const s3Key = generatePolicyS3Key(policyId, policyData.source);
-      const s3Result = await uploadJSONToS3(policyData, s3Key);
+      // 2. Save to S3 (Primary Storage) - JSON data (with graceful failure handling)
+      let s3Key = null;
+      let s3Result = null;
       
-      // 3. Update PostgreSQL with S3 key
-      await query(
-        'UPDATE policies SET s3_key = $1 WHERE id = $2',
-        [s3Key, policyId]
-      );
+      try {
+        s3Key = generatePolicyS3Key(policyId, policyData.source);
+        s3Result = await uploadJSONToS3(policyData, s3Key);
+        console.log('✅ Policy data uploaded to S3 successfully');
+      } catch (s3Error) {
+        console.error('⚠️ S3 upload failed, but continuing with database save:', s3Error.message);
+        // Continue without S3 key - database save is more important
+      }
       
-      console.log('✅ Policy saved to both storages successfully');
+      // 3. Update PostgreSQL with S3 key (if S3 upload succeeded)
+      if (s3Key) {
+        await query(
+          'UPDATE policies SET s3_key = $1 WHERE id = $2',
+          [s3Key, policyId]
+        );
+      }
+      
+      if (s3Key) {
+        console.log('✅ Policy saved to both database and S3 successfully');
+      } else {
+        console.log('✅ Policy saved to database successfully (S3 upload failed)');
+      }
       
       const savedPolicy = {
         id: policyId,
