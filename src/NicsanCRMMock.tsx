@@ -2605,55 +2605,98 @@ function PageManualGrid() {
       
       const saveResult = await DualStorageService.saveGridEntries(policyDataArray);
       
-      // Check if data came from backend API (actual database save) or mock data fallback
-      const results = rows.map((_, index) => ({ 
-        index, 
-        success: saveResult.source === 'BACKEND_API' 
-      }));
-      
-      // Update row statuses based on results
-      const finalStatuses: {[key: number]: 'saved' | 'error'} = {};
-      results.forEach((result, index) => {
-        if (result.success) {
-          finalStatuses[index] = 'saved';
-        } else {
-          finalStatuses[index] = 'error';
-        }
-      });
-      setRowStatuses(finalStatuses);
-      
-      // Remove saved rows after a delay to show success status
-      setTimeout(() => {
-        setRows(prev => prev.filter((_, index) => finalStatuses[index] !== 'saved'));
-        setRowStatuses({});
-      }, 2000);
-      
-      // Show detailed results
-      const savedCount = Object.values(finalStatuses).filter(s => s === 'saved').length;
-      const errorCount = Object.values(finalStatuses).filter(s => s === 'error').length;
-      
-      if (savedCount === rows.length) {
-        setSaveMessage({ type: 'success', message: `Successfully saved all ${rows.length} policies to database!` });
-      } else if (savedCount > 0) {
-        setSaveMessage({ 
-          type: 'success', 
-          message: `Saved ${savedCount} policies successfully. ${errorCount} failed - please check and retry.` 
+      // Handle the new detailed response format from backend
+      if (saveResult.source === 'BACKEND_API' && saveResult.data) {
+        const { successful, failed, successCount, failureCount } = saveResult.data;
+        
+        // Update row statuses based on detailed results
+        const finalStatuses: {[key: number]: 'saved' | 'error'} = {};
+        
+        // Mark successful entries
+        successful.forEach((result: any) => {
+          finalStatuses[result.index] = 'saved';
         });
-      } else {
-        // Check if it was a backend issue, data validation issue, or specific error
-        if (saveResult.source === 'MOCK_DATA') {
+        
+        // Mark failed entries
+        failed.forEach((result: any) => {
+          finalStatuses[result.index] = 'error';
+        });
+        
+        setRowStatuses(finalStatuses);
+        
+        // Remove saved rows after a delay to show success status
+        setTimeout(() => {
+          setRows(prev => prev.filter((_, index) => finalStatuses[index] !== 'saved'));
+          setRowStatuses({});
+        }, 2000);
+        
+        // Show detailed results
+        if (successCount === rows.length) {
+          setSaveMessage({ type: 'success', message: `Successfully saved all ${rows.length} policies to database!` });
+        } else if (successCount > 0) {
           setSaveMessage({ 
-            type: 'error', 
-            message: 'Failed to save policies: Backend server is unavailable. Please check your connection and try again.' 
-          });
-        } else if (saveResult.source === 'ERROR' && saveResult.error) {
-          // Show specific error message from backend
-          setSaveMessage({ 
-            type: 'error', 
-            message: saveResult.error 
+            type: 'success', 
+            message: `Saved ${successCount} policies successfully. ${failureCount} failed - please check and retry.` 
           });
         } else {
-          setSaveMessage({ type: 'error', message: 'Failed to save any policies. Please check the data and try again.' });
+          // All failed - show specific error details
+          const errorMessages = failed.map((f: any) => f.error).join(', ');
+          setSaveMessage({ 
+            type: 'error', 
+            message: `Failed to save all policies. Errors: ${errorMessages}` 
+          });
+        }
+      } else {
+        // Fallback for mock data or error scenarios
+        const results = rows.map((_, index) => ({ 
+          index, 
+          success: saveResult.source === 'BACKEND_API' 
+        }));
+        
+        // Update row statuses based on results
+        const finalStatuses: {[key: number]: 'saved' | 'error'} = {};
+        results.forEach((result, index) => {
+          if (result.success) {
+            finalStatuses[index] = 'saved';
+          } else {
+            finalStatuses[index] = 'error';
+          }
+        });
+        setRowStatuses(finalStatuses);
+        
+        // Remove saved rows after a delay to show success status
+        setTimeout(() => {
+          setRows(prev => prev.filter((_, index) => finalStatuses[index] !== 'saved'));
+          setRowStatuses({});
+        }, 2000);
+        
+        // Show detailed results
+        const savedCount = Object.values(finalStatuses).filter(s => s === 'saved').length;
+        const errorCount = Object.values(finalStatuses).filter(s => s === 'error').length;
+        
+        if (savedCount === rows.length) {
+          setSaveMessage({ type: 'success', message: `Successfully saved all ${rows.length} policies to database!` });
+        } else if (savedCount > 0) {
+          setSaveMessage({ 
+            type: 'success', 
+            message: `Saved ${savedCount} policies successfully. ${errorCount} failed - please check and retry.` 
+          });
+        } else {
+          // Check if it was a backend issue, data validation issue, or specific error
+          if (saveResult.source === 'MOCK_DATA') {
+            setSaveMessage({ 
+              type: 'error', 
+              message: 'Failed to save policies: Backend server is unavailable. Please check your connection and try again.' 
+            });
+          } else if (saveResult.source === 'ERROR' && saveResult.error) {
+            // Show specific error message from backend
+            setSaveMessage({ 
+              type: 'error', 
+              message: saveResult.error 
+            });
+          } else {
+            setSaveMessage({ type: 'error', message: 'Failed to save any policies. Please check the data and try again.' });
+          }
         }
       }
       

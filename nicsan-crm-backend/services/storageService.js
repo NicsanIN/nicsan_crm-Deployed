@@ -804,27 +804,64 @@ async savePolicy(policyData) {
     try {
       console.log('📊 Saving grid entries to dual storage...');
       
-      const results = [];
+      // Process all entries in parallel with individual error handling
+      const results = await Promise.allSettled(
+        entries.map(async (entry, index) => {
+          try {
+            // Add source metadata and handle field mapping
+            const policyData = {
+              ...entry,
+              caller_name: entry.caller_name || entry.callerName || '', // Map callerName to caller_name
+              source: 'MANUAL_GRID',
+              confidence_score: 99.99 // Manual entry = 99.99% confidence (max for DECIMAL(4,2))
+            };
+            
+            // Save each entry to both storages
+            const result = await this.savePolicy(policyData);
+            return { success: true, data: result.data, index };
+          } catch (error) {
+            console.error(`❌ Failed to save entry ${index + 1}:`, error.message);
+            return { 
+              success: false, 
+              error: error.message, 
+              index,
+              entry: {
+                policy_number: entry.policy_number,
+                vehicle_number: entry.vehicle_number,
+                insurer: entry.insurer
+              }
+            };
+          }
+        })
+      );
       
-      for (const entry of entries) {
-        // Add source metadata and handle field mapping
-        const policyData = {
-          ...entry,
-          caller_name: entry.caller_name || entry.callerName || '', // Map callerName to caller_name
-          source: 'MANUAL_GRID',
-          confidence_score: 99.99 // Manual entry = 99.99% confidence (max for DECIMAL(4,2))
-        };
-        
-        // Save each entry to both storages
-        const result = await this.savePolicy(policyData);
-        results.push(result);
+      // Separate successful and failed results
+      const successful = results
+        .filter(result => result.status === 'fulfilled' && result.value.success)
+        .map(result => result.value);
+      
+      const failed = results
+        .filter(result => result.status === 'rejected' || !result.value.success)
+        .map(result => result.status === 'fulfilled' ? result.value : { 
+          success: false, 
+          error: result.reason?.message || 'Unknown error',
+          index: -1
+        });
+      
+      console.log(`✅ Saved ${successful.length} out of ${entries.length} grid entries to dual storage`);
+      if (failed.length > 0) {
+        console.log(`❌ Failed to save ${failed.length} entries:`, failed.map(f => f.error));
       }
       
-      console.log(`✅ Saved ${results.length} grid entries to dual storage`);
-      
       return {
-        success: true,
-        data: results
+        success: successful.length > 0, // Success if at least one entry was saved
+        data: {
+          successful: successful,
+          failed: failed,
+          totalProcessed: entries.length,
+          successCount: successful.length,
+          failureCount: failed.length
+        }
       };
     } catch (error) {
       console.error('❌ Save grid entries error:', error);

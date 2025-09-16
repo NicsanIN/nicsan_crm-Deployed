@@ -670,18 +670,15 @@ class BackendApiService {
         body: JSON.stringify({ entries }),
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
       const result = await response.json();
       
       if (ENABLE_DEBUG) {
-        console.log('✅ BackendApiService: Grid entries saved successfully');
+        console.log('✅ BackendApiService: Grid entries response received');
       }
 
+      // Return the result regardless of HTTP status - let the frontend handle partial success
       return {
-        success: true,
+        success: result.success,
         data: result.data,
         source: 'BACKEND_API'
       };

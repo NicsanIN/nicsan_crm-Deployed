@@ -94,7 +94,13 @@ router.post('/grid', authenticateToken, requireOps, async (req, res) => {
     }
 
     const result = await storageService.saveGridEntries(entries);
-    res.status(201).json(result);
+    
+    // Return appropriate status code based on success
+    if (result.success) {
+      res.status(201).json(result);
+    } else {
+      res.status(400).json(result);
+    }
   } catch (error) {
     console.error('Save grid entries error:', error);
     res.status(400).json({
