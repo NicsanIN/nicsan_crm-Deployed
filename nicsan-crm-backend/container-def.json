@@ -57,6 +57,18 @@
       {
         "name": "FRONTEND_URL",
         "value": "https://app.nicsanin.com"
+      },
+      {
+        "name": "AWS_REGION",
+        "value": "ap-south-1"
+      },
+      {
+        "name": "AWS_S3_BUCKET",
+        "value": "nicsan-crm-data"
+      },
+      {
+        "name": "S3_PREFIX",
+        "value": "production"
       }
     ],
     "secrets": [
@@ -71,6 +83,14 @@
       {
         "name": "OPENAI_API_KEY",
         "valueFrom": "arn:aws:ssm:ap-south-1:132418765186:parameter/nicsan/backend/OPENAI_API_KEY"
+      },
+      {
+        "name": "AWS_ACCESS_KEY_ID",
+        "valueFrom": "arn:aws:ssm:ap-south-1:132418765186:parameter/nicsan/backend/AWS_ACCESS_KEY_ID"
+      },
+      {
+        "name": "AWS_SECRET_ACCESS_KEY",
+        "valueFrom": "arn:aws:ssm:ap-south-1:132418765186:parameter/nicsan/backend/AWS_SECRET_ACCESS_KEY"
       }
     ],
     "logConfiguration": {
