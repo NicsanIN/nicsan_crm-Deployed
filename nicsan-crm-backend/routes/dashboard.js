@@ -35,8 +35,8 @@ router.get('/metrics', authenticateToken, requireFounder, async (req, res) => {
 // Get sales explorer data
 router.get('/explorer', authenticateToken, requireFounder, async (req, res) => {
   try {
-    const { make, model, insurer, cashbackMax = 20, branch, rollover, rep, vehiclePrefix, fromDate, toDate } = req.query;
-    const filters = { make, model, insurer, cashbackMax, branch, rollover, rep, vehiclePrefix, fromDate, toDate };
+    const { make, model, insurer, cashbackMax = 20, branch, rollover, rep, vehiclePrefix, fromDate, toDate, expiryFromDate, expiryToDate } = req.query;
+    const filters = { make, model, insurer, cashbackMax, branch, rollover, rep, vehiclePrefix, fromDate, toDate, expiryFromDate, expiryToDate };
     const explorer = await storageService.getSalesExplorerWithFallback(filters);
     
     res.json({

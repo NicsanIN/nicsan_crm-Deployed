@@ -93,14 +93,12 @@ const generateS3Key = async (filename, selectedInsurer, fileBuffer) => {
     
     console.log(`📁 S3 Key: Using ${insurer} for file ${filename} (detected: ${detectedInsurer}, selected: ${selectedInsurer})`);
     
-    return withPrefix(`uploads/${insurer}/${timestamp}_${randomId}.${extension}`);
   } catch (error) {
     console.error('❌ Insurer detection failed, using selected insurer:', error);
     // Fallback to selected insurer if detection fails
     const timestamp = Date.now();
     const randomId = Math.random().toString(36).substring(2, 15);
     const extension = filename.split('.').pop();
-    return withPrefix(`uploads/${selectedInsurer}/${timestamp}_${randomId}.${extension}`);
   }
 };
 
@@ -109,15 +107,11 @@ const generatePolicyS3Key = (policyId, source = 'PDF_UPLOAD') => {
   const timestamp = Date.now();
   const randomId = Math.random().toString(36).substring(2, 15);
   
+  // Add environment prefix for staging
+  const envPrefix = process.env.ENVIRONMENT === 'staging' ? 'local-staging/' : '';
+  
   switch (source) {
     case 'PDF_UPLOAD':
-      return withPrefix(`data/policies/confirmed/POL${policyId}_${timestamp}_${randomId}.json`);
-    case 'MANUAL_FORM':
-      return withPrefix(`data/policies/manual/POL${policyId}_${timestamp}_${randomId}.json`);
-    case 'MANUAL_GRID':
-      return withPrefix(`data/policies/bulk/BATCH${policyId}_${timestamp}_${randomId}.json`);
-    default:
-      return withPrefix(`data/policies/other/POL${policyId}_${timestamp}_${randomId}.json`);
   }
 };
 

@@ -158,10 +158,10 @@ class DualStorageService {
   // Sales Explorer with dual storage
   async getSalesExplorer(filters: any = {}): Promise<DualStorageResult> {
     const mockData = [
-      { rep: 'Asha', make: 'Maruti', model: 'Swift', vehicleNumber: 'KA01AB1234', rollover: 'New', branch: 'Bangalore', issueDate: '2025-01-15', policies: 12, gwp: 130000, cashbackPctAvg: 2.4, cashback: 3100, net: 16900 },
-      { rep: 'Asha', make: 'Hyundai', model: 'i20', vehicleNumber: 'KA02CD5678', rollover: 'Renewal', branch: 'Bangalore', issueDate: '2025-02-20', policies: 10, gwp: 130000, cashbackPctAvg: 1.9, cashback: 2500, net: 17500 },
-      { rep: 'Vikram', make: 'Hyundai', model: 'i20', vehicleNumber: 'MH01EF9012', rollover: 'New', branch: 'Mumbai', issueDate: '2025-03-10', policies: 9, gwp: 115000, cashbackPctAvg: 1.1, cashback: 1200, net: 17100 },
-      { rep: 'Meera', make: 'Maruti', model: 'Baleno', vehicleNumber: 'DL01GH3456', rollover: 'Renewal', branch: 'Delhi', issueDate: '2025-04-05', policies: 11, gwp: 125000, cashbackPctAvg: 0.9, cashback: 1100, net: 17800 }
+      { rep: 'Asha', make: 'Maruti', model: 'Swift', vehicleNumber: 'KA01AB1234', rollover: 'New', branch: 'Bangalore', issueDate: '2025-01-15', expiryDate: '2026-01-15', policies: 12, gwp: 130000, totalPremium: 135000, totalOD: 120000, cashbackPctAvg: 2.4, cashback: 3100, net: 16900 },
+      { rep: 'Asha', make: 'Hyundai', model: 'i20', vehicleNumber: 'KA02CD5678', rollover: 'Renewal', branch: 'Bangalore', issueDate: '2025-02-20', expiryDate: '2026-02-20', policies: 10, gwp: 130000, totalPremium: 135000, totalOD: 120000, cashbackPctAvg: 1.9, cashback: 2500, net: 17500 },
+      { rep: 'Vikram', make: 'Hyundai', model: 'i20', vehicleNumber: 'MH01EF9012', rollover: 'New', branch: 'Mumbai', issueDate: '2025-03-10', expiryDate: '2026-03-10', policies: 9, gwp: 115000, totalPremium: 120000, totalOD: 110000, cashbackPctAvg: 1.1, cashback: 1200, net: 17100 },
+      { rep: 'Meera', make: 'Maruti', model: 'Baleno', vehicleNumber: 'DL01GH3456', rollover: 'Renewal', branch: 'Delhi', issueDate: '2025-04-05', expiryDate: '2026-04-05', policies: 11, gwp: 125000, totalPremium: 130000, totalOD: 115000, cashbackPctAvg: 0.9, cashback: 1100, net: 17800 }
     ];
 
 
@@ -183,8 +183,11 @@ class DualStorageService {
         rollover: item.rollover || 'N/A',
         branch: item.branch || 'N/A',
         issueDate: item.issue_date || 'N/A',
+        expiryDate: item.expiry_date || 'N/A',
         policies: item.policies,
         gwp: item.gwp,
+        totalPremium: item.gwp || 0,
+        totalOD: item.total_od || 0,
         cashbackPctAvg: item.avg_cashback_pct || item.cashbackPctAvg || 0,
         cashback: item.total_cashback || item.cashback || 0,
         net: item.net
@@ -243,9 +246,18 @@ class DualStorageService {
       net_premium: 10800,
       total_premium: 12150,
       customer_name: 'John Doe',
+      customer_email: 'customer@example.com',
       brokerage: 1822,
       cashback: 600,
       net_revenue: 1222,
+      cashback_percentage: 4.9,
+      cashback_amount: 600,
+      customer_paid: 12150,
+      customer_cheque_no: 'CHQ123456',
+      our_cheque_no: 'CHQ789012',
+      status: 'SAVED',
+      confidence_score: 0.98,
+      created_by: 'System',
       source: 'PDF_UPLOAD',
       created_at: '2025-08-12T15:54:00Z',
       updated_at: '2025-08-12T15:57:00Z',

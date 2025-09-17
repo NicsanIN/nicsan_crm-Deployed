@@ -144,6 +144,8 @@ class BackendApiService {
       if (filters.vehiclePrefix && filters.vehiclePrefix !== 'All') queryParams.append('vehiclePrefix', filters.vehiclePrefix);
       if (filters.fromDate) queryParams.append('fromDate', filters.fromDate);
       if (filters.toDate) queryParams.append('toDate', filters.toDate);
+      if (filters.expiryFromDate) queryParams.append('expiryFromDate', filters.expiryFromDate);
+      if (filters.expiryToDate) queryParams.append('expiryToDate', filters.expiryToDate);
 
       const url = `${API_BASE_URL}/dashboard/explorer${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
       
