@@ -2305,8 +2305,18 @@ function PageManualGrid() {
 
   // Handle Excel copy-paste functionality
   const handlePaste = (e: React.ClipboardEvent<HTMLDivElement>) => {
+    const clipboardData = e.clipboardData?.getData('text/plain') || '';
+    const isBulk = clipboardData.includes('\t') || clipboardData.includes('\n');
+    const target = e.target as HTMLElement | null;
+    const isInputTarget = !!target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || (target as HTMLElement).isContentEditable === true);
+
+    // Allow native single-cell paste into inputs
+    if (!isBulk && isInputTarget) {
+      return;
+    }
+
+    // Intercept only for bulk (TSV) paste or non-input targets
     e.preventDefault();
-    const clipboardData = e.clipboardData?.getData('text/plain');
     
     if (clipboardData) {
       
