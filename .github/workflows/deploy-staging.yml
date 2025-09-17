@@ -1,0 +1,66 @@
+name: Deploy Staging Frontend
+
+on:
+    workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write       # ✅ Needed for OIDC auth
+      contents: read   
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm ci
+    
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+            role-to-assume: arn:aws:iam::132418765186:role/nicsan-crm-deployer
+            aws-region: ap-south-1
+
+      - name: Build (staging)
+        run: npm run build -- --mode staging
+        env:
+            VITE_API_URL: https://staging-api.nicsanin.com/api
+            VITE_API_BASE_URL: https://staging-api.nicsanin.com/api
+            VITE_BACKEND_URL: https://staging-api.nicsanin.com
+            VITE_BACKEND_HEALTH_URL: https://staging-api.nicsanin.com/api/health
+            VITE_DB_API_BASE_URL: https://staging-api.nicsanin.com/api
+            VITE_WEBSOCKET_URL: wss://staging-api.nicsanin.com
+            VITE_WS_URL: wss://staging-api.nicsanin.com
+            VITE_NODE_ENV: staging
+            VITE_ENABLE_DEBUG_LOGGING: "false"
+            VITE_ENABLE_MOCK_DATA: "false"
+            VITE_BUILD_TIMESTAMP: "2025-09-15-16-50"
+            VITE_APP_TITLE: "Staging CRM"
+            VITE_APP_LOGO: "staging-logo.svg"
+
+      - run: if grep -R "localhost:3001" dist; then echo "❌ localhost found" && exit 1; fi
+      - run: aws s3 sync dist/ s3://nicsan-frontend-staging/ --delete
+      - run: aws cloudfront create-invalidation --distribution-id E2RPT65TGOS3QQ --paths "/*"
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Sync to S3 (staging)
+        run: |
+          aws s3 sync dist/ s3://nicsan-frontend-staging/ --delete
+
+      - name: Invalidate CloudFront cache (staging)
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id E2RPT65TGOS3QQ \
+            --paths "/*"

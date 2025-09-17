@@ -30,8 +30,7 @@ class DatabaseService {
         return;
       }
 
-      const baseUrl = DB_API_BASE_URL.replace('/api', '');
-      const response = await fetch(`${baseUrl}/health`, {
+      const response = await fetch(`${DB_API_BASE_URL}/health`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,

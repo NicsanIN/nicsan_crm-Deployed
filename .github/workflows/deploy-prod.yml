@@ -1,0 +1,61 @@
+name: Deploy Production Frontend
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build (production)
+        run: npm run build -- --mode production
+        env:
+          VITE_API_URL: https://crm.nicsanin.com/api
+          VITE_API_BASE_URL: https://crm.nicsanin.com/api
+          VITE_DB_API_BASE_URL: https://crm.nicsanin.com/api
+          VITE_BACKEND_URL: https://crm.nicsanin.com
+          VITE_BACKEND_HEALTH_URL: https://crm.nicsanin.com/api/health
+          VITE_WEBSOCKET_URL: wss://crm.nicsanin.com
+          VITE_WS_URL: wss://crm.nicsanin.com
+          VITE_NODE_ENV: production
+          VITE_ENABLE_DEBUG_LOGGING: "false"
+          VITE_ENABLE_MOCK_DATA: "false"
+          VITE_APP_TITLE: "Nicsan CRM"
+          VITE_APP_LOGO: "Logo-05.svg"
+
+      - name: Verify bundle has no localhost
+        run: |
+          if grep -R "localhost:3001" dist; then
+            echo "ERROR: bundle still references localhost"; exit 1; 
+          else
+            echo "OK: no localhost in bundle";
+          fi
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Sync to S3 (prod)
+        run: |
+          aws s3 sync dist/ s3://nicsan-crm-frontend/ --delete
+
+      - name: Invalidate CloudFront cache (prod)
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id E3NW822N1SKA1U \
+            --paths "/*"
