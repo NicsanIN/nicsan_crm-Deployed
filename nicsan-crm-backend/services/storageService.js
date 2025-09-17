@@ -86,7 +86,7 @@ async savePolicy(policyData) {
       make, model, cc, manufacturing_year, issue_date, expiry_date,
       idv, ncb, discount, net_od, ref, total_od, net_premium, total_premium,
       cashback_percentage, cashback_amount, customer_paid, customer_cheque_no,
-      our_cheque_no, executive, ops_executive, caller_name, mobile, rollover, customer_name, branch, remark,
+      our_cheque_no, executive, ops_executive, caller_name, mobile, rollover, customer_name, customer_email, branch, remark,
       brokerage, cashback, source, s3_key, confidence_score
     } = policyData;
 
@@ -117,9 +117,9 @@ async savePolicy(policyData) {
           make, model, cc, manufacturing_year, issue_date, expiry_date,
           idv, ncb, discount, net_od, ref, total_od, net_premium, total_premium,
           cashback_percentage, cashback_amount, customer_paid, customer_cheque_no,
-          our_cheque_no, executive, ops_executive, caller_name, mobile, rollover, customer_name, branch, remark,
+          our_cheque_no, executive, ops_executive, caller_name, mobile, rollover, customer_name, customer_email, branch, remark,
           brokerage, cashback, source, s3_key, confidence_score
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38)
         RETURNING *
       `;
       
@@ -128,7 +128,7 @@ async savePolicy(policyData) {
         make, model, cc, manufacturing_year, issue_date, expiry_date,
         idv, ncb, discount, net_od, ref, total_od, net_premium, total_premium,
         cashback_percentage, cashback_amount, customer_paid, customer_cheque_no,
-        our_cheque_no, executive, ops_executive, caller_name, mobile, rollover, customer_name, branch, remark,
+        our_cheque_no, executive, ops_executive, caller_name, mobile, rollover, customer_name, customer_email, branch, remark,
         brokerage, cashback, source, s3_key, confidence_score
       ];
     } else {
@@ -451,42 +451,25 @@ async savePolicy(policyData) {
       if (extractedData.insurer === 'DIGIT' || extractedData.insurer === 'RELIANCE_GENERAL') {
         // For DIGIT: All three fields (net_od, total_od, net_premium) should equal "Total OD Premium"
         if (extractedData.insurer === 'DIGIT') {
-          console.log('🔍 Processing DIGIT with enhanced source validation...');
+          console.log('🔍 Processing DIGIT with standard extraction and validation...');
           
-          // Try multi-phase extraction first for DIGIT
-          try {
-            const openaiService = require('./openaiService');
-            const multiPhaseResult = await openaiService.extractDigitPremiums(pdfText);
-            if (multiPhaseResult && multiPhaseResult.extraction_method === 'MULTI_PHASE') {
-              console.log('✅ Using multi-phase extraction results for DIGIT');
-              extractedData.net_od = multiPhaseResult.net_od;
-              extractedData.total_od = multiPhaseResult.total_od;
-              extractedData.net_premium = multiPhaseResult.net_premium;
-              extractedData.total_premium = multiPhaseResult.total_premium;
-              extractedData.extraction_method = 'MULTI_PHASE';
-              console.log(`✅ DIGIT multi-phase extraction: Net OD=${multiPhaseResult.net_od}, Total Premium=${multiPhaseResult.total_premium}`);
-            }
-          } catch (multiPhaseError) {
-            console.log('⚠️ Multi-phase extraction failed, using standard extraction with validation');
+          // Use standard extraction with enhanced validation
+          const totalOdPremium = extractedData.net_od || extractedData.total_od || extractedData.net_premium;
+          if (totalOdPremium) {
+            console.log(`🔧 DIGIT: Setting all three fields to Total OD Premium value: ${totalOdPremium}`);
+            extractedData.net_od = totalOdPremium;
+            extractedData.total_od = totalOdPremium;
+            extractedData.net_premium = totalOdPremium;
             
-            // Fallback to standard extraction with enhanced validation
-            const totalOdPremium = extractedData.net_od || extractedData.total_od || extractedData.net_premium;
-            if (totalOdPremium) {
-              console.log(`🔧 DIGIT: Setting all three fields to Total OD Premium value: ${totalOdPremium}`);
-              extractedData.net_od = totalOdPremium;
-              extractedData.total_od = totalOdPremium;
-              extractedData.net_premium = totalOdPremium;
-              
-              // Enhanced DIGIT Bug Fix: Validate that total_premium is different from Total OD Premium
-              if (extractedData.total_premium === totalOdPremium) {
-                console.log('⚠️ DIGIT Bug detected: total_premium equals Total OD Premium value');
-                console.log('🔍 This indicates extraction from wrong source fields');
-                extractedData.digit_bug_flag = 'TOTAL_PREMIUM_SAME_AS_OD_PREMIUM';
-                extractedData.extraction_method = 'STANDARD_WITH_BUG';
-              } else {
-                console.log(`✅ DIGIT validation passed: total_premium (${extractedData.total_premium}) differs from Total OD Premium (${totalOdPremium})`);
-                extractedData.extraction_method = 'STANDARD_VALIDATED';
-              }
+            // Enhanced DIGIT Bug Fix: Validate that total_premium is different from Total OD Premium
+            if (extractedData.total_premium === totalOdPremium) {
+              console.log('⚠️ DIGIT Bug detected: total_premium equals Total OD Premium value');
+              console.log('🔍 This indicates extraction from wrong source fields');
+              extractedData.digit_bug_flag = 'TOTAL_PREMIUM_SAME_AS_OD_PREMIUM';
+              extractedData.extraction_method = 'STANDARD_WITH_BUG';
+            } else {
+              console.log(`✅ DIGIT validation passed: total_premium (${extractedData.total_premium}) differs from Total OD Premium (${totalOdPremium})`);
+              extractedData.extraction_method = 'STANDARD_VALIDATED';
             }
           }
         } else if (extractedData.insurer === 'RELIANCE_GENERAL') {
@@ -661,6 +644,7 @@ async savePolicy(policyData) {
         customer_paid: safeNumeric(manualExtras?.customerPaid, 9999999999999.99, 0),
         customer_cheque_no: manualExtras?.customerChequeNo || '',
         our_cheque_no: manualExtras?.ourChequeNo || '',
+        customer_email: manualExtras?.customerEmail || '',
         
         // Calculated fields with null safety and numeric validation
         cashback_percentage: (manualExtras?.cashback && extractedData?.total_premium) ? 
@@ -1205,7 +1189,7 @@ async savePolicy(policyData) {
 
   // Calculate sales explorer from PostgreSQL
   async calculateSalesExplorer(filters) {
-    const { make, model, insurer, cashbackMax = 10, branch, rollover, rep, vehiclePrefix, fromDate, toDate } = filters;
+    const { make, model, insurer, cashbackMax = 10, branch, rollover, rep, vehiclePrefix, fromDate, toDate, expiryFromDate, expiryToDate } = filters;
     
     let whereConditions = [];
     let params = [];
@@ -1278,6 +1262,31 @@ async savePolicy(policyData) {
       paramIndex++;
     }
 
+    // Expiry date filtering logic
+    if (expiryFromDate && expiryToDate) {
+      if (expiryFromDate === expiryToDate) {
+        // Same date - single day filter
+        whereConditions.push(`DATE(expiry_date) = $${paramIndex}`);
+        params.push(expiryFromDate);
+        paramIndex++;
+      } else {
+        // Date range filter
+        whereConditions.push(`expiry_date >= $${paramIndex} AND expiry_date <= $${paramIndex + 1}`);
+        params.push(expiryFromDate, expiryToDate);
+        paramIndex += 2;
+      }
+    } else if (expiryFromDate) {
+      // Only from date
+      whereConditions.push(`expiry_date >= $${paramIndex}`);
+      params.push(expiryFromDate);
+      paramIndex++;
+    } else if (expiryToDate) {
+      // Only to date
+      whereConditions.push(`expiry_date <= $${paramIndex}`);
+      params.push(expiryToDate);
+      paramIndex++;
+    }
+
     whereConditions.push(`(cashback_percentage <= $${paramIndex} OR cashback_percentage IS NULL)`);
     params.push(parseFloat(cashbackMax));
 
@@ -1293,14 +1302,16 @@ async savePolicy(policyData) {
         rollover,
         branch,
         issue_date,
+        expiry_date,
         COUNT(*) as policies,
         SUM(total_premium) as gwp,
+        SUM(total_od) as total_od,
         AVG(cashback_percentage) as avg_cashback_pct,
         SUM(cashback_amount) as total_cashback,
         SUM(brokerage - cashback_amount) as net
       FROM policies 
       ${whereClause}
-      GROUP BY caller_name, make, model, insurer, vehicle_number, rollover, branch, issue_date
+      GROUP BY caller_name, make, model, insurer, vehicle_number, rollover, branch, issue_date, expiry_date
       ORDER BY net DESC
     `, params);
 
