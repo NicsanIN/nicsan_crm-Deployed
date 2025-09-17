@@ -330,6 +330,7 @@ function PageUpload() {
           opsExecutive: '',
           callerName: '',
           mobile: '',
+          customerEmail: '',
           rollover: '',
           remark: '',
           brokerage: '',
