@@ -4954,28 +4954,68 @@ function PageExplorer() {
 
   const downloadCSV = () => {
     const headers = ['Telecaller', 'Make', 'Model', 'Insurer', 'Issue Date', 'Expiry Date', 'Type of Business', 'Branch', '# Policies', 'GWP', 'Total Premium', 'Total OD', 'Avg Cashback %', 'Cashback (₹)', 'Net (₹)'];
-    const csvContent = [
-      headers.join(','),
-      ...filtered.map(row => [
-        row.rep,
-        `"${row.make}"`,
-        `"${row.model}"`,
-        `"${row.insurer}"`,
-        row.issueDate && row.issueDate !== 'N/A' ? new Date(row.issueDate).toLocaleDateString('en-GB') : 'N/A',
-        row.expiryDate && row.expiryDate !== 'N/A' ? new Date(row.expiryDate).toLocaleDateString('en-GB') : 'N/A',
-        row.rollover,
-        row.branch,
-        row.policies,
-        row.gwp,
-        row.totalPremium || 0,
-        row.totalOD || 0,
-        parseFloat(row.cashbackPctAvg || 0).toFixed(1),
-        row.cashback,
-        row.net
-      ].join(','))
-    ].join('\n');
     
-    const blob = new Blob([csvContent], { type: 'text/csv' });
+    // Helper function to properly escape CSV values
+    const escapeCSV = (value) => {
+      if (value === null || value === undefined) return '';
+      const str = String(value);
+      // If value contains comma, quote, or newline, wrap in quotes and escape internal quotes
+      if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    };
+    
+    // Helper function to format dates consistently
+    const formatDate = (dateStr) => {
+      if (!dateStr || dateStr === 'N/A') return 'N/A';
+      try {
+        const date = new Date(dateStr);
+        if (isNaN(date.getTime())) return 'N/A';
+        // Use consistent DD-MM-YYYY format
+        return date.toLocaleDateString('en-GB', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric'
+        });
+      } catch (error) {
+        return 'N/A';
+      }
+    };
+    
+    // Helper function to format numbers consistently
+    const formatNumber = (value) => {
+      if (value === null || value === undefined || value === '') return '0';
+      const num = parseFloat(value);
+      return isNaN(num) ? '0' : num.toString();
+    };
+    
+    const csvRows = [
+      headers.map(escapeCSV).join(','),
+      ...filtered.map(row => [
+        escapeCSV(row.rep),
+        escapeCSV(row.make),
+        escapeCSV(row.model),
+        escapeCSV(row.insurer),
+        escapeCSV(formatDate(row.issueDate)),
+        escapeCSV(formatDate(row.expiryDate)),
+        escapeCSV(row.rollover),
+        escapeCSV(row.branch),
+        escapeCSV(row.policies),
+        escapeCSV(formatNumber(row.gwp)),
+        escapeCSV(formatNumber(row.totalPremium)),
+        escapeCSV(formatNumber(row.totalOD)),
+        escapeCSV(parseFloat(row.cashbackPctAvg || 0).toFixed(1)),
+        escapeCSV(formatNumber(row.cashback)),
+        escapeCSV(formatNumber(row.net))
+      ].join(','))
+    ];
+    
+    const csvContent = csvRows.join('\n');
+    
+    // Add UTF-8 BOM for proper Excel compatibility
+    const BOM = '\uFEFF';
+    const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
