@@ -26,7 +26,7 @@ router.post('/', authenticateToken, requireOps, async (req, res) => {
 // Get all policies (with dual storage fallback)
 router.get('/', authenticateToken, requireOps, async (req, res) => {
   try {
-    const { limit = 100, offset = 0 } = req.query;
+    const { limit = 1000, offset = 0 } = req.query;
     const policies = await storageService.getPoliciesWithFallback(parseInt(limit), parseInt(offset));
     
     res.json({
