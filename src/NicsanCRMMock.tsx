@@ -4977,6 +4977,18 @@ function PageExplorer() {
   const extractPrefixes = (data: any[]) => {
     const prefixes = data.map(item => {
       const cleaned = item.vehicleNumber.replace(/\s/g, "").toUpperCase();
+      
+      // Check if it's BH series format: YYBH####X
+      if (/^[0-9]{2}BH[0-9]{4}[A-Z]{1,2}$/.test(cleaned)) {
+        return "BH";  // Extract BH for Bharat Series
+      }
+      
+      // Traditional format: State + District + Series + Number
+      if (/^[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}$/.test(cleaned)) {
+        return cleaned.substring(0, 2);  // Extract state code (e.g., KA, MH)
+      }
+      
+      // Fallback for unknown formats
       return cleaned.substring(0, 2);
     }).filter(Boolean);
     
@@ -5065,7 +5077,17 @@ function PageExplorer() {
     const branchMatch = branch === 'All' || p.branch === branch;
     const rolloverMatch = rollover === 'All' || p.rollover === rollover;
     const repMatch = rep === 'All' || p.rep === rep;
-    const vehicleMatch = vehiclePrefix === 'All' || p.vehicleNumber.toUpperCase().startsWith(vehiclePrefix);
+    const vehicleMatch = vehiclePrefix === 'All' || (() => {
+      const cleanVehicleNumber = p.vehicleNumber.replace(/\s/g, '').toUpperCase();
+      
+      // Handle BH series format: YYBH####X
+      if (vehiclePrefix === 'BH') {
+        return /^[0-9]{2}BH[0-9]{4}[A-Z]{1,2}$/.test(cleanVehicleNumber);
+      }
+      
+      // Handle traditional format: State + District + Series + Number
+      return cleanVehicleNumber.startsWith(vehiclePrefix);
+    })();
     const cashbackMatch = (p.cashbackPctAvg || 0) <= cashbackMax;
     
     const passes = makeMatch && modelMatch && insurerMatch && branchMatch && rolloverMatch && repMatch && vehicleMatch && cashbackMatch;

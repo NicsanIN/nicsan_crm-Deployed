@@ -95,7 +95,17 @@ OTHER EXTRACTION RULES:
 9. For TATA_AIG policies specifically: PRIORITIZE "Total IDV (₹)" as the primary source over "Vehicle IDV (₹)"
 10. For TATA_AIG policies specifically:
     - Net OD (₹): Extract "Total Own Damage Premium (A)" values - this is the NET OD in TATA AIG
-    - Total OD (₹): Extract "Total OD Premium" or "Own Damage Premium" values - this is the TOTAL OD in TATA AIG
+    - 
+    - 
+    - Total OD (₹): Extract "Total Add on Premium (C)" values - this is needed for vehicles 2022 and below
+      * CRITICAL: This field is ESSENTIAL for vehicles 2022 and below - MUST be extracted
+      * Look for ALL variations: "Add on Premium (C)", "Add-on Premium (C)", "Additional Premium (C)", "Addon Premium (C)", "Add On Premium (C)"
+      * Accept different spacing: "Total Add on Premium (C)", "Total Add-on Premium (C)", "Total Add On Premium (C)", "Total Addon Premium (C)"
+      * Look for field names containing: "Add on Premium", "Add-on Premium", "Additional Premium", "Addon Premium" with "(C)" or "C"
+      * Case insensitive matching - search for ANY field with "add" + "premium" + "C" or "(C)"
+      * This field typically appears in premium breakdown tables or add-on sections
+      * If you find ANY field that looks like add-on premium with (C), extract it
+      * FALLBACK: If no exact match found, look for any premium field with "C" in the name that might be add-on premium
     - Net Premium (₹): Extract "Net Premium" or "Net Premium (₹)" values from policy - this is the NET PREMIUM in TATA AIG
 11. For RELIANCE_GENERAL policies specifically:
     - Net OD (₹): Extract from "Total Own Damage Premium" values
