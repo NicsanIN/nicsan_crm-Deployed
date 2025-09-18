@@ -21,6 +21,9 @@ class StorageService {
   // Dual Storage: Save to both S3 (primary) and PostgreSQL (secondary)
 async savePolicy(policyData) {
     try {
+      // Import enhanced financial validation
+      const { validatePremium, validateIDV, validateCashback, validateBrokerage, validatePercentage } = require('../utils/financialValidation');
+      
       // Validate vehicle number format before saving
       if (policyData.vehicle_number) {
         const cleanVehicleNumber = policyData.vehicle_number.replace(/\s/g, '');
@@ -30,6 +33,39 @@ async savePolicy(policyData) {
         if (!traditionalPattern.test(cleanVehicleNumber) && !bhSeriesPattern.test(cleanVehicleNumber)) {
           throw new Error(`Invalid vehicle number format: ${policyData.vehicle_number}. Expected format: KA01AB1234, KA 51 MM 1214, or 23 BH 7699 J`);
         }
+      }
+      
+      // Enhanced financial validation before saving
+      const totalPremium = validatePremium(policyData.total_premium);
+      if (!totalPremium.isValid) {
+        throw new Error(`Premium validation failed: ${totalPremium.error}`);
+      }
+      
+      const idv = validateIDV(policyData.idv);
+      if (!idv.isValid) {
+        throw new Error(`IDV validation failed: ${idv.error}`);
+      }
+      
+      // Update policyData with validated values
+      policyData.total_premium = totalPremium.value;
+      policyData.idv = idv.value;
+      
+      // Validate cashback and brokerage if provided
+      if (policyData.cashback_amount || policyData.cashback) {
+        const cashback = validateCashback(policyData.cashback_amount || policyData.cashback, totalPremium.value);
+        if (!cashback.isValid) {
+          console.warn(`Cashback validation warning: ${cashback.error}`);
+        }
+        policyData.cashback_amount = cashback.value;
+        policyData.cashback = cashback.value;
+      }
+      
+      if (policyData.brokerage) {
+        const brokerage = validateBrokerage(policyData.brokerage, totalPremium.value);
+        if (!brokerage.isValid) {
+          console.warn(`Brokerage validation warning: ${brokerage.error}`);
+        }
+        policyData.brokerage = brokerage.value;
       }
       console.log('💾 Saving policy to dual storage...');
       
@@ -644,13 +680,8 @@ async savePolicy(policyData) {
         }
       }
       
-      // Helper function to safely convert and validate numeric values
-      const safeNumeric = (value, maxValue = 99999999.99, defaultValue = 0) => {
-        if (value === null || value === undefined || value === '') return defaultValue;
-        const num = parseFloat(value);
-        if (isNaN(num)) return defaultValue;
-        return Math.min(Math.max(num, 0), maxValue); // Clamp between 0 and maxValue
-      };
+      // Import enhanced financial validation
+      const { validatePremium, validateIDV, validateCashback, validateBrokerage, validatePercentage, safeNumeric } = require('../utils/financialValidation');
 
       // Transform to policy format with null safety and numeric validation
       const policyData = {
@@ -666,14 +697,14 @@ async savePolicy(policyData) {
         manufacturing_year: extractedData?.manufacturing_year || '2021',
         issue_date: extractedData?.issue_date || new Date().toISOString().split('T')[0],
         expiry_date: extractedData?.expiry_date || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        idv: safeNumeric(extractedData?.idv, 9999999999999.99, 0),
-        ncb: safeNumeric(extractedData?.ncb, 99999999.99, 0),
-        discount: safeNumeric(extractedData?.discount, 99999999.99, 0),
+        idv: validateIDV(extractedData?.idv).value,
+        ncb: validatePercentage(extractedData?.ncb, 50).value, // NCB max 50%
+        discount: validatePercentage(extractedData?.discount, 100).value,
         net_od: safeNumeric(extractedData?.net_od, 9999999999999.99, 0),
         ref: extractedData?.ref || '',
         total_od: safeNumeric(extractedData?.total_od, 9999999999999.99, 0),
         net_premium: safeNumeric(extractedData?.net_premium, 9999999999999.99, 0),
-        total_premium: safeNumeric(extractedData?.total_premium, 9999999999999.99, 0),
+        total_premium: validatePremium(extractedData?.total_premium).value,
         confidence_score: safeNumeric(extractedData?.confidence_score, 1.0, 0),
         
         // Manual extras with null safety and numeric validation
@@ -682,8 +713,8 @@ async savePolicy(policyData) {
         mobile: manualExtras?.mobile || '',
         rollover: manualExtras?.rollover || '',
         remark: manualExtras?.remark || '',
-        brokerage: safeNumeric(manualExtras?.brokerage, 9999999999999.99, 0),
-        cashback: safeNumeric(manualExtras?.cashback, 9999999999999.99, 0),
+        brokerage: validateBrokerage(manualExtras?.brokerage, extractedData?.total_premium || 0).value,
+        cashback: validateCashback(manualExtras?.cashback, extractedData?.total_premium || 0).value,
         customer_paid: safeNumeric(manualExtras?.customerPaid, 9999999999999.99, 0),
         customer_cheque_no: manualExtras?.customerChequeNo || '',
         our_cheque_no: manualExtras?.ourChequeNo || '',
@@ -691,8 +722,8 @@ async savePolicy(policyData) {
         
         // Calculated fields with null safety and numeric validation
         cashback_percentage: (manualExtras?.cashback && extractedData?.total_premium) ? 
-          safeNumeric(((manualExtras.cashback / extractedData.total_premium) * 100), 99999999.99, 0) : 0,
-        cashback_amount: safeNumeric(manualExtras?.cashback, 9999999999999.99, 0),
+          validatePercentage(((manualExtras.cashback / extractedData.total_premium) * 100), 50).value : 0, // Max 50%
+        cashback_amount: validateCashback(manualExtras?.cashback, extractedData?.total_premium || 0).value,
         
         // Metadata
         source: 'PDF_UPLOAD',
