@@ -202,21 +202,45 @@ Important notes:
 - Prefer IAM Task Role over `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY`. If keys are ever used, keep them in SSM and rotate regularly; however, the recommended setup is role-only.
 - `S3_PREFIX` is mandatory to separate environments within the same bucket.
 
-## 📦 Build & Deploy Flow (ECR → ECS)
+## 📦 Automated Build & Deploy Flow (GitHub Actions → ECR → ECS)
 
-High-level steps used by both staging and production:
-1. Build Docker image for backend and tag with version/commit SHA.
-2. Push the image to ECR.
-3. Update the ECS Task Definition to reference the new image and ensure env/SSM secrets are correct.
-4. Deploy by updating the ECS Service to the new Task Definition revision.
-5. Validate via health checks and CloudWatch logs.
+### 🚀 Automated Deployment (Recommended)
 
-Key AWS components involved:
-- **ECR**: Stores versioned container images.
-- **ECS Fargate**: Runs containers serverlessly.
-- **ALB**: Routes traffic to the ECS service tasks.
-- **SSM Parameter Store**: Securely stores secrets (retrieved at container start). ECS Task Execution Role needs `ssm:GetParameters`.
-- **IAM Task Role**: Grants runtime access to S3 (put/get) and any other AWS APIs the app uses.
+**Staging Deployment:**
+- Trigger: Push to `staging` branch OR manual workflow dispatch
+- Workflow: `.github/workflows/deploy-backend-staging.yml`
+- Process: Automatically builds, pushes to ECR, updates ECS task definition, and deploys
+
+**Production Deployment:**
+- Trigger: Push to `main` branch OR manual workflow dispatch  
+- Workflow: `.github/workflows/deploy-backend-production.yml`
+- Process: Same automated process as staging
+
+### 🔄 Deployment Process (Automatic)
+1. **Code Push**: Developer pushes to `staging` or `main` branch
+2. **GitHub Actions**: Automatically triggers deployment workflow
+3. **Build**: Creates Docker image with commit SHA tag
+4. **ECR Push**: Pushes image to Amazon ECR with both SHA and latest tags
+5. **Task Definition**: Updates ECS task definition with new image
+6. **ECS Deploy**: Updates ECS service with new task definition
+7. **Health Check**: Waits for deployment to complete and verifies health
+
+### 🛠️ Manual Deployment (Fallback)
+
+If automated deployment fails, you can still deploy manually:
+1. Build Docker image locally: `docker build -t your-image .`
+2. Push to ECR: `docker push your-ecr-repo:tag`
+3. Update ECS task definition in AWS Console
+4. Update ECS service to use new task definition
+
+### Key AWS Components
+- **ECR**: Stores versioned container images (`nicsan-crm-api` repository)
+- **ECS Fargate**: Runs containers serverlessly (clusters: `nicsan-crm-staging`, `nicsan-crm-production`)
+- **ALB**: Routes traffic to the ECS service tasks
+- **SSM Parameter Store**: Securely stores secrets (retrieved at container start)
+- **IAM Roles**: 
+  - **Execution Role**: Pulls images from ECR, reads SSM parameters
+  - **Task Role**: Runtime access to S3 and other AWS services
 
 ## 🪣 S3 Usage Model
 
@@ -277,6 +301,15 @@ Common production issues and fixes:
 
 ## ✅ Deployment Checklist (per release)
 
+### Automated Deployment (GitHub Actions)
+- ✅ Code pushed to `staging` or `main` branch
+- ✅ GitHub Actions workflow triggered automatically
+- ✅ Docker image built and pushed to ECR with commit SHA
+- ✅ ECS task definition updated with new image
+- ✅ ECS service updated and deployment completed
+- ✅ Health checks passed and service running
+
+### Manual Deployment (if needed)
 - Image built and pushed to ECR.
 - Task Definition updated to new image tag.
 - `AWS_REGION` and `AWS_S3_BUCKET` present in environment.
@@ -285,4 +318,21 @@ Common production issues and fixes:
 - Task Role has S3 permissions for the bucket.
 - Service updated to new task definition; tasks healthy behind ALB.
 - CloudWatch logs show successful startup and S3/DB operations.
+
+## 🎯 Quick Start for Developers
+
+### For Staging Deployments:
+1. Make your changes locally
+2. Push to `staging` branch: `git push origin staging`
+3. **That's it!** GitHub Actions will automatically deploy to staging
+
+### For Production Deployments:
+1. Merge `staging` to `main` branch
+2. Push to `main`: `git push origin main`
+3. **That's it!** GitHub Actions will automatically deploy to production
+
+### Manual Trigger (if needed):
+- Go to GitHub Actions tab in your repository
+- Find "Deploy Backend to Staging" or "Deploy Backend to Production"
+- Click "Run workflow" button
 
