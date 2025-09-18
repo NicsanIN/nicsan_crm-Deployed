@@ -4956,7 +4956,7 @@ function PageExplorer() {
     const headers = ['Telecaller', 'Make', 'Model', 'Insurer', 'Issue Date', 'Expiry Date', 'Type of Business', 'Branch', '# Policies', 'GWP', 'Total Premium', 'Total OD', 'Avg Cashback %', 'Cashback (₹)', 'Net (₹)'];
     
     // Helper function to properly escape CSV values
-    const escapeCSV = (value) => {
+    const escapeCSV = (value: any) => {
       if (value === null || value === undefined) return '';
       const str = String(value);
       // If value contains comma, quote, or newline, wrap in quotes and escape internal quotes
@@ -4967,7 +4967,7 @@ function PageExplorer() {
     };
     
     // Helper function to format dates consistently
-    const formatDate = (dateStr) => {
+    const formatDate = (dateStr: any) => {
       if (!dateStr || dateStr === 'N/A') return 'N/A';
       try {
         const date = new Date(dateStr);
@@ -4984,7 +4984,7 @@ function PageExplorer() {
     };
     
     // Helper function to format numbers consistently
-    const formatNumber = (value) => {
+    const formatNumber = (value: any) => {
       if (value === null || value === undefined || value === '') return '0';
       const num = parseFloat(value);
       return isNaN(num) ? '0' : num.toString();
