@@ -7,7 +7,7 @@
 - **Production**: `https://crm.nicsanin.com` → Production RDS PostgreSQL
 
 ### **Teammates' Devices**
-- **Local**: `localhost:3001` → Local PostgreSQL
+- **Local**: `http://localhost:3001` → Local PostgreSQL
 
 ## 🔧 Environment Variables Setup
 
