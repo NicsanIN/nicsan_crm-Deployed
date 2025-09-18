@@ -24,8 +24,11 @@ async savePolicy(policyData) {
       // Validate vehicle number format before saving
       if (policyData.vehicle_number) {
         const cleanVehicleNumber = policyData.vehicle_number.replace(/\s/g, '');
-        if (!/^[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}$/.test(cleanVehicleNumber)) {
-          throw new Error(`Invalid vehicle number format: ${policyData.vehicle_number}. Expected format: KA01AB1234 or KA 51 MM 1214`);
+        const traditionalPattern = /^[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}$/;
+        const bhSeriesPattern = /^[0-9]{2}BH[0-9]{4}[A-Z]{1,2}$/;
+        
+        if (!traditionalPattern.test(cleanVehicleNumber) && !bhSeriesPattern.test(cleanVehicleNumber)) {
+          throw new Error(`Invalid vehicle number format: ${policyData.vehicle_number}. Expected format: KA01AB1234, KA 51 MM 1214, or 23 BH 7699 J`);
         }
       }
       console.log('💾 Saving policy to dual storage...');
@@ -434,7 +437,10 @@ async savePolicy(policyData) {
       if (normalizedVehicleNumber) {
         // Remove spaces and validate format
         const cleanVehicleNumber = normalizedVehicleNumber.replace(/\s/g, '');
-        if (!/^[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}$/.test(cleanVehicleNumber)) {
+        const traditionalPattern = /^[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}$/;
+        const bhSeriesPattern = /^[0-9]{2}BH[0-9]{4}[A-Z]{1,2}$/;
+        
+        if (!traditionalPattern.test(cleanVehicleNumber) && !bhSeriesPattern.test(cleanVehicleNumber)) {
           console.warn(`⚠️ Invalid vehicle number format from OpenAI: ${normalizedVehicleNumber}`);
           // Generate a valid format
           normalizedVehicleNumber = `KA ${Math.floor(Math.random() * 90) + 10} ${String.fromCharCode(65 + Math.floor(Math.random() * 26))}${String.fromCharCode(65 + Math.floor(Math.random() * 26))} ${Math.floor(Math.random() * 9000) + 1000}`;
@@ -499,12 +505,31 @@ async savePolicy(policyData) {
             extractedData.total_od = totalOwnDamagePremium;
             extractedData.net_premium = totalOwnDamagePremium;
           }
-        } else {
-          // For other insurers: Enforce total_od = net_od rule
-          if (extractedData.net_od && extractedData.total_od !== extractedData.net_od) {
-            console.log(`⚠️ Correcting ${extractedData.insurer} total_od to match net_od (${extractedData.net_od})`);
-            extractedData.total_od = extractedData.net_od;
+        }
+      } else if (extractedData.insurer === 'TATA_AIG') {
+        // TATA AIG Manufacturing Year Rule: If manufacturing year >= 2023, then Net Premium = Total OD
+        const manufacturingYear = parseInt(extractedData.manufacturing_year);
+        if (manufacturingYear >= 2023) {
+          // Apply the rule: Net Premium = Total OD
+          if (extractedData.total_od) {
+            console.log(`🔧 TATA AIG: Manufacturing year ${manufacturingYear} >= 2023, applying rule: Net Premium = Total OD`);
+            console.log(`  - Total OD: ${extractedData.total_od}`);
+            console.log(`  - Net OD: ${extractedData.net_od} (unchanged)`);
+            
+            // Apply the rule: Net Premium = Total OD (Net OD remains unchanged)
+            extractedData.net_premium = extractedData.total_od;
+            
+            extractedData.tata_aig_rule_applied = 'MANUFACTURING_YEAR_2023_PLUS';
+          } else if (extractedData.net_premium) {
+            // Fallback: If Total OD is missing, use Net Premium as Total OD
+            console.log(`🔧 TATA AIG: Manufacturing year ${manufacturingYear} >= 2023, Total OD missing, using Net Premium as Total OD`);
+            extractedData.total_od = extractedData.net_premium;
+            extractedData.tata_aig_rule_applied = 'MANUFACTURING_YEAR_2023_PLUS_FALLBACK';
+          } else {
+            console.log(`⚠️ TATA AIG: Manufacturing year ${manufacturingYear} >= 2023, but both Net Premium and Total OD missing, skipping rule`);
           }
+        } else {
+          console.log(`ℹ️ TATA AIG: Manufacturing year ${manufacturingYear} < 2023, no rule applied`);
         }
       }
       
@@ -1250,9 +1275,15 @@ async savePolicy(policyData) {
     }
 
     if (vehiclePrefix && vehiclePrefix !== 'All') {
-      whereConditions.push(`vehicle_number ILIKE $${paramIndex}`);
-      params.push(`${vehiclePrefix}%`);
-      paramIndex++;
+      if (vehiclePrefix === 'BH') {
+        // Handle BH series format: YYBH####X (e.g., 23BH7699J)
+        whereConditions.push(`REPLACE(vehicle_number, ' ', '') ~ '^[0-9]{2}BH[0-9]{4}[A-Z]{1,2}$'`);
+      } else {
+        // Handle traditional format: State + District + Series + Number
+        whereConditions.push(`vehicle_number ILIKE $${paramIndex}`);
+        params.push(`${vehiclePrefix}%`);
+        paramIndex++;
+      }
     }
 
     // Date filtering logic

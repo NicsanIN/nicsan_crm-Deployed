@@ -260,13 +260,13 @@ class BackendApiService {
   async getAllPolicies(): Promise<BackendApiResult> {
     try {
 
-      const response = await fetch(`${API_BASE_URL}/policies`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-          'Content-Type': 'application/json',
-        },
-      });
+const response = await fetch(`${API_BASE_URL}/policies`, {
+  method: 'GET',
+  headers: {
+    'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+    'Content-Type': 'application/json'
+  }
+});
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
