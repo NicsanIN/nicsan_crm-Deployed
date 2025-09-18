@@ -46,8 +46,8 @@ jobs:
           IMAGE_TAG: staging-${{ github.sha }}
         run: |
           TASK_DEFINITION_ARN=$(aws ecs describe-services \
-            --cluster nicsan-crm-staging \
-            --services nicsan-crm-backend-staging \
+            --cluster nicsan-crm \
+            --services nicsan-crm-backend \
             --query 'services[0].taskDefinition' \
             --output text)
           
@@ -74,34 +74,34 @@ jobs:
           NEW_TASK_DEF_ARN: ${{ steps.update-task-def.outputs.new-task-def-arn }}
         run: |
           aws ecs update-service \
-            --cluster nicsan-crm-staging \
-            --service nicsan-crm-backend-staging \
+            --cluster nicsan-crm \
+            --service nicsan-crm-backend \
             --task-definition $NEW_TASK_DEF_ARN \
             --force-new-deployment
 
       - name: Wait for deployment to complete
         run: |
           aws ecs wait services-stable \
-            --cluster nicsan-crm-staging \
-            --services nicsan-crm-backend-staging
+            --cluster nicsan-crm \
+            --services nicsan-crm-backend
 
       - name: Verify deployment
         run: |
           SERVICE_STATUS=$(aws ecs describe-services \
-            --cluster nicsan-crm-staging \
-            --services nicsan-crm-backend-staging \
+            --cluster nicsan-crm \
+            --services nicsan-crm-backend \
             --query 'services[0].status' \
             --output text)
           
           RUNNING_COUNT=$(aws ecs describe-services \
-            --cluster nicsan-crm-staging \
-            --services nicsan-crm-backend-staging \
+            --cluster nicsan-crm \
+            --services nicsan-crm-backend \
             --query 'services[0].runningCount' \
             --output text)
           
           DESIRED_COUNT=$(aws ecs describe-services \
-            --cluster nicsan-crm-staging \
-            --services nicsan-crm-backend-staging \
+            --cluster nicsan-crm \
+            --services nicsan-crm-backend \
             --query 'services[0].desiredCount' \
             --output text)
           
