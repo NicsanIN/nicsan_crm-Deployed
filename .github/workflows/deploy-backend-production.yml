@@ -51,8 +51,8 @@ jobs:
         run: |
           # Get the current task definition
           TASK_DEFINITION_ARN=$(aws ecs describe-services \
-            --cluster nicsan-crm-production \
-            --services nicsan-crm-backend-production \
+            --cluster nicsan-backend-cluster \
+            --services nicsan-backend-svc \
             --query 'services[0].taskDefinition' \
             --output text)
           
@@ -85,8 +85,8 @@ jobs:
         run: |
           # Update the service with new task definition
           aws ecs update-service \
-            --cluster nicsan-crm-production \
-            --service nicsan-crm-backend-production \
+            --cluster nicsan-backend-cluster \
+            --service nicsan-backend-svc \
             --task-definition $NEW_TASK_DEF_ARN \
             --force-new-deployment
           
@@ -96,8 +96,8 @@ jobs:
         run: |
           echo "Waiting for deployment to complete..."
           aws ecs wait services-stable \
-            --cluster nicsan-crm-production \
-            --services nicsan-crm-backend-production
+            --cluster nicsan-backend-cluster \
+            --services nicsan-backend-svc
           
           echo "✅ Production backend deployment completed successfully!"
 
@@ -105,20 +105,20 @@ jobs:
         run: |
           # Check service status
           SERVICE_STATUS=$(aws ecs describe-services \
-            --cluster nicsan-crm-production \
-            --services nicsan-crm-backend-production \
+            --cluster nicsan-backend-cluster \
+            --services nicsan-backend-svc \
             --query 'services[0].status' \
             --output text)
           
           RUNNING_COUNT=$(aws ecs describe-services \
-            --cluster nicsan-crm-production \
-            --services nicsan-crm-backend-production \
+            --cluster nicsan-backend-cluster \
+            --services nicsan-backend-svc \
             --query 'services[0].runningCount' \
             --output text)
           
           DESIRED_COUNT=$(aws ecs describe-services \
-            --cluster nicsan-crm-production \
-            --services nicsan-crm-backend-production \
+            --cluster nicsan-backend-cluster \
+            --services nicsan-backend-svc \
             --query 'services[0].desiredCount' \
             --output text)
           
