@@ -95,7 +95,8 @@ OTHER EXTRACTION RULES:
 9. For TATA_AIG policies specifically: PRIORITIZE "Total IDV (₹)" as the primary source over "Vehicle IDV (₹)"
 10. For TATA_AIG policies specifically:
     - Net OD (₹): Extract "Total Own Damage Premium (A)" values - this is the NET OD in TATA AIG
-    - Total OD (₹): Extract "Total Premium" or "Total Amount" values - this is the TOTAL OD in TATA AIG
+    - Total OD (₹): Extract "Total OD Premium" or "Own Damage Premium" values - this is the TOTAL OD in TATA AIG
+    - Net Premium (₹): Extract "Net Premium" or "Net Premium (₹)" values from policy - this is the NET PREMIUM in TATA AIG
 11. For RELIANCE_GENERAL policies specifically:
     - Net OD (₹): Extract from "Total Own Damage Premium" values
     - Total OD (₹): Extract from "Total Own Damage Premium" values  
