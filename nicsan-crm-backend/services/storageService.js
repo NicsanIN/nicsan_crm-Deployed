@@ -23,8 +23,11 @@ async savePolicy(policyData) {
       // Validate vehicle number format before saving
       if (policyData.vehicle_number) {
         const cleanVehicleNumber = policyData.vehicle_number.replace(/\s/g, '');
-        if (!/^[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}$/.test(cleanVehicleNumber)) {
-          throw new Error(`Invalid vehicle number format: ${policyData.vehicle_number}. Expected format: KA01AB1234 or KA 51 MM 1214`);
+        const traditionalPattern = /^[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}$/;
+        const bhSeriesPattern = /^[0-9]{2}BH[0-9]{4}[A-Z]{1,2}$/;
+        
+        if (!traditionalPattern.test(cleanVehicleNumber) && !bhSeriesPattern.test(cleanVehicleNumber)) {
+          throw new Error(`Invalid vehicle number format: ${policyData.vehicle_number}. Expected format: KA01AB1234, KA 51 MM 1214, or 23 BH 7699 J`);
         }
       }
       console.log('💾 Saving policy to dual storage...');
@@ -416,7 +419,10 @@ async savePolicy(policyData) {
       if (normalizedVehicleNumber) {
         // Remove spaces and validate format
         const cleanVehicleNumber = normalizedVehicleNumber.replace(/\s/g, '');
-        if (!/^[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}$/.test(cleanVehicleNumber)) {
+        const traditionalPattern = /^[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}$/;
+        const bhSeriesPattern = /^[0-9]{2}BH[0-9]{4}[A-Z]{1,2}$/;
+        
+        if (!traditionalPattern.test(cleanVehicleNumber) && !bhSeriesPattern.test(cleanVehicleNumber)) {
           console.warn(`⚠️ Invalid vehicle number format from OpenAI: ${normalizedVehicleNumber}`);
           // Generate a valid format
           normalizedVehicleNumber = `KA ${Math.floor(Math.random() * 90) + 10} ${String.fromCharCode(65 + Math.floor(Math.random() * 26))}${String.fromCharCode(65 + Math.floor(Math.random() * 26))} ${Math.floor(Math.random() * 9000) + 1000}`;
@@ -1232,9 +1238,15 @@ async savePolicy(policyData) {
     }
 
     if (vehiclePrefix && vehiclePrefix !== 'All') {
-      whereConditions.push(`vehicle_number ILIKE $${paramIndex}`);
-      params.push(`${vehiclePrefix}%`);
-      paramIndex++;
+      if (vehiclePrefix === 'BH') {
+        // Handle BH series format: YYBH####X (e.g., 23BH7699J)
+        whereConditions.push(`REPLACE(vehicle_number, ' ', '') ~ '^[0-9]{2}BH[0-9]{4}[A-Z]{1,2}$'`);
+      } else {
+        // Handle traditional format: State + District + Series + Number
+        whereConditions.push(`vehicle_number ILIKE $${paramIndex}`);
+        params.push(`${vehiclePrefix}%`);
+        paramIndex++;
+      }
     }
 
     // Date filtering logic

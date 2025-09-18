@@ -257,7 +257,7 @@ class BackendApiService {
   async getAllPolicies(): Promise<BackendApiResult> {
     try {
 
-      const response = await fetch('http://localhost:3001/api/policies', {
+      const response = await fetch('http://localhost:3001/api/policies?limit=1000&offset=0', {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
