@@ -204,21 +204,21 @@ Important notes:
 
 ## 📦 Automated Build & Deploy Flow (GitHub Actions → ECR → ECS)
 
-### 🚀 Automated Deployment (Recommended)
+### 🚀 Manual Deployment (Recommended)
 
 **Staging Deployment:**
-- Trigger: Push to `staging` branch OR manual workflow dispatch
+- Trigger: Manual workflow dispatch only
 - Workflow: `.github/workflows/deploy-backend-staging.yml`
-- Process: Automatically builds, pushes to ECR, updates ECS task definition, and deploys
+- Process: Builds, pushes to ECR, updates ECS task definition, and deploys to staging
 
 **Production Deployment:**
-- Trigger: Push to `main` branch OR manual workflow dispatch  
+- Trigger: Manual workflow dispatch only
 - Workflow: `.github/workflows/deploy-backend-production.yml`
-- Process: Same automated process as staging
+- Process: Same process as staging but deploys to production
 
-### 🔄 Deployment Process (Automatic)
-1. **Code Push**: Developer pushes to `staging` or `main` branch
-2. **GitHub Actions**: Automatically triggers deployment workflow
+### 🔄 Deployment Process (Manual)
+1. **Code Ready**: Ensure your code is committed and pushed to the repository
+2. **Manual Trigger**: Go to GitHub Actions → "Deploy Backend to Staging/Production" → "Run workflow"
 3. **Build**: Creates Docker image with commit SHA tag
 4. **ECR Push**: Pushes image to Amazon ECR with both SHA and latest tags
 5. **Task Definition**: Updates ECS task definition with new image
@@ -301,9 +301,9 @@ Common production issues and fixes:
 
 ## ✅ Deployment Checklist (per release)
 
-### Automated Deployment (GitHub Actions)
-- ✅ Code pushed to `staging` or `main` branch
-- ✅ GitHub Actions workflow triggered automatically
+### Manual Deployment (GitHub Actions)
+- ✅ Code committed and pushed to repository
+- ✅ GitHub Actions workflow triggered manually
 - ✅ Docker image built and pushed to ECR with commit SHA
 - ✅ ECS task definition updated with new image
 - ✅ ECS service updated and deployment completed
@@ -323,16 +323,18 @@ Common production issues and fixes:
 
 ### For Staging Deployments:
 1. Make your changes locally
-2. Push to `staging` branch: `git push origin staging`
-3. **That's it!** GitHub Actions will automatically deploy to staging
+2. Commit and push your changes: `git add . && git commit -m "your changes" && git push`
+3. Go to GitHub Actions tab → "Deploy Backend to Staging" → "Run workflow"
+4. **That's it!** GitHub Actions will deploy to staging
 
 ### For Production Deployments:
-1. Merge `staging` to `main` branch
-2. Push to `main`: `git push origin main`
-3. **That's it!** GitHub Actions will automatically deploy to production
+1. Ensure your changes are tested in staging first
+2. Go to GitHub Actions tab → "Deploy Backend to Production" → "Run workflow"
+3. **That's it!** GitHub Actions will deploy to production
 
-### Manual Trigger (if needed):
-- Go to GitHub Actions tab in your repository
-- Find "Deploy Backend to Staging" or "Deploy Backend to Production"
-- Click "Run workflow" button
+### Why Manual Deployment?
+- **Safety**: You control exactly when deployments happen
+- **Testing**: Deploy to staging first, test, then deploy to production
+- **Consistency**: Matches your frontend deployment approach
+- **Control**: No accidental deployments from random commits
 

@@ -1,9 +1,6 @@
 name: Deploy Backend to Staging
 
 on:
-  push:
-    branches:
-      - staging
   workflow_dispatch:
 
 jobs:
