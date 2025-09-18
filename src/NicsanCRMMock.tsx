@@ -215,6 +215,7 @@ function PageUpload() {
     opsExecutive: '',
     callerName: '',
     mobile: '',
+    customerEmail: '',
     rollover: '',
     remark: '',
     brokerage: '0',
@@ -329,6 +330,7 @@ function PageUpload() {
           opsExecutive: '',
           callerName: '',
           mobile: '',
+          customerEmail: '',
           rollover: '',
           remark: '',
           brokerage: '',
@@ -588,6 +590,16 @@ function PageUpload() {
                 value={manualExtras.callerName}
                 onChange={(value) => handleManualExtrasChange('callerName', value)}
                 getSuggestions={getFilteredCallerSuggestions}
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-blue-700 mb-1">Customer Email ID</label>
+              <input 
+                type="text" 
+                placeholder="name@example.com"
+                value={manualExtras.customerEmail}
+                onChange={(e) => handleManualExtrasChange('customerEmail', e.target.value)}
+                className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
               />
             </div>
             <div>
@@ -1067,6 +1079,7 @@ function PageManualForm() {
             brokerage: "0",
             cashback: "",
             customerName: "",
+    customerEmail: "",
             branch: ""
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -1624,9 +1637,10 @@ function PageManualForm() {
         total_od: (parseFloat(form.totalOd) || 0).toString(),
         net_premium: (parseFloat(form.netPremium) || 0).toString(),
         total_premium: parseFloat(form.totalPremium).toString(),
-        cashback_percentage: (parseFloat(form.cashbackPct) || 0).toString(),
+        cashback_percentage: parseFloat(form.cashbackPct) || 0,
         cashback_amount: (parseFloat(form.cashbackAmt) || 0).toString(),
         customer_paid: form.customerPaid || '',
+        customer_email: form.customerEmail || '',
         customer_cheque_no: form.customerChequeNo || '',
         our_cheque_no: form.ourChequeNo || '',
         executive: form.executive || 'Unknown',
@@ -1953,6 +1967,7 @@ function PageManualForm() {
           <AutocompleteInput label="Caller Name" value={form.callerName} onChange={v=>set('callerName', v)} getSuggestions={getFilteredCallerSuggestions}/>
           <LabeledInput label="Mobile Number" required placeholder="9xxxxxxxxx" value={form.mobile} onChange={v=>set('mobile', v)}/>
           <LabeledInput label="Rollover/Renewal" hint="internal code" value={form.rollover} onChange={v=>set('rollover', v)}/>
+          <LabeledInput label="Customer Email ID" value={form.customerEmail} onChange={v=>set('customerEmail', v)}/>
           <LabeledInput label="Customer Name" value={form.customerName} onChange={v=>set('customerName', v)}/>
           <LabeledInput label="Branch" required value={form.branch} onChange={v=>set('branch', v)}/>
           <LabeledInput label="Remark" placeholder="Any note" value={form.remark} onChange={v=>set('remark', v)}/>
@@ -2292,8 +2307,18 @@ function PageManualGrid() {
 
   // Handle Excel copy-paste functionality
   const handlePaste = (e: React.ClipboardEvent<HTMLDivElement>) => {
+    const clipboardData = e.clipboardData?.getData('text/plain') || '';
+    const isBulk = clipboardData.includes('\t') || clipboardData.includes('\n');
+    const target = e.target as HTMLElement | null;
+    const isInputTarget = !!target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || (target as HTMLElement).isContentEditable === true);
+
+    // Allow native single-cell paste into inputs
+    if (!isBulk && isInputTarget) {
+      return;
+    }
+
+    // Intercept only for bulk (TSV) paste or non-input targets
     e.preventDefault();
-    const clipboardData = e.clipboardData?.getData('text/plain');
     
     if (clipboardData) {
       
@@ -2347,8 +2372,9 @@ function PageManualGrid() {
       // Additional
             rollover: cells[26] || "",
             customerName: cells[27] || "",
-            branch: cells[28] || "",
-            remark: cells[29] || "",
+            customerEmail: cells[28] || "",
+            branch: cells[29] || "",
+            remark: cells[30] || "",
             cashback: "", // Not in Excel - keep empty
             status: "OK"
           };
@@ -2468,7 +2494,7 @@ function PageManualGrid() {
             total_od: (parseFloat(row.totalOd) || 0).toString(),
             net_premium: (parseFloat(row.netPremium) || 0).toString(),
             total_premium: parseFloat(row.totalPremium).toString(),
-            cashback_percentage: (parseFloat(row.cashbackPct) || 0).toString(),
+            cashback_percentage: parseFloat(row.cashbackPct) || 0,
             cashback_amount: (parseFloat(row.cashbackAmt) || 0).toString(),
             customer_paid: row.customerPaid || '',
             brokerage: (parseFloat(row.brokerage) || 0).toString(),
@@ -2583,9 +2609,10 @@ function PageManualGrid() {
         total_od: (parseFloat(row.totalOd) || 0).toString(),
         net_premium: (parseFloat(row.netPremium) || 0).toString(),
         total_premium: parseFloat(row.totalPremium).toString(),
-        cashback_percentage: (parseFloat(row.cashbackPct) || 0).toString(),
+        cashback_percentage: parseFloat(row.cashbackPct) || 0,
         cashback_amount: (parseFloat(row.cashbackAmt) || 0).toString(),
         customer_paid: row.customerPaid || '',
+        customer_email: row.customerEmail || '',
         brokerage: (parseFloat(row.brokerage) || 0).toString(),
         
         // Contact Info
@@ -2803,6 +2830,7 @@ function PageManualGrid() {
                 <th className="py-2 px-1">Mobile</th>
                 <th className="py-2 px-1">Rollover</th>
                 <th className="py-2 px-1">Customer Name</th>
+                <th className="py-2 px-1">Customer Email ID</th>
                 <th className="py-2 px-1">Branch <span className="text-red-500">*</span></th>
                 <th className="py-2 px-1">Remark</th>
                 <th className="py-2 px-1">Status</th>
@@ -3082,6 +3110,13 @@ function PageManualGrid() {
                     <input 
                       value={r.customerName} 
                       onChange={(e) => updateRow(i, 'customerName', e.target.value)}
+                      className="w-full border-none outline-none bg-transparent text-sm"
+                    />
+                  </td>
+                  <td className="px-1">
+                    <input 
+                      value={r.customerEmail || ''} 
+                      onChange={(e) => updateRow(i, 'customerEmail', e.target.value)}
                       className="w-full border-none outline-none bg-transparent text-sm"
                     />
                   </td>
@@ -3889,6 +3924,11 @@ function PageReview() {
               getSuggestions={getFilteredCallerSuggestions}
             />
             <LabeledInput 
+              label="Customer Email ID" 
+              value={editableData.manualExtras.customerEmail || manualExtras.customerEmail}
+              onChange={(value) => updateManualExtras('customerEmail', value)}
+            />
+            <LabeledInput 
               label="Mobile Number" 
               value={editableData.manualExtras.mobile || manualExtras.mobile}
               onChange={(value) => updateManualExtras('mobile', value)}
@@ -4390,6 +4430,10 @@ function PagePolicyDetail() {
                 <span className="font-medium">{policy.customer_name || "N/A"}</span>
               </div>
               <div className="flex justify-between">
+                <span>Customer Email ID:</span>
+                <span className="font-medium">{policy.customer_email || "N/A"}</span>
+              </div>
+              <div className="flex justify-between">
                 <span>Executive:</span>
                 <span className="font-medium">{policy.executive || "N/A"}</span>
               </div>
@@ -4410,7 +4454,7 @@ function PagePolicyDetail() {
                 <span className="font-medium">{policy.branch || "N/A"}</span>
               </div>
               <div className="flex justify-between">
-                <span>Rollover:</span>
+                <span>Type of Business:</span>
                 <span className="font-medium">{policy.rollover || "N/A"}</span>
               </div>
               <div className="flex justify-between">
@@ -4449,8 +4493,24 @@ function PagePolicyDetail() {
                 <span className="font-medium">₹{(policy.cashback || 600).toLocaleString()}</span>
               </div>
               <div className="flex justify-between">
-                <span>Net Revenue:</span>
-                <span className="font-medium">₹{(policy.net_revenue || 1222).toLocaleString()}</span>
+                <span>Customer Paid:</span>
+                <span className="font-medium">₹{(policy.customer_paid || 12150).toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Customer Cheque No:</span>
+                <span className="font-medium">{policy.customer_cheque_no || "N/A"}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Our Cheque No:</span>
+                <span className="font-medium">{policy.our_cheque_no || "N/A"}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Cashback Percentage:</span>
+                <span className="font-medium">{(parseFloat(policy.cashback_percentage) || 4.9).toFixed(1)}%</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Cashback Amount:</span>
+                <span className="font-medium">₹{(policy.cashback_amount || 600).toLocaleString()}</span>
               </div>
             </div>
           </div>
@@ -4465,7 +4525,7 @@ function PagePolicyDetail() {
               </div>
               <div className="flex justify-between">
                 <span>Discount:</span>
-                <span className="font-medium">₹{(policy.discount || 0).toLocaleString()}</span>
+                <span className="font-medium">%{(policy.discount || 0).toLocaleString()}</span>
               </div>
               <div className="flex justify-between">
                 <span>Net Addon:</span>
@@ -4475,10 +4535,22 @@ function PagePolicyDetail() {
           </div>
         </div>
 
-        {/* Timestamps */}
+        {/* System Information */}
         <div className="mt-6 bg-zinc-50 rounded-xl p-4">
-          <div className="text-sm font-medium mb-3 text-zinc-700">Timestamps</div>
+          <div className="text-sm font-medium mb-3 text-zinc-700">System Information</div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+            <div className="flex justify-between">
+              <span>Status:</span>
+              <span className="font-medium">{policy.status || 'SAVED'}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Confidence Score:</span>
+              <span className="font-medium">{((policy.confidence_score || 0.98) * 100).toFixed(1)}%</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Created By:</span>
+              <span className="font-medium">{policy.created_by || 'N/A'}</span>
+            </div>
             <div className="flex justify-between">
               <span>Created At:</span>
               <span className="font-medium">{policy.created_at ? new Date(policy.created_at).toLocaleString() : '2025-08-12 15:54:00'}</span>
@@ -4843,6 +4915,8 @@ function PageExplorer() {
   const [vehiclePrefix, setVehiclePrefix] = useState("All");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
+  const [expiryFromDate, setExpiryFromDate] = useState("");
+  const [expiryToDate, setExpiryToDate] = useState("");
   const [cashbackMax, setCashbackMax] = useState(20);
 
   const handleRefresh = () => {
@@ -4856,10 +4930,12 @@ function PageExplorer() {
     setVehiclePrefix('All');
     setFromDate('');
     setToDate('');
+    setExpiryFromDate('');
+    setExpiryToDate('');
   };
 
   const downloadCSV = () => {
-    const headers = ['Rep', 'Make', 'Model', 'Insurer', 'Issue Date', 'Rollover', 'Branch', '# Policies', 'GWP', 'Avg Cashback %', 'Cashback (₹)', 'Net (₹)'];
+    const headers = ['Telecaller', 'Make', 'Model', 'Insurer', 'Issue Date', 'Expiry Date', 'Type of Business', 'Branch', '# Policies', 'GWP', 'Total Premium', 'Total OD', 'Avg Cashback %', 'Cashback (₹)', 'Net (₹)'];
     const csvContent = [
       headers.join(','),
       ...filtered.map(row => [
@@ -4868,10 +4944,13 @@ function PageExplorer() {
         `"${row.model}"`,
         `"${row.insurer}"`,
         row.issueDate && row.issueDate !== 'N/A' ? new Date(row.issueDate).toLocaleDateString('en-GB') : 'N/A',
+        row.expiryDate && row.expiryDate !== 'N/A' ? new Date(row.expiryDate).toLocaleDateString('en-GB') : 'N/A',
         row.rollover,
         row.branch,
         row.policies,
         row.gwp,
+        row.totalPremium || 0,
+        row.totalOD || 0,
         parseFloat(row.cashbackPctAvg || 0).toFixed(1),
         row.cashback,
         row.net
@@ -4944,7 +5023,7 @@ function PageExplorer() {
     const loadSalesExplorer = async () => {
       try {
         // Use dual storage pattern: S3 → Database → Mock Data
-        const filters = { make, model, insurer, cashbackMax, branch, rollover, rep, vehiclePrefix, fromDate, toDate };
+        const filters = { make, model, insurer, cashbackMax, branch, rollover, rep, vehiclePrefix, fromDate, toDate, expiryFromDate, expiryToDate };
         const response = await DualStorageService.getSalesExplorer(filters);
         
         if (response.success) {
@@ -4979,7 +5058,7 @@ function PageExplorer() {
     };
     
     loadSalesExplorer();
-  }, [make, model, insurer, cashbackMax, branch, rollover, rep, vehiclePrefix, fromDate, toDate]);
+  }, [make, model, insurer, cashbackMax, branch, rollover, rep, vehiclePrefix, fromDate, toDate, expiryFromDate, expiryToDate]);
 
   const filtered = (policies || []).filter(p => {
     const makeMatch = make === 'All' || p.make === make;
@@ -5063,13 +5142,13 @@ function PageExplorer() {
               </select>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-600">Rollover</label>
+              <label className="text-sm font-medium text-gray-600">Type of Business</label>
               <select value={rollover} onChange={e=>setRollover(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                 {rollovers.map(m=><option key={m}>{m}</option>)}
               </select>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-600">Rep</label>
+              <label className="text-sm font-medium text-gray-600">Telecaller</label>
               <select value={rep} onChange={e=>setRep(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                 {reps.map(m=><option key={m}>{m}</option>)}
               </select>
@@ -5089,39 +5168,48 @@ function PageExplorer() {
           {/* Date Filters Row */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-600">From Date</label>
+              <label className="text-sm font-medium text-gray-600">Issue From Date</label>
               <input type="date" value={fromDate} onChange={e=>setFromDate(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"/>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-600">To Date</label>
+              <label className="text-sm font-medium text-gray-600">Issue To Date</label>
               <input type="date" value={toDate} onChange={e=>setToDate(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"/>
             </div>
-            <div></div>
-            <div></div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-600">Expiry From Date</label>
+              <input type="date" value={expiryFromDate} onChange={e=>setExpiryFromDate(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"/>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-600">Expiry To Date</label>
+              <input type="date" value={expiryToDate} onChange={e=>setExpiryToDate(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"/>
+            </div>
           </div>
         </div>
         <div className="overflow-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-zinc-500">
-                <th className="py-2">Rep</th><th>Make</th><th>Model</th><th>Insurer</th><th>Issue Date</th><th>Rollover</th><th>Branch</th><th># Policies</th><th>GWP</th><th>Avg Cashback %</th><th>Cashback (₹)</th><th>Net (₹)</th>
+                <th className="py-2 px-2">Telecaller</th><th className="px-2">Make</th><th className="px-2">Model</th><th className="px-2">Insurer</th><th className="px-2">Issue Date</th><th className="px-2">Expiry Date</th><th className="px-2">Type of Business</th><th className="px-2">Branch</th><th className="px-2"># Policies</th><th className="px-2">GWP</th><th className="px-2">Total Premium</th><th className="px-2">Total OD</th><th className="px-2">Avg Cashback %</th><th className="px-2">Cashback (₹)</th><th className="px-2">Net (₹)</th>
               </tr>
             </thead>
             <tbody>
               {filtered.map((r,i)=> (
                 <tr key={i} className="border-t">
-                  <td className="py-2 font-medium">{r.rep}</td>
-                  <td>{r.make}</td>
-                  <td>{r.model}</td>
-                  <td>{r.insurer}</td>
-                  <td>{r.issueDate && r.issueDate !== 'N/A' ? new Date(r.issueDate).toLocaleDateString('en-GB') : 'N/A'}</td>
-                  <td>{r.rollover}</td>
-                  <td>{r.branch}</td>
-                  <td>{r.policies}</td>
-                  <td>₹{(r.gwp/1000).toFixed(1)}k</td>
-                  <td>{parseFloat(r.cashbackPctAvg || 0).toFixed(1)}%</td>
-                  <td>₹{r.cashback}</td>
-                  <td>₹{r.net}</td>
+                  <td className="py-2 px-2 font-medium">{r.rep}</td>
+                  <td className="px-2">{r.make}</td>
+                  <td className="px-2">{r.model}</td>
+                  <td className="px-2">{r.insurer}</td>
+                  <td className="px-2">{r.issueDate && r.issueDate !== 'N/A' ? new Date(r.issueDate).toLocaleDateString('en-GB') : 'N/A'}</td>
+                  <td className="px-2">{r.expiryDate && r.expiryDate !== 'N/A' ? new Date(r.expiryDate).toLocaleDateString('en-GB') : 'N/A'}</td>
+                  <td className="px-2">{r.rollover}</td>
+                  <td className="px-2">{r.branch}</td>
+                  <td className="px-2">{r.policies}</td>
+                  <td className="px-2">₹{(r.gwp/1000).toFixed(1)}k</td>
+                  <td className="px-2">₹{((r.totalPremium || 0)/1000).toFixed(1)}k</td>
+                  <td className="px-2">₹{((r.totalOD || 0)/1000).toFixed(1)}k</td>
+                  <td className="px-2">{parseFloat(r.cashbackPctAvg || 0).toFixed(1)}%</td>
+                  <td className="px-2">₹{r.cashback}</td>
+                  <td className="px-2">₹{r.net}</td>
                 </tr>
               ))}
             </tbody>
