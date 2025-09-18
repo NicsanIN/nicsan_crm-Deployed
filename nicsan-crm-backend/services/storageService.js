@@ -487,31 +487,31 @@ async savePolicy(policyData) {
             extractedData.total_od = totalOwnDamagePremium;
             extractedData.net_premium = totalOwnDamagePremium;
           }
-        } else if (extractedData.insurer === 'TATA_AIG') {
-          // TATA AIG Manufacturing Year Rule: If manufacturing year >= 2023, then Net Premium = Total OD
-          const manufacturingYear = parseInt(extractedData.manufacturing_year);
-          if (manufacturingYear >= 2023) {
-            // Apply the rule: Net Premium = Total OD
-            if (extractedData.total_od) {
-              console.log(`🔧 TATA AIG: Manufacturing year ${manufacturingYear} >= 2023, applying rule: Net Premium = Total OD`);
-              console.log(`  - Total OD: ${extractedData.total_od}`);
-              console.log(`  - Net OD: ${extractedData.net_od} (unchanged)`);
-              
-              // Apply the rule: Net Premium = Total OD (Net OD remains unchanged)
-              extractedData.net_premium = extractedData.total_od;
-              
-              extractedData.tata_aig_rule_applied = 'MANUFACTURING_YEAR_2023_PLUS';
-            } else if (extractedData.net_premium) {
-              // Fallback: If Total OD is missing, use Net Premium as Total OD
-              console.log(`🔧 TATA AIG: Manufacturing year ${manufacturingYear} >= 2023, Total OD missing, using Net Premium as Total OD`);
-              extractedData.total_od = extractedData.net_premium;
-              extractedData.tata_aig_rule_applied = 'MANUFACTURING_YEAR_2023_PLUS_FALLBACK';
-            } else {
-              console.log(`⚠️ TATA AIG: Manufacturing year ${manufacturingYear} >= 2023, but both Net Premium and Total OD missing, skipping rule`);
-            }
+        }
+      } else if (extractedData.insurer === 'TATA_AIG') {
+        // TATA AIG Manufacturing Year Rule: If manufacturing year >= 2023, then Net Premium = Total OD
+        const manufacturingYear = parseInt(extractedData.manufacturing_year);
+        if (manufacturingYear >= 2023) {
+          // Apply the rule: Net Premium = Total OD
+          if (extractedData.total_od) {
+            console.log(`🔧 TATA AIG: Manufacturing year ${manufacturingYear} >= 2023, applying rule: Net Premium = Total OD`);
+            console.log(`  - Total OD: ${extractedData.total_od}`);
+            console.log(`  - Net OD: ${extractedData.net_od} (unchanged)`);
+            
+            // Apply the rule: Net Premium = Total OD (Net OD remains unchanged)
+            extractedData.net_premium = extractedData.total_od;
+            
+            extractedData.tata_aig_rule_applied = 'MANUFACTURING_YEAR_2023_PLUS';
+          } else if (extractedData.net_premium) {
+            // Fallback: If Total OD is missing, use Net Premium as Total OD
+            console.log(`🔧 TATA AIG: Manufacturing year ${manufacturingYear} >= 2023, Total OD missing, using Net Premium as Total OD`);
+            extractedData.total_od = extractedData.net_premium;
+            extractedData.tata_aig_rule_applied = 'MANUFACTURING_YEAR_2023_PLUS_FALLBACK';
           } else {
-            console.log(`ℹ️ TATA AIG: Manufacturing year ${manufacturingYear} < 2023, no rule applied`);
+            console.log(`⚠️ TATA AIG: Manufacturing year ${manufacturingYear} >= 2023, but both Net Premium and Total OD missing, skipping rule`);
           }
+        } else {
+          console.log(`ℹ️ TATA AIG: Manufacturing year ${manufacturingYear} < 2023, no rule applied`);
         }
       }
       
