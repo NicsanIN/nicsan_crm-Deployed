@@ -1,0 +1,133 @@
+name: Deploy Backend to Production
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy-backend:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write       # Needed for OIDC auth
+      contents: read
+    
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::132418765186:role/nicsan-crm-deployer
+          aws-region: ap-south-1
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag, and push backend image to Amazon ECR
+        id: build-image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: nicsan-crm-api
+          IMAGE_TAG: production-${{ github.sha }}
+        run: |
+          # Build the Docker image
+          cd nicsan-crm-backend
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:production-latest .
+          
+          # Push the image
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:production-latest
+          
+          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+      - name: Update ECS task definition
+        id: update-task-def
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: nicsan-crm-api
+          IMAGE_TAG: production-${{ github.sha }}
+        run: |
+          # Get the current task definition
+          TASK_DEFINITION_ARN=$(aws ecs describe-services \
+            --cluster nicsan-backend-cluster \
+            --services nicsan-backend-svc \
+            --query 'services[0].taskDefinition' \
+            --output text)
+          
+          # Get the task definition JSON
+          aws ecs describe-task-definition \
+            --task-definition $TASK_DEFINITION_ARN \
+            --query 'taskDefinition' > task-definition.json
+          
+          # Update the image URI
+          jq --arg IMAGE "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" \
+            '.containerDefinitions[0].image = $IMAGE' \
+            task-definition.json > updated-task-definition.json
+          
+          # Remove fields that can't be updated
+          jq 'del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .placementConstraints, .compatibilities, .registeredAt, .registeredBy)' \
+            updated-task-definition.json > final-task-definition.json
+          
+          # Register new task definition
+          NEW_TASK_DEF_ARN=$(aws ecs register-task-definition \
+            --cli-input-json file://final-task-definition.json \
+            --query 'taskDefinition.taskDefinitionArn' \
+            --output text)
+          
+          echo "new-task-def-arn=$NEW_TASK_DEF_ARN" >> $GITHUB_OUTPUT
+          echo "Updated task definition: $NEW_TASK_DEF_ARN"
+
+      - name: Deploy to ECS
+        env:
+          NEW_TASK_DEF_ARN: ${{ steps.update-task-def.outputs.new-task-def-arn }}
+        run: |
+          # Update the service with new task definition
+          aws ecs update-service \
+            --cluster nicsan-backend-cluster \
+            --service nicsan-backend-svc \
+            --task-definition $NEW_TASK_DEF_ARN \
+            --force-new-deployment
+          
+          echo "Deployment initiated for production backend"
+
+      - name: Wait for deployment to complete
+        run: |
+          echo "Waiting for deployment to complete..."
+          aws ecs wait services-stable \
+            --cluster nicsan-backend-cluster \
+            --services nicsan-backend-svc
+          
+          echo "✅ Production backend deployment completed successfully!"
+
+      - name: Verify deployment
+        run: |
+          # Check service status
+          SERVICE_STATUS=$(aws ecs describe-services \
+            --cluster nicsan-backend-cluster \
+            --services nicsan-backend-svc \
+            --query 'services[0].status' \
+            --output text)
+          
+          RUNNING_COUNT=$(aws ecs describe-services \
+            --cluster nicsan-backend-cluster \
+            --services nicsan-backend-svc \
+            --query 'services[0].runningCount' \
+            --output text)
+          
+          DESIRED_COUNT=$(aws ecs describe-services \
+            --cluster nicsan-backend-cluster \
+            --services nicsan-backend-svc \
+            --query 'services[0].desiredCount' \
+            --output text)
+          
+          echo "Service Status: $SERVICE_STATUS"
+          echo "Running Tasks: $RUNNING_COUNT/$DESIRED_COUNT"
+          
+          if [ "$SERVICE_STATUS" = "ACTIVE" ] && [ "$RUNNING_COUNT" = "$DESIRED_COUNT" ]; then
+            echo "✅ Production backend is healthy and running!"
+          else
+            echo "❌ Production backend deployment may have issues"
+            exit 1
+          fi

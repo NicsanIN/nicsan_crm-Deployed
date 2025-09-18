@@ -1,5 +1,6 @@
 const { query } = require('../config/database');
 const { uploadToS3, deleteFromS3, extractTextFromPDF, generateS3Key, generatePolicyS3Key, uploadJSONToS3, getJSONFromS3 } = require('../config/aws');
+const { withPrefix } = require('../utils/s3Prefix');
 const websocketService = require('./websocketService');
 
 class StorageService {
@@ -36,17 +37,32 @@ async savePolicy(policyData) {
       const pgResult = await this.saveToPostgreSQL(policyData);
       const policyId = pgResult.rows[0].id;
       
-      // 2. Save to S3 (Primary Storage) - JSON data
-      const s3Key = generatePolicyS3Key(policyId, policyData.source);
-      const s3Result = await uploadJSONToS3(policyData, s3Key);
+      // 2. Save to S3 (Primary Storage) - JSON data (with graceful failure handling)
+      let s3Key = null;
+      let s3Result = null;
       
-      // 3. Update PostgreSQL with S3 key
-      await query(
-        'UPDATE policies SET s3_key = $1 WHERE id = $2',
-        [s3Key, policyId]
-      );
+      try {
+        s3Key = generatePolicyS3Key(policyId, policyData.source);
+        s3Result = await uploadJSONToS3(policyData, s3Key);
+        console.log('✅ Policy data uploaded to S3 successfully');
+      } catch (s3Error) {
+        console.error('⚠️ S3 upload failed, but continuing with database save:', s3Error.message);
+        // Continue without S3 key - database save is more important
+      }
       
-      console.log('✅ Policy saved to both storages successfully');
+      // 3. Update PostgreSQL with S3 key (if S3 upload succeeded)
+      if (s3Key) {
+        await query(
+          'UPDATE policies SET s3_key = $1 WHERE id = $2',
+          [s3Key, policyId]
+        );
+      }
+      
+      if (s3Key) {
+        console.log('✅ Policy saved to both database and S3 successfully');
+      } else {
+        console.log('✅ Policy saved to database successfully (S3 upload failed)');
+      }
       
       const savedPolicy = {
         id: policyId,
@@ -166,7 +182,7 @@ async savePolicy(policyData) {
   async saveToS3(policyData) {
     if (!policyData.file) return null;
     
-    const s3Key = generateS3Key(policyData.file.originalname, policyData.insurer);
+    const s3Key = generatePolicyS3Key(policyData.policyId || Date.now(), 'manual'); 
     return await uploadToS3(policyData.file, s3Key);
   }
 
@@ -216,12 +232,14 @@ async savePolicy(policyData) {
       
       const { file, insurer, manualExtras } = uploadData;
       
+      // Generate upload ID first
+      const uploadId = `upload_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+      
       // 1. Upload to S3 (Primary Storage) with insurer detection
-      const s3Key = await generateS3Key(file.originalname, insurer, file.buffer);
+      const s3Key = generatePolicyS3Key(uploadId, 'manual'); 
       const s3Result = await uploadToS3(file, s3Key);
       
       // 2. Save metadata to PostgreSQL (Secondary Storage)
-      const uploadId = `upload_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
       
       const pgQuery = `
         INSERT INTO pdf_uploads (upload_id, filename, s3_key, insurer, status, manual_extras)
@@ -927,7 +945,7 @@ async savePolicy(policyData) {
       console.log('✅ Retrieved dashboard metrics from PostgreSQL (Primary Storage)');
       
       // Save to S3 for future use (Secondary Storage)
-      const s3Key = `data/aggregated/dashboard-metrics-${period}-${Date.now()}.json`;
+      const s3Key = withPrefix(`data/aggregated/dashboard-metrics-${period}-${Date.now()}.json`);
       try {
         await uploadJSONToS3(metrics, s3Key);
         console.log('✅ Saved dashboard metrics to S3 (Secondary Storage)');
@@ -950,7 +968,7 @@ async savePolicy(policyData) {
       console.log('✅ Retrieved sales reps from PostgreSQL (Primary Storage)');
       
       // Save to S3 for future use (Secondary Storage)
-      const s3Key = `data/aggregated/sales-reps-${Date.now()}.json`;
+      const s3Key = withPrefix(`data/aggregated/sales-reps-${Date.now()}.json`);
       try {
         await uploadJSONToS3(reps, s3Key);
         console.log('✅ Saved sales reps to S3 (Secondary Storage)');
@@ -974,7 +992,7 @@ async savePolicy(policyData) {
       
       // Save to S3 for future use (Secondary Storage)
       const filterKey = Object.keys(filters).map(k => `${k}-${filters[k]}`).join('_');
-      const s3Key = `data/aggregated/vehicle-analysis-${filterKey}-${Date.now()}.json`;
+      const s3Key = withPrefix(`data/aggregated/vehicle-analysis-${filterKey}-${Date.now()}.json`);
       try {
         await uploadJSONToS3(analysis, s3Key);
         console.log('✅ Saved vehicle analysis to S3 (Secondary Storage)');
@@ -998,7 +1016,7 @@ async savePolicy(policyData) {
       
       // Save to S3 for future use (Secondary Storage)
       const filterKey = Object.keys(filters).map(k => `${k}-${filters[k]}`).join('_');
-      const s3Key = `data/aggregated/sales-explorer-${filterKey}-${Date.now()}.json`;
+      const s3Key = withPrefix(`data/aggregated/sales-explorer-${filterKey}-${Date.now()}.json`);
       try {
         await uploadJSONToS3(explorer, s3Key);
         console.log('✅ Saved sales explorer to S3 (Secondary Storage)');
@@ -1399,7 +1417,7 @@ async savePolicy(policyData) {
       console.log('✅ Retrieved data sources from PostgreSQL (Primary Storage)');
       
       // Save to S3 for future use (Secondary Storage)
-      const s3Key = `data/aggregated/data-sources-${Date.now()}.json`;
+      const s3Key = withPrefix(`data/aggregated/data-sources-${Date.now()}.json`);
       try {
         await uploadJSONToS3(sources, s3Key);
         console.log('✅ Saved data sources to S3 (Secondary Storage)');

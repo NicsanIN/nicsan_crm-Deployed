@@ -1,0 +1,17 @@
+{
+    "Changes":  [
+                    {
+                        "ResourceRecordSet":  {
+                                                  "AliasTarget":  {
+                                                                      "DNSName":  "nicsan-backend-alb-707031227.ap-south-1.elb.amazonaws.com",
+                                                                      "EvaluateTargetHealth":  false,
+                                                                      "HostedZoneId":  "ZP97RAFLXTNZK"
+                                                                  },
+                                                  "Name":  "api.nicsanin.com.",
+                                                  "Type":  "A"
+                                              },
+                        "Action":  "UPSERT"
+                    }
+                ],
+    "Comment":  "Alias api.nicsanin.com -\u003e ALB"
+}
