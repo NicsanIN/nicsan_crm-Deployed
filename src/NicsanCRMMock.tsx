@@ -4959,11 +4959,17 @@ function PageExplorer() {
     const escapeCSV = (value: any) => {
       if (value === null || value === undefined) return '';
       const str = String(value);
-      // If value contains comma, quote, or newline, wrap in quotes and escape internal quotes
-      if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
-        return `"${str.replace(/"/g, '""')}"`;
-      }
-      return str;
+      
+      // Clean the string: remove all types of line breaks and normalize whitespace
+      const cleanedStr = str
+        .replace(/\r\n/g, ' ')  // Windows line breaks
+        .replace(/\n/g, ' ')    // Unix line breaks  
+        .replace(/\r/g, ' ')    // Old Mac line breaks
+        .replace(/\s+/g, ' ')   // Multiple spaces to single space
+        .trim();                // Remove leading/trailing spaces
+      
+      // Always wrap in quotes for safety and escape internal quotes
+      return `"${cleanedStr.replace(/"/g, '""')}"`;
     };
     
     // Helper function to format dates consistently
