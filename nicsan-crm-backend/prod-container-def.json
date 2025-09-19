@@ -53,6 +53,14 @@
       {
         "name": "FRONTEND_URL",
         "value": "https://app.nicsanin.com"
+      },
+      {
+        "name": "AWS_REGION",
+        "value": "ap-south-1"
+      },
+      {
+        "name": "AWS_S3_BUCKET",
+        "value": "nicsan-crm-pdfs"
       }
     ],
     "mountPoints": [],
@@ -69,6 +77,10 @@
       {
         "name": "OPENAI_API_KEY",
         "valueFrom": "arn:aws:ssm:ap-south-1:132418765186:parameter/nicsan/backend/OPENAI_API_KEY"
+      },
+      {
+        "name": "S3_PREFIX",
+        "valueFrom": "arn:aws:ssm:ap-south-1:132418765186:parameter/nicsan/production/S3_PREFIX"
       }
     ],
     "logConfiguration": {
@@ -83,4 +95,13 @@
     },
     "systemControls": []
   }
-]
+],
+"family": "nicsan-backend-task",
+"networkMode": "awsvpc",
+"requiresCompatibilities": [
+  "FARGATE"
+],
+"cpu": "512",
+"memory": "1024",
+"executionRoleArn": "arn:aws:iam::132418765186:role/NicsanCrmExecutionRole",
+"taskRoleArn": "arn:aws:iam::132418765186:role/NicsanCrmTaskRole"

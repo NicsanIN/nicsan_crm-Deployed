@@ -97,4 +97,13 @@
     },
     "systemControls": []
   }
-]
+],
+"family": "nicsan-backend-task",
+"networkMode": "awsvpc",
+"requiresCompatibilities": [
+  "FARGATE"
+],
+"cpu": "512",
+"memory": "1024",
+"executionRoleArn": "arn:aws:iam::132418765186:role/NicsanCrmExecutionRole",
+"taskRoleArn": "arn:aws:iam::132418765186:role/NicsanCrmTaskRole"
