@@ -9,6 +9,7 @@
 
 const { query } = require('./config/database');
 const { generatePolicyS3Key, uploadJSONToS3 } = require('./config/aws');
+const { withPrefix } = require('./utils/s3Prefix');
 
 async function backfillMissingPolicies() {
   console.log('🔄 Starting S3 Policy Backfill Process...\n');
@@ -39,8 +40,8 @@ async function backfillMissingPolicies() {
       try {
         console.log(`📄 Processing policy ${policy.id} (${policy.policy_number})...`);
         
-        // Generate S3 key
-        const s3Key = generatePolicyS3Key(policy.id, policy.source || 'MANUAL_FORM');
+        // Generate S3 key with proper prefix
+        const s3Key = withPrefix(generatePolicyS3Key(policy.id, policy.source || 'MANUAL_FORM'));
         
         // Prepare policy data for S3 (exclude database-specific fields)
         const policyData = { ...policy };
