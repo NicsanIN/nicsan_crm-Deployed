@@ -1096,7 +1096,33 @@ function PageManualForm() {
     // Mark field as touched for progressive validation
     setFieldTouched(prev => ({ ...prev, [k]: true }));
   };
-  const number = (v:any)=> (v===''||v===null)?0:parseFloat(v.toString().replace(/[^0-9.]/g,''))||0;
+  // Enhanced safe number function with comprehensive validation
+  const number = (v: any): number => {
+    // Handle null/undefined/empty
+    if (v === null || v === undefined || v === '') return 0;
+    
+    // Convert to string and clean
+    let cleanValue = String(v).trim();
+    
+    // Remove common currency symbols and formatting
+    cleanValue = cleanValue
+      .replace(/[₹$€£¥]/g, '') // Remove currency symbols
+      .replace(/,/g, '') // Remove commas
+      .replace(/\s+/g, '') // Remove spaces
+      .replace(/[^\d.-]/g, ''); // Keep only digits, dots, and minus
+    
+    // Handle empty after cleaning
+    if (cleanValue === '' || cleanValue === '-') return 0;
+    
+    // Parse the number
+    const num = parseFloat(cleanValue);
+    
+    // Check for NaN or Infinity
+    if (isNaN(num) || !isFinite(num)) return 0;
+    
+    // Clamp to reasonable bounds (max ₹1 crore)
+    return Math.min(Math.max(num, 0), 10000000);
+  };
 
   // Two-way binding for cashback
   const onTotalChange = (v:any)=> {
@@ -1231,8 +1257,10 @@ function PageManualForm() {
           errors.push('IDV (₹) is required');
         } else {
           const idv = number(value);
-          if (idv <= 0 || idv > 100000000) {
-            errors.push('IDV must be between ₹1 and ₹10 crore');
+          if (idv < 1000) {
+            errors.push('IDV must be at least ₹1,000');
+          } else if (idv > 100000000) {
+            errors.push('IDV cannot exceed ₹10 crore');
           }
         }
         break;
@@ -1278,8 +1306,10 @@ function PageManualForm() {
           errors.push('Total Premium (₹) is required');
         } else {
           const totalPremium = number(value);
-          if (totalPremium <= 0 || totalPremium > 1000000) {
-            errors.push('Total Premium must be between ₹1 and ₹10 lakh');
+          if (totalPremium <= 0) {
+            errors.push('Total Premium must be greater than ₹0');
+          } else if (totalPremium > 10000000) {
+            errors.push('Total Premium cannot exceed ₹1 crore');
           }
         }
         break;
@@ -1363,7 +1393,7 @@ function PageManualForm() {
       errors.push('Net OD cannot exceed Total OD');
     }
     
-    // Cashback validation
+    // Enhanced cashback validation
     const cashbackPct = number(form.cashbackPct);
     const cashbackAmt = number(form.cashbackAmt);
     
@@ -1373,6 +1403,15 @@ function PageManualForm() {
     
     if (cashbackAmt > totalPremium * 0.5) {
       errors.push('Cashback amount cannot exceed 50% of Total Premium');
+    }
+    
+    // Validate cashback consistency
+    if (cashbackPct > 0 && cashbackAmt > 0) {
+      const expectedAmt = (totalPremium * cashbackPct) / 100;
+      const tolerance = totalPremium * 0.01; // 1% tolerance
+      if (Math.abs(cashbackAmt - expectedAmt) > tolerance) {
+        errors.push('Cashback amount and percentage are inconsistent');
+      }
     }
     
     // Date validation
@@ -2245,9 +2284,14 @@ function PageManualGrid() {
       errors.push('Invalid mobile number format (10 digits starting with 6-9)');
     }
     
-    // Total Premium validation
-    if (row.totalPremium && (isNaN(parseFloat(row.totalPremium)) || parseFloat(row.totalPremium) <= 0)) {
-      errors.push('Total Premium must be a valid positive number');
+    // Enhanced Total Premium validation
+    if (row.totalPremium) {
+      const totalPremium = parseFloat(row.totalPremium) || 0;
+      if (totalPremium <= 0) {
+        errors.push('Total Premium must be greater than ₹0');
+      } else if (totalPremium > 10000000) {
+        errors.push('Total Premium cannot exceed ₹1 crore');
+      }
     }
     
     // Date validation
