@@ -467,32 +467,54 @@ async savePolicy(policyData) {
         confidence_score: openaiResult.confidence_score || 0.95 // OpenAI typically has higher confidence
       };
       
+      // NEW: Universal DIGIT pattern detection and correction (applies to all policies)
+      if (this.detectDIGITPatterns(extractedData, pdfText)) {
+        console.log('🔍 DIGIT patterns detected in PDF content, applying DIGIT rules...');
+        
+        // Apply DIGIT extraction rules based on PDF content patterns
+        const digitCorrectedData = await this.correctDIGITExtraction(extractedData, pdfText);
+        
+        if (digitCorrectedData) {
+          console.log('🔧 DIGIT: Applied pattern-based corrections');
+          console.log(`Net OD: ${digitCorrectedData.net_od}, Total OD: ${digitCorrectedData.total_od}, Net Premium: ${digitCorrectedData.net_premium}`);
+          
+          // Update extracted data with DIGIT corrections
+          Object.assign(extractedData, digitCorrectedData);
+          extractedData.extraction_method = 'DIGIT_PATTERN_CORRECTED';
+          extractedData.digit_pattern_detected = true;
+        }
+      }
+      
       // NEW: Enforce DIGIT/RELIANCE_GENERAL business rules
       if (extractedData.insurer === 'DIGIT' || extractedData.insurer === 'RELIANCE_GENERAL') {
-        // For DIGIT: All three fields (net_od, total_od, net_premium) should equal "Total OD Premium"
+        // For DIGIT: Validate extraction but don't override values
         if (extractedData.insurer === 'DIGIT') {
-          console.log('🔍 Processing DIGIT with standard extraction and validation...');
+          console.log('🔍 Processing DIGIT with OpenAI extraction (no override)...');
           
-          // Use standard extraction with enhanced validation
-          const totalOdPremium = extractedData.net_od || extractedData.total_od || extractedData.net_premium;
-          if (totalOdPremium) {
-            console.log(`🔧 DIGIT: Setting all three fields to Total OD Premium value: ${totalOdPremium}`);
-            extractedData.net_od = totalOdPremium;
-            extractedData.total_od = totalOdPremium;
-            extractedData.net_premium = totalOdPremium;
+          // Validate extraction but don't override values
+          if (extractedData.net_od && extractedData.total_od && extractedData.net_premium) {
+            console.log(`✅ DIGIT: All fields extracted successfully`);
+            console.log(`Net OD: ${extractedData.net_od}, Total OD: ${extractedData.total_od}, Net Premium: ${extractedData.net_premium}`);
             
-            // Enhanced DIGIT Bug Fix: Validate that total_premium is different from Total OD Premium
-            if (extractedData.total_premium === totalOdPremium) {
-              console.log('⚠️ DIGIT Bug detected: total_premium equals Total OD Premium value');
-              console.log('🔍 This indicates extraction from wrong source fields');
-              extractedData.digit_bug_flag = 'TOTAL_PREMIUM_SAME_AS_OD_PREMIUM';
-              extractedData.extraction_method = 'STANDARD_WITH_BUG';
+            // NEW: Hard constraint validation - Net Premium < Total Premium
+            if (extractedData.net_premium >= extractedData.total_premium) {
+              console.log('⚠️ DIGIT Validation Failed: Net Premium >= Total Premium');
+              console.log(`Net Premium: ${extractedData.net_premium}, Total Premium: ${extractedData.total_premium}`);
+              extractedData.digit_bug_flag = 'NET_PREMIUM_NOT_LESS_THAN_TOTAL_PREMIUM';
+              extractedData.extraction_method = 'OPENAI_VALIDATION_FAILED';
+              extractedData.confidence_score = Math.min(extractedData.confidence_score, 0.35);
             } else {
-              console.log(`✅ DIGIT validation passed: total_premium (${extractedData.total_premium}) differs from Total OD Premium (${totalOdPremium})`);
-              extractedData.extraction_method = 'STANDARD_VALIDATED';
+              console.log(`✅ DIGIT validation passed: Net Premium (${extractedData.net_premium}) < Total Premium (${extractedData.total_premium})`);
+              extractedData.extraction_method = 'OPENAI_VALIDATED';
             }
+          } else {
+            console.log('⚠️ DIGIT: Some fields missing from extraction');
+            extractedData.extraction_method = 'OPENAI_INCOMPLETE';
           }
-        } else if (extractedData.insurer === 'RELIANCE_GENERAL') {
+        }
+        
+        // Handle RELIANCE_GENERAL policies
+        if (extractedData.insurer === 'RELIANCE_GENERAL') {
           // For RELIANCE_GENERAL: All three fields (net_od, total_od, net_premium) should equal "Total Own Damage Premium"
           const totalOwnDamagePremium = extractedData.net_od || extractedData.total_od || extractedData.net_premium;
           if (totalOwnDamagePremium) {
@@ -1433,6 +1455,86 @@ async savePolicy(policyData) {
       ORDER BY count DESC
     `);
     return result.rows;
+  }
+
+  // NEW: Detect DIGIT patterns in PDF content
+  detectDIGITPatterns(extractedData, pdfText) {
+    if (!pdfText) return false;
+    
+    const digitPatterns = [
+      'Go Digit',
+      'Digit General Insurance',
+      'DIGIT',
+      'Go Digit General Insurance Ltd.',
+      'Digit General Insurance Ltd.',
+      'Go Digit General Insurance',
+      'Digit Insurance'
+    ];
+    
+    const pdfTextLower = pdfText.toLowerCase();
+    
+    // Check for DIGIT company name patterns
+    for (const pattern of digitPatterns) {
+      if (pdfTextLower.includes(pattern.toLowerCase())) {
+        console.log(`🔍 DIGIT pattern detected: "${pattern}"`);
+        return true;
+      }
+    }
+    
+    // Check for DIGIT-specific field patterns
+    const digitFieldPatterns = [
+      'net premium',
+      'final premium',
+      'total net premium',
+      'premium (net)'
+    ];
+    
+    let digitFieldCount = 0;
+    for (const pattern of digitFieldPatterns) {
+      if (pdfTextLower.includes(pattern)) {
+        digitFieldCount++;
+      }
+    }
+    
+    // If multiple DIGIT field patterns found, likely a DIGIT policy
+    if (digitFieldCount >= 2) {
+      console.log(`🔍 DIGIT field patterns detected: ${digitFieldCount} patterns found`);
+      return true;
+    }
+    
+    return false;
+  }
+
+  // NEW: Correct DIGIT extraction based on PDF content patterns
+  async correctDIGITExtraction(extractedData, pdfText) {
+    if (!pdfText) return null;
+    
+    try {
+      // Extract Net Premium value from PDF text
+      const netPremiumMatch = pdfText.match(/(?:net premium|net premium \(₹\)|net premium amount|premium \(net\)|total net premium)[\s:]*₹?[\s]*(\d+(?:,\d{3})*(?:\.\d{2})?)/i);
+      const netPremium = netPremiumMatch ? parseFloat(netPremiumMatch[1].replace(/,/g, '')) : null;
+      
+      // Extract Final Premium value from PDF text
+      const finalPremiumMatch = pdfText.match(/(?:final premium|final premium \(₹\)|total premium|total premium \(₹\)|final amount|total amount)[\s:]*₹?[\s]*(\d+(?:,\d{3})*(?:\.\d{2})?)/i);
+      const finalPremium = finalPremiumMatch ? parseFloat(finalPremiumMatch[1].replace(/,/g, '')) : null;
+      
+      if (netPremium && finalPremium) {
+        console.log(`🔧 DIGIT correction: Net Premium = ${netPremium}, Final Premium = ${finalPremium}`);
+        
+        return {
+          net_od: netPremium,
+          total_od: netPremium, // Same as Net OD
+          net_premium: netPremium,
+          total_premium: finalPremium,
+          digit_corrected: true
+        };
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('❌ Error in DIGIT correction:', error);
+      return null;
+    }
   }
 }
 

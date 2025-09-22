@@ -209,7 +209,17 @@ function OpsSidebar({ page, setPage }: { page: string; setPage: (p: string) => v
 function PageUpload() {
   const [uploadStatus, setUploadStatus] = useState<string>('');
   const [uploadedFiles, setUploadedFiles] = useState<any[]>([]);
-  const [selectedInsurer, setSelectedInsurer] = useState<'TATA_AIG' | 'DIGIT' | 'RELIANCE_GENERAL'>('TATA_AIG');
+  const [selectedInsurer, setSelectedInsurer] = useState<string>('TATA_AIG');
+  
+  // Available insurers configuration
+  const availableInsurers = [
+    { value: 'TATA_AIG', label: 'Tata AIG' },
+    { value: 'DIGIT', label: 'Digit' },
+    { value: 'RELIANCE_GENERAL', label: 'Reliance General' },
+    { value: 'GENERALI_CENTRAL', label: 'Generali Central Insurance' },
+    { value: 'LIBERTY_GENERAL', label: 'Liberty General Insurance' },
+    { value: 'ICIC', label: 'ICICI Lombard' }
+  ];
   const [manualExtras, setManualExtras] = useState({
     executive: '',
     opsExecutive: '',
@@ -289,9 +299,7 @@ function PageUpload() {
               // Mock PDF data for demo (in real app, this comes from Textract)
               policy_number: "TA-" + Math.floor(Math.random() * 10000),
               vehicle_number: "KA01AB" + Math.floor(Math.random() * 1000),
-              insurer: selectedInsurer === 'TATA_AIG' ? 'Tata AIG' : 
-                       selectedInsurer === 'DIGIT' ? 'Digit' : 
-                       selectedInsurer === 'RELIANCE_GENERAL' ? 'Reliance General' : 'Unknown',
+              insurer: availableInsurers.find(ins => ins.value === selectedInsurer)?.label || 'Unknown',
               product_type: "Private Car",
               vehicle_type: "Private Car",
               make: "Maruti",
@@ -520,40 +528,20 @@ function PageUpload() {
         {/* Insurer Selection */}
         <div className="mb-4">
           <div className="text-sm font-medium mb-2">Select Insurer</div>
-          <div className="flex gap-4">
-            <label className="flex items-center gap-2">
-              <input 
-                type="radio" 
-                name="insurer"
-                value="TATA_AIG" 
-                checked={selectedInsurer === 'TATA_AIG'}
-                onChange={(e) => setSelectedInsurer(e.target.value as 'TATA_AIG' | 'DIGIT' | 'RELIANCE_GENERAL')}
-                className="w-4 h-4 text-indigo-600"
-              />
-              <span className="text-sm">Tata AIG</span>
-            </label>
-            <label className="flex items-center gap-2">
-              <input 
-                type="radio" 
-                name="insurer"
-                value="DIGIT" 
-                checked={selectedInsurer === 'DIGIT'}
-                onChange={(e) => setSelectedInsurer(e.target.value as 'TATA_AIG' | 'DIGIT' | 'RELIANCE_GENERAL')}
-                className="w-4 h-4 text-indigo-600"
-              />
-              <span className="text-sm">Digit</span>
-            </label>
-            <label className="flex items-center gap-2">
-              <input 
-                type="radio" 
-                name="insurer"
-                value="RELIANCE_GENERAL" 
-                checked={selectedInsurer === 'RELIANCE_GENERAL'}
-                onChange={(e) => setSelectedInsurer(e.target.value as 'TATA_AIG' | 'DIGIT' | 'RELIANCE_GENERAL')}
-                className="w-4 h-4 text-indigo-600"
-              />
-              <span className="text-sm">Reliance General</span>
-            </label>
+          <div className="grid grid-cols-2 gap-2">
+            {availableInsurers.map((insurer) => (
+              <label key={insurer.value} className="flex items-center gap-2">
+                <input 
+                  type="radio" 
+                  name="insurer"
+                  value={insurer.value} 
+                  checked={selectedInsurer === insurer.value}
+                  onChange={(e) => setSelectedInsurer(e.target.value)}
+                  className="w-4 h-4 text-indigo-600"
+                />
+                <span className="text-sm">{insurer.label}</span>
+              </label>
+            ))}
           </div>
         </div>
 
@@ -819,11 +807,19 @@ function PageUpload() {
                         <span className={`px-2 py-1 rounded-full text-xs ${
                           file.insurer === 'TATA_AIG' 
                             ? 'bg-blue-100 text-blue-700'
-                            : 'bg-green-100 text-green-700'
+                            : file.insurer === 'DIGIT'
+                            ? 'bg-green-100 text-green-700'
+                            : file.insurer === 'RELIANCE_GENERAL'
+                            ? 'bg-purple-100 text-purple-700'
+                            : file.insurer === 'GENERALI_CENTRAL'
+                            ? 'bg-orange-100 text-orange-700'
+                            : file.insurer === 'LIBERTY_GENERAL'
+                            ? 'bg-yellow-100 text-yellow-700'
+                            : file.insurer === 'ICIC'
+                            ? 'bg-red-100 text-red-700'
+                            : 'bg-gray-100 text-gray-700'
                         }`}>
-                          {file.insurer === 'TATA_AIG' ? 'Tata AIG' : 
-                           file.insurer === 'DIGIT' ? 'Digit' : 
-                           file.insurer === 'RELIANCE_GENERAL' ? 'Reliance General' : 'Unknown'}
+                          {availableInsurers.find(ins => ins.value === file.insurer)?.label || 'Unknown'}
                         </span>
                       </td>
                       <td className="py-2">{file.size}</td>

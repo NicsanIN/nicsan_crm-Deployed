@@ -48,18 +48,18 @@ class OpenAIService {
     
     if (year <= 2022) {
       return `
-    - Total OD (₹): Extract "Total Add on Premium (C)" values - this is needed for vehicles 2022 and below
-      * CRITICAL: This field is ESSENTIAL for vehicles 2022 and below - MUST be extracted
+    - Total OD (₹): For vehicles 2022 and below, calculate Total OD (₹) = Net OD (₹) + "Total Add on Premium (C)" values
+      * CRITICAL: This is a CALCULATION, not a direct extraction - ESSENTIAL for vehicles 2022 and below
       * RULE OVERRIDE: This rule OVERRIDES any other Total OD rules in this prompt for TATA AIG policies
       * PROHIBITED: DO NOT use "Total Own Damage Premium" for TATA AIG Total OD
       * PROHIBITED: DO NOT copy Net OD value for TATA AIG Total OD
       * PROHIBITED: DO NOT use RELIANCE_GENERAL rules for TATA AIG policies
-      * FIELD DIFFERENTIATION: Total OD (₹) is DIFFERENT from Net OD (₹) for TATA AIG 2022 and below
+      * FIELD DIFFERENTIATION: Total OD (₹) is CALCULATED from Net OD (₹) + Add on Premium (C) for TATA AIG 2022 and below
       * Net OD (₹) comes from "Total Own Damage Premium (A)" 
-      * Total OD (₹) comes from "Total Add on Premium (C)"
-      * These are SEPARATE fields with DIFFERENT values - DO NOT copy Net OD to Total OD
-      * VALIDATION: Total OD should NOT equal Net OD for 2022 and below models
-      * If Total OD equals Net OD, the extraction is INCORRECT
+      * Add on Premium (C) comes from "Total Add on Premium (C)"
+      * Total OD (₹) = Net OD (₹) + Add on Premium (C) - this is a CALCULATION
+      * VALIDATION: Total OD should equal Net OD + Add on Premium (C) for 2022 and below models
+      * If Total OD does NOT equal Net OD + Add on Premium (C), the calculation is INCORRECT
       * Look for ALL variations: "Add on Premium (C)", "Add-on Premium (C)", "Additional Premium (C)", "Addon Premium (C)", "Add On Premium (C)"
       * Accept different spacing: "Total Add on Premium (C)", "Total Add-on Premium (C)", "Total Add On Premium (C)", "Total Addon Premium (C)"
       * Look for field names containing: "Add on Premium", "Add-on Premium", "Additional Premium", "Addon Premium" with "(C)" or "C"
@@ -127,10 +127,37 @@ class OpenAIService {
       
       // Build dynamic rules based on insurer and manufacturing year
       let dynamicRules = '';
+      let otherInsurerRules = '';
+      
       if (insurer === 'TATA_AIG') {
         const manufacturingYear = this.extractManufacturingYear(pdfText);
         dynamicRules = this.buildTATAAIGTotalODRule(manufacturingYear);
+        otherInsurerRules = `
+10. For TATA_AIG policies specifically:
+    - Net OD (₹): Extract "Total Own Damage Premium (A)" values - this is the NET OD in TATA AIG
+    - Net Premium (₹): Extract "Net Premium" or "Net Premium (₹)" values from policy - this is the NET PREMIUM in TATA AIG
+    ${dynamicRules}
+11. For RELIANCE_GENERAL policies specifically:
+    - Net OD (₹): Extract from "Total Own Damage Premium" values
+    - Total OD (₹): Extract from "Total Own Damage Premium" values  
+    - Net Premium (₹): Extract from "Total Own Damage Premium" values
+    - Total Premium (₹): Extract from "Total Premium Payable" values`;
         console.log(`🔧 TATA AIG rules applied for year: ${manufacturingYear}`);
+      } else if (insurer === 'DIGIT') {
+        // No other insurer rules for DIGIT - only DIGIT rules apply
+        otherInsurerRules = '';
+        console.log(`🔧 DIGIT rules applied - no conflicting rules included`);
+      } else if (insurer === 'RELIANCE_GENERAL') {
+        otherInsurerRules = `
+10. For TATA_AIG policies specifically:
+    - Net OD (₹): Extract "Total Own Damage Premium (A)" values - this is the NET OD in TATA AIG
+    - Net Premium (₹): Extract "Net Premium" or "Net Premium (₹)" values from policy - this is the NET PREMIUM in TATA AIG
+11. For RELIANCE_GENERAL policies specifically:
+    - Net OD (₹): Extract from "Total Own Damage Premium" values
+    - Total OD (₹): Extract from "Total Own Damage Premium" values  
+    - Net Premium (₹): Extract from "Total Own Damage Premium" values
+    - Total Premium (₹): Extract from "Total Premium Payable" values`;
+        console.log(`🔧 RELIANCE_GENERAL rules applied`);
       }
       
       const prompt = `Extract insurance policy data from this text. Return ONLY a valid JSON object with these exact fields:
@@ -149,6 +176,7 @@ class OpenAIService {
   "ncb": "number",
   "discount": "number",
   "net_od": "number",
+  "add_on_premium_c": "number",
   "ref": "string",
   "total_od": "number",
   "net_premium": "number",
@@ -157,18 +185,25 @@ class OpenAIService {
   "confidence_score": "number"
 }
 
-🚨 CRITICAL EXTRACTION RULES - DIGIT POLICIES (HIGHEST PRIORITY):
-1. For DIGIT policies specifically - THESE RULES OVERRIDE ALL OTHERS:
-    - Net OD (₹): MUST extract from "Total OD Premium" values ONLY
-    - Total OD (₹): MUST extract from "Total OD Premium" values ONLY  
-    - Net Premium (₹): MUST extract from "Total OD Premium" values ONLY
-    - Total Premium (₹): MUST extract from "Final Premium" values ONLY
-    - DO NOT use "Own Damage Premium" for any of these fields!
-    - DO NOT use "Net Premium (₹)" for any of these fields!
-    - "Total OD Premium" and "Final Premium" are DIFFERENT fields!
-    - "Total OD Premium" is typically smaller (e.g., 4902)
-    - "Final Premium" is typically larger (e.g., 6500)
-    - These values should be DIFFERENT!
+HIGHEST-PRIORITY RULES — APPLY WHEN DIGIT PATTERNS DETECTED:
+- DIGIT PATTERN DETECTION: Look for these DIGIT indicators in the PDF text:
+  * Company names: "Go Digit", "Digit General Insurance", "DIGIT", "Go Digit General Insurance Ltd."
+  * Policy formats: DIGIT-specific policy layouts, headers, or terminology
+  * Field patterns: "Net Premium" and "Final Premium" field combinations
+- RULE APPLICATION: If ANY DIGIT patterns are found, use DIGIT rules below. If no DIGIT patterns found, use standard extraction rules.
+- Source mapping for DIGIT (when DIGIT patterns detected):
+  • Net Premium (₹): extract ONLY from "Net Premium" (same variants as above).
+  • Total Premium (₹): extract ONLY from "Final Premium" (any variant: "Final Premium", "Final Premium (₹)", "Total Premium", "Total Premium (₹)", "Final Amount", "Total Amount").
+- PROHIBITED SOURCES for the four fields above (reject completely if matched): 
+  * Any "Own Damage Premium" field: "Own Damage Premium", "OD Premium", "Own Damage", "Basic OD Premium", "Total OD Premium", "Total Basic Own Damage Premium", "Total Own Damage Premium (A)"
+  * Any "Act Premium" or "Third Party Premium" field: "Act Premium", "TP Premium", "Third Party Liability Premium", "Liability Premium", "Act", "Third Party Premium"
+  * Any "Total Premium Payable" or similar: "Total Premium Payable", "Gross Premium", "Basic Premium", "Policy Premium", "Premium Subtotal"
+  * Any "Addon Premium" or "Additional Premium": "Addon Premium", "Add on Premium", "Additional Premium", "Total Add on Premium (C)", "Add-on Premium"
+  * Any "Service Tax" or "GST": "Service Tax", "GST", "CGST", "SGST", "IGST", "Tax", "Service Charge"
+  * Any "Final Payable" or "Total Payable": "Final Payable", "Total Payable", "Grand Total", "Amount Payable", "Total Amount Payable"
+  * Any other premium-related field name EXCEPT "Net Premium" and "Final Premium"
+- VALIDATION (hard constraint): Net Premium < Total Premium and they must be DIFFERENT. If they are equal or reversed, set "confidence_score" ≤ 0.35.
+- Examples (not literal values): "Net Premium" might be ~4902 while "Final Premium" might be ~6500 — they should differ.
 
 OTHER EXTRACTION RULES:
 2. Extract IDV (Insured Declared Value) from multiple sources with priority order
@@ -179,15 +214,7 @@ OTHER EXTRACTION RULES:
 7. Policy year and IDV can be combined - extract policy year context when available
 8. For table data, extract IDV column value AND policy year when present
 9. For TATA_AIG policies specifically: PRIORITIZE "Total IDV (₹)" as the primary source over "Vehicle IDV (₹)"
-10. For TATA_AIG policies specifically:
-    - Net OD (₹): Extract "Total Own Damage Premium (A)" values - this is the NET OD in TATA AIG
-    - Net Premium (₹): Extract "Net Premium" or "Net Premium (₹)" values from policy - this is the NET PREMIUM in TATA AIG
-    ${dynamicRules}
-11. For RELIANCE_GENERAL policies specifically:
-    - Net OD (₹): Extract from "Total Own Damage Premium" values
-    - Total OD (₹): Extract from "Total Own Damage Premium" values  
-    - Net Premium (₹): Extract from "Total Own Damage Premium" values
-    - Total Premium (₹): Extract from "Total Premium Payable" values
+${otherInsurerRules}
 12. For NCB: Extract percentage value, use 0 if not found (not 20)
 13. For CUSTOMER_NAME: Extract customer name from policy holder information, insured name, or customer details section. Look for fields like "Policy Holder Name", "Insured Name", "Customer Name", "Name of Insured", etc.
 
@@ -251,18 +278,28 @@ ${pdfText}`;
         console.log(`  - total_premium: ${extractedData.total_premium}`);
         
         if (year <= 2022) {
-          // Check if Total OD was extracted correctly for 2022 and below
-          if (extractedData.total_od === extractedData.net_od) {
-            console.log('❌ TATA AIG 2022- Logic ERROR: Total OD equals Net OD - extraction failed!');
-            console.log('🔍 This indicates OpenAI used wrong source for Total OD');
-            console.log('🔍 Expected: Total OD from "Total Add on Premium (C)"');
-            console.log('🔍 Actual: Total OD copied from Net OD value');
-            
-            // Set Total OD to null to indicate extraction failure
-            extractedData.total_od = null;
-            console.log('🔧 Total OD set to null due to extraction failure');
+          // Check if Total OD was calculated correctly for 2022 and below
+          if (extractedData.net_od !== null && extractedData.add_on_premium_c !== null) {
+            const expectedTotalOD = extractedData.net_od + extractedData.add_on_premium_c;
+            if (extractedData.total_od === expectedTotalOD) {
+              console.log('✅ TATA AIG 2022- Logic: Total OD correctly calculated as Net OD + Add on Premium (C)');
+              console.log(`🔍 Calculation: ${extractedData.net_od} + ${extractedData.add_on_premium_c} = ${extractedData.total_od}`);
+            } else {
+              console.log('❌ TATA AIG 2022- Logic ERROR: Total OD calculation incorrect!');
+              console.log('🔍 This indicates OpenAI did not follow calculation instructions');
+              console.log(`🔍 Expected: ${extractedData.net_od} + ${extractedData.add_on_premium_c} = ${expectedTotalOD}`);
+              console.log(`🔍 Actual: ${extractedData.total_od}`);
+              
+              // Auto-correct: Set Total OD to calculated value
+              extractedData.total_od = expectedTotalOD;
+              console.log('🔧 TATA AIG 2022- Auto-correction: Total OD set to calculated value');
+              console.log(`🔧 Total OD corrected from ${extractedData.total_od} to ${expectedTotalOD}`);
+            }
           } else {
-            console.log('✅ TATA AIG 2022- Logic: Total OD correctly extracted from Add on Premium (C)');
+            console.log('⚠️ Cannot validate Total OD calculation: Missing Net OD or Add on Premium (C)');
+            console.log(`🔍 Net OD: ${extractedData.net_od}, Add on Premium (C): ${extractedData.add_on_premium_c}`);
+            extractedData.total_od = null;
+            console.log('🔧 Total OD set to null due to missing calculation components');
           }
         } else {
           // Check if Total OD equals Net Premium for 2023+ models

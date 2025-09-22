@@ -30,7 +30,7 @@ class InsurerDetectionService {
       
       // Use OpenAI to detect insurer
       const prompt = `Analyze this insurance policy text and identify the insurer. 
-      Return ONLY the insurer name from these exact options: TATA_AIG, DIGIT, RELIANCE_GENERAL, or UNKNOWN.
+      Return ONLY the insurer name from these exact options: TATA_AIG, DIGIT, RELIANCE_GENERAL, GENERALI_CENTRAL, LIBERTY_GENERAL, ICIC, or UNKNOWN.
       
       Look for:
       - Company logos or headers
