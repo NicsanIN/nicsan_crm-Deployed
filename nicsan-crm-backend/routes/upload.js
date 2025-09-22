@@ -233,6 +233,15 @@ router.post('/:uploadId/confirm', authenticateToken, requireOps, async (req, res
       });
     }
     
+    // Check for duplicate policy number before saving
+    const isDuplicate = await storageService.checkPolicyNumberExists(policyData.policy_number);
+    if (isDuplicate) {
+      return res.status(400).json({
+        success: false,
+        error: `Policy number '${policyData.policy_number}' already exists. Please use a different policy number.`
+      });
+    }
+    
     // Save policy with the determined data
     const result = await storageService.savePolicy(policyData);
     

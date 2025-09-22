@@ -19,6 +19,9 @@ class StorageService {
 
   // Dual Storage: Save to both S3 (primary) and PostgreSQL (secondary)
 async savePolicy(policyData) {
+    let s3Key = null;
+    let policyId = null;
+    
     try {
       // Validate vehicle number format before saving
       if (policyData.vehicle_number) {
@@ -34,10 +37,10 @@ async savePolicy(policyData) {
       
       // 1. Save to PostgreSQL (Secondary Storage)
       const pgResult = await this.saveToPostgreSQL(policyData);
-      const policyId = pgResult.rows[0].id;
+      policyId = pgResult.rows[0].id;
       
       // 2. Save to S3 (Primary Storage) - JSON data
-      const s3Key = generatePolicyS3Key(policyId, policyData.source);
+      s3Key = generatePolicyS3Key(policyId, policyData.source);
       const s3Result = await uploadJSONToS3(policyData, s3Key);
       
       // 3. Update PostgreSQL with S3 key
@@ -67,6 +70,17 @@ async savePolicy(policyData) {
       };
     } catch (error) {
       console.error('❌ Dual storage save error:', error);
+      
+      // Cleanup S3 data if PostgreSQL save failed
+      if (s3Key && policyId) {
+        try {
+          console.log('🧹 Cleaning up S3 data due to save failure...');
+          await deleteFromS3(s3Key);
+          console.log('✅ S3 cleanup completed');
+        } catch (cleanupError) {
+          console.warn('⚠️ S3 cleanup failed:', cleanupError.message);
+        }
+      }
       
       // Handle specific PostgreSQL constraint violations
       if (error.code === '23505') {  // PostgreSQL unique constraint violation

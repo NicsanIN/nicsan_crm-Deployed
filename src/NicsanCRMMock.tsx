@@ -2556,6 +2556,38 @@ function PageManualGrid() {
     setIsSaving(true);
     setSaveMessage(null);
     
+    // Check for duplicate policy numbers before validation
+    const duplicateCheckPromises = rows.map(async (row, index) => {
+      try {
+        const response = await policiesAPI.checkDuplicate(row.policy);
+        return {
+          index,
+          isDuplicate: response.success && response.data?.exists,
+          policyNumber: row.policy
+        };
+      } catch (error) {
+        console.warn(`Duplicate check failed for row ${index + 1}:`, error);
+        return {
+          index,
+          isDuplicate: false,
+          policyNumber: row.policy
+        };
+      }
+    });
+    
+    const duplicateResults = await Promise.all(duplicateCheckPromises);
+    const duplicates = duplicateResults.filter(result => result.isDuplicate);
+    
+    if (duplicates.length > 0) {
+      setIsSaving(false);
+      const duplicatePolicyNumbers = duplicates.map(d => d.policyNumber).join(', ');
+      setSaveMessage({ 
+        type: 'error', 
+        message: `Policy numbers already exist: ${duplicatePolicyNumbers}. Please use different policy numbers.` 
+      });
+      return;
+    }
+    
     // Validate all rows before saving
     const validationErrors = rows.map((row, index) => {
       const errors = validateGridRow(row);
