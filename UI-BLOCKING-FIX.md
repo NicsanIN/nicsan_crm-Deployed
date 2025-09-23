@@ -117,3 +117,4 @@ The sync status indicator has been **completely removed** to prevent UI blocking
 
 
 
+

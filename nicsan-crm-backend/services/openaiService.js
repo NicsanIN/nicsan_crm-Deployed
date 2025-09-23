@@ -144,9 +144,14 @@ class OpenAIService {
     - Total Premium (₹): Extract from "Total Premium Payable" values`;
         console.log(`🔧 TATA AIG rules applied for year: ${manufacturingYear}`);
       } else if (insurer === 'DIGIT') {
-        // No other insurer rules for DIGIT - only DIGIT rules apply
-        otherInsurerRules = '';
-        console.log(`🔧 DIGIT rules applied - no conflicting rules included`);
+        // Simplified DIGIT rules - no complex prohibited sources
+        otherInsurerRules = `
+10. For DIGIT policies specifically:
+    - Net OD (₹): Extract from "Net Premium" values
+    - Total OD (₹): Extract from "Net Premium" values  
+    - Net Premium (₹): Extract from "Net Premium" values
+    - Total Premium (₹): Extract from "Final Premium" values`;
+        console.log(`🔧 DIGIT simplified rules applied`);
       } else if (insurer === 'RELIANCE_GENERAL') {
         otherInsurerRules = `
 10. For TATA_AIG policies specifically:
@@ -185,25 +190,7 @@ class OpenAIService {
   "confidence_score": "number"
 }
 
-HIGHEST-PRIORITY RULES — APPLY WHEN DIGIT PATTERNS DETECTED:
-- DIGIT PATTERN DETECTION: Look for these DIGIT indicators in the PDF text:
-  * Company names: "Go Digit", "Digit General Insurance", "DIGIT", "Go Digit General Insurance Ltd."
-  * Policy formats: DIGIT-specific policy layouts, headers, or terminology
-  * Field patterns: "Net Premium" and "Final Premium" field combinations
-- RULE APPLICATION: If ANY DIGIT patterns are found, use DIGIT rules below. If no DIGIT patterns found, use standard extraction rules.
-- Source mapping for DIGIT (when DIGIT patterns detected):
-  • Net Premium (₹): extract ONLY from "Net Premium" (same variants as above).
-  • Total Premium (₹): extract ONLY from "Final Premium" (any variant: "Final Premium", "Final Premium (₹)", "Total Premium", "Total Premium (₹)", "Final Amount", "Total Amount").
-- PROHIBITED SOURCES for the four fields above (reject completely if matched): 
-  * Any "Own Damage Premium" field: "Own Damage Premium", "OD Premium", "Own Damage", "Basic OD Premium", "Total OD Premium", "Total Basic Own Damage Premium", "Total Own Damage Premium (A)"
-  * Any "Act Premium" or "Third Party Premium" field: "Act Premium", "TP Premium", "Third Party Liability Premium", "Liability Premium", "Act", "Third Party Premium"
-  * Any "Total Premium Payable" or similar: "Total Premium Payable", "Gross Premium", "Basic Premium", "Policy Premium", "Premium Subtotal"
-  * Any "Addon Premium" or "Additional Premium": "Addon Premium", "Add on Premium", "Additional Premium", "Total Add on Premium (C)", "Add-on Premium"
-  * Any "Service Tax" or "GST": "Service Tax", "GST", "CGST", "SGST", "IGST", "Tax", "Service Charge"
-  * Any "Final Payable" or "Total Payable": "Final Payable", "Total Payable", "Grand Total", "Amount Payable", "Total Amount Payable"
-  * Any other premium-related field name EXCEPT "Net Premium" and "Final Premium"
-- VALIDATION (hard constraint): Net Premium < Total Premium and they must be DIFFERENT. If they are equal or reversed, set "confidence_score" ≤ 0.35.
-- Examples (not literal values): "Net Premium" might be ~4902 while "Final Premium" might be ~6500 — they should differ.
+EXTRACTION RULES:
 
 OTHER EXTRACTION RULES:
 2. Extract IDV (Insured Declared Value) from multiple sources with priority order
@@ -248,21 +235,13 @@ ${pdfText}`;
       const extractedData = JSON.parse(content);
       console.log('✅ OpenAI extraction completed');
       
-      // Enhanced logging for DIGIT extraction debugging
+      // Simplified DIGIT logging
       if (insurer === 'DIGIT') {
         console.log('🔍 DIGIT extraction results:');
         console.log(`  - net_od: ${extractedData.net_od}`);
         console.log(`  - total_od: ${extractedData.total_od}`);
         console.log(`  - net_premium: ${extractedData.net_premium}`);
         console.log(`  - total_premium: ${extractedData.total_premium}`);
-        
-        // Check for DIGIT bug
-        if (extractedData.net_od === extractedData.total_premium) {
-          console.log('⚠️ DIGIT Bug detected: All premium fields are equal!');
-          console.log('🔍 This indicates OpenAI extracted total_premium from wrong source');
-        } else {
-          console.log('✅ DIGIT extraction appears correct: total_premium differs from Total OD Premium fields');
-        }
       }
       
       // Enhanced logging for TATA AIG extraction debugging

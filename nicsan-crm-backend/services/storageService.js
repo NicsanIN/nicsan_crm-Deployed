@@ -290,21 +290,7 @@ async savePolicy(policyData) {
       try {
         const openaiResult = await extractTextFromPDF(upload.s3_key, upload.insurer);
         
-        // Get PDF text for multi-phase extraction if needed
-        if (upload.insurer === 'DIGIT') {
-          try {
-            const pdf = require('pdf-parse');
-            const { s3 } = require('../config/aws');
-            const pdfBuffer = await s3.getObject({
-              Bucket: process.env.AWS_S3_BUCKET,
-              Key: upload.s3_key
-            }).promise();
-            const pdfData = await pdf(pdfBuffer.Body);
-            pdfText = pdfData.text;
-          } catch (pdfError) {
-            console.log('⚠️ Could not get PDF text for multi-phase extraction:', pdfError.message);
-          }
-        }
+        // PDF text no longer needed for DIGIT multi-phase extraction
         
         extractedData = await this.parseOpenAIResult(openaiResult, pdfText);
         console.log('✅ OpenAI processing successful');
@@ -467,50 +453,24 @@ async savePolicy(policyData) {
         confidence_score: openaiResult.confidence_score || 0.95 // OpenAI typically has higher confidence
       };
       
-      // NEW: Universal DIGIT pattern detection and correction (applies to all policies)
-      if (this.detectDIGITPatterns(extractedData, pdfText)) {
-        console.log('🔍 DIGIT patterns detected in PDF content, applying DIGIT rules...');
-        
-        // Apply DIGIT extraction rules based on PDF content patterns
-        const digitCorrectedData = await this.correctDIGITExtraction(extractedData, pdfText);
-        
-        if (digitCorrectedData) {
-          console.log('🔧 DIGIT: Applied pattern-based corrections');
-          console.log(`Net OD: ${digitCorrectedData.net_od}, Total OD: ${digitCorrectedData.total_od}, Net Premium: ${digitCorrectedData.net_premium}`);
-          
-          // Update extracted data with DIGIT corrections
-          Object.assign(extractedData, digitCorrectedData);
-          extractedData.extraction_method = 'DIGIT_PATTERN_CORRECTED';
-          extractedData.digit_pattern_detected = true;
-        }
-      }
+      // DIGIT pattern detection and correction removed for simplification
       
       // NEW: Enforce DIGIT/RELIANCE_GENERAL business rules
       if (extractedData.insurer === 'DIGIT' || extractedData.insurer === 'RELIANCE_GENERAL') {
-        // For DIGIT: Validate extraction but don't override values
+        // For DIGIT: Simple field mapping like RELIANCE GENERAL
         if (extractedData.insurer === 'DIGIT') {
-          console.log('🔍 Processing DIGIT with OpenAI extraction (no override)...');
+          console.log('🔍 Processing DIGIT with simplified extraction...');
           
-          // Validate extraction but don't override values
-          if (extractedData.net_od && extractedData.total_od && extractedData.net_premium) {
-            console.log(`✅ DIGIT: All fields extracted successfully`);
-            console.log(`Net OD: ${extractedData.net_od}, Total OD: ${extractedData.total_od}, Net Premium: ${extractedData.net_premium}`);
-            
-            // NEW: Hard constraint validation - Net Premium < Total Premium
-            if (extractedData.net_premium >= extractedData.total_premium) {
-              console.log('⚠️ DIGIT Validation Failed: Net Premium >= Total Premium');
-              console.log(`Net Premium: ${extractedData.net_premium}, Total Premium: ${extractedData.total_premium}`);
-              extractedData.digit_bug_flag = 'NET_PREMIUM_NOT_LESS_THAN_TOTAL_PREMIUM';
-              extractedData.extraction_method = 'OPENAI_VALIDATION_FAILED';
-              extractedData.confidence_score = Math.min(extractedData.confidence_score, 0.35);
-            } else {
-              console.log(`✅ DIGIT validation passed: Net Premium (${extractedData.net_premium}) < Total Premium (${extractedData.total_premium})`);
-              extractedData.extraction_method = 'OPENAI_VALIDATED';
-            }
-          } else {
-            console.log('⚠️ DIGIT: Some fields missing from extraction');
-            extractedData.extraction_method = 'OPENAI_INCOMPLETE';
+          // Simple field standardization (like RELIANCE GENERAL)
+          const netPremium = extractedData.net_premium;
+          if (netPremium) {
+            console.log(`🔧 DIGIT: Setting Net OD and Total OD to Net Premium value: ${netPremium}`);
+            extractedData.net_od = netPremium;
+            extractedData.total_od = netPremium;
           }
+          
+          // No validation - just field standardization
+          console.log(`✅ DIGIT processing completed: Net Premium (${extractedData.net_premium}), Total Premium (${extractedData.total_premium})`);
         }
         
         // Handle RELIANCE_GENERAL policies
@@ -1457,85 +1417,7 @@ async savePolicy(policyData) {
     return result.rows;
   }
 
-  // NEW: Detect DIGIT patterns in PDF content
-  detectDIGITPatterns(extractedData, pdfText) {
-    if (!pdfText) return false;
-    
-    const digitPatterns = [
-      'Go Digit',
-      'Digit General Insurance',
-      'DIGIT',
-      'Go Digit General Insurance Ltd.',
-      'Digit General Insurance Ltd.',
-      'Go Digit General Insurance',
-      'Digit Insurance'
-    ];
-    
-    const pdfTextLower = pdfText.toLowerCase();
-    
-    // Check for DIGIT company name patterns
-    for (const pattern of digitPatterns) {
-      if (pdfTextLower.includes(pattern.toLowerCase())) {
-        console.log(`🔍 DIGIT pattern detected: "${pattern}"`);
-        return true;
-      }
-    }
-    
-    // Check for DIGIT-specific field patterns
-    const digitFieldPatterns = [
-      'net premium',
-      'final premium',
-      'total net premium',
-      'premium (net)'
-    ];
-    
-    let digitFieldCount = 0;
-    for (const pattern of digitFieldPatterns) {
-      if (pdfTextLower.includes(pattern)) {
-        digitFieldCount++;
-      }
-    }
-    
-    // If multiple DIGIT field patterns found, likely a DIGIT policy
-    if (digitFieldCount >= 2) {
-      console.log(`🔍 DIGIT field patterns detected: ${digitFieldCount} patterns found`);
-      return true;
-    }
-    
-    return false;
-  }
-
-  // NEW: Correct DIGIT extraction based on PDF content patterns
-  async correctDIGITExtraction(extractedData, pdfText) {
-    if (!pdfText) return null;
-    
-    try {
-      // Extract Net Premium value from PDF text
-      const netPremiumMatch = pdfText.match(/(?:net premium|net premium \(₹\)|net premium amount|premium \(net\)|total net premium)[\s:]*₹?[\s]*(\d+(?:,\d{3})*(?:\.\d{2})?)/i);
-      const netPremium = netPremiumMatch ? parseFloat(netPremiumMatch[1].replace(/,/g, '')) : null;
-      
-      // Extract Final Premium value from PDF text
-      const finalPremiumMatch = pdfText.match(/(?:final premium|final premium \(₹\)|total premium|total premium \(₹\)|final amount|total amount)[\s:]*₹?[\s]*(\d+(?:,\d{3})*(?:\.\d{2})?)/i);
-      const finalPremium = finalPremiumMatch ? parseFloat(finalPremiumMatch[1].replace(/,/g, '')) : null;
-      
-      if (netPremium && finalPremium) {
-        console.log(`🔧 DIGIT correction: Net Premium = ${netPremium}, Final Premium = ${finalPremium}`);
-        
-        return {
-          net_od: netPremium,
-          total_od: netPremium, // Same as Net OD
-          net_premium: netPremium,
-          total_premium: finalPremium,
-          digit_corrected: true
-        };
-      }
-      
-      return null;
-    } catch (error) {
-      console.error('❌ Error in DIGIT correction:', error);
-      return null;
-    }
-  }
+  // DIGIT pattern detection and correction functions removed for simplification
 }
 
 module.exports = new StorageService();
