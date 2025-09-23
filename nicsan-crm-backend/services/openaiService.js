@@ -154,15 +154,37 @@ class OpenAIService {
         console.log(`🔧 DIGIT simplified rules applied`);
       } else if (insurer === 'RELIANCE_GENERAL') {
         otherInsurerRules = `
-10. For TATA_AIG policies specifically:
-    - Net OD (₹): Extract "Total Own Damage Premium (A)" values - this is the NET OD in TATA AIG
-    - Net Premium (₹): Extract "Net Premium" or "Net Premium (₹)" values from policy - this is the NET PREMIUM in TATA AIG
-11. For RELIANCE_GENERAL policies specifically:
+10. For RELIANCE_GENERAL policies specifically:
     - Net OD (₹): Extract from "Total Own Damage Premium" values
     - Total OD (₹): Extract from "Total Own Damage Premium" values  
     - Net Premium (₹): Extract from "Total Own Damage Premium" values
     - Total Premium (₹): Extract from "Total Premium Payable" values`;
         console.log(`🔧 RELIANCE_GENERAL rules applied`);
+      } else if (insurer === 'ICIC') {
+        otherInsurerRules = `
+10. For ICICI Lombard General Insurance policies specifically:
+    - Net OD (₹): Extract from "Total Own Damage Premium(A)" values
+    - Total OD (₹): Extract from "Total Own Damage Premium(A)" values  
+    - Net Premium (₹): Extract from "Total Own Damage Premium(A)" values
+    - Total Premium (₹): Extract from "Total Premium Payable" values`;
+        console.log(`🔧 ICICI Lombard rules applied`);
+      } else if (insurer === 'GENERALI_CENTRAL') {
+        otherInsurerRules = `
+10. For Generali Central Insurance policies specifically:
+    - Net OD (₹): Extract from "Total Own Damage Premium(A)" values
+    - Total OD (₹): Extract from "Total Annual Premium (A+B)" values  
+    - Net Premium (₹): Extract from "Total Annual Premium (A+B)" values
+    - Total Premium (₹): Extract from "Total Premium" values`;
+        console.log(`🔧 Generali Central rules applied`);
+      } else if (insurer === 'LIBERTY_GENERAL') {
+        otherInsurerRules = `
+10. For LIBERTY GENERAL INSURANCE policies specifically:
+    - Net OD (₹): Extract from "TOTAL OWN­DAMAGE PREMIUM (A)" values
+    - Total OD (₹): Calculate as "TOTAL OWN­DAMAGE PREMIUM (A)" + "TOTAL ADD­ON COVER PREMIUM (C)" values
+    - Net Premium (₹): Extract from "Net Premium" values
+    - Total Premium (₹): Extract from "TOTAL POLICY PREMIUM" values
+    - Add on Premium (C): Extract from "TOTAL ADD­ON COVER PREMIUM (C)" values`;
+        console.log(`🔧 LIBERTY GENERAL rules applied`);
       }
       
       const prompt = `Extract insurance policy data from this text. Return ONLY a valid JSON object with these exact fields:

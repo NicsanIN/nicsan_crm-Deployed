@@ -455,8 +455,8 @@ async savePolicy(policyData) {
       
       // DIGIT pattern detection and correction removed for simplification
       
-      // NEW: Enforce DIGIT/RELIANCE_GENERAL business rules
-      if (extractedData.insurer === 'DIGIT' || extractedData.insurer === 'RELIANCE_GENERAL') {
+      // NEW: Enforce DIGIT/RELIANCE_GENERAL/ICIC/GENERALI_CENTRAL/LIBERTY_GENERAL business rules
+      if (extractedData.insurer === 'DIGIT' || extractedData.insurer === 'RELIANCE_GENERAL' || extractedData.insurer === 'ICIC' || extractedData.insurer === 'GENERALI_CENTRAL' || extractedData.insurer === 'LIBERTY_GENERAL') {
         // For DIGIT: Simple field mapping like RELIANCE GENERAL
         if (extractedData.insurer === 'DIGIT') {
           console.log('🔍 Processing DIGIT with simplified extraction...');
@@ -483,6 +483,69 @@ async savePolicy(policyData) {
             extractedData.total_od = totalOwnDamagePremium;
             extractedData.net_premium = totalOwnDamagePremium;
           }
+        }
+        
+        // Handle ICIC policies
+        if (extractedData.insurer === 'ICIC') {
+          console.log('🔍 Processing ICICI Lombard with field standardization...');
+          
+          // Field standardization - all three fields from "Total Own Damage Premium(A)"
+          const totalOwnDamagePremiumA = extractedData.net_od || extractedData.total_od || extractedData.net_premium;
+          if (totalOwnDamagePremiumA) {
+            console.log(`🔧 ICICI Lombard: Setting all three fields to Total Own Damage Premium(A) value: ${totalOwnDamagePremiumA}`);
+            extractedData.net_od = totalOwnDamagePremiumA;
+            extractedData.total_od = totalOwnDamagePremiumA;
+            extractedData.net_premium = totalOwnDamagePremiumA;
+          }
+          
+          console.log(`✅ ICICI Lombard processing completed: Net OD (${extractedData.net_od}), Total OD (${extractedData.total_od}), Net Premium (${extractedData.net_premium})`);
+        }
+        
+        // Handle GENERALI_CENTRAL policies
+        if (extractedData.insurer === 'GENERALI_CENTRAL') {
+          console.log('🔍 Processing Generali Central with field standardization...');
+          
+          // Field standardization - Total OD and Net Premium from "Total Annual Premium (A+B)"
+          const totalAnnualPremiumAB = extractedData.total_od || extractedData.net_premium;
+          if (totalAnnualPremiumAB) {
+            console.log(`🔧 Generali Central: Setting Total OD and Net Premium to Total Annual Premium (A+B) value: ${totalAnnualPremiumAB}`);
+            extractedData.total_od = totalAnnualPremiumAB;
+            extractedData.net_premium = totalAnnualPremiumAB;
+          }
+          
+          console.log(`✅ Generali Central processing completed: Net OD (${extractedData.net_od}), Total OD (${extractedData.total_od}), Net Premium (${extractedData.net_premium}), Total Premium (${extractedData.total_premium})`);
+        }
+        
+        // Handle LIBERTY_GENERAL policies
+        if (extractedData.insurer === 'LIBERTY_GENERAL') {
+          console.log('🔍 Processing LIBERTY GENERAL with calculation validation...');
+          
+          // Validate and auto-correct Total OD calculation
+          if (extractedData.net_od !== null && extractedData.add_on_premium_c !== null) {
+            const expectedTotalOD = extractedData.net_od + extractedData.add_on_premium_c;
+            if (extractedData.total_od !== expectedTotalOD) {
+              console.log('❌ LIBERTY GENERAL Calculation ERROR: Total OD calculation incorrect!');
+              console.log(`🔍 Expected: ${extractedData.net_od} + ${extractedData.add_on_premium_c} = ${expectedTotalOD}`);
+              console.log(`🔍 Actual: ${extractedData.total_od}`);
+              
+              // Auto-correct: Set Total OD to calculated value
+              extractedData.total_od = expectedTotalOD;
+              console.log('🔧 LIBERTY GENERAL Auto-correction: Total OD set to calculated value');
+              console.log(`🔧 Total OD corrected from ${extractedData.total_od} to ${expectedTotalOD}`);
+            } else {
+              console.log('✅ LIBERTY GENERAL Calculation: Total OD correctly calculated');
+              console.log(`🔍 Calculation: ${extractedData.net_od} + ${extractedData.add_on_premium_c} = ${extractedData.total_od}`);
+            }
+          } else {
+            console.log('⚠️ Cannot validate Total OD calculation: Missing Net OD or Add on Premium (C)');
+            console.log(`🔍 Net OD: ${extractedData.net_od}, Add on Premium (C): ${extractedData.add_on_premium_c}`);
+            if (extractedData.net_od === null) {
+              extractedData.total_od = null;
+              console.log('🔧 Total OD set to null due to missing Net OD');
+            }
+          }
+          
+          console.log(`✅ LIBERTY GENERAL processing completed: Net OD (${extractedData.net_od}), Total OD (${extractedData.total_od}), Net Premium (${extractedData.net_premium}), Total Premium (${extractedData.total_premium})`);
         }
       }
       

@@ -206,6 +206,8 @@ router.post('/:uploadId/confirm', authenticateToken, requireOps, async (req, res
         ...editedData.pdfData,
         ...editedData.manualExtras,
         caller_name: editedData.manualExtras.caller_name || editedData.manualExtras.callerName || '', // Map callerName to caller_name
+        customer_email: editedData.manualExtras.customerEmail || editedData.manualExtras.customer_email || '',
+        ops_executive: editedData.manualExtras.opsExecutive || editedData.manualExtras.ops_executive || '',
         source: 'PDF_UPLOAD',
         s3_key: upload.s3_key,
         confidence_score: upload.extracted_data?.extracted_data?.confidence_score || 0.8
