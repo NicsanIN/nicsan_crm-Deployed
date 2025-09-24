@@ -1129,8 +1129,13 @@ function PageManualForm() {
         case 'vehicleNumber':
           if (!value) {
             errors.push('Vehicle Number is required');
-          } else if (!/^[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}$/.test(value.replace(/\s/g, ''))) {
-            errors.push('Vehicle Number must be in format: KA01AB1234 or KA 51 MM 1214');
+          } else {
+            const cleanValue = value.replace(/\s/g, '');
+            const traditionalPattern = /^[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}$/;
+            const bhSeriesPattern = /^[0-9]{2}BH[0-9]{4}[A-Z]{1,2}$/;
+            if (!traditionalPattern.test(cleanValue) && !bhSeriesPattern.test(cleanValue)) {
+              errors.push('Vehicle Number must be in format: KA01AB1234, KA 51 MM 1214, or 23 BH 7699 J');
+            }
           }
           break;
         
@@ -2192,8 +2197,13 @@ function PageManualGrid() {
     // Vehicle Number validation
     if (!row.vehicle) {
       errors.push('Vehicle Number is required');
-    } else if (!/^[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}$/.test(row.vehicle.replace(/\s/g, ''))) {
-      errors.push('Vehicle Number must be in format: KA01AB1234 or KA 51 MM 1214');
+    } else {
+      const cleanValue = row.vehicle.replace(/\s/g, '');
+      const traditionalPattern = /^[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}$/;
+      const bhSeriesPattern = /^[0-9]{2}BH[0-9]{4}[A-Z]{1,2}$/;
+      if (!traditionalPattern.test(cleanValue) && !bhSeriesPattern.test(cleanValue)) {
+        errors.push('Vehicle Number must be in format: KA01AB1234, KA 51 MM 1214, or 23 BH 7699 J');
+      }
     }
     
     // Insurer validation
@@ -3504,8 +3514,13 @@ function PageReview() {
     }
     
     // Format validation
-    if (editableData.pdfData.vehicle_number && !/^[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}$/.test(editableData.pdfData.vehicle_number.replace(/\s/g, ''))) {
-      errors.push('Invalid vehicle number format (e.g., KA01AB1234 or KA 51 MM 1214)');
+    if (editableData.pdfData.vehicle_number) {
+      const cleanValue = editableData.pdfData.vehicle_number.replace(/\s/g, '');
+      const traditionalPattern = /^[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}$/;
+      const bhSeriesPattern = /^[0-9]{2}BH[0-9]{4}[A-Z]{1,2}$/;
+      if (!traditionalPattern.test(cleanValue) && !bhSeriesPattern.test(cleanValue)) {
+        errors.push('Invalid vehicle number format (e.g., KA01AB1234, KA 51 MM 1214, or 23 BH 7699 J)');
+      }
     }
     
     // Mobile number validation

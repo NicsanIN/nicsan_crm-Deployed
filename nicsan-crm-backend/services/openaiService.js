@@ -147,10 +147,13 @@ class OpenAIService {
         // Simplified DIGIT rules - no complex prohibited sources
         otherInsurerRules = `
 10. For DIGIT policies specifically:
-    - Net OD (₹): Extract from "Net Premium" values
-    - Total OD (₹): Extract from "Net Premium" values  
-    - Net Premium (₹): Extract from "Net Premium" values
-    - Total Premium (₹): Extract from "Final Premium" values`;
+    - PROHIBITED: DO NOT extract Net OD (₹), Total OD (₹), Net Premium (₹), Total Premium (₹)
+    - CRITICAL: DO NOT extract Net OD, Total OD, Net Premium, Total Premium
+    - PROHIBITED: DO NOT use "Total Own Damage Premium" for DIGIT Total OD
+    - Net OD (₹):  Return null (not extracted)
+    - Total OD (₹):  Return null (not extracted)
+    - Net Premium (₹):  Return null (not extracted)
+    - Total Premium (₹): Return null (not extracted)`;
         console.log(`🔧 DIGIT simplified rules applied`);
       } else if (insurer === 'RELIANCE_GENERAL') {
         otherInsurerRules = `
