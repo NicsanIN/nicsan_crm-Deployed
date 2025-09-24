@@ -444,11 +444,11 @@ async savePolicy(policyData) {
         idv: parseInt(correctedIdv) || 495000,
         ncb: openaiResult.ncb !== null && openaiResult.ncb !== undefined ? parseInt(openaiResult.ncb) : 0,
         discount: parseInt(openaiResult.discount) || 0,
-        net_od: parseInt(openaiResult.net_od) || 5400,
+        net_od: openaiResult.net_od !== null ? parseInt(openaiResult.net_od) : null,
         ref: openaiResult.ref || '',
-        total_od: parseInt(openaiResult.total_od) || 7200,
-        net_premium: parseInt(openaiResult.net_premium) || 10800,
-        total_premium: parseInt(openaiResult.total_premium) || 12150,
+        total_od: openaiResult.total_od !== null ? parseInt(openaiResult.total_od) : null,
+        net_premium: openaiResult.net_premium !== null ? parseInt(openaiResult.net_premium) : null,
+        total_premium: openaiResult.total_premium !== null ? parseInt(openaiResult.total_premium) : null,
         customer_name: openaiResult.customer_name || '',
         confidence_score: openaiResult.confidence_score || 0.95 // OpenAI typically has higher confidence
       };
@@ -457,20 +457,17 @@ async savePolicy(policyData) {
       
       // NEW: Enforce DIGIT/RELIANCE_GENERAL/ICIC/GENERALI_CENTRAL/LIBERTY_GENERAL business rules
       if (extractedData.insurer === 'DIGIT' || extractedData.insurer === 'RELIANCE_GENERAL' || extractedData.insurer === 'ICIC' || extractedData.insurer === 'GENERALI_CENTRAL' || extractedData.insurer === 'LIBERTY_GENERAL') {
-        // For DIGIT: Simple field mapping like RELIANCE GENERAL
+        // For DIGIT: Force all premium fields to null
         if (extractedData.insurer === 'DIGIT') {
-          console.log('🔍 Processing DIGIT with simplified extraction...');
+          console.log('🔍 Processing DIGIT with null extraction...');
           
-          // Simple field standardization (like RELIANCE GENERAL)
-          const netPremium = extractedData.net_premium;
-          if (netPremium) {
-            console.log(`🔧 DIGIT: Setting Net OD and Total OD to Net Premium value: ${netPremium}`);
-            extractedData.net_od = netPremium;
-            extractedData.total_od = netPremium;
-          }
+          // DIGIT: Force all premium fields to null
+          extractedData.net_od = null;
+          extractedData.total_od = null;
+          extractedData.net_premium = null;
+          extractedData.total_premium = null;
           
-          // No validation - just field standardization
-          console.log(`✅ DIGIT processing completed: Net Premium (${extractedData.net_premium}), Total Premium (${extractedData.total_premium})`);
+          console.log('✅ DIGIT processing completed: All premium fields set to null');
         }
         
         // Handle RELIANCE_GENERAL policies
