@@ -20,6 +20,9 @@ class StorageService {
 
   // Dual Storage: Save to both S3 (primary) and PostgreSQL (secondary)
 async savePolicy(policyData) {
+    let s3Key = null;
+    let policyId = null;
+    
     try {
       // Import enhanced financial validation
       const { validatePremium, validateIDV, validateCashback, validateBrokerage, validatePercentage } = require('../utils/financialValidation');
@@ -71,20 +74,12 @@ async savePolicy(policyData) {
       
       // 1. Save to PostgreSQL (Secondary Storage)
       const pgResult = await this.saveToPostgreSQL(policyData);
-      const policyId = pgResult.rows[0].id;
+      policyId = pgResult.rows[0].id;
       
-      // 2. Save to S3 (Primary Storage) - JSON data (with graceful failure handling)
-      let s3Key = null;
-      let s3Result = null;
-      
-      try {
-        s3Key = generatePolicyS3Key(policyId, policyData.source);
-        s3Result = await uploadJSONToS3(policyData, s3Key);
-        console.log('✅ Policy data uploaded to S3 successfully');
-      } catch (s3Error) {
-        console.error('⚠️ S3 upload failed, but continuing with database save:', s3Error.message);
-        // Continue without S3 key - database save is more important
-      }
+      // 2. Save to S3 (Primary Storage) - JSON data
+      s3Key = generatePolicyS3Key(policyId, policyData.source);
+      const s3Result = await uploadJSONToS3(policyData, s3Key);
+
       
       // 3. Update PostgreSQL with S3 key (if S3 upload succeeded)
       if (s3Key) {
@@ -119,6 +114,17 @@ async savePolicy(policyData) {
       };
     } catch (error) {
       console.error('❌ Dual storage save error:', error);
+      
+      // Cleanup S3 data if PostgreSQL save failed
+      if (s3Key && policyId) {
+        try {
+          console.log('🧹 Cleaning up S3 data due to save failure...');
+          await deleteFromS3(s3Key);
+          console.log('✅ S3 cleanup completed');
+        } catch (cleanupError) {
+          console.warn('⚠️ S3 cleanup failed:', cleanupError.message);
+        }
+      }
       
       // Handle specific PostgreSQL constraint violations
       if (error.code === '23505') {  // PostgreSQL unique constraint violation
@@ -330,21 +336,7 @@ async savePolicy(policyData) {
       try {
         const openaiResult = await extractTextFromPDF(upload.s3_key, upload.insurer);
         
-        // Get PDF text for multi-phase extraction if needed
-        if (upload.insurer === 'DIGIT') {
-          try {
-            const pdf = require('pdf-parse');
-            const { s3 } = require('../config/aws');
-            const pdfBuffer = await s3.getObject({
-              Bucket: process.env.AWS_S3_BUCKET,
-              Key: upload.s3_key
-            }).promise();
-            const pdfData = await pdf(pdfBuffer.Body);
-            pdfText = pdfData.text;
-          } catch (pdfError) {
-            console.log('⚠️ Could not get PDF text for multi-phase extraction:', pdfError.message);
-          }
-        }
+        // PDF text no longer needed for DIGIT multi-phase extraction
         
         extractedData = await this.parseOpenAIResult(openaiResult, pdfText);
         console.log('✅ OpenAI processing successful');
@@ -498,41 +490,34 @@ async savePolicy(policyData) {
         idv: parseInt(correctedIdv) || 495000,
         ncb: openaiResult.ncb !== null && openaiResult.ncb !== undefined ? parseInt(openaiResult.ncb) : 0,
         discount: parseInt(openaiResult.discount) || 0,
-        net_od: parseInt(openaiResult.net_od) || 5400,
+        net_od: openaiResult.net_od !== null ? parseInt(openaiResult.net_od) : null,
         ref: openaiResult.ref || '',
-        total_od: parseInt(openaiResult.total_od) || 7200,
-        net_premium: parseInt(openaiResult.net_premium) || 10800,
-        total_premium: parseInt(openaiResult.total_premium) || 12150,
+        total_od: openaiResult.total_od !== null ? parseInt(openaiResult.total_od) : null,
+        net_premium: openaiResult.net_premium !== null ? parseInt(openaiResult.net_premium) : null,
+        total_premium: openaiResult.total_premium !== null ? parseInt(openaiResult.total_premium) : null,
         customer_name: openaiResult.customer_name || '',
         confidence_score: openaiResult.confidence_score || 0.95 // OpenAI typically has higher confidence
       };
       
-      // NEW: Enforce DIGIT/RELIANCE_GENERAL business rules
-      if (extractedData.insurer === 'DIGIT' || extractedData.insurer === 'RELIANCE_GENERAL') {
-        // For DIGIT: All three fields (net_od, total_od, net_premium) should equal "Total OD Premium"
+      // DIGIT pattern detection and correction removed for simplification
+      
+      // NEW: Enforce DIGIT/RELIANCE_GENERAL/ICIC/GENERALI_CENTRAL/LIBERTY_GENERAL business rules
+      if (extractedData.insurer === 'DIGIT' || extractedData.insurer === 'RELIANCE_GENERAL' || extractedData.insurer === 'ICIC' || extractedData.insurer === 'GENERALI_CENTRAL' || extractedData.insurer === 'LIBERTY_GENERAL') {
+        // For DIGIT: Force all premium fields to null
         if (extractedData.insurer === 'DIGIT') {
-          console.log('🔍 Processing DIGIT with standard extraction and validation...');
+          console.log('🔍 Processing DIGIT with null extraction...');
           
-          // Use standard extraction with enhanced validation
-          const totalOdPremium = extractedData.net_od || extractedData.total_od || extractedData.net_premium;
-          if (totalOdPremium) {
-            console.log(`🔧 DIGIT: Setting all three fields to Total OD Premium value: ${totalOdPremium}`);
-            extractedData.net_od = totalOdPremium;
-            extractedData.total_od = totalOdPremium;
-            extractedData.net_premium = totalOdPremium;
-            
-            // Enhanced DIGIT Bug Fix: Validate that total_premium is different from Total OD Premium
-            if (extractedData.total_premium === totalOdPremium) {
-              console.log('⚠️ DIGIT Bug detected: total_premium equals Total OD Premium value');
-              console.log('🔍 This indicates extraction from wrong source fields');
-              extractedData.digit_bug_flag = 'TOTAL_PREMIUM_SAME_AS_OD_PREMIUM';
-              extractedData.extraction_method = 'STANDARD_WITH_BUG';
-            } else {
-              console.log(`✅ DIGIT validation passed: total_premium (${extractedData.total_premium}) differs from Total OD Premium (${totalOdPremium})`);
-              extractedData.extraction_method = 'STANDARD_VALIDATED';
-            }
-          }
-        } else if (extractedData.insurer === 'RELIANCE_GENERAL') {
+          // DIGIT: Force all premium fields to null
+          extractedData.net_od = null;
+          extractedData.total_od = null;
+          extractedData.net_premium = null;
+          extractedData.total_premium = null;
+          
+          console.log('✅ DIGIT processing completed: All premium fields set to null');
+        }
+        
+        // Handle RELIANCE_GENERAL policies
+        if (extractedData.insurer === 'RELIANCE_GENERAL') {
           // For RELIANCE_GENERAL: All three fields (net_od, total_od, net_premium) should equal "Total Own Damage Premium"
           const totalOwnDamagePremium = extractedData.net_od || extractedData.total_od || extractedData.net_premium;
           if (totalOwnDamagePremium) {
@@ -542,33 +527,70 @@ async savePolicy(policyData) {
             extractedData.net_premium = totalOwnDamagePremium;
           }
         }
-      } else if (extractedData.insurer === 'TATA_AIG') {
-        // TATA AIG Manufacturing Year Rule: If manufacturing year >= 2023, then Net Premium = Total OD
-        const manufacturingYear = parseInt(extractedData.manufacturing_year);
-        if (manufacturingYear >= 2023) {
-          // Apply the rule: Net Premium = Total OD
-          if (extractedData.total_od) {
-            console.log(`🔧 TATA AIG: Manufacturing year ${manufacturingYear} >= 2023, applying rule: Net Premium = Total OD`);
-            console.log(`  - Total OD: ${extractedData.total_od}`);
-            console.log(`  - Net OD: ${extractedData.net_od} (unchanged)`);
-            
-            // Apply the rule: Net Premium = Total OD (Net OD remains unchanged)
-            extractedData.net_premium = extractedData.total_od;
-            
-            extractedData.tata_aig_rule_applied = 'MANUFACTURING_YEAR_2023_PLUS';
-          } else if (extractedData.net_premium) {
-            // Fallback: If Total OD is missing, use Net Premium as Total OD
-            console.log(`🔧 TATA AIG: Manufacturing year ${manufacturingYear} >= 2023, Total OD missing, using Net Premium as Total OD`);
-            extractedData.total_od = extractedData.net_premium;
-            extractedData.tata_aig_rule_applied = 'MANUFACTURING_YEAR_2023_PLUS_FALLBACK';
-          } else {
-            console.log(`⚠️ TATA AIG: Manufacturing year ${manufacturingYear} >= 2023, but both Net Premium and Total OD missing, skipping rule`);
+        
+        // Handle ICIC policies
+        if (extractedData.insurer === 'ICIC') {
+          console.log('🔍 Processing ICICI Lombard with field standardization...');
+          
+          // Field standardization - all three fields from "Total Own Damage Premium(A)"
+          const totalOwnDamagePremiumA = extractedData.net_od || extractedData.total_od || extractedData.net_premium;
+          if (totalOwnDamagePremiumA) {
+            console.log(`🔧 ICICI Lombard: Setting all three fields to Total Own Damage Premium(A) value: ${totalOwnDamagePremiumA}`);
+            extractedData.net_od = totalOwnDamagePremiumA;
+            extractedData.total_od = totalOwnDamagePremiumA;
+            extractedData.net_premium = totalOwnDamagePremiumA;
           }
-        } else {
-          console.log(`ℹ️ TATA AIG: Manufacturing year ${manufacturingYear} < 2023, no rule applied`);
+          
+          console.log(`✅ ICICI Lombard processing completed: Net OD (${extractedData.net_od}), Total OD (${extractedData.total_od}), Net Premium (${extractedData.net_premium})`);
+        }
+        
+        // Handle GENERALI_CENTRAL policies
+        if (extractedData.insurer === 'GENERALI_CENTRAL') {
+          console.log('🔍 Processing Generali Central with field standardization...');
+          
+          // Field standardization - Total OD and Net Premium from "Total Annual Premium (A+B)"
+          const totalAnnualPremiumAB = extractedData.total_od || extractedData.net_premium;
+          if (totalAnnualPremiumAB) {
+            console.log(`🔧 Generali Central: Setting Total OD and Net Premium to Total Annual Premium (A+B) value: ${totalAnnualPremiumAB}`);
+            extractedData.total_od = totalAnnualPremiumAB;
+            extractedData.net_premium = totalAnnualPremiumAB;
+          }
+          
+          console.log(`✅ Generali Central processing completed: Net OD (${extractedData.net_od}), Total OD (${extractedData.total_od}), Net Premium (${extractedData.net_premium}), Total Premium (${extractedData.total_premium})`);
+        }
+        
+        // Handle LIBERTY_GENERAL policies
+        if (extractedData.insurer === 'LIBERTY_GENERAL') {
+          console.log('🔍 Processing LIBERTY GENERAL with calculation validation...');
+          
+          // Validate and auto-correct Total OD calculation
+          if (extractedData.net_od !== null && extractedData.add_on_premium_c !== null) {
+            const expectedTotalOD = extractedData.net_od + extractedData.add_on_premium_c;
+            if (extractedData.total_od !== expectedTotalOD) {
+              console.log('❌ LIBERTY GENERAL Calculation ERROR: Total OD calculation incorrect!');
+              console.log(`🔍 Expected: ${extractedData.net_od} + ${extractedData.add_on_premium_c} = ${expectedTotalOD}`);
+              console.log(`🔍 Actual: ${extractedData.total_od}`);
+              
+              // Auto-correct: Set Total OD to calculated value
+              extractedData.total_od = expectedTotalOD;
+              console.log('🔧 LIBERTY GENERAL Auto-correction: Total OD set to calculated value');
+              console.log(`🔧 Total OD corrected from ${extractedData.total_od} to ${expectedTotalOD}`);
+            } else {
+              console.log('✅ LIBERTY GENERAL Calculation: Total OD correctly calculated');
+              console.log(`🔍 Calculation: ${extractedData.net_od} + ${extractedData.add_on_premium_c} = ${extractedData.total_od}`);
+            }
+          } else {
+            console.log('⚠️ Cannot validate Total OD calculation: Missing Net OD or Add on Premium (C)');
+            console.log(`🔍 Net OD: ${extractedData.net_od}, Add on Premium (C): ${extractedData.add_on_premium_c}`);
+            if (extractedData.net_od === null) {
+              extractedData.total_od = null;
+              console.log('🔧 Total OD set to null due to missing Net OD');
+            }
+          }
+          
+          console.log(`✅ LIBERTY GENERAL processing completed: Net OD (${extractedData.net_od}), Total OD (${extractedData.total_od}), Net Premium (${extractedData.net_premium}), Total Premium (${extractedData.total_premium})`);
         }
       }
-      
       
       console.log('✅ OpenAI result parsed successfully');
       return extractedData;
@@ -1495,6 +1517,8 @@ async savePolicy(policyData) {
     `);
     return result.rows;
   }
+
+  // DIGIT pattern detection and correction functions removed for simplification
 }
 
 module.exports = new StorageService();

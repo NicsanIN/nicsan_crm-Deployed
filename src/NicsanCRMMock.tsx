@@ -209,7 +209,17 @@ function OpsSidebar({ page, setPage }: { page: string; setPage: (p: string) => v
 function PageUpload() {
   const [uploadStatus, setUploadStatus] = useState<string>('');
   const [uploadedFiles, setUploadedFiles] = useState<any[]>([]);
-  const [selectedInsurer, setSelectedInsurer] = useState<'TATA_AIG' | 'DIGIT' | 'RELIANCE_GENERAL'>('TATA_AIG');
+  const [selectedInsurer, setSelectedInsurer] = useState<string>('TATA_AIG');
+  
+  // Available insurers configuration
+  const availableInsurers = [
+    { value: 'TATA_AIG', label: 'Tata AIG' },
+    { value: 'DIGIT', label: 'Digit' },
+    { value: 'RELIANCE_GENERAL', label: 'Reliance General' },
+    { value: 'GENERALI_CENTRAL', label: 'Generali Central Insurance' },
+    { value: 'LIBERTY_GENERAL', label: 'Liberty General Insurance' },
+    { value: 'ICIC', label: 'ICICI Lombard' }
+  ];
   const [manualExtras, setManualExtras] = useState({
     executive: '',
     opsExecutive: '',
@@ -289,9 +299,7 @@ function PageUpload() {
               // Mock PDF data for demo (in real app, this comes from Textract)
               policy_number: "TA-" + Math.floor(Math.random() * 10000),
               vehicle_number: "KA01AB" + Math.floor(Math.random() * 1000),
-              insurer: selectedInsurer === 'TATA_AIG' ? 'Tata AIG' : 
-                       selectedInsurer === 'DIGIT' ? 'Digit' : 
-                       selectedInsurer === 'RELIANCE_GENERAL' ? 'Reliance General' : 'Unknown',
+              insurer: availableInsurers.find(ins => ins.value === selectedInsurer)?.label || 'Unknown',
               product_type: "Private Car",
               vehicle_type: "Private Car",
               make: "Maruti",
@@ -522,40 +530,20 @@ function PageUpload() {
         {/* Insurer Selection */}
         <div className="mb-4">
           <div className="text-sm font-medium mb-2">Select Insurer</div>
-          <div className="flex gap-4">
-            <label className="flex items-center gap-2">
-              <input 
-                type="radio" 
-                name="insurer"
-                value="TATA_AIG" 
-                checked={selectedInsurer === 'TATA_AIG'}
-                onChange={(e) => setSelectedInsurer(e.target.value as 'TATA_AIG' | 'DIGIT' | 'RELIANCE_GENERAL')}
-                className="w-4 h-4 text-indigo-600"
-              />
-              <span className="text-sm">Tata AIG</span>
-            </label>
-            <label className="flex items-center gap-2">
-              <input 
-                type="radio" 
-                name="insurer"
-                value="DIGIT" 
-                checked={selectedInsurer === 'DIGIT'}
-                onChange={(e) => setSelectedInsurer(e.target.value as 'TATA_AIG' | 'DIGIT' | 'RELIANCE_GENERAL')}
-                className="w-4 h-4 text-indigo-600"
-              />
-              <span className="text-sm">Digit</span>
-            </label>
-            <label className="flex items-center gap-2">
-              <input 
-                type="radio" 
-                name="insurer"
-                value="RELIANCE_GENERAL" 
-                checked={selectedInsurer === 'RELIANCE_GENERAL'}
-                onChange={(e) => setSelectedInsurer(e.target.value as 'TATA_AIG' | 'DIGIT' | 'RELIANCE_GENERAL')}
-                className="w-4 h-4 text-indigo-600"
-              />
-              <span className="text-sm">Reliance General</span>
-            </label>
+          <div className="grid grid-cols-2 gap-2">
+            {availableInsurers.map((insurer) => (
+              <label key={insurer.value} className="flex items-center gap-2">
+                <input 
+                  type="radio" 
+                  name="insurer"
+                  value={insurer.value} 
+                  checked={selectedInsurer === insurer.value}
+                  onChange={(e) => setSelectedInsurer(e.target.value)}
+                  className="w-4 h-4 text-indigo-600"
+                />
+                <span className="text-sm">{insurer.label}</span>
+              </label>
+            ))}
           </div>
         </div>
 
@@ -821,11 +809,19 @@ function PageUpload() {
                         <span className={`px-2 py-1 rounded-full text-xs ${
                           file.insurer === 'TATA_AIG' 
                             ? 'bg-blue-100 text-blue-700'
-                            : 'bg-green-100 text-green-700'
+                            : file.insurer === 'DIGIT'
+                            ? 'bg-green-100 text-green-700'
+                            : file.insurer === 'RELIANCE_GENERAL'
+                            ? 'bg-purple-100 text-purple-700'
+                            : file.insurer === 'GENERALI_CENTRAL'
+                            ? 'bg-orange-100 text-orange-700'
+                            : file.insurer === 'LIBERTY_GENERAL'
+                            ? 'bg-yellow-100 text-yellow-700'
+                            : file.insurer === 'ICIC'
+                            ? 'bg-red-100 text-red-700'
+                            : 'bg-gray-100 text-gray-700'
                         }`}>
-                          {file.insurer === 'TATA_AIG' ? 'Tata AIG' : 
-                           file.insurer === 'DIGIT' ? 'Digit' : 
-                           file.insurer === 'RELIANCE_GENERAL' ? 'Reliance General' : 'Unknown'}
+                          {availableInsurers.find(ins => ins.value === file.insurer)?.label || 'Unknown'}
                         </span>
                       </td>
                       <td className="py-2">{file.size}</td>
@@ -1162,15 +1158,18 @@ function PageManualForm() {
           if (!value) {
             errors.push('Vehicle Number is required');
           } else {
+
+            const cleanValue = value.replace(/\s/g, '');
+            const traditionalPattern = /^[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}$/;
+            const bhSeriesPattern = /^[0-9]{2}BH[0-9]{4}[A-Z]{1,2}$/;
+            if (!traditionalPattern.test(cleanValue) && !bhSeriesPattern.test(cleanValue)) {
+
             const cleanVehicleNumber = value.replace(/\s/g, '');
             const traditionalPattern = /^[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}$/;
             const bhSeriesPattern = /^[0-9]{2}BH[0-9]{4}[A-Z]{1,2}$/;
             
             if (!traditionalPattern.test(cleanVehicleNumber) && !bhSeriesPattern.test(cleanVehicleNumber)) {
-              errors.push('Vehicle Number must be in format: KA01AB1234, KA 51 MM 1214, or 23 BH 7699 J');
-            }
-          }
-          break;
+
         
       case 'insurer':
         if (!value) {
@@ -2244,14 +2243,17 @@ function PageManualGrid() {
     if (!row.vehicle) {
       errors.push('Vehicle Number is required');
     } else {
+
+      const cleanValue = row.vehicle.replace(/\s/g, '');
+      const traditionalPattern = /^[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}$/;
+      const bhSeriesPattern = /^[0-9]{2}BH[0-9]{4}[A-Z]{1,2}$/;
+      if (!traditionalPattern.test(cleanValue) && !bhSeriesPattern.test(cleanValue)) {
+
       const cleanVehicleNumber = row.vehicle.replace(/\s/g, '');
       const traditionalPattern = /^[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}$/;
       const bhSeriesPattern = /^[0-9]{2}BH[0-9]{4}[A-Z]{1,2}$/;
       
-      if (!traditionalPattern.test(cleanVehicleNumber) && !bhSeriesPattern.test(cleanVehicleNumber)) {
-        errors.push('Vehicle Number must be in format: KA01AB1234, KA 51 MM 1214, or 23 BH 7699 J');
-      }
-    }
+ 
     
     // Insurer validation
     if (!row.insurer) {
@@ -2613,6 +2615,38 @@ function PageManualGrid() {
   const handleSaveAll = async () => {
     setIsSaving(true);
     setSaveMessage(null);
+    
+    // Check for duplicate policy numbers before validation
+    const duplicateCheckPromises = rows.map(async (row, index) => {
+      try {
+        const response = await policiesAPI.checkDuplicate(row.policy);
+        return {
+          index,
+          isDuplicate: response.success && response.data?.exists,
+          policyNumber: row.policy
+        };
+      } catch (error) {
+        console.warn(`Duplicate check failed for row ${index + 1}:`, error);
+        return {
+          index,
+          isDuplicate: false,
+          policyNumber: row.policy
+        };
+      }
+    });
+    
+    const duplicateResults = await Promise.all(duplicateCheckPromises);
+    const duplicates = duplicateResults.filter(result => result.isDuplicate);
+    
+    if (duplicates.length > 0) {
+      setIsSaving(false);
+      const duplicatePolicyNumbers = duplicates.map(d => d.policyNumber).join(', ');
+      setSaveMessage({ 
+        type: 'error', 
+        message: `Policy numbers already exist: ${duplicatePolicyNumbers}. Please use different policy numbers.` 
+      });
+      return;
+    }
     
     // Validate all rows before saving
     const validationErrors = rows.map((row, index) => {
@@ -3535,14 +3569,18 @@ function PageReview() {
     
     // Format validation
     if (editableData.pdfData.vehicle_number) {
+
+      const cleanValue = editableData.pdfData.vehicle_number.replace(/\s/g, '');
+      const traditionalPattern = /^[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}$/;
+      const bhSeriesPattern = /^[0-9]{2}BH[0-9]{4}[A-Z]{1,2}$/;
+      if (!traditionalPattern.test(cleanValue) && !bhSeriesPattern.test(cleanValue)) {
+
       const cleanVehicleNumber = editableData.pdfData.vehicle_number.replace(/\s/g, '');
       const traditionalPattern = /^[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}$/;
       const bhSeriesPattern = /^[0-9]{2}BH[0-9]{4}[A-Z]{1,2}$/;
       
       if (!traditionalPattern.test(cleanVehicleNumber) && !bhSeriesPattern.test(cleanVehicleNumber)) {
-        errors.push('Invalid vehicle number format (e.g., KA01AB1234, KA 51 MM 1214, or 23 BH 7699 J)');
-      }
-    }
+
     
     // Mobile number validation
     if (editableData.manualExtras.mobile && !/^[6-9]\d{9}$/.test(editableData.manualExtras.mobile)) {
@@ -5087,6 +5125,18 @@ function PageExplorer() {
   const extractPrefixes = (data: any[]) => {
     const prefixes = data.map(item => {
       const cleaned = item.vehicleNumber.replace(/\s/g, "").toUpperCase();
+      
+      // Check if it's BH series format: YYBH####X
+      if (/^[0-9]{2}BH[0-9]{4}[A-Z]{1,2}$/.test(cleaned)) {
+        return "BH";  // Extract BH for Bharat Series
+      }
+      
+      // Traditional format: State + District + Series + Number
+      if (/^[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}$/.test(cleaned)) {
+        return cleaned.substring(0, 2);  // Extract state code (e.g., KA, MH)
+      }
+      
+      // Fallback for unknown formats
       return cleaned.substring(0, 2);
     }).filter(Boolean);
     
@@ -5175,7 +5225,17 @@ function PageExplorer() {
     const branchMatch = branch === 'All' || p.branch === branch;
     const rolloverMatch = rollover === 'All' || p.rollover === rollover;
     const repMatch = rep === 'All' || p.rep === rep;
-    const vehicleMatch = vehiclePrefix === 'All' || p.vehicleNumber.toUpperCase().startsWith(vehiclePrefix);
+    const vehicleMatch = vehiclePrefix === 'All' || (() => {
+      const cleanVehicleNumber = p.vehicleNumber.replace(/\s/g, '').toUpperCase();
+      
+      // Handle BH series format: YYBH####X
+      if (vehiclePrefix === 'BH') {
+        return /^[0-9]{2}BH[0-9]{4}[A-Z]{1,2}$/.test(cleanVehicleNumber);
+      }
+      
+      // Handle traditional format: State + District + Series + Number
+      return cleanVehicleNumber.startsWith(vehiclePrefix);
+    })();
     const cashbackMatch = (p.cashbackPctAvg || 0) <= cashbackMax;
     
     const passes = makeMatch && modelMatch && insurerMatch && branchMatch && rolloverMatch && repMatch && vehicleMatch && cashbackMatch;
