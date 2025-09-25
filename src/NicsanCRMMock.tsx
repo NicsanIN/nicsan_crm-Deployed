@@ -387,10 +387,12 @@ function PageUpload() {
     
     const poll = async () => {
       try {
+        console.log(`🔄 Polling upload status for ${uploadId}, attempt ${attempts + 1}`);
         const response = await DualStorageService.getUploadById(uploadId);
         
         if (response.success) {
           const status = response.data.status;
+          console.log(`📊 Upload status: ${status} (source: ${response.source})`);
           
           // Update local state
           setUploadedFiles(prev => {
@@ -443,10 +445,13 @@ function PageUpload() {
           // Continue polling if still processing
           if (attempts < maxAttempts) {
             attempts++;
+            console.log(`⏳ Continuing to poll... (${attempts}/${maxAttempts})`);
             setTimeout(poll, 2000); // Poll every 2 seconds
           } else {
             setUploadStatus('PDF processing timed out. Please check status.');
           }
+        } else {
+          console.error('❌ Status polling failed:', response.error);
         }
       } catch (error) {
         console.error('Status polling failed:', error);

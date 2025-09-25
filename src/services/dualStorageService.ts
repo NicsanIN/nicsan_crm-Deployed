@@ -416,6 +416,21 @@ class DualStorageService {
 
   // Get upload by ID with dual storage
   async getUploadById(uploadId: string): Promise<DualStorageResult> {
+    // Always try backend first for real status updates
+    try {
+      const backendResult = await this.backendApiService.getUploadById(uploadId);
+      if (backendResult.success) {
+        return {
+          success: true,
+          data: backendResult.data,
+          source: 'BACKEND_API'
+        };
+      }
+    } catch (error) {
+      console.log('Backend unavailable, using mock data for upload status');
+    }
+
+    // Fallback to mock data only if backend fails
     const mockData = {
       id: uploadId,
       filename: 'policy_TA_9921.pdf',
@@ -441,11 +456,11 @@ class DualStorageService {
       }
     };
 
-    return this.executeDualStoragePattern(
-      () => this.backendApiService.getUploadById(uploadId),
-      mockData,
-      'Get Upload by ID'
-    );
+    return {
+      success: true,
+      data: mockData,
+      source: 'MOCK_DATA'
+    };
   }
 
   // Get upload for review with dual storage
