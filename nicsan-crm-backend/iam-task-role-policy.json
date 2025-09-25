@@ -1,0 +1,36 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:DeleteObject",
+        "s3:ListBucket"
+      ],
+      "Resource": [
+        "arn:aws:s3:::nicsan-crm-pdfs",
+        "arn:aws:s3:::nicsan-crm-pdfs/*"
+      ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "textract:DetectDocumentText",
+        "textract:AnalyzeDocument"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ssm:GetParameter",
+        "ssm:GetParameters"
+      ],
+      "Resource": [
+        "arn:aws:ssm:ap-south-1:132418765186:parameter/nicsan/backend/*"
+      ]
+    }
+  ]
+}

@@ -338,6 +338,7 @@ function PageUpload() {
           opsExecutive: '',
           callerName: '',
           mobile: '',
+          customerEmail: '',
           rollover: '',
           remark: '',
           brokerage: '',
@@ -345,7 +346,8 @@ function PageUpload() {
           customerPaid: '',
           customerChequeNo: '',
           ourChequeNo: '',
-          customerName: ''
+          customerName: '',
+          branch: ''
         });
         setManualExtrasSaved(false);
       } else {
@@ -385,10 +387,12 @@ function PageUpload() {
     
     const poll = async () => {
       try {
+        console.log(`🔄 Polling upload status for ${uploadId}, attempt ${attempts + 1}`);
         const response = await DualStorageService.getUploadById(uploadId);
         
         if (response.success) {
           const status = response.data.status;
+          console.log(`📊 Upload status: ${status} (source: ${response.source})`);
           
           // Update local state
           setUploadedFiles(prev => {
@@ -441,10 +445,13 @@ function PageUpload() {
           // Continue polling if still processing
           if (attempts < maxAttempts) {
             attempts++;
+            console.log(`⏳ Continuing to poll... (${attempts}/${maxAttempts})`);
             setTimeout(poll, 2000); // Poll every 2 seconds
           } else {
             setUploadStatus('PDF processing timed out. Please check status.');
           }
+        } else {
+          console.error('❌ Status polling failed:', response.error);
         }
       } catch (error) {
         console.error('Status polling failed:', error);
@@ -1090,7 +1097,33 @@ function PageManualForm() {
     // Mark field as touched for progressive validation
     setFieldTouched(prev => ({ ...prev, [k]: true }));
   };
-  const number = (v:any)=> (v===''||v===null)?0:parseFloat(v.toString().replace(/[^0-9.]/g,''))||0;
+  // Enhanced safe number function with comprehensive validation
+  const number = (v: any): number => {
+    // Handle null/undefined/empty
+    if (v === null || v === undefined || v === '') return 0;
+    
+    // Convert to string and clean
+    let cleanValue = String(v).trim();
+    
+    // Remove common currency symbols and formatting
+    cleanValue = cleanValue
+      .replace(/[₹$€£¥]/g, '') // Remove currency symbols
+      .replace(/,/g, '') // Remove commas
+      .replace(/\s+/g, '') // Remove spaces
+      .replace(/[^\d.-]/g, ''); // Keep only digits, dots, and minus
+    
+    // Handle empty after cleaning
+    if (cleanValue === '' || cleanValue === '-') return 0;
+    
+    // Parse the number
+    const num = parseFloat(cleanValue);
+    
+    // Check for NaN or Infinity
+    if (isNaN(num) || !isFinite(num)) return 0;
+    
+    // Clamp to reasonable bounds (max ₹1 crore)
+    return Math.min(Math.max(num, 0), 10000000);
+  };
 
   // Two-way binding for cashback
   const onTotalChange = (v:any)=> {
@@ -1134,11 +1167,11 @@ function PageManualForm() {
             const traditionalPattern = /^[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}$/;
             const bhSeriesPattern = /^[0-9]{2}BH[0-9]{4}[A-Z]{1,2}$/;
             if (!traditionalPattern.test(cleanValue) && !bhSeriesPattern.test(cleanValue)) {
-              errors.push('Vehicle Number must be in format: KA01AB1234, KA 51 MM 1214, or 23 BH 7699 J');
+              errors.push('Vehicle number must be in valid format (e.g., KA01AB1234 or 12BH1234AB)');
             }
           }
           break;
-        
+            
       case 'insurer':
         if (!value) {
           errors.push('Insurer (Company) is required');
@@ -1224,8 +1257,10 @@ function PageManualForm() {
           errors.push('IDV (₹) is required');
         } else {
           const idv = number(value);
-          if (idv <= 0 || idv > 100000000) {
-            errors.push('IDV must be between ₹1 and ₹10 crore');
+          if (idv < 1000) {
+            errors.push('IDV must be at least ₹1,000');
+          } else if (idv > 100000000) {
+            errors.push('IDV cannot exceed ₹10 crore');
           }
         }
         break;
@@ -1271,8 +1306,10 @@ function PageManualForm() {
           errors.push('Total Premium (₹) is required');
         } else {
           const totalPremium = number(value);
-          if (totalPremium <= 0 || totalPremium > 1000000) {
-            errors.push('Total Premium must be between ₹1 and ₹10 lakh');
+          if (totalPremium <= 0) {
+            errors.push('Total Premium must be greater than ₹0');
+          } else if (totalPremium > 10000000) {
+            errors.push('Total Premium cannot exceed ₹1 crore');
           }
         }
         break;
@@ -1356,7 +1393,7 @@ function PageManualForm() {
       errors.push('Net OD cannot exceed Total OD');
     }
     
-    // Cashback validation
+    // Enhanced cashback validation
     const cashbackPct = number(form.cashbackPct);
     const cashbackAmt = number(form.cashbackAmt);
     
@@ -1366,6 +1403,15 @@ function PageManualForm() {
     
     if (cashbackAmt > totalPremium * 0.5) {
       errors.push('Cashback amount cannot exceed 50% of Total Premium');
+    }
+    
+    // Validate cashback consistency
+    if (cashbackPct > 0 && cashbackAmt > 0) {
+      const expectedAmt = (totalPremium * cashbackPct) / 100;
+      const tolerance = totalPremium * 0.01; // 1% tolerance
+      if (Math.abs(cashbackAmt - expectedAmt) > tolerance) {
+        errors.push('Cashback amount and percentage are inconsistent');
+      }
     }
     
     // Date validation
@@ -1523,28 +1569,28 @@ function PageManualForm() {
       
       setForm((f: any) => ({
         ...f,
-        insurer: lastPolicy.insurer || f.insurer,
-        productType: lastPolicy.product_type || f.productType,
-        vehicleType: lastPolicy.vehicle_type || f.vehicleType,
-        make: lastPolicy.make || f.make,
-        model: lastPolicy.model || f.model,
-        cc: lastPolicy.cc || f.cc,
-        manufacturingYear: lastPolicy.manufacturing_year || f.manufacturingYear,
-        idv: lastPolicy.idv || f.idv,
-        ncb: lastPolicy.ncb || f.ncb,
-        discount: lastPolicy.discount || f.discount,
-        netOd: lastPolicy.net_od || f.netOd,
-        ref: lastPolicy.ref || f.ref,
-        totalOd: lastPolicy.total_od || f.totalOd,
-        netPremium: lastPolicy.net_premium || f.netPremium,
-        totalPremium: lastPolicy.total_premium || f.totalPremium,
-        brokerage: lastPolicy.brokerage || f.brokerage,
-        cashback: lastPolicy.cashback_amount || f.cashback,
-        branch: lastPolicy.branch || f.branch,
-        rollover: lastPolicy.rollover || f.rollover,
-        callerName: lastPolicy.caller_name || f.callerName,
-        executive: lastPolicy.executive || f.executive,
-        opsExecutive: lastPolicy.ops_executive || f.opsExecutive,
+        insurer: (lastPolicy as any).insurer || f.insurer,
+        productType: (lastPolicy as any).product_type || f.productType,
+        vehicleType: (lastPolicy as any).vehicle_type || f.vehicleType,
+        make: (lastPolicy as any).make || f.make,
+        model: (lastPolicy as any).model || f.model,
+        cc: (lastPolicy as any).cc || f.cc,
+        manufacturingYear: (lastPolicy as any).manufacturing_year || f.manufacturingYear,
+        idv: (lastPolicy as any).idv || f.idv,
+        ncb: (lastPolicy as any).ncb || f.ncb,
+        discount: (lastPolicy as any).discount || f.discount,
+        netOd: (lastPolicy as any).net_od || f.netOd,
+        ref: (lastPolicy as any).ref || f.ref,
+        totalOd: (lastPolicy as any).total_od || f.totalOd,
+        netPremium: (lastPolicy as any).net_premium || f.netPremium,
+        totalPremium: (lastPolicy as any).total_premium || f.totalPremium,
+        brokerage: (lastPolicy as any).brokerage || f.brokerage,
+        cashback: (lastPolicy as any).cashback_amount || f.cashback,
+        branch: (lastPolicy as any).branch || f.branch,
+        rollover: (lastPolicy as any).rollover || f.rollover,
+        callerName: (lastPolicy as any).caller_name || f.callerName,
+        executive: (lastPolicy as any).executive || f.executive,
+        opsExecutive: (lastPolicy as any).ops_executive || f.opsExecutive,
       }));
     } else {
       // Fallback to demo data if no search results
@@ -1897,10 +1943,10 @@ function PageManualForm() {
               Found {vehicleSearchResults.length} previous policy(ies) for this vehicle:
             </div>
             {vehicleSearchResults.slice(0, 3).map((policy, index) => (
-              <div key={policy.id} className="text-xs text-green-700 mb-1">
-                {index + 1}. Policy: {policy.policy_number} | 
-                Insurer: {policy.insurer} | 
-                Date: {new Date(policy.created_at).toLocaleDateString()}
+              <div key={(policy as any).id} className="text-xs text-green-700 mb-1">
+                {index + 1}. Policy: {(policy as any).policy_number} | 
+                Insurer: {(policy as any).insurer} | 
+                Date: {new Date((policy as any).created_at).toLocaleDateString()}
               </div>
             ))}
             <button 
@@ -2198,11 +2244,12 @@ function PageManualGrid() {
     if (!row.vehicle) {
       errors.push('Vehicle Number is required');
     } else {
+
       const cleanValue = row.vehicle.replace(/\s/g, '');
       const traditionalPattern = /^[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}$/;
       const bhSeriesPattern = /^[0-9]{2}BH[0-9]{4}[A-Z]{1,2}$/;
       if (!traditionalPattern.test(cleanValue) && !bhSeriesPattern.test(cleanValue)) {
-        errors.push('Vehicle Number must be in format: KA01AB1234, KA 51 MM 1214, or 23 BH 7699 J');
+        errors.push('Vehicle number must be in valid format (e.g., KA01AB1234 or 12BH1234AB)');
       }
     }
     
@@ -2237,9 +2284,14 @@ function PageManualGrid() {
       errors.push('Invalid mobile number format (10 digits starting with 6-9)');
     }
     
-    // Total Premium validation
-    if (row.totalPremium && (isNaN(parseFloat(row.totalPremium)) || parseFloat(row.totalPremium) <= 0)) {
-      errors.push('Total Premium must be a valid positive number');
+    // Enhanced Total Premium validation
+    if (row.totalPremium) {
+      const totalPremium = parseFloat(row.totalPremium) || 0;
+      if (totalPremium <= 0) {
+        errors.push('Total Premium must be greater than ₹0');
+      } else if (totalPremium > 10000000) {
+        errors.push('Total Premium cannot exceed ₹1 crore');
+      }
     }
     
     // Date validation
@@ -2380,7 +2432,7 @@ function PageManualGrid() {
             branch: cells[29] || "",
             remark: cells[30] || "",
             cashback: "", // Not in Excel - keep empty
-            status: "OK" 
+            status: "OK"
           };
           
           // Debug logging for dates
@@ -3515,11 +3567,12 @@ function PageReview() {
     
     // Format validation
     if (editableData.pdfData.vehicle_number) {
+
       const cleanValue = editableData.pdfData.vehicle_number.replace(/\s/g, '');
       const traditionalPattern = /^[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}$/;
       const bhSeriesPattern = /^[0-9]{2}BH[0-9]{4}[A-Z]{1,2}$/;
       if (!traditionalPattern.test(cleanValue) && !bhSeriesPattern.test(cleanValue)) {
-        errors.push('Invalid vehicle number format (e.g., KA01AB1234, KA 51 MM 1214, or 23 BH 7699 J)');
+        errors.push('Vehicle number must be in valid format (e.g., KA01AB1234 or 12BH1234AB)');
       }
     }
     
@@ -4977,28 +5030,74 @@ function PageExplorer() {
 
   const downloadCSV = () => {
     const headers = ['Telecaller', 'Make', 'Model', 'Insurer', 'Issue Date', 'Expiry Date', 'Type of Business', 'Branch', '# Policies', 'GWP', 'Total Premium', 'Total OD', 'Avg Cashback %', 'Cashback (₹)', 'Net (₹)'];
-    const csvContent = [
-      headers.join(','),
-      ...filtered.map(row => [
-        row.rep,
-        `"${row.make}"`,
-        `"${row.model}"`,
-        `"${row.insurer}"`,
-        row.issueDate && row.issueDate !== 'N/A' ? new Date(row.issueDate).toLocaleDateString('en-GB') : 'N/A',
-        row.expiryDate && row.expiryDate !== 'N/A' ? new Date(row.expiryDate).toLocaleDateString('en-GB') : 'N/A',
-        row.rollover,
-        row.branch,
-        row.policies,
-        row.gwp,
-        row.totalPremium || 0,
-        row.totalOD || 0,
-        parseFloat(row.cashbackPctAvg || 0).toFixed(1),
-        row.cashback,
-        row.net
-      ].join(','))
-    ].join('\n');
     
-    const blob = new Blob([csvContent], { type: 'text/csv' });
+    // Helper function to properly escape CSV values
+    const escapeCSV = (value: any) => {
+      if (value === null || value === undefined) return '';
+      const str = String(value);
+      
+      // Clean the string: remove all types of line breaks and normalize whitespace
+      const cleanedStr = str
+        .replace(/\r\n/g, ' ')  // Windows line breaks
+        .replace(/\n/g, ' ')    // Unix line breaks  
+        .replace(/\r/g, ' ')    // Old Mac line breaks
+        .replace(/\s+/g, ' ')   // Multiple spaces to single space
+        .trim();                // Remove leading/trailing spaces
+      
+      // Always wrap in quotes for safety and escape internal quotes
+      return `"${cleanedStr.replace(/"/g, '""')}"`;
+    };
+    
+    // Helper function to format dates consistently
+    const formatDate = (dateStr: any) => {
+      if (!dateStr || dateStr === 'N/A') return 'N/A';
+      try {
+        const date = new Date(dateStr);
+        if (isNaN(date.getTime())) return 'N/A';
+        // Use consistent DD-MM-YYYY format
+        return date.toLocaleDateString('en-GB', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric'
+        });
+      } catch (error) {
+        return 'N/A';
+      }
+    };
+    
+    // Helper function to format numbers consistently
+    const formatNumber = (value: any) => {
+      if (value === null || value === undefined || value === '') return '0';
+      const num = parseFloat(value);
+      return isNaN(num) ? '0' : num.toString();
+    };
+    
+    const csvRows = [
+      headers.map(escapeCSV).join(','),
+      ...filtered.map(row => [
+        escapeCSV(row.rep),
+        escapeCSV(row.make),
+        escapeCSV(row.model),
+        escapeCSV(row.insurer),
+        escapeCSV(formatDate(row.issueDate)),
+        escapeCSV(formatDate(row.expiryDate)),
+        escapeCSV(row.rollover),
+        escapeCSV(row.branch),
+        escapeCSV(row.policies),
+        escapeCSV(formatNumber(row.gwp)),
+        escapeCSV(formatNumber(row.totalPremium)),
+        escapeCSV(formatNumber(row.totalOD)),
+        escapeCSV(parseFloat(row.cashbackPctAvg || 0).toFixed(1)),
+        escapeCSV(formatNumber(row.cashback)),
+        escapeCSV(formatNumber(row.net))
+      ].join(','))
+    ];
+    
+    const csvContent = csvRows.join('\n');
+    
+    // Add UTF-8 BOM for proper Excel compatibility
+    const BOM = '\uFEFF';
+    const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -5807,11 +5906,11 @@ function NicsanCRMMock() {
       {/* Backend Status Indicator */}
       {ENABLE_DEBUG && backendStatus && (
         <div className={`px-4 py-2 text-xs font-medium ${
-          backendStatus.backendAvailable 
+          backendStatus.data?.backendAvailable 
             ? 'bg-green-100 text-green-800' 
             : 'bg-red-100 text-red-800'
         }`}>
-          🔗 Backend: {backendStatus.backendAvailable ? 'Connected' : 'Disconnected'} 
+          🔗 Backend: {backendStatus.data?.backendAvailable ? 'Connected' : 'Disconnected'} 
           | Mock: {ENABLE_MOCK_DATA ? 'Enabled' : 'Disabled'}
           | Debug: {ENABLE_DEBUG ? 'On' : 'Off'}
         </div>
