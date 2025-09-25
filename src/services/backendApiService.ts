@@ -429,7 +429,13 @@ const response = await fetch(`${API_BASE_URL}/policies`, {
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        const errorText = await response.text();
+        console.error('❌ Backend upload failed:', {
+          status: response.status,
+          statusText: response.statusText,
+          body: errorText
+        });
+        throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
       }
 
       const result = await response.json();

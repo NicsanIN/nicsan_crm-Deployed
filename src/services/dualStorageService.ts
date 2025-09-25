@@ -364,6 +364,22 @@ class DualStorageService {
 
   // Upload PDF with dual storage
   async uploadPDF(file: File, manualExtras?: any, insurer?: string): Promise<DualStorageResult> {
+    // Always try backend first for real upload
+    try {
+      const backendResult = await this.backendApiService.uploadPDF(file, manualExtras, insurer);
+      if (backendResult.success) {
+        console.log('✅ PDF uploaded to backend successfully');
+        return {
+          success: true,
+          data: backendResult.data,
+          source: 'BACKEND_API'
+        };
+      }
+    } catch (error) {
+      console.log('Backend upload failed, using mock data:', error);
+    }
+
+    // Fallback to mock data only if backend fails
     const mockData = {
       uploadId: `mock_${Date.now()}`,
       s3Key: `uploads/${insurer}/${Date.now()}_${file.name}`,
@@ -371,11 +387,11 @@ class DualStorageService {
       message: 'PDF uploaded successfully (mock)'
     };
 
-    return this.executeDualStoragePattern(
-      () => this.backendApiService.uploadPDF(file, manualExtras, insurer),
-      mockData,
-      'Upload PDF'
-    );
+    return {
+      success: true,
+      data: mockData,
+      source: 'MOCK_DATA'
+    };
   }
 
   // Get uploads with dual storage
