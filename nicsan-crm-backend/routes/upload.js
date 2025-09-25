@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const storageService = require('../services/storageService');
+const emailService = require('../services/emailService');
 const { authenticateToken, requireOps } = require('../middleware/auth');
 
 // Configure multer for file uploads
@@ -206,6 +207,8 @@ router.post('/:uploadId/confirm', authenticateToken, requireOps, async (req, res
         ...editedData.pdfData,
         ...editedData.manualExtras,
         caller_name: editedData.manualExtras.caller_name || editedData.manualExtras.callerName || '', // Map callerName to caller_name
+        customer_email: editedData.manualExtras.customerEmail || editedData.manualExtras.customer_email || '',
+        ops_executive: editedData.manualExtras.opsExecutive || editedData.manualExtras.ops_executive || '',
         source: 'PDF_UPLOAD',
         s3_key: upload.s3_key,
         confidence_score: upload.extracted_data?.extracted_data?.confidence_score || 0.8
@@ -233,6 +236,15 @@ router.post('/:uploadId/confirm', authenticateToken, requireOps, async (req, res
       });
     }
     
+    // Check for duplicate policy number before saving
+    const isDuplicate = await storageService.checkPolicyNumberExists(policyData.policy_number);
+    if (isDuplicate) {
+      return res.status(400).json({
+        success: false,
+        error: `Policy number '${policyData.policy_number}' already exists. Please use a different policy number.`
+      });
+    }
+    
     // Save policy with the determined data
     const result = await storageService.savePolicy(policyData);
     
@@ -241,6 +253,33 @@ router.post('/:uploadId/confirm', authenticateToken, requireOps, async (req, res
       await storageService.updateUploadStatus(uploadId, 'COMPLETED');
       
       console.log('✅ Policy created successfully with data source:', editedData ? 'EDITED' : 'ORIGINAL');
+      
+      // NEW: Send PDF via email to customer
+      try {
+        const customerEmail = policyData.customer_email || policyData.customerEmail;
+        if (customerEmail) {
+          console.log('📧 Sending policy PDF to customer:', customerEmail);
+          
+          const emailResult = await emailService.sendPolicyPDF(
+            customerEmail,
+            policyData,
+            upload.s3_key,  // Original PDF S3 key
+            upload.filename  // Original PDF filename
+          );
+          
+          if (emailResult.success) {
+            console.log('✅ PDF sent to customer successfully:', emailResult.messageId);
+          } else {
+            console.error('⚠️ Email sending failed:', emailResult.error);
+            // Don't fail policy creation if email fails
+          }
+        } else {
+          console.log('⚠️ No customer email found, skipping email sending');
+        }
+      } catch (emailError) {
+        console.error('⚠️ Email service error:', emailError.message);
+        // Don't fail policy creation if email fails
+      }
       
       res.json({
         success: true,

@@ -92,12 +92,16 @@ const generateS3Key = async (filename, selectedInsurer, fileBuffer) => {
     
     console.log(`📁 S3 Key: Using ${insurer} for file ${filename} (detected: ${detectedInsurer}, selected: ${selectedInsurer})`);
     
+    return `uploads/${insurer}/${timestamp}_${randomId}.${extension}`;
+    
   } catch (error) {
     console.error('❌ Insurer detection failed, using selected insurer:', error);
     // Fallback to selected insurer if detection fails
     const timestamp = Date.now();
     const randomId = Math.random().toString(36).substring(2, 15);
     const extension = filename.split('.').pop();
+    
+    return `uploads/${selectedInsurer}/${timestamp}_${randomId}.${extension}`;
   }
 };
 
