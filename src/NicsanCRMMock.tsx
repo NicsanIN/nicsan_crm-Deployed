@@ -1158,19 +1158,15 @@ function PageManualForm() {
           if (!value) {
             errors.push('Vehicle Number is required');
           } else {
-
             const cleanValue = value.replace(/\s/g, '');
             const traditionalPattern = /^[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}$/;
             const bhSeriesPattern = /^[0-9]{2}BH[0-9]{4}[A-Z]{1,2}$/;
             if (!traditionalPattern.test(cleanValue) && !bhSeriesPattern.test(cleanValue)) {
-
-            const cleanVehicleNumber = value.replace(/\s/g, '');
-            const traditionalPattern = /^[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}$/;
-            const bhSeriesPattern = /^[0-9]{2}BH[0-9]{4}[A-Z]{1,2}$/;
+              errors.push('Vehicle number must be in valid format (e.g., KA01AB1234 or 12BH1234AB)');
+            }
+          }
+          break;
             
-            if (!traditionalPattern.test(cleanVehicleNumber) && !bhSeriesPattern.test(cleanVehicleNumber)) {
-
-        
       case 'insurer':
         if (!value) {
           errors.push('Insurer (Company) is required');
@@ -2248,12 +2244,9 @@ function PageManualGrid() {
       const traditionalPattern = /^[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}$/;
       const bhSeriesPattern = /^[0-9]{2}BH[0-9]{4}[A-Z]{1,2}$/;
       if (!traditionalPattern.test(cleanValue) && !bhSeriesPattern.test(cleanValue)) {
-
-      const cleanVehicleNumber = row.vehicle.replace(/\s/g, '');
-      const traditionalPattern = /^[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}$/;
-      const bhSeriesPattern = /^[0-9]{2}BH[0-9]{4}[A-Z]{1,2}$/;
-      
- 
+        errors.push('Vehicle number must be in valid format (e.g., KA01AB1234 or 12BH1234AB)');
+      }
+    }
     
     // Insurer validation
     if (!row.insurer) {
@@ -3574,13 +3567,9 @@ function PageReview() {
       const traditionalPattern = /^[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}$/;
       const bhSeriesPattern = /^[0-9]{2}BH[0-9]{4}[A-Z]{1,2}$/;
       if (!traditionalPattern.test(cleanValue) && !bhSeriesPattern.test(cleanValue)) {
-
-      const cleanVehicleNumber = editableData.pdfData.vehicle_number.replace(/\s/g, '');
-      const traditionalPattern = /^[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}$/;
-      const bhSeriesPattern = /^[0-9]{2}BH[0-9]{4}[A-Z]{1,2}$/;
-      
-      if (!traditionalPattern.test(cleanVehicleNumber) && !bhSeriesPattern.test(cleanVehicleNumber)) {
-
+        errors.push('Vehicle number must be in valid format (e.g., KA01AB1234 or 12BH1234AB)');
+      }
+    }
     
     // Mobile number validation
     if (editableData.manualExtras.mobile && !/^[6-9]\d{9}$/.test(editableData.manualExtras.mobile)) {
