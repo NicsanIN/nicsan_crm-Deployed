@@ -145,7 +145,7 @@ class OpenAIService {
     - Total Premium (₹): Extract from "Total Premium Payable" values`;
         console.log(`🔧 TATA AIG rules applied for year: ${manufacturingYear}`);
       } else if (insurer === 'DIGIT') {
-        // Simplified DIGIT rules - no complex prohibited sources
+        // DIGIT-specific rules with enhanced model extraction
         otherInsurerRules = `
 10. For DIGIT policies specifically:
     - PROHIBITED: DO NOT extract Net OD (₹), Total OD (₹), Net Premium (₹), Total Premium (₹)
@@ -154,8 +154,17 @@ class OpenAIService {
     - Net OD (₹):  Return null (not extracted)
     - Total OD (₹):  Return null (not extracted)
     - Net Premium (₹):  Return null (not extracted)
-    - Total Premium (₹): Return null (not extracted)`;
-        console.log(`🔧 DIGIT simplified rules applied`);
+    - Total Premium (₹): Return null (not extracted)
+    - Model: Extract COMPLETE model name including variants, transmission, and BSVI info
+      * CRITICAL: Extract FULL model name with all details
+      * Examples: "URBAN CRUISER/PREMIUM (AT) BSVI", "SWIFT/DELTA (MT) BSVI"
+      * Include variant names: /PREMIUM, /DELTA, /LXI, /VXI, etc.
+      * Include transmission: (AT), (MT), (AMT), (CVT)
+      * Include emission standard: BSVI, BS4, etc.
+      * Look for patterns like "MODEL: URBAN CRUISER/PREMIUM (AT) BSVI"
+      * Extract everything after "MODEL:" or "Vehicle Model:" until end of line
+      * Do NOT truncate model names - include complete variant information`;
+        console.log(`🔧 DIGIT enhanced model extraction rules applied`);
       } else if (insurer === 'RELIANCE_GENERAL') {
         otherInsurerRules = `
 10. For RELIANCE_GENERAL policies specifically:
