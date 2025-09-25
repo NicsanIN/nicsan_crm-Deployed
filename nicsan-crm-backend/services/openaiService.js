@@ -3,7 +3,8 @@
 
 const OpenAI = require('openai');
 const pdf = require('pdf-parse');
-const { s3 } = require('../config/aws');
+const { s3Client } = require('../config/aws');
+const { GetObjectCommand } = require('@aws-sdk/client-s3');
 
 class OpenAIService {
   constructor() {
@@ -15,14 +16,14 @@ class OpenAIService {
   // Download PDF from S3
   async downloadFromS3(s3Key) {
     try {
-      const params = {
+      const command = new GetObjectCommand({
         Bucket: process.env.AWS_S3_BUCKET,
         Key: s3Key
-      };
+      });
       
-      const result = await s3.getObject(params).promise();
+      const result = await s3Client.send(command);
       console.log('✅ PDF downloaded from S3');
-      return result.Body;
+      return await result.Body.transformToByteArray();
     } catch (error) {
       console.error('❌ Failed to download PDF from S3:', error);
       throw error;
