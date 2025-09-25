@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const storageService = require('../services/storageService');
+const emailService = require('../services/emailService');
 const { authenticateToken, requireOps } = require('../middleware/auth');
 
 // Configure multer for file uploads
@@ -252,6 +253,33 @@ router.post('/:uploadId/confirm', authenticateToken, requireOps, async (req, res
       await storageService.updateUploadStatus(uploadId, 'COMPLETED');
       
       console.log('✅ Policy created successfully with data source:', editedData ? 'EDITED' : 'ORIGINAL');
+      
+      // NEW: Send PDF via email to customer
+      try {
+        const customerEmail = policyData.customer_email || policyData.customerEmail;
+        if (customerEmail) {
+          console.log('📧 Sending policy PDF to customer:', customerEmail);
+          
+          const emailResult = await emailService.sendPolicyPDF(
+            customerEmail,
+            policyData,
+            upload.s3_key,  // Original PDF S3 key
+            upload.filename  // Original PDF filename
+          );
+          
+          if (emailResult.success) {
+            console.log('✅ PDF sent to customer successfully:', emailResult.messageId);
+          } else {
+            console.error('⚠️ Email sending failed:', emailResult.error);
+            // Don't fail policy creation if email fails
+          }
+        } else {
+          console.log('⚠️ No customer email found, skipping email sending');
+        }
+      } catch (emailError) {
+        console.error('⚠️ Email service error:', emailError.message);
+        // Don't fail policy creation if email fails
+      }
       
       res.json({
         success: true,
