@@ -2,6 +2,14 @@
 @tailwind components;
 @tailwind utilities;
 
+@font-face {
+  font-family: 'Clash Display';
+  src: url('./assets/fonts/ClashDisplay-Variable.ttf') format('truetype');
+  font-weight: 200 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root { color-scheme: light; }
 html, body, #root { height: 100%; }
 #root { margin: 0; padding: 0; max-width: none; text-align: initial; }
