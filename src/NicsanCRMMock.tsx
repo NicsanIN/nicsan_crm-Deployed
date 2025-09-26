@@ -4715,6 +4715,7 @@ function PageOverview() {
           setMetrics(metricsResponse.data);
           setDataSource(metricsResponse.source);
           
+          
           // Use real trend data from backend instead of demo data
           let transformedTrend = demoTrend;
           if (metricsResponse.data.dailyTrend && Array.isArray(metricsResponse.data.dailyTrend)) {
@@ -4739,12 +4740,15 @@ function PageOverview() {
   }, []);
 
   const formatCurrency = (amount: number) => {
+    if (amount === null || amount === undefined || isNaN(amount)) {
+      return "₹0.0L";
+    }
     return `₹${(amount / 100000).toFixed(1)}L`;
   };
 
   return (
     <>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <Tile 
           label="GWP" 
           info="(Gross Written Premium)" 
@@ -4765,6 +4769,12 @@ function PageOverview() {
           label="Net" 
           info="(Brokerage − Cashback)" 
           value={metrics ? formatCurrency(metrics.basicMetrics?.netRevenue) : "₹1.26L"}
+        />
+        <Tile 
+          label="Total OD" 
+          info="(Outstanding Debt)" 
+          value={metrics ? formatCurrency(metrics.basicMetrics?.totalOutstandingDebt) : "₹0.00L"}
+          sub="Total outstanding amount"
         />
       </div>
       <Card title="14-day Trend" desc={`GWP & Net (Data Source: ${dataSource || 'Loading...'})`}>

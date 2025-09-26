@@ -1089,6 +1089,7 @@ async savePolicy(policyData) {
         SUM(brokerage) as total_brokerage,
         SUM(cashback) as total_cashback,
         SUM(brokerage - cashback) as net_revenue,
+        SUM(total_od) as total_outstanding_debt,
         AVG(total_premium) as avg_premium
       FROM policies 
       WHERE created_at >= $1
@@ -1142,6 +1143,7 @@ async savePolicy(policyData) {
     const totalBrokerage = parseFloat(metrics.total_brokerage) || 0;
     const totalCashback = parseFloat(metrics.total_cashback) || 0;
     const netRevenue = parseFloat(metrics.net_revenue) || 0;
+    const totalOutstandingDebt = parseFloat(metrics.total_outstanding_debt) || 0;
     const avgPremium = parseFloat(metrics.avg_premium) || 0;
 
     // Calculate ratios
@@ -1158,6 +1160,7 @@ async savePolicy(policyData) {
         totalBrokerage,
         totalCashback,
         netRevenue,
+        totalOutstandingDebt,
         avgPremium
       },
       kpis: {
