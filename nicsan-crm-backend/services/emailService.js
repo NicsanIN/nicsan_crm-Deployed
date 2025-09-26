@@ -181,9 +181,9 @@ function generateEmailContent(policyData) {
         
         <h3>📞 Contact Information</h3>
         <ul>
-          <li><strong>Customer Support:</strong> +91-XXXX-XXXX</li>
-          <li><strong>Email:</strong> support@nicsaninsurance.com</li>
-          <li><strong>Website:</strong> www.nicsaninsurance.com</li>
+          <li><strong>Customer Support:</strong> +91-9916131639</li>
+          <li><strong>Email:</strong> care@nicsanimf.com</li>
+          <li><strong>Website:</strong> www.nicsanin.com</li>
         </ul>
         
         <p>Thank you for choosing Nicsan Insurance for your motor insurance needs!</p>
@@ -218,9 +218,9 @@ Your policy document is attached to this email.
 Please keep this policy document safe and carry it with you while driving. In case of any claims or queries, please contact our customer support team.
 
 CONTACT INFORMATION:
-- Customer Support: +91-XXXX-XXXX
-- Email: support@nicsaninsurance.com
-- Website: www.nicsaninsurance.com
+- Customer Support: +91-9916131639
+- Email: care@nicsanimf.com
+- Website: www.nicsanin.com
 
 Thank you for choosing Nicsan Insurance for your motor insurance needs!
 
