@@ -209,6 +209,7 @@ router.post('/:uploadId/confirm', authenticateToken, requireOps, async (req, res
         caller_name: editedData.manualExtras.caller_name || editedData.manualExtras.callerName || '', // Map callerName to caller_name
         customer_email: editedData.manualExtras.customerEmail || editedData.manualExtras.customer_email || '',
         ops_executive: editedData.manualExtras.opsExecutive || editedData.manualExtras.ops_executive || '',
+        // customer_name now comes from PDF extracted data (editedData.pdfData.customer_name)
         source: 'PDF_UPLOAD',
         s3_key: upload.s3_key,
         confidence_score: upload.extracted_data?.extracted_data?.confidence_score || 0.8
@@ -221,6 +222,7 @@ router.post('/:uploadId/confirm', authenticateToken, requireOps, async (req, res
         ...upload.extracted_data.extracted_data,
         ...upload.extracted_data.manual_extras,
         caller_name: upload.extracted_data.manual_extras?.caller_name || upload.extracted_data.manual_extras?.callerName || '', // Map callerName to caller_name
+        // customer_name now comes from PDF extracted data (upload.extracted_data.extracted_data.customer_name)
         source: 'PDF_UPLOAD',
         s3_key: upload.s3_key
       };

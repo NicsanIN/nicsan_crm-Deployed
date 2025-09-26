@@ -233,7 +233,6 @@ function PageUpload() {
     customerPaid: '',
     customerChequeNo: '',
     ourChequeNo: '',
-    customerName: '',
     branch: ''
   });
   const [manualExtrasSaved, setManualExtrasSaved] = useState(false);
@@ -338,6 +337,7 @@ function PageUpload() {
           opsExecutive: '',
           callerName: '',
           mobile: '',
+          customerEmail: '',
           rollover: '',
           remark: '',
           brokerage: '',
@@ -345,7 +345,7 @@ function PageUpload() {
           customerPaid: '',
           customerChequeNo: '',
           ourChequeNo: '',
-          customerName: ''
+          branch: ''
         });
         setManualExtrasSaved(false);
       } else {
@@ -655,16 +655,6 @@ function PageUpload() {
                 placeholder="Your company's cheque number"
                 value={manualExtras.ourChequeNo}
                 onChange={(e) => handleManualExtrasChange('ourChequeNo', e.target.value)}
-                className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
-              />
-            </div>
-            <div className="md:col-span-2">
-              <label className="block text-xs text-blue-700 mb-1">Customer Name</label>
-              <input 
-                type="text"
-                placeholder="Enter customer name"
-                value={manualExtras.customerName}
-                onChange={(e) => handleManualExtrasChange('customerName', e.target.value)}
                 className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
               />
             </div>
@@ -1073,7 +1063,7 @@ function PageManualForm() {
             brokerage: "0",
             cashback: "",
             customerName: "",
-    customerEmail: "",
+            customerEmail: "",
             branch: ""
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -1966,8 +1956,8 @@ function PageManualForm() {
           <AutocompleteInput label="Caller Name" value={form.callerName} onChange={v=>set('callerName', v)} getSuggestions={getFilteredCallerSuggestions}/>
           <LabeledInput label="Mobile Number" required placeholder="9xxxxxxxxx" value={form.mobile} onChange={v=>set('mobile', v)}/>
           <LabeledInput label="Rollover/Renewal" hint="internal code" value={form.rollover} onChange={v=>set('rollover', v)}/>
-          <LabeledInput label="Customer Email ID" value={form.customerEmail} onChange={v=>set('customerEmail', v)}/>
           <LabeledInput label="Customer Name" value={form.customerName} onChange={v=>set('customerName', v)}/>
+          <LabeledInput label="Customer Email ID" value={form.customerEmail} onChange={v=>set('customerEmail', v)}/>
           <LabeledInput label="Branch" required value={form.branch} onChange={v=>set('branch', v)}/>
           <LabeledInput label="Remark" placeholder="Any note" value={form.remark} onChange={v=>set('remark', v)}/>
         </div>
@@ -3936,6 +3926,12 @@ function PageReview() {
               value={editableData.pdfData.total_premium || pdfData.total_premium}
               onChange={(value) => updatePdfData('total_premium', value)}
             />
+            <LabeledInput 
+              label="Customer Name" 
+              value={editableData.pdfData.customer_name || pdfData.customer_name}
+              onChange={(value) => updatePdfData('customer_name', value)}
+              hint="extracted from PDF"
+            />
           </div>
         </div>
 
@@ -3979,11 +3975,6 @@ function PageReview() {
               value={editableData.manualExtras.rollover || manualExtras.rollover}
               onChange={(value) => updateManualExtras('rollover', value)}
               hint="internal code"
-            />
-            <LabeledInput 
-              label="Customer Name" 
-              value={editableData.manualExtras.customerName || manualExtras.customerName}
-              onChange={(value) => updateManualExtras('customerName', value)}
             />
             <LabeledInput 
               label="Branch" 
