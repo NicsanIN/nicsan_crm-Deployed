@@ -82,7 +82,14 @@ function LoginPage({ onLogin }: { onLogin: (user: { name: string; email: string;
   return (
     <div className="min-h-screen grid place-items-center bg-zinc-50 p-6">
       <div className="w-full max-w-md bg-white rounded-2xl border border-zinc-100 shadow-sm p-6">
-        <div className="flex items-center gap-2 text-lg font-semibold mb-1"><Lock className="w-5 h-5"/> Nicsan CRM v1</div>
+        <div className="flex items-center gap-3 mb-6">
+          <img 
+            src="/HorizontalLogo.svg" 
+            alt="Nicsan CRM" 
+            className="h-[20.3843px] w-auto"
+          />
+          <span className="text-[28px] font-clash font-bold text-zinc-900 leading-[20.3843px] mt-0.5">CRM V1</span>
+        </div>
         
         
         {error && (
@@ -92,22 +99,22 @@ function LoginPage({ onLogin }: { onLogin: (user: { name: string; email: string;
         )}
         
         <label className="block mb-3">
-          <div className="text-xs text-zinc-600 mb-1">Email</div>
+          <div className="text-xs text-zinc-600 mb-1 font-clash font-normal">Email</div>
           <input 
             value={email} 
             onChange={e=>setEmail(e.target.value)} 
-            className="w-full rounded-xl border border-zinc-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200" 
+            className="w-full rounded-xl border border-zinc-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200 font-clash font-normal" 
             placeholder="Enter your email"
             disabled={isLoading}
           />
         </label>
         <label className="block mb-4">
-          <div className="text-xs text-zinc-600 mb-1">Password</div>
+          <div className="text-xs text-zinc-600 mb-1 font-clash font-normal">Password</div>
           <input 
             type="password" 
             value={password} 
             onChange={e=>setPassword(e.target.value)} 
-            className="w-full rounded-xl border border-zinc-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200" 
+            className="w-full rounded-xl border border-zinc-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200 font-clash font-normal" 
             placeholder="••••••••"
             disabled={isLoading}
           />
@@ -116,7 +123,7 @@ function LoginPage({ onLogin }: { onLogin: (user: { name: string; email: string;
         <button 
           onClick={handleLogin} 
           disabled={isLoading}
-          className="w-full px-4 py-2 rounded-xl bg-zinc-900 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full px-4 py-2 rounded-xl bg-zinc-900 text-white disabled:opacity-50 disabled:cursor-not-allowed font-clash"
         >
           {isLoading ? 'Signing in...' : 'Sign in'}
         </button>
@@ -133,7 +140,14 @@ function TopTabs({ tab, setTab, user, onLogout }: { tab: "ops" | "founder"; setT
   return (
     <div className="w-full border-b border-zinc-200 bg-white sticky top-0 z-40">
       <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-3">
-        <div className="text-xl font-semibold">Nicsan CRM v1</div>
+        <div className="flex items-center gap-3">
+          <img 
+            src="/HorizontalLogo.svg" 
+            alt="Nicsan CRM" 
+            className="h-[20.3843px] w-auto"
+          />
+          <span className="text-[28px] font-clash font-bold text-zinc-900 leading-[20.3843px] mt-0.5">CRM V1</span>
+        </div>
         <div className="ml-auto flex items-center gap-2">
           <div className="rounded-xl bg-zinc-100 p-1 flex gap-2">
             <button onClick={() => setTab("ops")} className={`px-4 py-2 rounded-lg text-sm ${tab === "ops" ? "bg-white shadow" : "text-zinc-600"}`}>Operations</button>
