@@ -4,7 +4,7 @@
 
 @font-face {
   font-family: 'Clash Display';
-  src: url('/ClashDisplay-Variable.ttf') format('truetype');
+  src: url('./assets/fonts/ClashDisplay-Variable.ttf') format('truetype');
   font-weight: 200 700;
   font-style: normal;
   font-display: swap;

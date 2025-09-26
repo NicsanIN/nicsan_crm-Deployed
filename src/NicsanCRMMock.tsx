@@ -6,6 +6,7 @@ import { policiesAPI } from './services/api';
 import DualStorageService from './services/dualStorageService';
 import CrossDeviceSyncDemo from './components/CrossDeviceSyncDemo';
 import { SettingsProvider, useSettings } from './contexts/SettingsContext';
+import HorizontalLogo from './assets/images/HorizontalLogo.svg';
 
 // Environment variables
 const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
@@ -84,7 +85,7 @@ function LoginPage({ onLogin }: { onLogin: (user: { name: string; email: string;
       <div className="w-full max-w-md bg-white rounded-2xl border border-zinc-100 shadow-sm p-6">
         <div className="flex items-center gap-3 mb-6">
           <img 
-            src="/HorizontalLogo.svg" 
+            src={HorizontalLogo} 
             alt="Nicsan CRM" 
             className="h-[20.3843px] w-auto"
           />
@@ -142,7 +143,7 @@ function TopTabs({ tab, setTab, user, onLogout }: { tab: "ops" | "founder"; setT
       <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-3">
         <div className="flex items-center gap-3">
           <img 
-            src="/HorizontalLogo.svg" 
+            src={HorizontalLogo} 
             alt="Nicsan CRM" 
             className="h-[20.3843px] w-auto"
           />
