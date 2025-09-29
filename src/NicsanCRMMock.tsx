@@ -253,7 +253,6 @@ function PageUpload() {
   });
   const [manualExtrasSaved, setManualExtrasSaved] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [_callerNames, setCallerNames] = useState<string[]>([]);
 
   const handleFiles = async (files: FileList) => {
     const file = files[0];
@@ -487,26 +486,6 @@ function PageUpload() {
     setManualExtras(prev => ({ ...prev, [field]: value }));
   };
 
-  // Load real caller names on component mount
-  useEffect(() => {
-    const loadCallerNames = async () => {
-      try {
-        const response = await DualStorageService.getSalesReps();
-        if (response.success && response.data) {
-          const names = response.data
-            .map((rep: any) => rep.name)
-            .filter((name: string) => name && name !== 'Unknown');
-          setCallerNames(names);
-        }
-      } catch (error) {
-        console.warn('Failed to load caller names:', error);
-        // Fallback to mock data
-        setCallerNames(['Priya Singh', 'Rahul Kumar', 'Anjali Sharma']);
-      }
-    };
-    
-    loadCallerNames();
-  }, []);
 
   // Smart suggestions for caller names
   // const __getSmartSuggestions = (fieldName: string) => {
@@ -516,33 +495,8 @@ function PageUpload() {
   //   return [];
   // };
 
-  // Filtered caller suggestions for autocomplete
-  const getFilteredCallerSuggestions = async (input: string): Promise<string[]> => {
-    if (input.length < 2) return [];
-    
-    try {
-      const response = await DualStorageService.getSalesReps();
-      if (response.success && response.data) {
-        const filteredNames = response.data
-          .map((rep: any) => rep.name)
-          .filter((name: string) => 
-            name && 
-            name !== 'Unknown' && 
-            name.toLowerCase().includes(input.toLowerCase())
-          )
-          .slice(0, 5); // Limit to 5 suggestions
-        return filteredNames;
-      }
-    } catch (error) {
-      console.warn('Failed to get caller suggestions:', error);
-    }
-    
-    // Fallback to mock data with filtering
-    const mockCallers = ['Priya Singh', 'Rahul Kumar', 'Anjali Sharma'];
-    return mockCallers.filter(name => 
-      name.toLowerCase().includes(input.toLowerCase())
-    );
-  };
+
+  // Handle adding new telecaller
 
   return (
     <>
@@ -573,31 +527,43 @@ function PageUpload() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs text-blue-700 mb-1">Executive</label>
-              <input 
-                type="text" 
-                placeholder="Sales rep name"
+              <select 
                 value={manualExtras.executive}
                 onChange={(e) => handleManualExtrasChange('executive', e.target.value)}
-                className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
-              />
+                className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 bg-white"
+              >
+                <option value="">Select Executive</option>
+                <option value="Yashwanth">Yashwanth</option>
+                <option value="Kavya">Kavya</option>
+                <option value="Bhagya">Bhagya</option>
+                <option value="Sandesh">Sandesh</option>
+                <option value="Yallappa">Yallappa</option>
+                <option value="Nethravathi">Nethravathi</option>
+                <option value="Tejaswini">Tejaswini</option>
+              </select>
             </div>
             <div>
               <label className="block text-xs text-blue-700 mb-1">Ops Executive</label>
-              <input 
-                type="text" 
-                placeholder="Ops executive name"
+              <select 
                 value={manualExtras.opsExecutive}
                 onChange={(e) => handleManualExtrasChange('opsExecutive', e.target.value)}
-                className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
-              />
+                className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 bg-white"
+              >
+                <option value="">Select Ops Executive</option>
+                <option value="NA">NA</option>
+                <option value="Ravi">Ravi</option>
+                <option value="Pavan">Pavan</option>
+                <option value="Manjunath">Manjunath</option>
+              </select>
             </div>
             <div>
-              <AutocompleteInput 
-                label="Caller Name" 
+              <label className="block text-xs text-blue-700 mb-1">Caller Name</label>
+              <input 
+                type="text" 
                 placeholder="Telecaller name"
                 value={manualExtras.callerName}
-                onChange={(value) => handleManualExtrasChange('callerName', value)}
-                getSuggestions={getFilteredCallerSuggestions}
+                onChange={(e) => handleManualExtrasChange('callerName', e.target.value)}
+                className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
               />
             </div>
             <div>
@@ -622,13 +588,15 @@ function PageUpload() {
             </div>
             <div>
               <label className="block text-xs text-blue-700 mb-1">Rollover/Renewal</label>
-              <input 
-                type="text" 
-                placeholder="Internal code"
+              <select 
                 value={manualExtras.rollover}
                 onChange={(e) => handleManualExtrasChange('rollover', e.target.value)}
-                className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
-              />
+                className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 bg-white"
+              >
+                <option value="">Select Rollover/Renewal</option>
+                <option value="ROLLOVER">ROLLOVER</option>
+                <option value="RENEWAL">RENEWAL</option>
+              </select>
             </div>
             <div style={{ display: 'none' }}>
               <label className="block text-xs text-blue-700 mb-1">Brokerage (₹)</label>
@@ -692,14 +660,17 @@ function PageUpload() {
             </div>
             <div>
               <label className="block text-xs text-blue-700 mb-1">Branch <span className="text-red-500">*</span></label>
-              <input 
-                type="text"
-                placeholder="Enter branch name"
+              <select 
                 value={manualExtras.branch}
                 onChange={(e) => handleManualExtrasChange('branch', e.target.value)}
-                className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 bg-white"
                 required
-              />
+              >
+                <option value="">Select Branch</option>
+                <option value="MYSORE">MYSORE</option>
+                <option value="BANASHANKARI">BANASHANKARI</option>
+                <option value="ADUGODI">ADUGODI</option>
+              </select>
             </div>
             <div className="md:col-span-2">
               <label className="block text-xs text-blue-700 mb-1">Remark</label>
@@ -876,7 +847,7 @@ function PageUpload() {
   )
 }
 
-function LabeledInput({ label, placeholder, hint, required, value, onChange, error, suggestions }: { 
+function LabeledInput({ label, placeholder, hint, required, value, onChange, error, suggestions, type = "text" }: { 
   label: string; 
   placeholder?: string; 
   hint?: string; 
@@ -885,6 +856,7 @@ function LabeledInput({ label, placeholder, hint, required, value, onChange, err
   onChange?: (v:any)=>void;
   error?: string;
   suggestions?: string[];
+  type?: string;
 }) {
   return (
     <label className="block">
@@ -892,6 +864,7 @@ function LabeledInput({ label, placeholder, hint, required, value, onChange, err
         {label} {required && <span className="text-rose-600">*</span>} {hint && <span className="text-[10px] text-zinc-400">({hint})</span>}
       </div>
       <input 
+        type={type}
         value={value} 
         onChange={e=>onChange && onChange(e.target.value)} 
         className={`w-full rounded-xl border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200 ${
@@ -912,122 +885,6 @@ function LabeledInput({ label, placeholder, hint, required, value, onChange, err
   )
 }
 
-function AutocompleteInput({ 
-  label, 
-  placeholder, 
-  hint, 
-  required, 
-  value, 
-  onChange, 
-  error, 
-  getSuggestions 
-}: { 
-  label: string; 
-  placeholder?: string; 
-  hint?: string; 
-  required?: boolean; 
-  value?: any; 
-  onChange?: (v:any)=>void;
-  error?: string;
-  getSuggestions?: (input: string) => Promise<string[]>;
-}) {
-  const [suggestions, setSuggestions] = useState<string[]>([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-
-  // Debounced suggestions loading
-  const debouncedGetSuggestions = useMemo(
-    () => {
-      let timeoutId: number;
-      return (input: string) => {
-        clearTimeout(timeoutId);
-        timeoutId = setTimeout(async () => {
-          if (input.length >= 2 && getSuggestions) {
-            setIsLoading(true);
-            try {
-              const newSuggestions = await getSuggestions(input);
-              setSuggestions(newSuggestions);
-              setShowSuggestions(true);
-            } catch (error) {
-              console.warn('Failed to get suggestions:', error);
-              setSuggestions([]);
-            } finally {
-              setIsLoading(false);
-            }
-          } else {
-            setSuggestions([]);
-            setShowSuggestions(false);
-          }
-        }, 300);
-      };
-    },
-    [getSuggestions]
-  );
-
-  const handleInputChange = (inputValue: string) => {
-    onChange && onChange(inputValue);
-    debouncedGetSuggestions(inputValue);
-  };
-
-  const handleSuggestionClick = (suggestion: string) => {
-    onChange && onChange(suggestion);
-    setShowSuggestions(false);
-  };
-
-  const handleInputFocus = () => {
-    if (value && value.length >= 2) {
-      setShowSuggestions(suggestions.length > 0);
-    }
-  };
-
-  const handleInputBlur = () => {
-    // Delay hiding to allow click on suggestions
-    setTimeout(() => setShowSuggestions(false), 200);
-  };
-
-  return (
-    <div className="relative">
-      <label className="block">
-        <div className="text-xs text-zinc-600 mb-1">
-          {label} {required && <span className="text-rose-600">*</span>} {hint && <span className="text-[10px] text-zinc-400">({hint})</span>}
-        </div>
-        <input 
-          value={value} 
-          onChange={e => handleInputChange(e.target.value)}
-          onFocus={handleInputFocus}
-          onBlur={handleInputBlur}
-          className={`w-full rounded-xl border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200 ${
-            error ? 'border-red-300 bg-red-50' : 'border-zinc-300'
-          }`} 
-          placeholder={placeholder} 
-        />
-        {isLoading && (
-          <div className="absolute right-3 top-8 text-blue-500">
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
-          </div>
-        )}
-        {error && (
-          <div className="text-xs text-red-600 mt-1">{error}</div>
-        )}
-      </label>
-      
-      {/* Dropdown with click functionality */}
-      {showSuggestions && suggestions.length > 0 && (
-        <div className="absolute z-10 mt-1 w-full bg-white border border-zinc-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
-          {suggestions.map((suggestion, index) => (
-            <div
-              key={index}
-              className="px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-zinc-100 last:border-b-0"
-              onClick={() => handleSuggestionClick(suggestion)}
-            >
-              {suggestion}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
 
 function LabeledSelect({ label, value, onChange, options, required, error }: { 
   label: string; 
@@ -1045,9 +902,14 @@ function LabeledSelect({ label, value, onChange, options, required, error }: {
       <select 
         value={value} 
         onChange={e=>onChange && onChange(e.target.value)} 
-        className={`w-full rounded-xl border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200 ${
+        className={`w-full rounded-xl border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200 bg-white text-sm h-10 ${
           error ? 'border-red-300 bg-red-50' : 'border-zinc-300'
         }`}
+        style={{
+          height: '40.8px',
+          minHeight: '40.8px',
+          maxHeight: '40.8px'
+        }}
       >
         <option value="">Select {label}</option>
         {options.map(o=> <option key={o} value={o}>{o}</option>)}
@@ -1105,7 +967,6 @@ function PageManualForm() {
   const [vehicleSearchResults, setVehicleSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const [validationMode, setValidationMode] = useState<'progressive' | 'strict'>('progressive');
-  const [_callerNames, setCallerNames] = useState<string[]>([]);
   
   const set = (k:string,v:any)=> {
     setForm((f:any)=>({ ...f, [k]: v }));
@@ -1515,33 +1376,6 @@ function PageManualForm() {
   //   return suggestions;
   // };
 
-  // Filtered caller suggestions for autocomplete
-  const getFilteredCallerSuggestions = async (input: string): Promise<string[]> => {
-    if (input.length < 2) return [];
-    
-    try {
-      const response = await DualStorageService.getSalesReps();
-      if (response.success && response.data) {
-        const filteredNames = response.data
-          .map((rep: any) => rep.name)
-          .filter((name: string) => 
-            name && 
-            name !== 'Unknown' && 
-            name.toLowerCase().includes(input.toLowerCase())
-          )
-          .slice(0, 5); // Limit to 5 suggestions
-        return filteredNames;
-      }
-    } catch (error) {
-      console.warn('Failed to get caller suggestions:', error);
-    }
-    
-    // Fallback to mock data with filtering
-    const mockCallers = ['Priya Singh', 'Rahul Kumar', 'Anjali Sharma'];
-    return mockCallers.filter(name => 
-      name.toLowerCase().includes(input.toLowerCase())
-    );
-  };
 
   const handleVehicleNumberChange = async (vehicleNumber: string) => {
     set('vehicleNumber', vehicleNumber);
@@ -1803,26 +1637,8 @@ function PageManualForm() {
   // State for async validation errors
   const [asyncErrors, setAsyncErrors] = useState<{[key: string]: string[]}>({});
 
-  // Load real caller names on component mount
-  useEffect(() => {
-    const loadCallerNames = async () => {
-      try {
-        const response = await DualStorageService.getSalesReps();
-        if (response.success && response.data) {
-          const names = response.data
-            .map((rep: any) => rep.name)
-            .filter((name: string) => name && name !== 'Unknown');
-          setCallerNames(names);
-        }
-      } catch (error) {
-        console.warn('Failed to load caller names:', error);
-        // Fallback to mock data
-        setCallerNames(['Priya Singh', 'Rahul Kumar', 'Anjali Sharma']);
-      }
-    };
-    
-    loadCallerNames();
-  }, []);
+
+  // Handle adding new telecaller
 
   // Comprehensive validation (synchronous part)
   const errors = useMemo(() => {
@@ -1987,7 +1803,37 @@ function PageManualForm() {
 
         {/* Dates & Values */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-          <LabeledInput label="Issue Date" value={form.issueDate} onChange={v=>set('issueDate', v)}/>
+          <LabeledInput 
+            label="Issue Date" 
+            type="date"
+            value={(() => {
+              const dateValue = form.issueDate;
+              if (dateValue) {
+                // If date is in DD-MM-YYYY format, convert to YYYY-MM-DD
+                if (dateValue.includes('-') && dateValue.split('-')[0].length === 2) {
+                  const [day, month, year] = dateValue.split('-');
+                  return `${year}-${month}-${day}`;
+                }
+                // If already in YYYY-MM-DD format, return as is
+                return dateValue;
+              }
+              return dateValue;
+            })()}
+            onChange={(value) => {
+              // Ensure date is in YYYY-MM-DD format
+              if (value) {
+                const date = new Date(value);
+                if (!isNaN(date.getTime())) {
+                  const formattedDate = date.toISOString().split('T')[0];
+                  set('issueDate', formattedDate);
+                } else {
+                  set('issueDate', value);
+                }
+              } else {
+                set('issueDate', value);
+              }
+            }}
+          />
           <LabeledInput label="Expiry Date" value={form.expiryDate} onChange={v=>set('expiryDate', v)}/>
           <LabeledInput label="IDV (₹)" value={form.idv} onChange={v=>set('idv', v)}/>
           <LabeledInput label="NCB (%)" value={form.ncb} onChange={v=>set('ncb', v)}/>
@@ -2022,14 +1868,14 @@ function PageManualForm() {
 
         {/* People & Notes */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-          <LabeledInput label="Executive" value={form.executive} onChange={v=>set('executive', v)}/>
-          <LabeledInput label="Ops Executive" value={form.opsExecutive} onChange={v=>set('opsExecutive', v)}/>
-          <AutocompleteInput label="Caller Name" value={form.callerName} onChange={v=>set('callerName', v)} getSuggestions={getFilteredCallerSuggestions}/>
+          <LabeledSelect label="Executive" value={form.executive} onChange={v=>set('executive', v)} options={["Yashwanth", "Kavya", "Bhagya", "Sandesh", "Yallappa", "Nethravathi", "Tejaswini"]}/>
+          <LabeledSelect label="Ops Executive" value={form.opsExecutive} onChange={v=>set('opsExecutive', v)} options={["NA", "Ravi", "Pavan", "Manjunath"]}/>
+          <LabeledInput label="Caller Name" value={form.callerName} onChange={v=>set('callerName', v)} placeholder="Enter caller name"/>
           <LabeledInput label="Mobile Number" required placeholder="9xxxxxxxxx" value={form.mobile} onChange={v=>set('mobile', v)}/>
-          <LabeledInput label="Rollover/Renewal" hint="internal code" value={form.rollover} onChange={v=>set('rollover', v)}/>
+          <LabeledSelect label="Rollover/Renewal" value={form.rollover} onChange={v=>set('rollover', v)} options={["ROLLOVER", "RENEWAL"]}/>
           <LabeledInput label="Customer Email ID" value={form.customerEmail} onChange={v=>set('customerEmail', v)}/>
           <LabeledInput label="Customer Name" value={form.customerName} onChange={v=>set('customerName', v)}/>
-          <LabeledInput label="Branch" required value={form.branch} onChange={v=>set('branch', v)}/>
+          <LabeledSelect label="Branch" required value={form.branch} onChange={v=>set('branch', v)} options={["MYSORE", "BANASHANKARI", "ADUGODI"]}/>
           <LabeledInput label="Remark" placeholder="Any note" value={form.remark} onChange={v=>set('remark', v)}/>
         </div>
 
@@ -3314,7 +3160,6 @@ function PageReview() {
     pdfData: {},
     manualExtras: {}
   });
-  const [_callerNames, setCallerNames] = useState<string[]>([]);
 
   // Load available uploads for review
   useEffect(() => {
@@ -3400,62 +3245,9 @@ function PageReview() {
     return () => clearInterval(interval);
   }, []);
 
-  // Load real caller names on component mount
-  useEffect(() => {
-    const loadCallerNames = async () => {
-      try {
-        const response = await DualStorageService.getSalesReps();
-        if (response.success && response.data) {
-          const names = response.data
-            .map((rep: any) => rep.name)
-            .filter((name: string) => name && name !== 'Unknown');
-          setCallerNames(names);
-        }
-      } catch (error) {
-        console.warn('Failed to load caller names:', error);
-        // Fallback to mock data
-        setCallerNames(['Priya Singh', 'Rahul Kumar', 'Anjali Sharma']);
-      }
-    };
-    
-    loadCallerNames();
-  }, []);
 
-  // Smart suggestions for caller names
-  // const __getSmartSuggestions = (fieldName: string) => {
-  //   if (fieldName === 'callerName') {
-  //     return callerNames; // Real caller names from database
-  //   }
-  //   return [];
-  // };
 
-  // Filtered caller suggestions for autocomplete
-  const getFilteredCallerSuggestions = async (input: string): Promise<string[]> => {
-    if (input.length < 2) return [];
-    
-    try {
-      const response = await DualStorageService.getSalesReps();
-      if (response.success && response.data) {
-        const filteredNames = response.data
-          .map((rep: any) => rep.name)
-          .filter((name: string) => 
-            name && 
-            name !== 'Unknown' && 
-            name.toLowerCase().includes(input.toLowerCase())
-          )
-          .slice(0, 5); // Limit to 5 suggestions
-        return filteredNames;
-      }
-    } catch (error) {
-      console.warn('Failed to get caller suggestions:', error);
-    }
-    
-    // Fallback to mock data with filtering
-    const mockCallers = ['Priya Singh', 'Rahul Kumar', 'Anjali Sharma'];
-    return mockCallers.filter(name => 
-      name.toLowerCase().includes(input.toLowerCase())
-    );
-  };
+  // Handle adding new telecaller
 
   const loadUploadData = async (uploadId: string) => {
     try {
@@ -3960,8 +3752,34 @@ function PageReview() {
             />
             <LabeledInput 
               label="Issue Date" 
-              value={editableData.pdfData.issue_date || pdfData.issue_date}
-              onChange={(value) => updatePdfData('issue_date', value)}
+              type="date"
+              value={(() => {
+                const dateValue = editableData.pdfData.issue_date || pdfData.issue_date;
+                if (dateValue) {
+                  // If date is in DD-MM-YYYY format, convert to YYYY-MM-DD
+                  if (dateValue.includes('-') && dateValue.split('-')[0].length === 2) {
+                    const [day, month, year] = dateValue.split('-');
+                    return `${year}-${month}-${day}`;
+                  }
+                  // If already in YYYY-MM-DD format, return as is
+                  return dateValue;
+                }
+                return dateValue;
+              })()}
+              onChange={(value) => {
+                // Ensure date is in YYYY-MM-DD format
+                if (value) {
+                  const date = new Date(value);
+                  if (!isNaN(date.getTime())) {
+                    const formattedDate = date.toISOString().split('T')[0];
+                    updatePdfData('issue_date', formattedDate);
+                  } else {
+                    updatePdfData('issue_date', value);
+                  }
+                } else {
+                  updatePdfData('issue_date', value);
+                }
+              }}
             />
             <LabeledInput 
               label="Expiry Date" 
@@ -4019,18 +3837,17 @@ function PageReview() {
               onChange={(value) => updateManualExtras('executive', value)}
               hint="sales rep name"
             />
-            <LabeledInput 
+            <LabeledSelect 
               label="Ops Executive" 
               value={editableData.manualExtras.opsExecutive || manualExtras.opsExecutive}
               onChange={(value) => updateManualExtras('opsExecutive', value)}
-              hint="ops executive name"
+              options={["Yashwanth", "Kavya", "Bhagya", "Sandesh", "Yallappa", "Nethravathi", "Tejaswini"]}
             />
-            <AutocompleteInput 
+            <LabeledInput 
               label="Caller Name" 
               value={editableData.manualExtras.callerName || manualExtras.callerName}
               onChange={(value) => updateManualExtras('callerName', value)}
               hint="telecaller name"
-              getSuggestions={getFilteredCallerSuggestions}
             />
             <LabeledInput 
               label="Customer Email ID" 
@@ -4042,21 +3859,22 @@ function PageReview() {
               value={editableData.manualExtras.mobile || manualExtras.mobile}
               onChange={(value) => updateManualExtras('mobile', value)}
             />
-            <LabeledInput 
+            <LabeledSelect 
               label="Rollover/Renewal" 
               value={editableData.manualExtras.rollover || manualExtras.rollover}
               onChange={(value) => updateManualExtras('rollover', value)}
-              hint="internal code"
+              options={["ROLLOVER", "RENEWAL"]}
             />
             <LabeledInput 
               label="Customer Name" 
               value={editableData.manualExtras.customerName || manualExtras.customerName}
               onChange={(value) => updateManualExtras('customerName', value)}
             />
-            <LabeledInput 
+            <LabeledSelect 
               label="Branch" 
               value={editableData.manualExtras.branch || manualExtras.branch}
               onChange={(value) => updateManualExtras('branch', value)}
+              options={["MYSORE", "BANASHANKARI", "ADUGODI"]}
               required
             />
             <div style={{ display: 'none' }}>
