@@ -471,10 +471,10 @@ function PageUpload() {
   useEffect(() => {
     const loadCallerNames = async () => {
       try {
-        const response = await DualStorageService.getSalesReps();
+        const response = await DualStorageService.getTelecallers();
         if (response.success && response.data) {
           const names = response.data
-            .map((rep: any) => rep.name)
+            .map((telecaller: any) => telecaller.name)
             .filter((name: string) => name && name !== 'Unknown');
           setCallerNames(names);
         }
@@ -501,10 +501,10 @@ function PageUpload() {
     if (input.length < 2) return [];
     
     try {
-      const response = await DualStorageService.getSalesReps();
+      const response = await DualStorageService.getTelecallers();
       if (response.success && response.data) {
         const filteredNames = response.data
-          .map((rep: any) => rep.name)
+          .map((telecaller: any) => telecaller.name)
           .filter((name: string) => 
             name && 
             name !== 'Unknown' && 
@@ -522,6 +522,43 @@ function PageUpload() {
     return mockCallers.filter(name => 
       name.toLowerCase().includes(input.toLowerCase())
     );
+  };
+
+  // Handle adding new telecaller
+  const handleAddNewTelecaller = async (telecallerName: string) => {
+    try {
+      setUploadStatus('Adding new telecaller...');
+      
+      const result = await DualStorageService.addTelecaller({
+        name: telecallerName,
+        email: '',
+        phone: '',
+        branch: manualExtras.branch || 'Default'
+      });
+      
+      if (result.success) {
+        setUploadStatus('✅ New telecaller added successfully!');
+        
+        // Auto-select the new telecaller
+        setManualExtras(prev => ({
+          ...prev,
+          callerName: telecallerName
+        }));
+        
+        // Refresh the caller names list
+        const updatedResponse = await DualStorageService.getTelecallers();
+        if (updatedResponse.success && updatedResponse.data) {
+          const names = updatedResponse.data
+            .map((telecaller: any) => telecaller.name)
+            .filter((name: string) => name && name !== 'Unknown');
+          setCallerNames(names);
+        }
+      } else {
+        setUploadStatus(`❌ Failed to add telecaller: ${result.error}`);
+      }
+    } catch (error) {
+      setUploadStatus(`❌ Error adding telecaller: ${error.message}`);
+    }
   };
 
   return (
@@ -578,6 +615,8 @@ function PageUpload() {
                 value={manualExtras.callerName}
                 onChange={(value) => handleManualExtrasChange('callerName', value)}
                 getSuggestions={getFilteredCallerSuggestions}
+                onAddNew={handleAddNewTelecaller}
+                showAddNew={true}
               />
             </div>
             <div>
@@ -888,7 +927,9 @@ function AutocompleteInput({
   value, 
   onChange, 
   error, 
-  getSuggestions 
+  getSuggestions,
+  onAddNew,
+  showAddNew = false
 }: { 
   label: string; 
   placeholder?: string; 
@@ -898,10 +939,13 @@ function AutocompleteInput({
   onChange?: (v:any)=>void;
   error?: string;
   getSuggestions?: (input: string) => Promise<string[]>;
+  onAddNew?: (value: string) => void;
+  showAddNew?: boolean;
 }) {
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [showAddNewOption, setShowAddNewOption] = useState(false);
 
   // Debounced suggestions loading
   const debouncedGetSuggestions = useMemo(
@@ -916,20 +960,25 @@ function AutocompleteInput({
               const newSuggestions = await getSuggestions(input);
               setSuggestions(newSuggestions);
               setShowSuggestions(true);
+              
+              // Show "Add New" option if no suggestions found
+              setShowAddNewOption(newSuggestions.length === 0 && showAddNew);
             } catch (error) {
               console.warn('Failed to get suggestions:', error);
               setSuggestions([]);
+              setShowAddNewOption(showAddNew);
             } finally {
               setIsLoading(false);
             }
           } else {
             setSuggestions([]);
             setShowSuggestions(false);
+            setShowAddNewOption(false);
           }
         }, 300);
       };
     },
-    [getSuggestions]
+    [getSuggestions, showAddNew]
   );
 
   const handleInputChange = (inputValue: string) => {
@@ -940,6 +989,15 @@ function AutocompleteInput({
   const handleSuggestionClick = (suggestion: string) => {
     onChange && onChange(suggestion);
     setShowSuggestions(false);
+    setShowAddNewOption(false);
+  };
+
+  const handleAddNew = () => {
+    if (onAddNew) {
+      onAddNew(value);
+    }
+    setShowSuggestions(false);
+    setShowAddNewOption(false);
   };
 
   const handleInputFocus = () => {
@@ -979,8 +1037,8 @@ function AutocompleteInput({
         )}
       </label>
       
-      {/* Dropdown with click functionality */}
-      {showSuggestions && suggestions.length > 0 && (
+      {/* Enhanced dropdown with Add New option */}
+      {showSuggestions && (suggestions.length > 0 || showAddNewOption) && (
         <div className="absolute z-10 mt-1 w-full bg-white border border-zinc-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
           {suggestions.map((suggestion, index) => (
             <div
@@ -991,6 +1049,16 @@ function AutocompleteInput({
               {suggestion}
             </div>
           ))}
+          
+          {/* Add New Telecaller Option */}
+          {showAddNewOption && (
+            <div
+              className="px-3 py-2 hover:bg-green-50 cursor-pointer text-sm border-t border-zinc-200 bg-green-50 text-green-700 font-medium"
+              onClick={handleAddNew}
+            >
+              ➕ Add '{value}' as new Telecaller
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -1449,10 +1517,10 @@ function PageManualForm() {
     if (input.length < 2) return [];
     
     try {
-      const response = await DualStorageService.getSalesReps();
+      const response = await DualStorageService.getTelecallers();
       if (response.success && response.data) {
         const filteredNames = response.data
-          .map((rep: any) => rep.name)
+          .map((telecaller: any) => telecaller.name)
           .filter((name: string) => 
             name && 
             name !== 'Unknown' && 
@@ -1470,6 +1538,34 @@ function PageManualForm() {
     return mockCallers.filter(name => 
       name.toLowerCase().includes(input.toLowerCase())
     );
+  };
+
+  // Handle adding new telecaller
+  const handleAddNewTelecaller = async (telecallerName: string) => {
+    try {
+      // Auto-select the new telecaller
+      set('callerName', telecallerName);
+      
+      const result = await DualStorageService.addTelecaller({
+        name: telecallerName,
+        email: '',
+        phone: '',
+        branch: form.branch || 'Default'
+      });
+      
+      if (result.success) {
+        // Refresh the caller names list
+        const updatedResponse = await DualStorageService.getTelecallers();
+        if (updatedResponse.success && updatedResponse.data) {
+          const names = updatedResponse.data
+            .map((telecaller: any) => telecaller.name)
+            .filter((name: string) => name && name !== 'Unknown');
+          setCallerNames(names);
+        }
+      }
+    } catch (error) {
+      console.error('Error adding telecaller:', error);
+    }
   };
 
   const handleVehicleNumberChange = async (vehicleNumber: string) => {
@@ -1736,10 +1832,10 @@ function PageManualForm() {
   useEffect(() => {
     const loadCallerNames = async () => {
       try {
-        const response = await DualStorageService.getSalesReps();
+        const response = await DualStorageService.getTelecallers();
         if (response.success && response.data) {
           const names = response.data
-            .map((rep: any) => rep.name)
+            .map((telecaller: any) => telecaller.name)
             .filter((name: string) => name && name !== 'Unknown');
           setCallerNames(names);
         }
@@ -1953,7 +2049,7 @@ function PageManualForm() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
           <LabeledInput label="Executive" value={form.executive} onChange={v=>set('executive', v)}/>
           <LabeledInput label="Ops Executive" value={form.opsExecutive} onChange={v=>set('opsExecutive', v)}/>
-          <AutocompleteInput label="Caller Name" value={form.callerName} onChange={v=>set('callerName', v)} getSuggestions={getFilteredCallerSuggestions}/>
+          <AutocompleteInput label="Caller Name" value={form.callerName} onChange={v=>set('callerName', v)} getSuggestions={getFilteredCallerSuggestions} onAddNew={handleAddNewTelecaller} showAddNew={true}/>
           <LabeledInput label="Mobile Number" required placeholder="9xxxxxxxxx" value={form.mobile} onChange={v=>set('mobile', v)}/>
           <LabeledInput label="Rollover/Renewal" hint="internal code" value={form.rollover} onChange={v=>set('rollover', v)}/>
           <LabeledInput label="Customer Name" value={form.customerName} onChange={v=>set('customerName', v)}/>
@@ -3327,10 +3423,10 @@ function PageReview() {
   useEffect(() => {
     const loadCallerNames = async () => {
       try {
-        const response = await DualStorageService.getSalesReps();
+        const response = await DualStorageService.getTelecallers();
         if (response.success && response.data) {
           const names = response.data
-            .map((rep: any) => rep.name)
+            .map((telecaller: any) => telecaller.name)
             .filter((name: string) => name && name !== 'Unknown');
           setCallerNames(names);
         }
@@ -3357,10 +3453,10 @@ function PageReview() {
     if (input.length < 2) return [];
     
     try {
-      const response = await DualStorageService.getSalesReps();
+      const response = await DualStorageService.getTelecallers();
       if (response.success && response.data) {
         const filteredNames = response.data
-          .map((rep: any) => rep.name)
+          .map((telecaller: any) => telecaller.name)
           .filter((name: string) => 
             name && 
             name !== 'Unknown' && 
@@ -3378,6 +3474,34 @@ function PageReview() {
     return mockCallers.filter(name => 
       name.toLowerCase().includes(input.toLowerCase())
     );
+  };
+
+  // Handle adding new telecaller
+  const handleAddNewTelecaller = async (telecallerName: string) => {
+    try {
+      // Auto-select the new telecaller
+      updateManualExtras('callerName', telecallerName);
+      
+      const result = await DualStorageService.addTelecaller({
+        name: telecallerName,
+        email: '',
+        phone: '',
+        branch: editableData.manualExtras.branch || manualExtras.branch || 'Default'
+      });
+      
+      if (result.success) {
+        // Refresh the caller names list
+        const updatedResponse = await DualStorageService.getTelecallers();
+        if (updatedResponse.success && updatedResponse.data) {
+          const names = updatedResponse.data
+            .map((telecaller: any) => telecaller.name)
+            .filter((name: string) => name && name !== 'Unknown');
+          setCallerNames(names);
+        }
+      }
+    } catch (error) {
+      console.error('Error adding telecaller:', error);
+    }
   };
 
   const loadUploadData = async (uploadId: string) => {
@@ -3959,6 +4083,8 @@ function PageReview() {
               onChange={(value) => updateManualExtras('callerName', value)}
               hint="telecaller name"
               getSuggestions={getFilteredCallerSuggestions}
+              onAddNew={handleAddNewTelecaller}
+              showAddNew={true}
             />
             <LabeledInput 
               label="Customer Email ID" 

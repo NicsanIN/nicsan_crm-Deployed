@@ -113,6 +113,20 @@ const initializeDatabase = async () => {
       )
     `);
 
+    // Create telecallers table
+    await query(`
+      CREATE TABLE IF NOT EXISTS telecallers (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(255) UNIQUE NOT NULL,
+        email VARCHAR(255),
+        phone VARCHAR(20),
+        branch VARCHAR(255),
+        is_active BOOLEAN DEFAULT true,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
     // Create settings table
     await query(`
       CREATE TABLE IF NOT EXISTS settings (

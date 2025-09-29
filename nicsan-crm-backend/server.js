@@ -34,6 +34,7 @@ app.use('/api/policies', require('./routes/policies'));
 app.use('/api/upload', require('./routes/upload'));
 app.use('/api/dashboard', require('./routes/dashboard'));
 app.use('/api/settings', require('./routes/settings'));
+app.use('/api/telecallers', require('./routes/telecallers'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {

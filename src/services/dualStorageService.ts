@@ -67,7 +67,7 @@ class DualStorageService {
       }
       
       // For save operations, propagate the error instead of falling back to mock data
-      if (_operationName.includes('Save') || _operationName.includes('Create')) {
+      if (_operationName.includes('Save') || _operationName.includes('Create') || _operationName.includes('Add')) {
         return {
           success: false,
           data: null,
@@ -75,17 +75,18 @@ class DualStorageService {
           error: backendError.message || 'Backend operation failed'
         };
       }
-    }
 
-    // Step 2: Fallback to Mock Data (only for read operations)
-    if (ENABLE_DEBUG) {
+      // Step 2: Fallback to Mock Data (only for read operations)
+      if (ENABLE_DEBUG) {
+        console.log('Falling back to mock data for operation:', _operationName);
+      }
+      
+      return {
+        success: true,
+        data: mockData,
+        source: 'MOCK_DATA'
+      };
     }
-    
-    return {
-      success: true,
-      data: mockData,
-      source: 'MOCK_DATA'
-    };
   }
 
   // Dashboard Metrics with dual storage
@@ -115,6 +116,57 @@ class DualStorageService {
       () => this.backendApiService.getDashboardMetrics(),
       mockData,
       'Dashboard Metrics'
+    );
+  }
+
+  // Telecallers with dual storage
+  async getTelecallers(): Promise<DualStorageResult> {
+    const mockData = [
+      {
+        id: 1,
+        name: 'Priya Singh',
+        email: 'priya@nicsan.in',
+        phone: '9876543210',
+        branch: 'Mumbai',
+        is_active: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      },
+      {
+        id: 2,
+        name: 'Rahul Kumar',
+        email: 'rahul@nicsan.in',
+        phone: '9876543211',
+        branch: 'Delhi',
+        is_active: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      },
+      {
+        id: 3,
+        name: 'Anjali Sharma',
+        email: 'anjali@nicsan.in',
+        phone: '9876543212',
+        branch: 'Bangalore',
+        is_active: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }
+    ];
+
+    return this.executeDualStoragePattern(
+      () => this.backendApiService.getTelecallers(),
+      mockData,
+      'Telecallers'
+    );
+  }
+
+  // Add new telecaller
+  async addTelecaller(telecallerData: any): Promise<DualStorageResult> {
+    return this.executeDualStoragePattern(
+      () => this.backendApiService.addTelecaller(telecallerData),
+      null,
+      'Add Telecaller'
     );
   }
 
