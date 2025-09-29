@@ -124,21 +124,129 @@ function generateEmailContent(policyData) {
     <html>
     <head>
       <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <title>Your Motor Insurance Policy</title>
       <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-        .header { background-color: #2c3e50; color: white; padding: 20px; text-align: center; }
-        .content { padding: 20px; }
-        .policy-details { background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0; }
-        .footer { background-color: #34495e; color: white; padding: 15px; text-align: center; font-size: 14px; }
-        .highlight { color: #e74c3c; font-weight: bold; }
+        /* Reset styles for email clients */
+        body, table, td, p, a, li, blockquote {
+          -webkit-text-size-adjust: 100%;
+          -ms-text-size-adjust: 100%;
+        }
+        table, td {
+          mso-table-lspace: 0pt;
+          mso-table-rspace: 0pt;
+        }
+        img {
+          -ms-interpolation-mode: bicubic;
+          border: 0;
+          height: auto;
+          line-height: 100%;
+          outline: none;
+          text-decoration: none;
+        }
+        
+        /* Container */
+        .email-container {
+          max-width: 1200px;
+          margin: 0 auto;
+          background-color: #ffffff;
+        }
+        
+        /* Header - Desktop: 1200x400px, Mobile: 600x200px */
+        .header {
+          text-align: center;
+          width: 100%;
+          max-width: 1200px;
+        }
+        
+        .header img {
+          max-width: 100%;
+          height: auto;
+          display: block;
+        }
+        
+        /* Content */
+        .content {
+          padding: 20px;
+          max-width: 1200px;
+          margin: 0 auto;
+          font-family: Arial, sans-serif;
+          line-height: 1.6;
+          color: #333;
+        }
+        
+        /* Footer - Desktop: 1200x250px, Mobile: 600x125px */
+        .footer {
+          text-align: center;
+          width: 100%;
+          max-width: 1200px;
+        }
+        
+        .footer img {
+          max-width: 100%;
+          height: auto;
+          display: block;
+        }
+        
+        /* Policy details */
+        .policy-details { 
+          background-color: #f8f9fa; 
+          padding: 15px; 
+          border-radius: 5px; 
+          margin: 20px 0; 
+        }
+        
+        .highlight { 
+          color: #e74c3c; 
+          font-weight: bold; 
+        }
+        
+        /* Mobile Responsive */
+        @media only screen and (max-width: 600px) {
+          .email-container {
+            width: 100% !important;
+            max-width: 600px !important;
+          }
+          
+          .header img {
+            content: url('https://nicsan-crm-pdfs.s3.amazonaws.com/email-assets/headers/header-mobile.png') !important;
+            width: 600px !important;
+            height: 200px !important;
+          }
+          
+          .footer img {
+            content: url('https://nicsan-crm-pdfs.s3.amazonaws.com/email-assets/footers/footer-mobile.png') !important;
+            width: 600px !important;
+            height: 125px !important;
+          }
+          
+          .content {
+            padding: 15px !important;
+          }
+          
+          .policy-details table {
+            width: 100% !important;
+          }
+          
+          .policy-details td {
+            display: block !important;
+            width: 100% !important;
+            padding: 5px 0 !important;
+            border-bottom: none !important;
+          }
+        }
       </style>
     </head>
     <body>
-      <div class="header">
-        <h1>🏆 Nicsan Insurance</h1>
-        <p>Your Trusted Insurance Partner</p>
-      </div>
+      <div class="email-container">
+        <!-- Header with S3 image -->
+        <div class="header">
+          <img src="https://nicsan-crm-pdfs.s3.amazonaws.com/email-assets/headers/header-desktop.png" 
+               alt="Nicsan Insurance Header" 
+               width="1200" 
+               height="400"
+               style="display: block; width: 100%; height: auto;">
+        </div>
       
       <div class="content">
         <h2>Dear ${customer_name},</h2>
@@ -192,9 +300,46 @@ function generateEmailContent(policyData) {
         <strong>Nicsan Insurance Team</strong></p>
       </div>
       
-      <div class="footer">
-        <p>This is an automated email. Please do not reply to this email.</p>
-        <p>© 2024 Nicsan Insurance. All rights reserved.</p>
+        <!-- Footer with S3 image and clickable social media -->
+        <div class="footer">
+          <img src="https://nicsan-crm-pdfs.s3.amazonaws.com/email-assets/footers/footer-desktop.png" 
+               alt="Nicsan Insurance Footer" 
+               width="1200" 
+               height="250"
+               usemap="#footerMap"
+               style="display: block; width: 100%; height: auto;">
+          
+          <!-- Image map for clickable social media icons -->
+          <map name="footerMap">
+            <!-- Instagram icon clickable area -->
+            <area shape="rect" 
+                  coords="70,100,107,139" 
+                  href="https://www.instagram.com/nicsanin?igsh=bzZ2cmFqMHFodzFt&utm_source=qr" 
+                  alt="Instagram"
+                  target="_blank">
+            
+            <!-- X (Twitter) icon clickable area -->
+            <area shape="rect" 
+                  coords="107,139,144,177" 
+                  href="https://x.com/nicsanin?s=11" 
+                  alt="X (Twitter)"
+                  target="_blank">
+            
+            <!-- LinkedIn icon clickable area -->
+            <area shape="rect" 
+                  coords="144,177,181,215" 
+                  href="https://www.linkedin.com/company/nicsanin/" 
+                  alt="LinkedIn"
+                  target="_blank">
+            
+            <!-- Website clickable area -->
+            <area shape="rect" 
+                  coords="925,100,1000,150" 
+                  href="https://nicsanin.com" 
+                  alt="Website"
+                  target="_blank">
+          </map>
+        </div>
       </div>
     </body>
     </html>
