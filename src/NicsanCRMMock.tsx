@@ -3380,6 +3380,62 @@ function PageReview() {
     );
   };
 
+  // Filtered executive suggestions for autocomplete (same as caller suggestions)
+  const getFilteredExecutiveSuggestions = async (input: string): Promise<string[]> => {
+    if (input.length < 2) return [];
+    
+    try {
+      const response = await DualStorageService.getSalesReps();
+      if (response.success && response.data) {
+        const filteredNames = response.data
+          .map((rep: any) => rep.name)
+          .filter((name: string) => 
+            name && 
+            name !== 'Unknown' && 
+            name.toLowerCase().includes(input.toLowerCase())
+          )
+          .slice(0, 5); // Limit to 5 suggestions
+        return filteredNames;
+      }
+    } catch (error) {
+      console.warn('Failed to get executive suggestions:', error);
+    }
+    
+    // Fallback to mock data with filtering
+    const mockExecutives = ['Priya Singh', 'Rahul Kumar', 'Anjali Sharma'];
+    return mockExecutives.filter(name => 
+      name.toLowerCase().includes(input.toLowerCase())
+    );
+  };
+
+  // Filtered ops executive suggestions for autocomplete (same as caller suggestions)
+  const getFilteredOpsExecutiveSuggestions = async (input: string): Promise<string[]> => {
+    if (input.length < 2) return [];
+    
+    try {
+      const response = await DualStorageService.getSalesReps();
+      if (response.success && response.data) {
+        const filteredNames = response.data
+          .map((rep: any) => rep.name)
+          .filter((name: string) => 
+            name && 
+            name !== 'Unknown' && 
+            name.toLowerCase().includes(input.toLowerCase())
+          )
+          .slice(0, 5); // Limit to 5 suggestions
+        return filteredNames;
+      }
+    } catch (error) {
+      console.warn('Failed to get ops executive suggestions:', error);
+    }
+    
+    // Fallback to mock data with filtering
+    const mockOpsExecutives = ['Priya Singh', 'Rahul Kumar', 'Anjali Sharma'];
+    return mockOpsExecutives.filter(name => 
+      name.toLowerCase().includes(input.toLowerCase())
+    );
+  };
+
   const loadUploadData = async (uploadId: string) => {
     try {
       // Check if this is a mock upload ID
@@ -3941,17 +3997,19 @@ function PageReview() {
             ✏️ Manual Extras (from Sales Rep)
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <LabeledInput 
+            <AutocompleteInput 
               label="Executive" 
               value={editableData.manualExtras.executive || manualExtras.executive}
               onChange={(value) => updateManualExtras('executive', value)}
               hint="sales rep name"
+              getSuggestions={getFilteredExecutiveSuggestions}
             />
-            <LabeledInput 
+            <AutocompleteInput 
               label="Ops Executive" 
               value={editableData.manualExtras.opsExecutive || manualExtras.opsExecutive}
               onChange={(value) => updateManualExtras('opsExecutive', value)}
               hint="ops executive name"
+              getSuggestions={getFilteredOpsExecutiveSuggestions}
             />
             <AutocompleteInput 
               label="Caller Name" 
