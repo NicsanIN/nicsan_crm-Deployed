@@ -171,14 +171,6 @@ class OpenAIService {
     - Net Premium (₹): Extract from "Total Own Damage Premium(A)" values
     - Total Premium (₹): Extract from "Total Premium Payable" values`;
         console.log(`🔧 ICICI Lombard rules applied`);
-      } else if (insurer === 'GENERALI_CENTRAL') {
-        otherInsurerRules = `
-10. For Generali Central Insurance policies specifically:
-    - Net OD (₹): Extract from "Total Own Damage Premium(A)" values
-    - Total OD (₹): Extract from "Total Annual Premium (A+B)" values  
-    - Net Premium (₹): Extract from "Total Annual Premium (A+B)" values
-    - Total Premium (₹): Extract from "Total Premium" values`;
-        console.log(`🔧 Generali Central rules applied`);
       } else if (insurer === 'LIBERTY_GENERAL') {
         otherInsurerRules = `
 10. For LIBERTY GENERAL INSURANCE policies specifically:

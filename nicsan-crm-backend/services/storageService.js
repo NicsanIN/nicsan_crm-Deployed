@@ -455,8 +455,8 @@ async savePolicy(policyData) {
       
       // DIGIT pattern detection and correction removed for simplification
       
-      // NEW: Enforce DIGIT/RELIANCE_GENERAL/ICIC/GENERALI_CENTRAL/LIBERTY_GENERAL/ROYAL_SUNDARAM/HDFC_ERGO/ZURICH_KOTAK business rules
-      if (extractedData.insurer === 'DIGIT' || extractedData.insurer === 'RELIANCE_GENERAL' || extractedData.insurer === 'ICIC' || extractedData.insurer === 'GENERALI_CENTRAL' || extractedData.insurer === 'LIBERTY_GENERAL' || extractedData.insurer === 'ROYAL_SUNDARAM' || extractedData.insurer === 'HDFC_ERGO' || extractedData.insurer === 'ZURICH_KOTAK') {
+      // NEW: Enforce DIGIT/RELIANCE_GENERAL/ICIC/LIBERTY_GENERAL/ROYAL_SUNDARAM/HDFC_ERGO/ZURICH_KOTAK business rules
+      if (extractedData.insurer === 'DIGIT' || extractedData.insurer === 'RELIANCE_GENERAL' || extractedData.insurer === 'ICIC' || extractedData.insurer === 'LIBERTY_GENERAL' || extractedData.insurer === 'ROYAL_SUNDARAM' || extractedData.insurer === 'HDFC_ERGO' || extractedData.insurer === 'ZURICH_KOTAK') {
         // For DIGIT: Force all premium fields to null
         if (extractedData.insurer === 'DIGIT') {
           console.log('🔍 Processing DIGIT with null extraction...');
@@ -496,21 +496,6 @@ async savePolicy(policyData) {
           }
           
           console.log(`✅ ICICI Lombard processing completed: Net OD (${extractedData.net_od}), Total OD (${extractedData.total_od}), Net Premium (${extractedData.net_premium})`);
-        }
-        
-        // Handle GENERALI_CENTRAL policies
-        if (extractedData.insurer === 'GENERALI_CENTRAL') {
-          console.log('🔍 Processing Generali Central with field standardization...');
-          
-          // Field standardization - Total OD and Net Premium from "Total Annual Premium (A+B)"
-          const totalAnnualPremiumAB = extractedData.total_od || extractedData.net_premium;
-          if (totalAnnualPremiumAB) {
-            console.log(`🔧 Generali Central: Setting Total OD and Net Premium to Total Annual Premium (A+B) value: ${totalAnnualPremiumAB}`);
-            extractedData.total_od = totalAnnualPremiumAB;
-            extractedData.net_premium = totalAnnualPremiumAB;
-          }
-          
-          console.log(`✅ Generali Central processing completed: Net OD (${extractedData.net_od}), Total OD (${extractedData.total_od}), Net Premium (${extractedData.net_premium}), Total Premium (${extractedData.total_premium})`);
         }
         
         // Handle LIBERTY_GENERAL policies

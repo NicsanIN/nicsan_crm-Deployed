@@ -216,7 +216,6 @@ function PageUpload() {
     { value: 'TATA_AIG', label: 'Tata AIG' },
     { value: 'DIGIT', label: 'Digit' },
     { value: 'RELIANCE_GENERAL', label: 'Reliance General' },
-    { value: 'GENERALI_CENTRAL', label: 'Generali Central Insurance' },
     { value: 'LIBERTY_GENERAL', label: 'Liberty General Insurance' },
     { value: 'ICIC', label: 'ICICI Lombard' },
     { value: 'ROYAL_SUNDARAM', label: 'Royal Sundaram General Insurance' },
@@ -804,8 +803,6 @@ function PageUpload() {
                             ? 'bg-green-100 text-green-700'
                             : file.insurer === 'RELIANCE_GENERAL'
                             ? 'bg-purple-100 text-purple-700'
-                            : file.insurer === 'GENERALI_CENTRAL'
-                            ? 'bg-orange-100 text-orange-700'
                             : file.insurer === 'LIBERTY_GENERAL'
                             ? 'bg-yellow-100 text-yellow-700'
                             : file.insurer === 'ICIC'
