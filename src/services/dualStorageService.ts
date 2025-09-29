@@ -311,6 +311,42 @@ class DualStorageService {
         status: 'SAVED',
         source: 'MANUAL_FORM',
         created_at: new Date().toISOString()
+      },
+      {
+        id: '3',
+        policy_number: 'RS-7890',
+        vehicle_number: 'KA02CD3456',
+        insurer: 'Royal Sundaram General Insurance',
+        total_premium: 13200,
+        customer_name: 'Sarah Wilson',
+        cashback: 700,
+        status: 'SAVED',
+        source: 'PDF_UPLOAD',
+        created_at: new Date().toISOString()
+      },
+      {
+        id: '4',
+        policy_number: 'ZK-5678',
+        vehicle_number: 'KA03EF7890',
+        insurer: 'Zurich Kotak General Insurance',
+        total_premium: 12800,
+        customer_name: 'Michael Brown',
+        cashback: 650,
+        status: 'SAVED',
+        source: 'MANUAL_FORM',
+        created_at: new Date().toISOString()
+      },
+      {
+        id: '5',
+        policy_number: 'HE-9012',
+        vehicle_number: 'KA04GH1234',
+        insurer: 'HDFC ERGO General Insurance',
+        total_premium: 12500,
+        customer_name: 'Emily Davis',
+        cashback: 600,
+        status: 'SAVED',
+        source: 'PDF_UPLOAD',
+        created_at: new Date().toISOString()
       }
     ];
 

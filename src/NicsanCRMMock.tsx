@@ -218,7 +218,10 @@ function PageUpload() {
     { value: 'RELIANCE_GENERAL', label: 'Reliance General' },
     { value: 'GENERALI_CENTRAL', label: 'Generali Central Insurance' },
     { value: 'LIBERTY_GENERAL', label: 'Liberty General Insurance' },
-    { value: 'ICIC', label: 'ICICI Lombard' }
+    { value: 'ICIC', label: 'ICICI Lombard' },
+    { value: 'ROYAL_SUNDARAM', label: 'Royal Sundaram General Insurance' },
+    { value: 'ZURICH_KOTAK', label: 'Zurich Kotak General Insurance' },
+    { value: 'HDFC_ERGO', label: 'HDFC ERGO General Insurance' }
   ];
   const [manualExtras, setManualExtras] = useState({
     executive: '',

@@ -455,8 +455,8 @@ async savePolicy(policyData) {
       
       // DIGIT pattern detection and correction removed for simplification
       
-      // NEW: Enforce DIGIT/RELIANCE_GENERAL/ICIC/GENERALI_CENTRAL/LIBERTY_GENERAL business rules
-      if (extractedData.insurer === 'DIGIT' || extractedData.insurer === 'RELIANCE_GENERAL' || extractedData.insurer === 'ICIC' || extractedData.insurer === 'GENERALI_CENTRAL' || extractedData.insurer === 'LIBERTY_GENERAL') {
+      // NEW: Enforce DIGIT/RELIANCE_GENERAL/ICIC/GENERALI_CENTRAL/LIBERTY_GENERAL/ROYAL_SUNDARAM/HDFC_ERGO/ZURICH_KOTAK business rules
+      if (extractedData.insurer === 'DIGIT' || extractedData.insurer === 'RELIANCE_GENERAL' || extractedData.insurer === 'ICIC' || extractedData.insurer === 'GENERALI_CENTRAL' || extractedData.insurer === 'LIBERTY_GENERAL' || extractedData.insurer === 'ROYAL_SUNDARAM' || extractedData.insurer === 'HDFC_ERGO' || extractedData.insurer === 'ZURICH_KOTAK') {
         // For DIGIT: Force all premium fields to null
         if (extractedData.insurer === 'DIGIT') {
           console.log('🔍 Processing DIGIT with null extraction...');
@@ -543,6 +543,68 @@ async savePolicy(policyData) {
           }
           
           console.log(`✅ LIBERTY GENERAL processing completed: Net OD (${extractedData.net_od}), Total OD (${extractedData.total_od}), Net Premium (${extractedData.net_premium}), Total Premium (${extractedData.total_premium})`);
+        }
+        
+        // Handle ROYAL_SUNDARAM policies
+        if (extractedData.insurer === 'ROYAL_SUNDARAM') {
+          console.log('🔍 Processing ROYAL SUNDARAM with field standardization...');
+          
+          // Field standardization - Total OD and Net Premium from "NET PREMIUM (A + B)"
+          const netPremiumAB = extractedData.total_od || extractedData.net_premium;
+          if (netPremiumAB) {
+            console.log(`🔧 ROYAL SUNDARAM: Setting Total OD and Net Premium to NET PREMIUM (A + B) value: ${netPremiumAB}`);
+            extractedData.total_od = netPremiumAB;
+            extractedData.net_premium = netPremiumAB;
+          }
+          
+          console.log(`✅ ROYAL SUNDARAM processing completed: Net OD (${extractedData.net_od}), Total OD (${extractedData.total_od}), Net Premium (${extractedData.net_premium}), Total Premium (${extractedData.total_premium})`);
+        }
+        
+        // Handle HDFC_ERGO policies
+        if (extractedData.insurer === 'HDFC_ERGO') {
+          console.log('🔍 Processing HDFC ERGO with field standardization...');
+          
+          // Field standardization - Total OD and Net Premium from "Total Package Premium (a+b)"
+          const totalPackagePremiumAB = extractedData.total_od || extractedData.net_premium;
+          if (totalPackagePremiumAB) {
+            console.log(`🔧 HDFC ERGO: Setting Total OD and Net Premium to Total Package Premium (a+b) value: ${totalPackagePremiumAB}`);
+            extractedData.total_od = totalPackagePremiumAB;
+            extractedData.net_premium = totalPackagePremiumAB;
+          }
+          
+          console.log(`✅ HDFC ERGO processing completed: Net OD (${extractedData.net_od}), Total OD (${extractedData.total_od}), Net Premium (${extractedData.net_premium}), Total Premium (${extractedData.total_premium})`);
+        }
+        
+        // Handle ZURICH_KOTAK policies
+        if (extractedData.insurer === 'ZURICH_KOTAK') {
+          console.log('🔍 Processing ZURICH KOTAK with calculation validation...');
+          
+          // Validate and auto-correct Total OD calculation
+          if (extractedData.net_od !== null && extractedData.add_on_premium_c !== null) {
+            const expectedTotalOD = extractedData.net_od + extractedData.add_on_premium_c;
+            if (extractedData.total_od !== expectedTotalOD) {
+              console.log('❌ ZURICH KOTAK Calculation ERROR: Total OD calculation incorrect!');
+              console.log(`🔍 Expected: ${extractedData.net_od} + ${extractedData.add_on_premium_c} = ${expectedTotalOD}`);
+              console.log(`🔍 Actual: ${extractedData.total_od}`);
+              
+              // Auto-correct: Set Total OD to calculated value
+              extractedData.total_od = expectedTotalOD;
+              console.log('🔧 ZURICH KOTAK Auto-correction: Total OD set to calculated value');
+              console.log(`🔧 Total OD corrected from ${extractedData.total_od} to ${expectedTotalOD}`);
+            } else {
+              console.log('✅ ZURICH KOTAK Calculation: Total OD correctly calculated');
+              console.log(`🔍 Calculation: ${extractedData.net_od} + ${extractedData.add_on_premium_c} = ${extractedData.total_od}`);
+            }
+          } else {
+            console.log('⚠️ Cannot validate Total OD calculation: Missing Net OD or Add on Premium (C)');
+            console.log(`🔍 Net OD: ${extractedData.net_od}, Add on Premium (C): ${extractedData.add_on_premium_c}`);
+            if (extractedData.net_od === null) {
+              extractedData.total_od = null;
+              console.log('🔧 Total OD set to null due to missing Net OD');
+            }
+          }
+          
+          console.log(`✅ ZURICH KOTAK processing completed: Net OD (${extractedData.net_od}), Total OD (${extractedData.total_od}), Net Premium (${extractedData.net_premium}), Total Premium (${extractedData.total_premium})`);
         }
       }
       
