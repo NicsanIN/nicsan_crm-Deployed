@@ -113,6 +113,17 @@ async savePolicy(policyData) {
       throw new Error(`Policy number '${policy_number}' already exists. Please use a different policy number.`);
     }
 
+    // Validate telecaller exists in database
+    if (caller_name) {
+      const telecallerExists = await query(
+        'SELECT id FROM telecallers WHERE name = $1 AND is_active = true',
+        [caller_name]
+      );
+      if (telecallerExists.rows.length === 0) {
+        throw new Error(`Telecaller "${caller_name}" does not exist or is inactive. Please select a valid telecaller or add them to the system first.`);
+      }
+    }
+
     // Check if customer_name column exists
     const columnCheck = await query(`
       SELECT column_name 

@@ -1,3 +1,5 @@
+// API Integration Service
+// This file is currently empty and can be used for future API integration functionality
 // Real API Integration Service for Nicsan CRM
 // This replaces the mock data with actual backend API calls
 

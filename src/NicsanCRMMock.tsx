@@ -724,7 +724,7 @@ function PageUpload() {
           {/* Submit Button for Manual Extras */}
           <div className="mt-4 flex justify-end">
             <button
-              onClick={() => {
+              onClick={async () => {
                 // Show preview of what will be submitted
                 const filledFields = Object.entries(manualExtras).filter(([, value]) => value.trim() !== '');
                 // Validate required branch field
@@ -736,6 +736,32 @@ function PageUpload() {
                 if (filledFields.length === 0) {
                   alert('Please fill at least one manual field before proceeding');
                   return;
+                }
+                
+                // Validate Caller Name if provided
+                if (manualExtras.callerName && manualExtras.callerName.trim() !== '') {
+                  // Format validation
+                  if (manualExtras.callerName.trim().length < 2) {
+                    alert('Caller Name must be at least 2 characters');
+                    return;
+                  }
+                  
+                  // Database existence validation
+                  try {
+                    const response = await DualStorageService.getTelecallers();
+                    if (response.success && response.data) {
+                      const telecallerExists = response.data.some(
+                        (telecaller: any) => telecaller.name === manualExtras.callerName.trim()
+                      );
+                      if (!telecallerExists) {
+                        alert(`Telecaller "${manualExtras.callerName}" does not exist. Please select from suggestions or add them first.`);
+                        return;
+                      }
+                    }
+                  } catch (error) {
+                    alert('Failed to validate telecaller. Please try again.');
+                    return;
+                  }
                 }
                 
                 setManualExtrasSaved(true);
@@ -899,7 +925,7 @@ function LabeledInput({ label, placeholder, hint, required, value, onChange, err
         {label} {required && <span className="text-rose-600">*</span>} {hint && <span className="text-[10px] text-zinc-400">({hint})</span>}
       </div>
       <input 
-        value={value} 
+        value={value || ''} 
         onChange={e=>onChange && onChange(e.target.value)} 
         className={`w-full rounded-xl border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200 ${
           error ? 'border-red-300 bg-red-50' : 'border-zinc-300'
@@ -3702,18 +3728,35 @@ function PageReview() {
           setEditableData({ pdfData: {}, manualExtras: {} });
         }, 2000);
       } else {
-        console.log('❌ Policy confirmation failed:', result.error);
+        console.error('❌ Policy confirmation failed:', result.error);
         setSubmitMessage({ 
           type: 'error', 
-          message: result.error || 'Failed to save policy. Please try again.' 
+          message: `Policy confirmation failed: ${result.error || 'Unknown error'}` 
         });
       }
       
     } catch (error) {
       console.error('❌ Confirm & Save error:', error);
+      let errorMessage = 'Failed to save policy. Please try again.';
+      
+      // Provide more specific error messages
+      if (error.message) {
+        if (error.message.includes('Telecaller')) {
+          errorMessage = 'Error: Please select a valid telecaller from the list or add a new one.';
+        } else if (error.message.includes('already exists')) {
+          errorMessage = 'Error: This policy number already exists. Please use a different policy number.';
+        } else if (error.message.includes('required')) {
+          errorMessage = 'Error: Please fill in all required fields (Policy Number, Vehicle Number, Executive, Mobile).';
+        } else if (error.message.includes('Invalid vehicle number')) {
+          errorMessage = 'Error: Please enter a valid vehicle number format (e.g., KA01AB1234).';
+        } else {
+          errorMessage = `Error: ${error.message}`;
+        }
+      }
+      
       setSubmitMessage({ 
         type: 'error', 
-        message: 'Failed to save policy. Please try again.' 
+        message: errorMessage
       });
     } finally {
       setIsLoading(false);
