@@ -921,6 +921,118 @@ function LabeledSelect({ label, value, onChange, options, required, error }: {
   )
 }
 
+// AutocompleteInput component with sales rep suggestions
+function AutocompleteInput({ label, value, onChange, hint, required, error, getSuggestions }: { 
+  label: string; 
+  value?: any; 
+  onChange?: (v:any)=>void;
+  hint?: string;
+  required?: boolean;
+  error?: string;
+  getSuggestions?: (input: string) => Promise<string[]>;
+}) {
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const suggestionsRef = useRef<HTMLDivElement>(null);
+
+  // Handle input change with debounced suggestions
+  const handleInputChange = async (inputValue: string) => {
+    onChange && onChange(inputValue);
+    
+    if (inputValue.length < 2 || !getSuggestions) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const newSuggestions = await getSuggestions(inputValue);
+      setSuggestions(newSuggestions);
+      setShowSuggestions(newSuggestions.length > 0);
+    } catch (error) {
+      console.warn('Failed to get suggestions:', error);
+      setSuggestions([]);
+      setShowSuggestions(false);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Handle suggestion selection
+  const handleSuggestionClick = (suggestion: string) => {
+    onChange && onChange(suggestion);
+    setShowSuggestions(false);
+    setSuggestions([]);
+  };
+
+  // Close suggestions when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (suggestionsRef.current && !suggestionsRef.current.contains(event.target as Node) &&
+          inputRef.current && !inputRef.current.contains(event.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  return (
+    <div className="relative">
+      <label className="block">
+        <div className="text-xs text-zinc-600 mb-1">
+          {label} {required && <span className="text-rose-600">*</span>} {hint && <span className="text-[10px] text-zinc-400">({hint})</span>}
+        </div>
+        <input 
+          ref={inputRef}
+          type="text"
+          value={value || ''} 
+          onChange={e => handleInputChange(e.target.value)}
+          onFocus={() => {
+            if (suggestions.length > 0) {
+              setShowSuggestions(true);
+            }
+          }}
+          className={`w-full rounded-xl border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200 ${
+            error ? 'border-red-300 bg-red-50' : 'border-zinc-300'
+          }`} 
+          placeholder={`Type to search ${label.toLowerCase()}...`}
+        />
+        {isLoading && (
+          <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-600"></div>
+          </div>
+        )}
+      </label>
+      
+      {error && (
+        <div className="text-xs text-red-600 mt-1">{error}</div>
+      )}
+      
+      {showSuggestions && suggestions.length > 0 && (
+        <div 
+          ref={suggestionsRef}
+          className="absolute z-50 w-full mt-1 bg-white border border-zinc-300 rounded-lg shadow-lg max-h-48 overflow-y-auto"
+        >
+          {suggestions.map((suggestion, index) => (
+            <div
+              key={index}
+              className="px-3 py-2 hover:bg-indigo-50 cursor-pointer text-sm border-b border-zinc-100 last:border-b-0"
+              onClick={() => handleSuggestionClick(suggestion)}
+            >
+              {suggestion}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Optimized manual form with QuickFill and two-way cashback calc
 function PageManualForm() {
   const [form, setForm] = useState<any>({
@@ -3161,6 +3273,7 @@ function PageReview() {
     manualExtras: {}
   });
 
+
   // Load available uploads for review
   useEffect(() => {
     const loadAvailableUploads = async () => {
@@ -3831,17 +3944,17 @@ function PageReview() {
             ✏️ Manual Extras (from Sales Rep)
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <LabeledInput 
+            <LabeledSelect 
               label="Executive" 
               value={editableData.manualExtras.executive || manualExtras.executive}
               onChange={(value) => updateManualExtras('executive', value)}
-              hint="sales rep name"
+              options={["Yashwanth", "Kavya", "Bhagya", "Sandesh", "Yallappa", "Nethravathi", "Tejaswini"]}
             />
             <LabeledSelect 
               label="Ops Executive" 
               value={editableData.manualExtras.opsExecutive || manualExtras.opsExecutive}
               onChange={(value) => updateManualExtras('opsExecutive', value)}
-              options={["Yashwanth", "Kavya", "Bhagya", "Sandesh", "Yallappa", "Nethravathi", "Tejaswini"]}
+              options={["NA", "Ravi", "Pavan", "Manjunath"]}
             />
             <LabeledInput 
               label="Caller Name" 
