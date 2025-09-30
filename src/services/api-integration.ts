@@ -1,10 +1,12 @@
+// API Integration Service
+// This file is currently empty and can be used for future API integration functionality
 // Real API Integration Service for Nicsan CRM
 // This replaces the mock data with actual backend API calls
 
 import { authAPI, policiesAPI, uploadAPI, dashboardAPI, settingsAPI } from './api';
 
 // Environment variables
-const HEALTH_URL = import.meta.env.VITE_BACKEND_HEALTH_URL || 'http://localhost:3001/health';
+const HEALTH_URL = import.meta.env.VITE_BACKEND_HEALTH_URL!;
 const CHECK_INTERVAL = parseInt(import.meta.env.VITE_HEALTH_CHECK_INTERVAL || '30000');
 const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
 const ENABLE_MOCK_DATA = import.meta.env.VITE_ENABLE_MOCK_DATA === 'true';

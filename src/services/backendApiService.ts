@@ -3,8 +3,8 @@
 
 // import { authAPI, policiesAPI } from './api';
 
-const API_BASE_URL: string = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
-const BACKEND_URL: string = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
+const API_BASE_URL: string = import.meta.env.VITE_API_BASE_URL!;
+const BACKEND_URL: string = import.meta.env.VITE_BACKEND_URL!;
 const ENABLE_DEBUG: boolean = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
 
 
@@ -76,6 +76,79 @@ class BackendApiService {
     } catch (error) {
       if (ENABLE_DEBUG) {
         console.error('❌ BackendApiService: Dashboard metrics failed:', error);
+      }
+      throw error;
+    }
+  }
+
+  // Telecallers from backend
+  async getTelecallers(): Promise<BackendApiResult> {
+    try {
+      const response = await fetch('${API_BASE_URL}/telecallers', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      
+      if (ENABLE_DEBUG) {
+        console.log('✅ BackendApiService: Telecallers retrieved successfully');
+      }
+
+      return {
+        success: true,
+        data: result.data,
+        source: 'BACKEND_API'
+      };
+    } catch (error) {
+      if (ENABLE_DEBUG) {
+        console.error('❌ BackendApiService: Get telecallers failed:', error);
+      }
+      throw error;
+    }
+  }
+
+  // Add new telecaller
+  async addTelecaller(telecallerData: any): Promise<BackendApiResult> {
+    try {
+      if (ENABLE_DEBUG) {
+        console.log('🔄 BackendApiService: Adding new telecaller...');
+      }
+
+      const response = await fetch('${API_BASE_URL}/telecallers', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(telecallerData),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      
+      if (ENABLE_DEBUG) {
+        console.log('✅ BackendApiService: Telecaller added successfully');
+      }
+
+      return {
+        success: true,
+        data: result.data,
+        source: 'BACKEND_API'
+      };
+    } catch (error) {
+      if (ENABLE_DEBUG) {
+        console.error('❌ BackendApiService: Add telecaller failed:', error);
       }
       throw error;
     }

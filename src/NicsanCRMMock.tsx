@@ -921,6 +921,7 @@ function LabeledSelect({ label, value, onChange, options, required, error }: {
   )
 }
 
+
 // Optimized manual form with QuickFill and two-way cashback calc
 function PageManualForm() {
   const [form, setForm] = useState<any>({
@@ -957,7 +958,7 @@ function PageManualForm() {
             brokerage: "0",
             cashback: "",
             customerName: "",
-    customerEmail: "",
+            customerEmail: "",
             branch: ""
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -1047,7 +1048,7 @@ function PageManualForm() {
             }
           }
           break;
-            
+        
       case 'insurer':
         if (!value) {
           errors.push('Insurer (Company) is required');
@@ -2293,7 +2294,7 @@ function PageManualGrid() {
             branch: cells[29] || "",
             remark: cells[30] || "",
             cashback: "", // Not in Excel - keep empty
-            status: "OK"
+            status: "OK" 
           };
           
           // Debug logging for dates
@@ -3161,6 +3162,7 @@ function PageReview() {
     manualExtras: {}
   });
 
+
   // Load available uploads for review
   useEffect(() => {
     const loadAvailableUploads = async () => {
@@ -3831,17 +3833,17 @@ function PageReview() {
             ✏️ Manual Extras (from Sales Rep)
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <LabeledInput 
+            <LabeledSelect 
               label="Executive" 
               value={editableData.manualExtras.executive || manualExtras.executive}
               onChange={(value) => updateManualExtras('executive', value)}
-              hint="sales rep name"
+              options={["Yashwanth", "Kavya", "Bhagya", "Sandesh", "Yallappa", "Nethravathi", "Tejaswini"]}
             />
             <LabeledSelect 
               label="Ops Executive" 
               value={editableData.manualExtras.opsExecutive || manualExtras.opsExecutive}
               onChange={(value) => updateManualExtras('opsExecutive', value)}
-              options={["Yashwanth", "Kavya", "Bhagya", "Sandesh", "Yallappa", "Nethravathi", "Tejaswini"]}
+              options={["NA", "Ravi", "Pavan", "Manjunath"]}
             />
             <LabeledInput 
               label="Caller Name" 
@@ -4101,7 +4103,7 @@ function PagePolicyDetail() {
   // Debounced search
   const debouncedSearch = useMemo(
     () => {
-      let timeoutId: number;
+      let timeoutId: ReturnType<typeof setTimeout>;
       return (query: string) => {
         clearTimeout(timeoutId);
         timeoutId = setTimeout(() => handleSearch(query), 300);

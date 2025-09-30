@@ -119,6 +119,20 @@ const initializeDatabase = async () => {
       )
     `);
 
+    // Create telecallers table
+    await query(`
+      CREATE TABLE IF NOT EXISTS telecallers (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(255) UNIQUE NOT NULL,
+        email VARCHAR(255),
+        phone VARCHAR(20),
+        branch VARCHAR(255),
+        is_active BOOLEAN DEFAULT true,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
     // Create settings table
     await query(`
       CREATE TABLE IF NOT EXISTS settings (
@@ -131,10 +145,21 @@ const initializeDatabase = async () => {
       )
     `);
 
-    // Add branch column if it doesn't exist (migration)
+    // Add missing columns if they don't exist (migration)
     await query(`
       ALTER TABLE policies 
-      ADD COLUMN IF NOT EXISTS branch VARCHAR(255)
+      ADD COLUMN IF NOT EXISTS branch VARCHAR(255),
+      ADD COLUMN IF NOT EXISTS customer_email VARCHAR(255),
+      ADD COLUMN IF NOT EXISTS ops_executive VARCHAR(255)
+    `);
+
+    // Insert default telecallers
+    await query(`
+      INSERT INTO telecallers (name, email, phone, branch, is_active) VALUES
+      ('Priya Singh', 'priya@nicsan.in', '9876543210', 'Mumbai', true),
+      ('Rahul Kumar', 'rahul@nicsan.in', '9876543211', 'Delhi', true),
+      ('Anjali Sharma', 'anjali@nicsan.in', '9876543212', 'Bangalore', true)
+      ON CONFLICT (name) DO NOTHING
     `);
 
     // Insert default settings

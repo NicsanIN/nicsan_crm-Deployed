@@ -67,7 +67,7 @@ class DualStorageService {
       }
       
       // For save operations, propagate the error instead of falling back to mock data
-      if (_operationName.includes('Save') || _operationName.includes('Create')) {
+      if (_operationName.includes('Save') || _operationName.includes('Create') || _operationName.includes('Add')) {
         return {
           success: false,
           data: null,
@@ -75,35 +75,98 @@ class DualStorageService {
           error: (backendError as Error).message || 'Backend operation failed'
         };
       }
-    }
 
-    // Step 2: Fallback to Mock Data (only for read operations)
-    if (ENABLE_DEBUG) {
+      // Step 2: Fallback to Mock Data (only for read operations)
+      if (ENABLE_DEBUG) {
+        console.log('Falling back to mock data for operation:', _operationName);
+      }
+      
+      return {
+        success: true,
+        data: mockData,
+        source: 'MOCK_DATA'
+      };
     }
-    
-    return {
-      success: true,
-      data: mockData,
-      source: 'MOCK_DATA'
-    };
   }
 
   // Dashboard Metrics with dual storage
   async getDashboardMetrics(): Promise<DualStorageResult> {
     const mockData = {
-      total_policies: 2,
-      total_gwp: 23650,
-      total_brokerage: 3547,
-      total_cashback: 1100,
-      net_revenue: 2447,
-      conversion_rate: 0.65,
-      avg_premium: 11825
+      basicMetrics: {
+        totalPolicies: 2,
+        totalGWP: 23650,
+        totalBrokerage: 3547,
+        totalCashback: 1100,
+        netRevenue: 2447,
+        totalOutstandingDebt: 15000,
+        avgPremium: 11825
+      },
+      kpis: {
+        conversionRate: "65.0",
+        lossRatio: "4.6",
+        expenseRatio: "10.3",
+        combinedRatio: "14.9"
+      },
+      sourceMetrics: [],
+      topPerformers: [],
+      dailyTrend: []
     };
 
     return this.executeDualStoragePattern(
       () => this.backendApiService.getDashboardMetrics(),
       mockData,
       'Dashboard Metrics'
+    );
+  }
+
+  // Telecallers with dual storage
+  async getTelecallers(): Promise<DualStorageResult> {
+    const mockData = [
+      {
+        id: 1,
+        name: 'Priya Singh',
+        email: 'priya@nicsan.in',
+        phone: '9876543210',
+        branch: 'Mumbai',
+        is_active: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      },
+      {
+        id: 2,
+        name: 'Rahul Kumar',
+        email: 'rahul@nicsan.in',
+        phone: '9876543211',
+        branch: 'Delhi',
+        is_active: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      },
+      {
+        id: 3,
+        name: 'Anjali Sharma',
+        email: 'anjali@nicsan.in',
+        phone: '9876543212',
+        branch: 'Bangalore',
+        is_active: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }
+    ];
+
+    return this.executeDualStoragePattern(
+      () => this.backendApiService.getTelecallers(),
+      mockData,
+      'Telecallers'
+    );
+  }
+
+  // Add new telecaller
+  async addTelecaller(telecallerData: any): Promise<DualStorageResult> {
+    return this.executeDualStoragePattern(
+      () => this.backendApiService.addTelecaller(telecallerData),
+      null,
+      'Add Telecaller'
     );
   }
 
@@ -301,6 +364,42 @@ class DualStorageService {
         cashback: 500,
         status: 'SAVED',
         source: 'MANUAL_FORM',
+        created_at: new Date().toISOString()
+      },
+      {
+        id: '3',
+        policy_number: 'RS-7890',
+        vehicle_number: 'KA02CD3456',
+        insurer: 'Royal Sundaram General Insurance',
+        total_premium: 13200,
+        customer_name: 'Sarah Wilson',
+        cashback: 700,
+        status: 'SAVED',
+        source: 'PDF_UPLOAD',
+        created_at: new Date().toISOString()
+      },
+      {
+        id: '4',
+        policy_number: 'ZK-5678',
+        vehicle_number: 'KA03EF7890',
+        insurer: 'Zurich Kotak General Insurance',
+        total_premium: 12800,
+        customer_name: 'Michael Brown',
+        cashback: 650,
+        status: 'SAVED',
+        source: 'MANUAL_FORM',
+        created_at: new Date().toISOString()
+      },
+      {
+        id: '5',
+        policy_number: 'HE-9012',
+        vehicle_number: 'KA04GH1234',
+        insurer: 'HDFC ERGO General Insurance',
+        total_premium: 12500,
+        customer_name: 'Emily Davis',
+        cashback: 600,
+        status: 'SAVED',
+        source: 'PDF_UPLOAD',
         created_at: new Date().toISOString()
       }
     ];

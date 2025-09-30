@@ -12,6 +12,20 @@ router.post('/', authenticateToken, requireOps, async (req, res) => {
       source: req.body.source || 'MANUAL_FORM'
     };
 
+    // Validate telecaller exists in database
+    if (policyData.caller_name) {
+      const telecallerExists = await query(
+        'SELECT id FROM telecallers WHERE name = $1 AND is_active = true',
+        [policyData.caller_name]
+      );
+      if (telecallerExists.rows.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: `Telecaller "${policyData.caller_name}" does not exist or is inactive. Please select a valid telecaller or add them to the system first.`
+        });
+      }
+    }
+
     const result = await storageService.savePolicy(policyData);
     res.status(201).json(result);
   } catch (error) {

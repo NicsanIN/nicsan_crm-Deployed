@@ -13,9 +13,6 @@ RUN npm ci --only=production
 # Copy source code
 COPY . .
 
-# Make scripts executable
-RUN chmod +x backfill-s3-policies-safe.js add-s3-key-column.js
-
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs
 RUN adduser -S backend -u 1001
