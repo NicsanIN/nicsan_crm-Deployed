@@ -4,7 +4,7 @@
 import { authUtils } from './api';
 
 // Environment variables
-const DB_API_BASE_URL = import.meta.env.VITE_DB_API_BASE_URL || 'http://localhost:3001/api';
+const DB_API_BASE_URL = import.meta.env.VITE_DB_API_BASE_URL!;
 const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
 
 class DatabaseService {
@@ -30,8 +30,7 @@ class DatabaseService {
         return;
       }
 
-      const baseUrl = DB_API_BASE_URL.replace('/api', '');
-      const response = await fetch(`${baseUrl}/health`, {
+      const response = await fetch(`${DB_API_BASE_URL}/health`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,

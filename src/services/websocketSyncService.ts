@@ -28,8 +28,15 @@ class WebSocketSyncService {
   private userId: string | null = null;
 
   private constructor() {
+    // Prefer explicit WS env; fallback derives from API base
+    const WS_URL =
+      import.meta.env.VITE_WEBSOCKET_URL ||
+      (import.meta.env.VITE_API_BASE_URL
+        ? import.meta.env.VITE_API_BASE_URL.replace(/^http/, "ws").replace(/\/+$/, "").replace(/\/api$/, "")
+        : import.meta.env.VITE_WEBSOCKET_URL!);
+
     this.config = {
-      serverUrl: import.meta.env.VITE_WEBSOCKET_URL || 'http://localhost:3001',
+      serverUrl: WS_URL,
       reconnectAttempts: 5,
       reconnectDelay: 1000
     };
