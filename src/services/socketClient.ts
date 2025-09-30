@@ -9,7 +9,7 @@ const WEBSOCKET_URL =
   import.meta.env.VITE_WEBSOCKET_URL ||
   (import.meta.env.VITE_API_BASE_URL
     ? import.meta.env.VITE_API_BASE_URL.replace(/^http/, "ws").replace(/\/+$/, "").replace(/\/api$/, "")
-    : "ws://localhost:3001");
+    : import.meta.env.VITE_WS_URL!);
 const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
 
 // WebSocket client configuration

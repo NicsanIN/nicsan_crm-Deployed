@@ -958,7 +958,7 @@ function PageManualForm() {
             brokerage: "0",
             cashback: "",
             customerName: "",
-    customerEmail: "",
+            customerEmail: "",
             branch: ""
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -1048,7 +1048,7 @@ function PageManualForm() {
             }
           }
           break;
-            
+        
       case 'insurer':
         if (!value) {
           errors.push('Insurer (Company) is required');
@@ -2294,7 +2294,7 @@ function PageManualGrid() {
             branch: cells[29] || "",
             remark: cells[30] || "",
             cashback: "", // Not in Excel - keep empty
-            status: "OK"
+            status: "OK" 
           };
           
           // Debug logging for dates

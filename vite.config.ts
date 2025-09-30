@@ -11,13 +11,7 @@ export default defineConfig({
       overlay: false,
       port: 24679
     },
-    proxy: {
-      '/api': {
-        target: 'http://localhost:3001',
-        changeOrigin: true,
-        secure: false,
-      }
-    }
+    // Proxy removed - environment variables handle backend URLs in production
   },
   resolve: {
     alias: {

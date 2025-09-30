@@ -3,8 +3,8 @@
 
 // import { authAPI, policiesAPI } from './api';
 
-const API_BASE_URL: string = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
-const BACKEND_URL: string = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
+const API_BASE_URL: string = import.meta.env.VITE_API_BASE_URL!;
+const BACKEND_URL: string = import.meta.env.VITE_BACKEND_URL!;
 const ENABLE_DEBUG: boolean = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
 
 
@@ -84,7 +84,7 @@ class BackendApiService {
   // Telecallers from backend
   async getTelecallers(): Promise<BackendApiResult> {
     try {
-      const response = await fetch('http://localhost:3001/api/telecallers', {
+      const response = await fetch('${API_BASE_URL}/telecallers', {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
@@ -122,7 +122,7 @@ class BackendApiService {
         console.log('🔄 BackendApiService: Adding new telecaller...');
       }
 
-      const response = await fetch('http://localhost:3001/api/telecallers', {
+      const response = await fetch('${API_BASE_URL}/telecallers', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,

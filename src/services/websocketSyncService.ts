@@ -33,7 +33,7 @@ class WebSocketSyncService {
       import.meta.env.VITE_WEBSOCKET_URL ||
       (import.meta.env.VITE_API_BASE_URL
         ? import.meta.env.VITE_API_BASE_URL.replace(/^http/, "ws").replace(/\/+$/, "").replace(/\/api$/, "")
-        : "ws://localhost:3001");
+        : import.meta.env.VITE_WEBSOCKET_URL!);
 
     this.config = {
       serverUrl: WS_URL,
