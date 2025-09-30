@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { query } = require('../config/database');
-const { authenticateToken, requireOps } = require('../middleware/auth');
+const { authenticateToken, requireOps, requireFounder } = require('../middleware/auth');
 
 // Get all telecallers
 router.get('/', authenticateToken, requireOps, async (req, res) => {
@@ -19,6 +19,34 @@ router.get('/', authenticateToken, requireOps, async (req, res) => {
     });
   } catch (error) {
     console.error('Get telecallers error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to get telecallers'
+    });
+  }
+});
+
+// Get all telecallers (including inactive) - for Founder management
+router.get('/all', authenticateToken, requireFounder, async (req, res) => {
+  try {
+    const result = await query(`
+      SELECT 
+        id, 
+        name, 
+        is_active, 
+        created_at, 
+        updated_at,
+        (SELECT COUNT(*) FROM policies WHERE caller_name = telecallers.name) as policy_count
+      FROM telecallers 
+      ORDER BY is_active DESC, name ASC
+    `);
+    
+    res.json({
+      success: true,
+      data: result.rows
+    });
+  } catch (error) {
+    console.error('Get all telecallers error:', error);
     res.status(500).json({
       success: false,
       error: error.message || 'Failed to get telecallers'
@@ -77,7 +105,7 @@ router.post('/', authenticateToken, requireOps, async (req, res) => {
 });
 
 // Update telecaller
-router.put('/:id', authenticateToken, requireOps, async (req, res) => {
+router.put('/:id', authenticateToken, requireFounder, async (req, res) => {
   try {
     const { id } = req.params;
     const { name, is_active } = req.body;

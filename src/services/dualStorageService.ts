@@ -699,6 +699,51 @@ class DualStorageService {
   getEnvironmentInfo(): any {
     return this.backendApiService.getEnvironmentInfo();
   }
+
+  // Get Total OD daily breakdown with dual storage
+  async getTotalODDaily(period: string = '30d'): Promise<DualStorageResult> {
+    const mockData = [
+      { date: '2025-01-15', total_od: 15000, policy_count: 5, avg_od_per_policy: 3000, max_od: 5000, min_od: 1000 },
+      { date: '2025-01-14', total_od: 12000, policy_count: 4, avg_od_per_policy: 3000, max_od: 4000, min_od: 2000 },
+      { date: '2025-01-13', total_od: 18000, policy_count: 6, avg_od_per_policy: 3000, max_od: 6000, min_od: 1500 }
+    ];
+
+    return this.executeDualStoragePattern(
+      () => this.backendApiService.getTotalODDaily(period),
+      mockData,
+      'Total OD Daily Breakdown'
+    );
+  }
+
+  // Get Total OD monthly breakdown with dual storage
+  async getTotalODMonthly(period: string = '12m'): Promise<DualStorageResult> {
+    const mockData = [
+      { month: '2025-01-01', total_od: 45000, policy_count: 15, avg_od_per_policy: 3000, max_od: 6000, min_od: 1000 },
+      { month: '2024-12-01', total_od: 42000, policy_count: 14, avg_od_per_policy: 3000, max_od: 5500, min_od: 1500 },
+      { month: '2024-11-01', total_od: 38000, policy_count: 13, avg_od_per_policy: 2923, max_od: 5000, min_od: 1200 }
+    ];
+
+    return this.executeDualStoragePattern(
+      () => this.backendApiService.getTotalODMonthly(period),
+      mockData,
+      'Total OD Monthly Breakdown'
+    );
+  }
+
+  // Get Total OD financial year breakdown with dual storage
+  async getTotalODFinancialYear(years: number = 3): Promise<DualStorageResult> {
+    const mockData = [
+      { financial_year: 2024, total_od: 480000, policy_count: 160, avg_od_per_policy: 3000, max_od: 8000, min_od: 1000 },
+      { financial_year: 2023, total_od: 420000, policy_count: 140, avg_od_per_policy: 3000, max_od: 7500, min_od: 1200 },
+      { financial_year: 2022, total_od: 360000, policy_count: 120, avg_od_per_policy: 3000, max_od: 7000, min_od: 1000 }
+    ];
+
+    return this.executeDualStoragePattern(
+      () => this.backendApiService.getTotalODFinancialYear(years),
+      mockData,
+      'Total OD Financial Year Breakdown'
+    );
+  }
 }
 
 export default DualStorageService.getInstance();

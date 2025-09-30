@@ -853,6 +853,138 @@ class BackendApiService {
       source: 'BACKEND_API'
     };
   }
+
+  // Get Total OD daily breakdown
+  async getTotalODDaily(period: string = '30d'): Promise<BackendApiResult> {
+    try {
+      if (ENABLE_DEBUG) {
+        console.log('🔍 BackendApiService: getTotalODDaily called with period:', period);
+      }
+
+      const url = `http://localhost:3001/api/dashboard/total-od/daily?period=${period}`;
+      
+      if (ENABLE_DEBUG) {
+        console.log('🔍 BackendApiService: Calling URL:', url);
+      }
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      
+      if (ENABLE_DEBUG) {
+        console.log('✅ BackendApiService: Total OD daily breakdown successful');
+      }
+
+      return {
+        success: true,
+        data: result.data,
+        source: 'BACKEND_API'
+      };
+    } catch (error) {
+      if (ENABLE_DEBUG) {
+        console.error('❌ BackendApiService: Total OD daily breakdown failed:', error);
+      }
+      throw error;
+    }
+  }
+
+  // Get Total OD monthly breakdown
+  async getTotalODMonthly(period: string = '12m'): Promise<BackendApiResult> {
+    try {
+      if (ENABLE_DEBUG) {
+        console.log('🔍 BackendApiService: getTotalODMonthly called with period:', period);
+      }
+
+      const url = `http://localhost:3001/api/dashboard/total-od/monthly?period=${period}`;
+      
+      if (ENABLE_DEBUG) {
+        console.log('🔍 BackendApiService: Calling URL:', url);
+      }
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      
+      if (ENABLE_DEBUG) {
+        console.log('✅ BackendApiService: Total OD monthly breakdown successful');
+      }
+
+      return {
+        success: true,
+        data: result.data,
+        source: 'BACKEND_API'
+      };
+    } catch (error) {
+      if (ENABLE_DEBUG) {
+        console.error('❌ BackendApiService: Total OD monthly breakdown failed:', error);
+      }
+      throw error;
+    }
+  }
+
+  // Get Total OD financial year breakdown
+  async getTotalODFinancialYear(years: number = 3): Promise<BackendApiResult> {
+    try {
+      if (ENABLE_DEBUG) {
+        console.log('🔍 BackendApiService: getTotalODFinancialYear called with years:', years);
+      }
+
+      const url = `http://localhost:3001/api/dashboard/total-od/financial-year?years=${years}`;
+      
+      if (ENABLE_DEBUG) {
+        console.log('🔍 BackendApiService: Calling URL:', url);
+      }
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      
+      if (ENABLE_DEBUG) {
+        console.log('✅ BackendApiService: Total OD financial year breakdown successful');
+      }
+
+      return {
+        success: true,
+        data: result.data,
+        source: 'BACKEND_API'
+      };
+    } catch (error) {
+      if (ENABLE_DEBUG) {
+        console.error('❌ BackendApiService: Total OD financial year breakdown failed:', error);
+      }
+      throw error;
+    }
+  }
 }
 
 export default BackendApiService;
