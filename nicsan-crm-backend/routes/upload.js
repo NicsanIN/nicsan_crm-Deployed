@@ -4,6 +4,7 @@ const multer = require('multer');
 const storageService = require('../services/storageService');
 const emailService = require('../services/emailService');
 const { authenticateToken, requireOps } = require('../middleware/auth');
+const { query } = require('../config/database');
 
 // Configure multer for file uploads
 const upload = multer({
@@ -179,19 +180,23 @@ router.post('/:uploadId/confirm', authenticateToken, requireOps, async (req, res
     const { editedData } = req.body;
     
     console.log('🔍 Confirming upload:', uploadId);
-    console.log('🔍 Edited data received:', editedData);
+    console.log('🔍 Edited data received:', JSON.stringify(editedData, null, 2));
+    console.log('🔍 Request body:', JSON.stringify(req.body, null, 2));
     
     // Validate upload exists and is in REVIEW status
     const upload = await storageService.getUploadStatus(uploadId);
     
     if (!upload) {
+      console.log('❌ Upload not found:', uploadId);
       return res.status(404).json({
         success: false,
         error: 'Upload not found'
       });
     }
     
+    console.log('🔍 Upload status:', upload.status);
     if (upload.status !== 'REVIEW' && upload.status !== 'UPLOADED') {
+      console.log('❌ Invalid upload status:', upload.status);
       return res.status(400).json({
         success: false,
         error: 'Upload must be in REVIEW or UPLOADED status to confirm'
@@ -209,6 +214,7 @@ router.post('/:uploadId/confirm', authenticateToken, requireOps, async (req, res
         caller_name: editedData.manualExtras.caller_name || editedData.manualExtras.callerName || '', // Map callerName to caller_name
         customer_email: editedData.manualExtras.customerEmail || editedData.manualExtras.customer_email || '',
         ops_executive: editedData.manualExtras.opsExecutive || editedData.manualExtras.ops_executive || '',
+        // customer_name now comes from PDF extracted data (editedData.pdfData.customer_name)
         source: 'PDF_UPLOAD',
         s3_key: upload.s3_key,
         confidence_score: upload.extracted_data?.extracted_data?.confidence_score || 0.8
@@ -221,6 +227,7 @@ router.post('/:uploadId/confirm', authenticateToken, requireOps, async (req, res
         ...upload.extracted_data.extracted_data,
         ...upload.extracted_data.manual_extras,
         caller_name: upload.extracted_data.manual_extras?.caller_name || upload.extracted_data.manual_extras?.callerName || '', // Map callerName to caller_name
+        // customer_name now comes from PDF extracted data (upload.extracted_data.extracted_data.customer_name)
         source: 'PDF_UPLOAD',
         s3_key: upload.s3_key
       };
@@ -229,19 +236,65 @@ router.post('/:uploadId/confirm', authenticateToken, requireOps, async (req, res
     }
     
     // Validate policy data
+    console.log('🔍 Policy data validation:', {
+      policy_number: policyData.policy_number,
+      vehicle_number: policyData.vehicle_number,
+      caller_name: policyData.caller_name
+    });
+    
     if (!policyData.policy_number || !policyData.vehicle_number) {
+      console.log('❌ Missing required fields:', {
+        policy_number: !!policyData.policy_number,
+        vehicle_number: !!policyData.vehicle_number
+      });
       return res.status(400).json({
         success: false,
         error: 'Policy number and vehicle number are required'
       });
     }
+
+    // Validate telecaller exists in database
+    if (policyData.caller_name) {
+      console.log('🔍 Checking telecaller:', policyData.caller_name);
+      try {
+        const telecallerExists = await query(
+          'SELECT id FROM telecallers WHERE name = $1 AND is_active = true',
+          [policyData.caller_name]
+        );
+        console.log('🔍 Telecaller check result:', telecallerExists.rows.length);
+        if (telecallerExists.rows.length === 0) {
+          console.log('❌ Telecaller not found:', policyData.caller_name);
+          return res.status(400).json({
+            success: false,
+            error: `Telecaller "${policyData.caller_name}" does not exist or is inactive. Please select a valid telecaller or add them to the system first.`
+          });
+        }
+      } catch (dbError) {
+        console.error('❌ Database error checking telecaller:', dbError);
+        return res.status(500).json({
+          success: false,
+          error: 'Database error while validating telecaller'
+        });
+      }
+    }
     
     // Check for duplicate policy number before saving
-    const isDuplicate = await storageService.checkPolicyNumberExists(policyData.policy_number);
-    if (isDuplicate) {
-      return res.status(400).json({
+    console.log('🔍 Checking for duplicate policy number:', policyData.policy_number);
+    try {
+      const isDuplicate = await storageService.checkPolicyNumberExists(policyData.policy_number);
+      console.log('🔍 Duplicate check result:', isDuplicate);
+      if (isDuplicate) {
+        console.log('❌ Duplicate policy number found:', policyData.policy_number);
+        return res.status(400).json({
+          success: false,
+          error: `Policy number '${policyData.policy_number}' already exists. Please use a different policy number.`
+        });
+      }
+    } catch (duplicateError) {
+      console.error('❌ Error checking duplicate policy number:', duplicateError);
+      return res.status(500).json({
         success: false,
-        error: `Policy number '${policyData.policy_number}' already exists. Please use a different policy number.`
+        error: 'Database error while checking for duplicate policy number'
       });
     }
     
@@ -292,7 +345,12 @@ router.post('/:uploadId/confirm', authenticateToken, requireOps, async (req, res
       });
     }
   } catch (error) {
-    console.error('Confirm upload error:', error);
+    console.error('❌ Confirm upload error:', error);
+    console.error('❌ Error details:', {
+      message: error.message,
+      stack: error.stack,
+      uploadId: req.params.uploadId
+    });
     res.status(400).json({
       success: false,
       error: error.message || 'Failed to confirm upload'

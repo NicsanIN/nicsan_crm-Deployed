@@ -181,14 +181,6 @@ class OpenAIService {
     - Net Premium (₹): Extract from "Total Own Damage Premium(A)" values
     - Total Premium (₹): Extract from "Total Premium Payable" values`;
         console.log(`🔧 ICICI Lombard rules applied`);
-      } else if (insurer === 'GENERALI_CENTRAL') {
-        otherInsurerRules = `
-10. For Generali Central Insurance policies specifically:
-    - Net OD (₹): Extract from "Total Own Damage Premium(A)" values
-    - Total OD (₹): Extract from "Total Annual Premium (A+B)" values  
-    - Net Premium (₹): Extract from "Total Annual Premium (A+B)" values
-    - Total Premium (₹): Extract from "Total Premium" values`;
-        console.log(`🔧 Generali Central rules applied`);
       } else if (insurer === 'LIBERTY_GENERAL') {
         otherInsurerRules = `
 10. For LIBERTY GENERAL INSURANCE policies specifically:
@@ -198,6 +190,31 @@ class OpenAIService {
     - Total Premium (₹): Extract from "TOTAL POLICY PREMIUM" values
     - Add on Premium (C): Extract from "TOTAL ADD­ON COVER PREMIUM (C)" values`;
         console.log(`🔧 LIBERTY GENERAL rules applied`);
+      } else if (insurer === 'ROYAL_SUNDARAM') {
+        otherInsurerRules = `
+10. For ROYAL SUNDARAM GENERAL INSURANCE policies specifically:
+    - Net OD (₹): Extract from "TOTAL OWN DAMAGE PREMIUM (A)" values
+    - Total OD (₹): Extract from "NET PREMIUM (A + B)" values
+    - Net Premium (₹): Extract from "NET PREMIUM (A + B)" values
+    - Total Premium (₹): Extract from "TOTAL PREMIUM PAYABLE" values`;
+        console.log(`🔧 ROYAL SUNDARAM rules applied`);
+      } else if (insurer === 'HDFC_ERGO') {
+        otherInsurerRules = `
+10. For HDFC ERGO GENERAL INSURANCE policies specifically:
+    - Net OD (₹): Extract from "Net Own Damage Premium (a)" values
+    - Total OD (₹): Extract from "Total Package Premium (a+b)" values
+    - Net Premium (₹): Extract from "Total Package Premium (a+b)" values
+    - Total Premium (₹): Extract from "Total Premium" values`;
+        console.log(`🔧 HDFC ERGO rules applied`);
+      } else if (insurer === 'ZURICH_KOTAK') {
+        otherInsurerRules = `
+10. For ZURICH KOTAK GENERAL INSURANCE policies specifically:
+    - Net OD (₹): Extract from "Total Own Damage Premium (A)" values
+    - Total OD (₹): Calculate as "Total Own Damage Premium (A)" + "Total Personal Accident Premium (C)" values
+    - Net Premium (₹): Extract from "Taxable value of Services (A+B+C)" values
+    - Total Premium (₹): Extract from "Total Premium (in)" values
+    - Add on Premium (C): Extract from "Total Personal Accident Premium (C)" values`;
+        console.log(`🔧 ZURICH KOTAK rules applied`);
       }
       
       const prompt = `Extract insurance policy data from this text. Return ONLY a valid JSON object with these exact fields:

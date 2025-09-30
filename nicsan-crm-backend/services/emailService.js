@@ -124,87 +124,238 @@ function generateEmailContent(policyData) {
     <html>
     <head>
       <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <title>Your Motor Insurance Policy</title>
       <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-        .header { background-color: #2c3e50; color: white; padding: 20px; text-align: center; }
-        .content { padding: 20px; }
-        .policy-details { background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0; }
-        .footer { background-color: #34495e; color: white; padding: 15px; text-align: center; font-size: 14px; }
-        .highlight { color: #e74c3c; font-weight: bold; }
+        /* Reset styles for email clients */
+        body, table, td, p, a, li, blockquote {
+          -webkit-text-size-adjust: 100%;
+          -ms-text-size-adjust: 100%;
+        }
+        table, td {
+          mso-table-lspace: 0pt;
+          mso-table-rspace: 0pt;
+        }
+        img {
+          -ms-interpolation-mode: bicubic;
+          border: 0;
+          height: auto;
+          line-height: 100%;
+          outline: none;
+          text-decoration: none;
+        }
+        
+        /* Container */
+        .email-container {
+          max-width: 1200px;
+          margin: 0 auto;
+          background-color: #ffffff;
+        }
+        
+        /* Header - Desktop: 1200x400px, Mobile: 600x200px */
+        .header {
+          text-align: center;
+          width: 100%;
+          max-width: 1200px;
+        }
+        
+        /* Content */
+        .content {
+          padding: 20px;
+          max-width: 1200px;
+          margin: 0 auto;
+          font-family: Arial, sans-serif;
+          line-height: 1.6;
+          color: #333;
+        }
+        
+        /* Footer - Desktop: 1200x250px, Mobile: 600x125px */
+        .footer {
+          text-align: center;
+          width: 100%;
+          max-width: 1200px;
+        }
+        
+        /* Policy details */
+        .policy-details { 
+          background-color: #f8f9fa; 
+          padding: 15px; 
+          border-radius: 5px; 
+          margin: 20px 0; 
+        }
+        
+        .highlight { 
+          color: #e74c3c; 
+          font-weight: bold; 
+        }
+        
+        /* Mobile Responsive */
+        @media only screen and (max-width: 600px) {
+          .email-container {
+            width: 100% !important;
+            max-width: 600px !important;
+          }
+          
+          .content {
+            padding: 15px !important;
+          }
+          
+          .policy-details table {
+            width: 100% !important;
+          }
+          
+          .policy-details td {
+            display: block !important;
+            width: 100% !important;
+            padding: 5px 0 !important;
+            border-bottom: none !important;
+          }
+          
+          /* Mobile Social Media Links */
+          .social-links a {
+            display: block !important;
+            width: 80% !important;
+            max-width: 200px !important;
+            margin: 5px auto !important;
+            text-align: center !important;
+          }
+        }
+      
+        /* Mobile Responsive for Hybrid Footer */
+        @media only screen and (max-width: 600px) {
+          .footer {
+            height: 125px !important;
+            width: 100% !important;
+          }
+          
+          .footer img {
+            content: url('https://doidtm1zx7feu.cloudfront.net/footers/footer-mobile.png') !important;
+            height: 125px !important;
+            width: 100% !important;
+          }
+        }
       </style>
     </head>
     <body>
-      <div class="header">
-        <h1>🏆 Nicsan Insurance</h1>
-        <p>Your Trusted Insurance Partner</p>
-      </div>
-      
-      <div class="content">
-        <h2>Dear ${customer_name},</h2>
-        
-        <p>Your motor insurance policy has been successfully processed and is ready for your use.</p>
-        
-        <div class="policy-details">
-          <h3>📋 Policy Details</h3>
-          <table style="width: 100%; border-collapse: collapse;">
-            <tr>
-              <td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Policy Number:</strong></td>
-              <td style="padding: 8px; border-bottom: 1px solid #ddd;" class="highlight">${policy_number}</td>
-            </tr>
-            <tr>
-              <td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Vehicle:</strong></td>
-              <td style="padding: 8px; border-bottom: 1px solid #ddd;">${make} ${model}</td>
-            </tr>
-            <tr>
-              <td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Registration Number:</strong></td>
-              <td style="padding: 8px; border-bottom: 1px solid #ddd;">${vehicle_number}</td>
-            </tr>
-            <tr>
-              <td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Valid From:</strong></td>
-              <td style="padding: 8px; border-bottom: 1px solid #ddd;">${issue_date}</td>
-            </tr>
-            <tr>
-              <td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Valid Until:</strong></td>
-              <td style="padding: 8px; border-bottom: 1px solid #ddd;">${expiry_date}</td>
-            </tr>
-            <tr>
-              <td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Total Premium:</strong></td>
-              <td style="padding: 8px; border-bottom: 1px solid #ddd;" class="highlight">₹${total_premium}</td>
-            </tr>
-          </table>
+      <div class="email-container">
+        <!-- Header with S3 image -->
+        <div class="header">
+          <img src="https://doidtm1zx7feu.cloudfront.net/headers/header-desktop.png" 
+               alt="Nicsan Insurance Header" 
+               width="1200" 
+               height="400"
+               style="display: block; width: 100%; height: auto;">
+        </div>
+    
+        <div class="content">
+          <h2>Dear ${customer_name},</h2>
+          
+          <p>Your policy is set. The PDF is attached and easy to save, quick to share, and always here in your inbox.</p>
+          
+          <div class="policy-details">
+            <h3>📋 Policy Details</h3>
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr>
+                <td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Policy Number:</strong></td>
+                <td style="padding: 8px; border-bottom: 1px solid #ddd;" class="highlight">${policy_number}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Vehicle:</strong></td>
+                <td style="padding: 8px; border-bottom: 1px solid #ddd;">${make} ${model}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Registration Number:</strong></td>
+                <td style="padding: 8px; border-bottom: 1px solid #ddd;">${vehicle_number}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Valid From:</strong></td>
+                <td style="padding: 8px; border-bottom: 1px solid #ddd;">${issue_date}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Valid Until:</strong></td>
+                <td style="padding: 8px; border-bottom: 1px solid #ddd;">${expiry_date}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px;"><strong>Total Premium:</strong></td>
+                <td style="padding: 8px;" class="highlight">₹${total_premium}</td>
+              </tr>
+            </table>
+          </div>
+          
+          <p><strong>📎 You can find your policy pdf down below.</strong></p>
+          
+          <p>Keep this policy handy—you'll need it if you're ever asked while driving. In case of any claims or queries, please contact our customer support team.</p>
+          
+          <br><br>
+          
+          <h3>📞 Contact Information</h3>
+          <ul>
+            <li><strong>Customer Support:</strong> +91-9916131639</li>
+            <li><strong>Email:</strong> care@nicsanimf.com</li>
+            <li><strong>Website:</strong> www.nicsanin.com</li>
+          </ul>
+          
+          <h3>🌐 Connect With Us</h3>
+          <div class="social-links" style="margin: 15px 0;">
+            <a href="https://www.instagram.com/nicsanin?igsh=bzZ2cmFqMHFodzFt&utm_source=qr" 
+               target="_blank" 
+               style="display: inline-block; margin: 0 10px; padding: 10px 15px; background-color: #e74c3c; color: #ffffff; text-decoration: none; border-radius: 5px; font-weight: bold;">
+                📷 Instagram
+             </a>
+             
+             <a href="https://x.com/nicsanin?s=11" 
+                target="_blank" 
+                style="display: inline-block; margin: 0 10px; padding: 10px 15px; background-color: #e74c3c; color: #ffffff; text-decoration: none; border-radius: 5px; font-weight: bold;">
+                🐦 X (Twitter)
+             </a>
+             
+             <a href="https://www.linkedin.com/company/nicsanin/" 
+                target="_blank" 
+                style="display: inline-block; margin: 0 10px; padding: 10px 15px; background-color: #e74c3c; color: #ffffff; text-decoration: none; border-radius: 5px; font-weight: bold;">
+                💼 LinkedIn
+             </a>
+          </div>
+          
+          <br><br>
+          
+          <p>Thanks for riding with us.</p>
+          
+          <p>Stay safe,<br>
+          <strong>Nicsan Insurance</strong></p>
         </div>
         
-        <p><strong>📎 Your policy document is attached to this email.</strong></p>
+        <!-- Footer with updated design -->
+        <div class="footer">
+          <img src="https://doidtm1zx7feu.cloudfront.net/footers/footer-desktopUPDATED.png" 
+               alt="Nicsan Insurance Footer" 
+               width="1200" 
+               height="250"
+               style="display: block; width: 100%; height: auto;">
+        </div>
+                
+                <!-- Contact Information -->
+                <div style="margin-top: 20px; font-size: 14px; line-height: 1.6;">
+                  <p style="margin: 5px 0;"><strong>📞 Customer Support:</strong> +91-9916131639</p>
+                  <p style="margin: 5px 0;"><strong>✉️ Email:</strong> care@nicsanimf.com</p>
+                  <p style="margin: 5px 0;"><strong>📍 Location:</strong> Bangalore, India</p>
+                </div>
+                
+              </td>
+            </tr>
+          </table>
+          
+        </div>
         
-        <p>Please keep this policy document safe and carry it with you while driving. In case of any claims or queries, please contact our customer support team.</p>
-        
-        <h3>📞 Contact Information</h3>
-        <ul>
-          <li><strong>Customer Support:</strong> +91-XXXX-XXXX</li>
-          <li><strong>Email:</strong> support@nicsaninsurance.com</li>
-          <li><strong>Website:</strong> www.nicsaninsurance.com</li>
-        </ul>
-        
-        <p>Thank you for choosing Nicsan Insurance for your motor insurance needs!</p>
-        
-        <p>Best regards,<br>
-        <strong>Nicsan Insurance Team</strong></p>
-      </div>
-      
-      <div class="footer">
-        <p>This is an automated email. Please do not reply to this email.</p>
-        <p>© 2024 Nicsan Insurance. All rights reserved.</p>
-      </div>
-    </body>
-    </html>
-  `;
-  
-  const text = `
+        <p style="margin-top: 20px; font-size: 14px; opacity: 0.8;">™ 2025 Nicsan Insurance. All rights reserved.</p>
+      </body>
+      </html>
+    `;
+    
+    const text = `
 Dear ${customer_name},
-
-Your motor insurance policy has been successfully processed and is ready for your use.
-
+      
+Your policy is set. The PDF is attached and easy to save, quick to share, and always here in your inbox.
+      
 POLICY DETAILS:
 - Policy Number: ${policy_number}
 - Vehicle: ${make} ${model}
@@ -212,27 +363,32 @@ POLICY DETAILS:
 - Valid From: ${issue_date}
 - Valid Until: ${expiry_date}
 - Total Premium: ₹${total_premium}
-
-Your policy document is attached to this email.
-
-Please keep this policy document safe and carry it with you while driving. In case of any claims or queries, please contact our customer support team.
-
+      
+You can find your policy pdf down below.
+      
+Keep this policy handy—you'll need it if you're ever asked while driving. In case of any claims or queries, please contact our customer support team.
+      
 CONTACT INFORMATION:
-- Customer Support: +91-XXXX-XXXX
-- Email: support@nicsaninsurance.com
-- Website: www.nicsaninsurance.com
-
-Thank you for choosing Nicsan Insurance for your motor insurance needs!
-
-Best regards,
-Nicsan Insurance Team
-
+- Customer Support: +91-9916131639
+- Email: care@nicsanimf.com
+- Website: www.nicsanin.com
+      
+CONNECT WITH US:
+- Instagram: https://www.instagram.com/nicsanin?igsh=bzZ2cmFqMHFodzFt&utm_source=qr
+- X (Twitter): https://x.com/nicsanin?s=11
+- LinkedIn: https://www.linkedin.com/company/nicsanin/
+      
+Thanks for riding with us.
+      
+Stay safe,
+Nicsan Insurance
+      
 ---
 This is an automated email. Please do not reply to this email.
-© 2024 Nicsan Insurance. All rights reserved.
-  `;
-  
-  return { html, text };
+™ 2025 Nicsan Insurance. All rights reserved.
+    `;
+    
+    return { html, text };
 }
 
 /**

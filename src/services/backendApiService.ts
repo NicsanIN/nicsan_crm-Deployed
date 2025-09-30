@@ -81,6 +81,79 @@ class BackendApiService {
     }
   }
 
+  // Telecallers from backend
+  async getTelecallers(): Promise<BackendApiResult> {
+    try {
+      const response = await fetch('http://localhost:3001/api/telecallers', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      
+      if (ENABLE_DEBUG) {
+        console.log('✅ BackendApiService: Telecallers retrieved successfully');
+      }
+
+      return {
+        success: true,
+        data: result.data,
+        source: 'BACKEND_API'
+      };
+    } catch (error) {
+      if (ENABLE_DEBUG) {
+        console.error('❌ BackendApiService: Get telecallers failed:', error);
+      }
+      throw error;
+    }
+  }
+
+  // Add new telecaller
+  async addTelecaller(telecallerData: any): Promise<BackendApiResult> {
+    try {
+      if (ENABLE_DEBUG) {
+        console.log('🔄 BackendApiService: Adding new telecaller...');
+      }
+
+      const response = await fetch('http://localhost:3001/api/telecallers', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(telecallerData),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      
+      if (ENABLE_DEBUG) {
+        console.log('✅ BackendApiService: Telecaller added successfully');
+      }
+
+      return {
+        success: true,
+        data: result.data,
+        source: 'BACKEND_API'
+      };
+    } catch (error) {
+      if (ENABLE_DEBUG) {
+        console.error('❌ BackendApiService: Add telecaller failed:', error);
+      }
+      throw error;
+    }
+  }
+
   // Sales Reps from backend
   async getSalesReps(): Promise<BackendApiResult> {
     try {
