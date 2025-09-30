@@ -1580,6 +1580,128 @@ async savePolicy(policyData) {
   }
 
   // DIGIT pattern detection and correction functions removed for simplification
+
+  // Calculate start date based on period
+  calculateStartDate(period) {
+    const now = new Date();
+    let startDate;
+    
+    switch (period) {
+      case '7d':
+        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case '14d':
+        startDate = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+        break;
+      case '30d':
+        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        break;
+      case '90d':
+        startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+        break;
+      case '6m':
+        startDate = new Date(now.getTime() - 6 * 30 * 24 * 60 * 60 * 1000);
+        break;
+      case '12m':
+        startDate = new Date(now.getTime() - 12 * 30 * 24 * 60 * 60 * 1000);
+        break;
+      default:
+        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    }
+    
+    return startDate;
+  }
+
+  // Get Total OD daily breakdown
+  async getTotalODDaily(period = '30d') {
+    try {
+      const startDate = this.calculateStartDate(period);
+      
+      const result = await query(`
+        SELECT 
+          DATE(created_at) as date,
+          SUM(total_od) as total_od,
+          COUNT(*) as policy_count,
+          AVG(total_od) as avg_od_per_policy,
+          MAX(total_od) as max_od,
+          MIN(total_od) as min_od
+        FROM policies 
+        WHERE created_at >= $1 AND total_od > 0
+        GROUP BY DATE(created_at)
+        ORDER BY date DESC
+      `, [startDate]);
+      
+      console.log('✅ Retrieved Total OD daily breakdown from PostgreSQL');
+      return result.rows;
+    } catch (error) {
+      console.error('❌ Total OD daily breakdown error:', error);
+      throw error;
+    }
+  }
+
+  // Get Total OD monthly breakdown
+  async getTotalODMonthly(period = '12m') {
+    try {
+      const startDate = this.calculateStartDate(period);
+      
+      const result = await query(`
+        SELECT 
+          DATE_TRUNC('month', created_at) as month,
+          SUM(total_od) as total_od,
+          COUNT(*) as policy_count,
+          AVG(total_od) as avg_od_per_policy,
+          MAX(total_od) as max_od,
+          MIN(total_od) as min_od
+        FROM policies 
+        WHERE created_at >= $1 AND total_od > 0
+        GROUP BY DATE_TRUNC('month', created_at)
+        ORDER BY month DESC
+      `, [startDate]);
+      
+      console.log('✅ Retrieved Total OD monthly breakdown from PostgreSQL');
+      return result.rows;
+    } catch (error) {
+      console.error('❌ Total OD monthly breakdown error:', error);
+      throw error;
+    }
+  }
+
+  // Get Total OD financial year breakdown
+  async getTotalODFinancialYear(years = 3) {
+    try {
+      const currentYear = new Date().getFullYear();
+      const startYear = currentYear - years;
+      
+      const result = await query(`
+        SELECT 
+          CASE 
+            WHEN EXTRACT(MONTH FROM created_at) >= 4 
+            THEN EXTRACT(YEAR FROM created_at)
+            ELSE EXTRACT(YEAR FROM created_at) - 1
+          END as financial_year,
+          SUM(total_od) as total_od,
+          COUNT(*) as policy_count,
+          AVG(total_od) as avg_od_per_policy,
+          MAX(total_od) as max_od,
+          MIN(total_od) as min_od
+        FROM policies 
+        WHERE EXTRACT(YEAR FROM created_at) >= $1 AND total_od > 0
+        GROUP BY 
+          CASE 
+            WHEN EXTRACT(MONTH FROM created_at) >= 4 
+            THEN EXTRACT(YEAR FROM created_at)
+            ELSE EXTRACT(YEAR FROM created_at) - 1
+          END
+        ORDER BY financial_year DESC
+      `, [startYear]);
+      
+      console.log('✅ Retrieved Total OD financial year breakdown from PostgreSQL');
+      return result.rows;
+    } catch (error) {
+      console.error('❌ Total OD financial year breakdown error:', error);
+      throw error;
+    }
+  }
 }
 
 module.exports = new StorageService();

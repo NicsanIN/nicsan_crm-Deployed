@@ -140,5 +140,62 @@ router.get('/data-sources', authenticateToken, requireFounder, async (req, res) 
   }
 });
 
+// Get Total OD daily breakdown
+router.get('/total-od/daily', authenticateToken, requireFounder, async (req, res) => {
+  try {
+    const { period = '30d' } = req.query;
+    const result = await storageService.getTotalODDaily(period);
+    
+    res.json({
+      success: true,
+      data: result
+    });
+  } catch (error) {
+    console.error('Total OD daily breakdown error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to get Total OD daily breakdown'
+    });
+  }
+});
+
+// Get Total OD monthly breakdown
+router.get('/total-od/monthly', authenticateToken, requireFounder, async (req, res) => {
+  try {
+    const { period = '12m' } = req.query;
+    const result = await storageService.getTotalODMonthly(period);
+    
+    res.json({
+      success: true,
+      data: result
+    });
+  } catch (error) {
+    console.error('Total OD monthly breakdown error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to get Total OD monthly breakdown'
+    });
+  }
+});
+
+// Get Total OD financial year breakdown
+router.get('/total-od/financial-year', authenticateToken, requireFounder, async (req, res) => {
+  try {
+    const { years = 3 } = req.query;
+    const result = await storageService.getTotalODFinancialYear(years);
+    
+    res.json({
+      success: true,
+      data: result
+    });
+  } catch (error) {
+    console.error('Total OD financial year breakdown error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to get Total OD financial year breakdown'
+    });
+  }
+});
+
 module.exports = router;
 

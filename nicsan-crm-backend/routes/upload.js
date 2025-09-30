@@ -3,6 +3,7 @@ const router = express.Router();
 const multer = require('multer');
 const storageService = require('../services/storageService');
 const emailService = require('../services/emailService');
+const whatsappService = require('../services/whatsappService');
 const { authenticateToken, requireOps } = require('../middleware/auth');
 const { query } = require('../config/database');
 
@@ -332,6 +333,33 @@ router.post('/:uploadId/confirm', authenticateToken, requireOps, async (req, res
       } catch (emailError) {
         console.error('⚠️ Email service error:', emailError.message);
         // Don't fail policy creation if email fails
+      }
+
+      // NEW: Send PDF via WhatsApp to customer
+      try {
+        const customerPhone = policyData.customer_phone || policyData.customerPhone;
+        if (customerPhone) {
+          console.log('📱 Sending policy PDF via WhatsApp to customer:', customerPhone);
+          
+          const whatsappResult = await whatsappService.sendPolicyWhatsApp(
+            customerPhone,
+            policyData,
+            upload.s3_key,  // Original PDF S3 key
+            upload.filename  // Original PDF filename
+          );
+          
+          if (whatsappResult.success) {
+            console.log('✅ PDF sent via WhatsApp successfully:', whatsappResult.textMessageId, whatsappResult.documentMessageId);
+          } else {
+            console.error('⚠️ WhatsApp sending failed:', whatsappResult.error);
+            // Don't fail policy creation if WhatsApp fails
+          }
+        } else {
+          console.log('⚠️ No customer phone found, skipping WhatsApp sending');
+        }
+      } catch (whatsappError) {
+        console.error('⚠️ WhatsApp service error:', whatsappError.message);
+        // Don't fail policy creation if WhatsApp fails
       }
       
       res.json({
