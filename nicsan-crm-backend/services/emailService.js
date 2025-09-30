@@ -332,19 +332,6 @@ function generateEmailContent(policyData) {
                height="250"
                style="display: block; width: 100%; height: auto;">
         </div>
-                
-                <!-- Contact Information -->
-                <div style="margin-top: 20px; font-size: 14px; line-height: 1.6;">
-                  <p style="margin: 5px 0;"><strong>📞 Customer Support:</strong> +91-9916131639</p>
-                  <p style="margin: 5px 0;"><strong>✉️ Email:</strong> care@nicsanimf.com</p>
-                  <p style="margin: 5px 0;"><strong>📍 Location:</strong> Bangalore, India</p>
-                </div>
-                
-              </td>
-            </tr>
-          </table>
-          
-        </div>
         
         <p style="margin-top: 20px; font-size: 14px; opacity: 0.8;">™ 2025 Nicsan Insurance. All rights reserved.</p>
       </body>
