@@ -92,7 +92,8 @@ const generateS3Key = async (filename, selectedInsurer, fileBuffer) => {
     
     console.log(`📁 S3 Key: Using ${insurer} for file ${filename} (detected: ${detectedInsurer}, selected: ${selectedInsurer})`);
     
-    return `uploads/${insurer}/${timestamp}_${randomId}.${extension}`;
+    const key = `uploads/${insurer}/${timestamp}_${randomId}.${extension}`;
+    return withPrefix(key);
     
   } catch (error) {
     console.error('❌ Insurer detection failed, using selected insurer:', error);
@@ -101,7 +102,8 @@ const generateS3Key = async (filename, selectedInsurer, fileBuffer) => {
     const randomId = Math.random().toString(36).substring(2, 15);
     const extension = filename.split('.').pop();
     
-    return `uploads/${selectedInsurer}/${timestamp}_${randomId}.${extension}`;
+    const key = `uploads/${selectedInsurer}/${timestamp}_${randomId}.${extension}`;
+    return withPrefix(key);
   }
 };
 
@@ -110,19 +112,22 @@ const generatePolicyS3Key = (policyId, source = 'PDF_UPLOAD') => {
   const timestamp = Date.now();
   const randomId = Math.random().toString(36).substring(2, 15);
   
-  // Add environment prefix for staging
-  const envPrefix = process.env.ENVIRONMENT === 'staging' ? 'local-staging/' : '';
-  
+  let key;
   switch (source) {
     case 'PDF_UPLOAD':
-      return `${envPrefix}data/policies/confirmed/${timestamp}_${randomId}_${policyId}.json`;
+      key = `data/policies/confirmed/${timestamp}_${randomId}_${policyId}.json`;
+      break;
     case 'MANUAL_FORM':
-      return `${envPrefix}data/policies/manual/${timestamp}_${randomId}_${policyId}.json`;
+      key = `data/policies/manual/${timestamp}_${randomId}_${policyId}.json`;
+      break;
     case 'BULK_ENTRY':
-      return `${envPrefix}data/policies/bulk/${timestamp}_${randomId}_${policyId}.json`;
+      key = `data/policies/bulk/${timestamp}_${randomId}_${policyId}.json`;
+      break;
     default:
-      return `${envPrefix}data/policies/other/${timestamp}_${randomId}_${policyId}.json`;
+      key = `data/policies/other/${timestamp}_${randomId}_${policyId}.json`;
   }
+  
+  return withPrefix(key);
 };
 
 // Upload JSON data to S3 - SDK v3

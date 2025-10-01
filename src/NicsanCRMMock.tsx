@@ -1,11 +1,12 @@
 import React, { useMemo, useState, useRef, useEffect } from "react";
-import { Upload, FileText, CheckCircle2, AlertTriangle, Table2, Settings, LayoutDashboard, Users, BarChart3, BadgeInfo, Filter, Lock, LogOut, Car, SlidersHorizontal, TrendingUp, RefreshCw } from "lucide-react";
+import { Upload, FileText, CheckCircle2, AlertTriangle, Table2, Settings, LayoutDashboard, Users, BarChart3, BadgeInfo, Filter, LogOut, Car, SlidersHorizontal, TrendingUp, RefreshCw } from "lucide-react";
 import { ResponsiveContainer, CartesianGrid, BarChart, Bar, Legend, Area, AreaChart, XAxis, YAxis, Tooltip } from "recharts";
 import { authUtils } from './services/api';
 import { policiesAPI } from './services/api';
 import DualStorageService from './services/dualStorageService';
 import CrossDeviceSyncDemo from './components/CrossDeviceSyncDemo';
 import { SettingsProvider, useSettings } from './contexts/SettingsContext';
+import HorizontalLogo from './assets/images/HorizontalLogo.svg';
 
 // Environment variables
 const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
@@ -82,7 +83,14 @@ function LoginPage({ onLogin }: { onLogin: (user: { name: string; email: string;
   return (
     <div className="min-h-screen grid place-items-center bg-zinc-50 p-6">
       <div className="w-full max-w-md bg-white rounded-2xl border border-zinc-100 shadow-sm p-6">
-        <div className="flex items-center gap-2 text-lg font-semibold mb-1"><Lock className="w-5 h-5"/> Nicsan CRM v1</div>
+        <div className="flex items-center gap-3 mb-6">
+          <img 
+            src={HorizontalLogo} 
+            alt="Nicsan CRM" 
+            className="h-[20.3843px] w-auto"
+          />
+          <span className="text-[28px] font-clash font-bold text-zinc-900 leading-[20.3843px] mt-0.5">CRM V1</span>
+        </div>
         
         
         {error && (
@@ -92,22 +100,22 @@ function LoginPage({ onLogin }: { onLogin: (user: { name: string; email: string;
         )}
         
         <label className="block mb-3">
-          <div className="text-xs text-zinc-600 mb-1">Email</div>
+          <div className="text-xs text-zinc-600 mb-1 font-clash font-normal">Email</div>
           <input 
             value={email} 
             onChange={e=>setEmail(e.target.value)} 
-            className="w-full rounded-xl border border-zinc-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200" 
+            className="w-full rounded-xl border border-zinc-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200 font-clash font-normal" 
             placeholder="Enter your email"
             disabled={isLoading}
           />
         </label>
         <label className="block mb-4">
-          <div className="text-xs text-zinc-600 mb-1">Password</div>
+          <div className="text-xs text-zinc-600 mb-1 font-clash font-normal">Password</div>
           <input 
             type="password" 
             value={password} 
             onChange={e=>setPassword(e.target.value)} 
-            className="w-full rounded-xl border border-zinc-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200" 
+            className="w-full rounded-xl border border-zinc-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200 font-clash font-normal" 
             placeholder="••••••••"
             disabled={isLoading}
           />
@@ -116,7 +124,7 @@ function LoginPage({ onLogin }: { onLogin: (user: { name: string; email: string;
         <button 
           onClick={handleLogin} 
           disabled={isLoading}
-          className="w-full px-4 py-2 rounded-xl bg-zinc-900 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full px-4 py-2 rounded-xl bg-zinc-900 text-white disabled:opacity-50 disabled:cursor-not-allowed font-clash"
         >
           {isLoading ? 'Signing in...' : 'Sign in'}
         </button>
@@ -133,7 +141,14 @@ function TopTabs({ tab, setTab, user, onLogout }: { tab: "ops" | "founder"; setT
   return (
     <div className="w-full border-b border-zinc-200 bg-white sticky top-0 z-40">
       <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-3">
-        <div className="text-xl font-semibold">Nicsan CRM v1</div>
+        <div className="flex items-center gap-3">
+          <img 
+            src={HorizontalLogo} 
+            alt="Nicsan CRM" 
+            className="h-[20.3843px] w-auto"
+          />
+          <span className="text-[28px] font-clash font-bold text-zinc-900 leading-[20.3843px] mt-0.5">CRM V1</span>
+        </div>
         <div className="ml-auto flex items-center gap-2">
           <div className="rounded-xl bg-zinc-100 p-1 flex gap-2">
             <button onClick={() => setTab("ops")} className={`px-4 py-2 rounded-lg text-sm ${tab === "ops" ? "bg-white shadow" : "text-zinc-600"}`}>Operations</button>
@@ -219,11 +234,9 @@ function PageUpload() {
     { value: 'TATA_AIG', label: 'Tata AIG' },
     { value: 'DIGIT', label: 'Digit' },
     { value: 'RELIANCE_GENERAL', label: 'Reliance General' },
+    { value: 'GENERALI_CENTRAL', label: 'Generali Central Insurance' },
     { value: 'LIBERTY_GENERAL', label: 'Liberty General Insurance' },
-    { value: 'ICIC', label: 'ICICI Lombard' },
-    { value: 'ROYAL_SUNDARAM', label: 'Royal Sundaram General Insurance' },
-    { value: 'ZURICH_KOTAK', label: 'Zurich Kotak General Insurance' },
-    { value: 'HDFC_ERGO', label: 'HDFC ERGO General Insurance' }
+    { value: 'ICIC', label: 'ICICI Lombard' }
   ];
   const [manualExtras, setManualExtras] = useState({
     executive: '',
@@ -238,11 +251,11 @@ function PageUpload() {
     customerPaid: '',
     customerChequeNo: '',
     ourChequeNo: '',
+    customerName: '',
     branch: ''
   });
   const [manualExtrasSaved, setManualExtrasSaved] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [_callerNames, setCallerNames] = useState<string[]>([]);
 
   const handleFiles = async (files: FileList) => {
     const file = files[0];
@@ -350,6 +363,7 @@ function PageUpload() {
           customerPaid: '',
           customerChequeNo: '',
           ourChequeNo: '',
+          customerName: '',
           branch: ''
         });
         setManualExtrasSaved(false);
@@ -390,10 +404,12 @@ function PageUpload() {
     
     const poll = async () => {
       try {
+        console.log(`🔄 Polling upload status for ${uploadId}, attempt ${attempts + 1}`);
         const response = await DualStorageService.getUploadById(uploadId);
         
         if (response.success) {
           const status = response.data.status;
+          console.log(`📊 Upload status: ${status} (source: ${response.source})`);
           
           // Update local state
           setUploadedFiles(prev => {
@@ -446,10 +462,13 @@ function PageUpload() {
           // Continue polling if still processing
           if (attempts < maxAttempts) {
             attempts++;
+            console.log(`⏳ Continuing to poll... (${attempts}/${maxAttempts})`);
             setTimeout(poll, 2000); // Poll every 2 seconds
           } else {
             setUploadStatus('PDF processing timed out. Please check status.');
           }
+        } else {
+          console.error('❌ Status polling failed:', response.error);
         }
       } catch (error) {
         console.error('Status polling failed:', error);
@@ -470,26 +489,6 @@ function PageUpload() {
     setManualExtras(prev => ({ ...prev, [field]: value }));
   };
 
-  // Load real caller names on component mount
-  useEffect(() => {
-    const loadCallerNames = async () => {
-      try {
-        const response = await DualStorageService.getTelecallers();
-        if (response.success && response.data) {
-          const names = response.data
-            .map((telecaller: any) => telecaller.name)
-            .filter((name: string) => name && name !== 'Unknown');
-          setCallerNames(names);
-        }
-      } catch (error) {
-        console.warn('Failed to load caller names:', error);
-        // Fallback to mock data
-        setCallerNames(['Priya Singh', 'Rahul Kumar', 'Anjali Sharma']);
-      }
-    };
-    
-    loadCallerNames();
-  }, []);
 
   // Smart suggestions for caller names
   // const __getSmartSuggestions = (fieldName: string) => {
@@ -499,70 +498,8 @@ function PageUpload() {
   //   return [];
   // };
 
-  // Filtered caller suggestions for autocomplete
-  const getFilteredCallerSuggestions = async (input: string): Promise<string[]> => {
-    if (input.length < 2) return [];
-    
-    try {
-      const response = await DualStorageService.getTelecallers();
-      if (response.success && response.data) {
-        const filteredNames = response.data
-          .map((telecaller: any) => telecaller.name)
-          .filter((name: string) => 
-            name && 
-            name !== 'Unknown' && 
-            name.toLowerCase().includes(input.toLowerCase())
-          )
-          .slice(0, 5); // Limit to 5 suggestions
-        return filteredNames;
-      }
-    } catch (error) {
-      console.warn('Failed to get caller suggestions:', error);
-    }
-    
-    // Fallback to mock data with filtering
-    const mockCallers = ['Priya Singh', 'Rahul Kumar', 'Anjali Sharma'];
-    return mockCallers.filter(name => 
-      name.toLowerCase().includes(input.toLowerCase())
-    );
-  };
 
   // Handle adding new telecaller
-  const handleAddNewTelecaller = async (telecallerName: string) => {
-    try {
-      setUploadStatus('Adding new telecaller...');
-      
-      const result = await DualStorageService.addTelecaller({
-        name: telecallerName,
-        email: '',
-        phone: '',
-        branch: manualExtras.branch || 'Default'
-      });
-      
-      if (result.success) {
-        setUploadStatus('✅ New telecaller added successfully!');
-        
-        // Auto-select the new telecaller
-        setManualExtras(prev => ({
-          ...prev,
-          callerName: telecallerName
-        }));
-        
-        // Refresh the caller names list
-        const updatedResponse = await DualStorageService.getTelecallers();
-        if (updatedResponse.success && updatedResponse.data) {
-          const names = updatedResponse.data
-            .map((telecaller: any) => telecaller.name)
-            .filter((name: string) => name && name !== 'Unknown');
-          setCallerNames(names);
-        }
-      } else {
-        setUploadStatus(`❌ Failed to add telecaller: ${result.error}`);
-      }
-    } catch (error) {
-      setUploadStatus(`❌ Error adding telecaller: ${error.message}`);
-    }
-  };
 
   return (
     <>
@@ -593,33 +530,43 @@ function PageUpload() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs text-blue-700 mb-1">Executive</label>
-              <input 
-                type="text" 
-                placeholder="Sales rep name"
+              <select 
                 value={manualExtras.executive}
                 onChange={(e) => handleManualExtrasChange('executive', e.target.value)}
-                className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
-              />
+                className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 bg-white"
+              >
+                <option value="">Select Executive</option>
+                <option value="Yashwanth">Yashwanth</option>
+                <option value="Kavya">Kavya</option>
+                <option value="Bhagya">Bhagya</option>
+                <option value="Sandesh">Sandesh</option>
+                <option value="Yallappa">Yallappa</option>
+                <option value="Nethravathi">Nethravathi</option>
+                <option value="Tejaswini">Tejaswini</option>
+              </select>
             </div>
             <div>
               <label className="block text-xs text-blue-700 mb-1">Ops Executive</label>
-              <input 
-                type="text" 
-                placeholder="Ops executive name"
+              <select 
                 value={manualExtras.opsExecutive}
                 onChange={(e) => handleManualExtrasChange('opsExecutive', e.target.value)}
-                className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
-              />
+                className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 bg-white"
+              >
+                <option value="">Select Ops Executive</option>
+                <option value="NA">NA</option>
+                <option value="Ravi">Ravi</option>
+                <option value="Pavan">Pavan</option>
+                <option value="Manjunath">Manjunath</option>
+              </select>
             </div>
             <div>
-              <AutocompleteInput 
-                label="Caller Name" 
+              <label className="block text-xs text-blue-700 mb-1">Caller Name</label>
+              <input 
+                type="text" 
                 placeholder="Telecaller name"
                 value={manualExtras.callerName}
-                onChange={(value) => handleManualExtrasChange('callerName', value)}
-                getSuggestions={getFilteredCallerSuggestions}
-                onAddNew={handleAddNewTelecaller}
-                showAddNew={true}
+                onChange={(e) => handleManualExtrasChange('callerName', e.target.value)}
+                className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
               />
             </div>
             <div>
@@ -644,13 +591,15 @@ function PageUpload() {
             </div>
             <div>
               <label className="block text-xs text-blue-700 mb-1">Rollover/Renewal</label>
-              <input 
-                type="text" 
-                placeholder="Internal code"
+              <select 
                 value={manualExtras.rollover}
                 onChange={(e) => handleManualExtrasChange('rollover', e.target.value)}
-                className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
-              />
+                className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 bg-white"
+              >
+                <option value="">Select Rollover/Renewal</option>
+                <option value="ROLLOVER">ROLLOVER</option>
+                <option value="RENEWAL">RENEWAL</option>
+              </select>
             </div>
             <div style={{ display: 'none' }}>
               <label className="block text-xs text-blue-700 mb-1">Brokerage (₹)</label>
@@ -702,16 +651,29 @@ function PageUpload() {
                 className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
               />
             </div>
-            <div>
-              <label className="block text-xs text-blue-700 mb-1">Branch <span className="text-red-500">*</span></label>
+            <div className="md:col-span-2">
+              <label className="block text-xs text-blue-700 mb-1">Customer Name</label>
               <input 
                 type="text"
-                placeholder="Enter branch name"
+                placeholder="Enter customer name"
+                value={manualExtras.customerName}
+                onChange={(e) => handleManualExtrasChange('customerName', e.target.value)}
+                className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-blue-700 mb-1">Branch <span className="text-red-500">*</span></label>
+              <select 
                 value={manualExtras.branch}
                 onChange={(e) => handleManualExtrasChange('branch', e.target.value)}
-                className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 bg-white"
                 required
-              />
+              >
+                <option value="">Select Branch</option>
+                <option value="MYSORE">MYSORE</option>
+                <option value="BANASHANKARI">BANASHANKARI</option>
+                <option value="ADUGODI">ADUGODI</option>
+              </select>
             </div>
             <div className="md:col-span-2">
               <label className="block text-xs text-blue-700 mb-1">Remark</label>
@@ -727,7 +689,7 @@ function PageUpload() {
           {/* Submit Button for Manual Extras */}
           <div className="mt-4 flex justify-end">
             <button
-              onClick={async () => {
+              onClick={() => {
                 // Show preview of what will be submitted
                 const filledFields = Object.entries(manualExtras).filter(([, value]) => value.trim() !== '');
                 // Validate required branch field
@@ -739,32 +701,6 @@ function PageUpload() {
                 if (filledFields.length === 0) {
                   alert('Please fill at least one manual field before proceeding');
                   return;
-                }
-                
-                // Validate Caller Name if provided
-                if (manualExtras.callerName && manualExtras.callerName.trim() !== '') {
-                  // Format validation
-                  if (manualExtras.callerName.trim().length < 2) {
-                    alert('Caller Name must be at least 2 characters');
-                    return;
-                  }
-                  
-                  // Database existence validation
-                  try {
-                    const response = await DualStorageService.getTelecallers();
-                    if (response.success && response.data) {
-                      const telecallerExists = response.data.some(
-                        (telecaller: any) => telecaller.name === manualExtras.callerName.trim()
-                      );
-                      if (!telecallerExists) {
-                        alert(`Telecaller "${manualExtras.callerName}" does not exist. Please select from suggestions or add them first.`);
-                        return;
-                      }
-                    }
-                  } catch (error) {
-                    alert('Failed to validate telecaller. Please try again.');
-                    return;
-                  }
                 }
                 
                 setManualExtrasSaved(true);
@@ -871,6 +807,8 @@ function PageUpload() {
                             ? 'bg-green-100 text-green-700'
                             : file.insurer === 'RELIANCE_GENERAL'
                             ? 'bg-purple-100 text-purple-700'
+                            : file.insurer === 'GENERALI_CENTRAL'
+                            ? 'bg-orange-100 text-orange-700'
                             : file.insurer === 'LIBERTY_GENERAL'
                             ? 'bg-yellow-100 text-yellow-700'
                             : file.insurer === 'ICIC'
@@ -912,7 +850,7 @@ function PageUpload() {
   )
 }
 
-function LabeledInput({ label, placeholder, hint, required, value, onChange, error, suggestions }: { 
+function LabeledInput({ label, placeholder, hint, required, value, onChange, error, suggestions, type = "text" }: { 
   label: string; 
   placeholder?: string; 
   hint?: string; 
@@ -921,6 +859,7 @@ function LabeledInput({ label, placeholder, hint, required, value, onChange, err
   onChange?: (v:any)=>void;
   error?: string;
   suggestions?: string[];
+  type?: string;
 }) {
   return (
     <label className="block">
@@ -928,7 +867,8 @@ function LabeledInput({ label, placeholder, hint, required, value, onChange, err
         {label} {required && <span className="text-rose-600">*</span>} {hint && <span className="text-[10px] text-zinc-400">({hint})</span>}
       </div>
       <input 
-        value={value || ''} 
+        type={type}
+        value={value} 
         onChange={e=>onChange && onChange(e.target.value)} 
         className={`w-full rounded-xl border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200 ${
           error ? 'border-red-300 bg-red-50' : 'border-zinc-300'
@@ -948,151 +888,6 @@ function LabeledInput({ label, placeholder, hint, required, value, onChange, err
   )
 }
 
-function AutocompleteInput({ 
-  label, 
-  placeholder, 
-  hint, 
-  required, 
-  value, 
-  onChange, 
-  error, 
-  getSuggestions,
-  onAddNew,
-  showAddNew = false
-}: { 
-  label: string; 
-  placeholder?: string; 
-  hint?: string; 
-  required?: boolean; 
-  value?: any; 
-  onChange?: (v:any)=>void;
-  error?: string;
-  getSuggestions?: (input: string) => Promise<string[]>;
-  onAddNew?: (value: string) => void;
-  showAddNew?: boolean;
-}) {
-  const [suggestions, setSuggestions] = useState<string[]>([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [showAddNewOption, setShowAddNewOption] = useState(false);
-
-  // Debounced suggestions loading
-  const debouncedGetSuggestions = useMemo(
-    () => {
-      let timeoutId: number;
-      return (input: string) => {
-        clearTimeout(timeoutId);
-        timeoutId = setTimeout(async () => {
-          if (input.length >= 2 && getSuggestions) {
-            setIsLoading(true);
-            try {
-              const newSuggestions = await getSuggestions(input);
-              setSuggestions(newSuggestions);
-              setShowSuggestions(true);
-              
-              // Show "Add New" option if no suggestions found
-              setShowAddNewOption(newSuggestions.length === 0 && showAddNew);
-            } catch (error) {
-              console.warn('Failed to get suggestions:', error);
-              setSuggestions([]);
-              setShowAddNewOption(showAddNew);
-            } finally {
-              setIsLoading(false);
-            }
-          } else {
-            setSuggestions([]);
-            setShowSuggestions(false);
-            setShowAddNewOption(false);
-          }
-        }, 300);
-      };
-    },
-    [getSuggestions, showAddNew]
-  );
-
-  const handleInputChange = (inputValue: string) => {
-    onChange && onChange(inputValue);
-    debouncedGetSuggestions(inputValue);
-  };
-
-  const handleSuggestionClick = (suggestion: string) => {
-    onChange && onChange(suggestion);
-    setShowSuggestions(false);
-    setShowAddNewOption(false);
-  };
-
-  const handleAddNew = () => {
-    if (onAddNew) {
-      onAddNew(value);
-    }
-    setShowSuggestions(false);
-    setShowAddNewOption(false);
-  };
-
-  const handleInputFocus = () => {
-    if (value && value.length >= 2) {
-      setShowSuggestions(suggestions.length > 0);
-    }
-  };
-
-  const handleInputBlur = () => {
-    // Delay hiding to allow click on suggestions
-    setTimeout(() => setShowSuggestions(false), 200);
-  };
-
-  return (
-    <div className="relative">
-      <label className="block">
-        <div className="text-xs text-blue-700 mb-1">
-          {label} {required && <span className="text-rose-600">*</span>} {hint && <span className="text-[10px] text-zinc-400">({hint})</span>}
-        </div>
-        <input 
-          value={value} 
-          onChange={e => handleInputChange(e.target.value)}
-          onFocus={handleInputFocus}
-          onBlur={handleInputBlur}
-          className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 ${
-            error ? 'border-red-300 bg-red-50' : 'border-blue-300'
-          }`} 
-          placeholder={placeholder} 
-        />
-        {isLoading && (
-          <div className="absolute right-3 top-8 text-blue-500">
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
-          </div>
-        )}
-        {error && (
-          <div className="text-xs text-red-600 mt-1">{error}</div>
-        )}
-      </label>
-      
-      {/* Enhanced dropdown with Add New option */}
-      {showSuggestions && (suggestions.length > 0 || showAddNewOption) && (
-        <div className="absolute z-10 mt-1 w-full bg-white border border-zinc-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
-          {suggestions.map((suggestion, index) => (
-            <div
-              key={index}
-              className="px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-zinc-100 last:border-b-0"
-              onClick={() => handleSuggestionClick(suggestion)}
-            >
-              {suggestion}
-            </div>
-          ))}
-          
-          {/* Add New Telecaller Option */}
-          {showAddNewOption && (
-            <div
-              className="px-3 py-2 hover:bg-green-50 cursor-pointer text-sm border-t border-zinc-200 bg-green-50 text-green-700 font-medium"
-              onClick={handleAddNew}
-            >
-              ➕ Add '{value}' as new Telecaller
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
 
 function LabeledSelect({ label, value, onChange, options, required, error }: { 
   label: string; 
@@ -1110,9 +905,14 @@ function LabeledSelect({ label, value, onChange, options, required, error }: {
       <select 
         value={value} 
         onChange={e=>onChange && onChange(e.target.value)} 
-        className={`w-full rounded-xl border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200 ${
+        className={`w-full rounded-xl border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200 bg-white text-sm h-10 ${
           error ? 'border-red-300 bg-red-50' : 'border-zinc-300'
         }`}
+        style={{
+          height: '40.8px',
+          minHeight: '40.8px',
+          maxHeight: '40.8px'
+        }}
       >
         <option value="">Select {label}</option>
         {options.map(o=> <option key={o} value={o}>{o}</option>)}
@@ -1123,6 +923,7 @@ function LabeledSelect({ label, value, onChange, options, required, error }: {
     </label>
   )
 }
+
 
 // Optimized manual form with QuickFill and two-way cashback calc
 function PageManualForm() {
@@ -1170,14 +971,39 @@ function PageManualForm() {
   const [vehicleSearchResults, setVehicleSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const [validationMode, setValidationMode] = useState<'progressive' | 'strict'>('progressive');
-  const [_callerNames, setCallerNames] = useState<string[]>([]);
   
   const set = (k:string,v:any)=> {
     setForm((f:any)=>({ ...f, [k]: v }));
     // Mark field as touched for progressive validation
     setFieldTouched(prev => ({ ...prev, [k]: true }));
   };
-  const number = (v:any)=> (v===''||v===null)?0:parseFloat(v.toString().replace(/[^0-9.]/g,''))||0;
+  // Enhanced safe number function with comprehensive validation
+  const number = (v: any): number => {
+    // Handle null/undefined/empty
+    if (v === null || v === undefined || v === '') return 0;
+    
+    // Convert to string and clean
+    let cleanValue = String(v).trim();
+    
+    // Remove common currency symbols and formatting
+    cleanValue = cleanValue
+      .replace(/[₹$€£¥]/g, '') // Remove currency symbols
+      .replace(/,/g, '') // Remove commas
+      .replace(/\s+/g, '') // Remove spaces
+      .replace(/[^\d.-]/g, ''); // Keep only digits, dots, and minus
+    
+    // Handle empty after cleaning
+    if (cleanValue === '' || cleanValue === '-') return 0;
+    
+    // Parse the number
+    const num = parseFloat(cleanValue);
+    
+    // Check for NaN or Infinity
+    if (isNaN(num) || !isFinite(num)) return 0;
+    
+    // Clamp to reasonable bounds (max ₹1 crore)
+    return Math.min(Math.max(num, 0), 10000000);
+  };
 
   // Two-way binding for cashback
   const onTotalChange = (v:any)=> {
@@ -1221,7 +1047,7 @@ function PageManualForm() {
             const traditionalPattern = /^[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}$/;
             const bhSeriesPattern = /^[0-9]{2}BH[0-9]{4}[A-Z]{1,2}$/;
             if (!traditionalPattern.test(cleanValue) && !bhSeriesPattern.test(cleanValue)) {
-              errors.push('Vehicle Number must be in format: KA01AB1234, KA 51 MM 1214, or 23 BH 7699 J');
+              errors.push('Vehicle number must be in valid format (e.g., KA01AB1234 or 12BH1234AB)');
             }
           }
           break;
@@ -1311,8 +1137,10 @@ function PageManualForm() {
           errors.push('IDV (₹) is required');
         } else {
           const idv = number(value);
-          if (idv <= 0 || idv > 100000000) {
-            errors.push('IDV must be between ₹1 and ₹10 crore');
+          if (idv < 1000) {
+            errors.push('IDV must be at least ₹1,000');
+          } else if (idv > 100000000) {
+            errors.push('IDV cannot exceed ₹10 crore');
           }
         }
         break;
@@ -1358,8 +1186,10 @@ function PageManualForm() {
           errors.push('Total Premium (₹) is required');
         } else {
           const totalPremium = number(value);
-          if (totalPremium <= 0 || totalPremium > 1000000) {
-            errors.push('Total Premium must be between ₹1 and ₹10 lakh');
+          if (totalPremium <= 0) {
+            errors.push('Total Premium must be greater than ₹0');
+          } else if (totalPremium > 10000000) {
+            errors.push('Total Premium cannot exceed ₹1 crore');
           }
         }
         break;
@@ -1443,7 +1273,7 @@ function PageManualForm() {
       errors.push('Net OD cannot exceed Total OD');
     }
     
-    // Cashback validation
+    // Enhanced cashback validation
     const cashbackPct = number(form.cashbackPct);
     const cashbackAmt = number(form.cashbackAmt);
     
@@ -1453,6 +1283,15 @@ function PageManualForm() {
     
     if (cashbackAmt > totalPremium * 0.5) {
       errors.push('Cashback amount cannot exceed 50% of Total Premium');
+    }
+    
+    // Validate cashback consistency
+    if (cashbackPct > 0 && cashbackAmt > 0) {
+      const expectedAmt = (totalPremium * cashbackPct) / 100;
+      const tolerance = totalPremium * 0.01; // 1% tolerance
+      if (Math.abs(cashbackAmt - expectedAmt) > tolerance) {
+        errors.push('Cashback amount and percentage are inconsistent');
+      }
     }
     
     // Date validation
@@ -1541,61 +1380,6 @@ function PageManualForm() {
   //   return suggestions;
   // };
 
-  // Filtered caller suggestions for autocomplete
-  const getFilteredCallerSuggestions = async (input: string): Promise<string[]> => {
-    if (input.length < 2) return [];
-    
-    try {
-      const response = await DualStorageService.getTelecallers();
-      if (response.success && response.data) {
-        const filteredNames = response.data
-          .map((telecaller: any) => telecaller.name)
-          .filter((name: string) => 
-            name && 
-            name !== 'Unknown' && 
-            name.toLowerCase().includes(input.toLowerCase())
-          )
-          .slice(0, 5); // Limit to 5 suggestions
-        return filteredNames;
-      }
-    } catch (error) {
-      console.warn('Failed to get caller suggestions:', error);
-    }
-    
-    // Fallback to mock data with filtering
-    const mockCallers = ['Priya Singh', 'Rahul Kumar', 'Anjali Sharma'];
-    return mockCallers.filter(name => 
-      name.toLowerCase().includes(input.toLowerCase())
-    );
-  };
-
-  // Handle adding new telecaller
-  const handleAddNewTelecaller = async (telecallerName: string) => {
-    try {
-      // Auto-select the new telecaller
-      set('callerName', telecallerName);
-      
-      const result = await DualStorageService.addTelecaller({
-        name: telecallerName,
-        email: '',
-        phone: '',
-        branch: form.branch || 'Default'
-      });
-      
-      if (result.success) {
-        // Refresh the caller names list
-        const updatedResponse = await DualStorageService.getTelecallers();
-        if (updatedResponse.success && updatedResponse.data) {
-          const names = updatedResponse.data
-            .map((telecaller: any) => telecaller.name)
-            .filter((name: string) => name && name !== 'Unknown');
-          setCallerNames(names);
-        }
-      }
-    } catch (error) {
-      console.error('Error adding telecaller:', error);
-    }
-  };
 
   const handleVehicleNumberChange = async (vehicleNumber: string) => {
     set('vehicleNumber', vehicleNumber);
@@ -1638,28 +1422,28 @@ function PageManualForm() {
       
       setForm((f: any) => ({
         ...f,
-        insurer: lastPolicy.insurer || f.insurer,
-        productType: lastPolicy.product_type || f.productType,
-        vehicleType: lastPolicy.vehicle_type || f.vehicleType,
-        make: lastPolicy.make || f.make,
-        model: lastPolicy.model || f.model,
-        cc: lastPolicy.cc || f.cc,
-        manufacturingYear: lastPolicy.manufacturing_year || f.manufacturingYear,
-        idv: lastPolicy.idv || f.idv,
-        ncb: lastPolicy.ncb || f.ncb,
-        discount: lastPolicy.discount || f.discount,
-        netOd: lastPolicy.net_od || f.netOd,
-        ref: lastPolicy.ref || f.ref,
-        totalOd: lastPolicy.total_od || f.totalOd,
-        netPremium: lastPolicy.net_premium || f.netPremium,
-        totalPremium: lastPolicy.total_premium || f.totalPremium,
-        brokerage: lastPolicy.brokerage || f.brokerage,
-        cashback: lastPolicy.cashback_amount || f.cashback,
-        branch: lastPolicy.branch || f.branch,
-        rollover: lastPolicy.rollover || f.rollover,
-        callerName: lastPolicy.caller_name || f.callerName,
-        executive: lastPolicy.executive || f.executive,
-        opsExecutive: lastPolicy.ops_executive || f.opsExecutive,
+        insurer: (lastPolicy as any).insurer || f.insurer,
+        productType: (lastPolicy as any).product_type || f.productType,
+        vehicleType: (lastPolicy as any).vehicle_type || f.vehicleType,
+        make: (lastPolicy as any).make || f.make,
+        model: (lastPolicy as any).model || f.model,
+        cc: (lastPolicy as any).cc || f.cc,
+        manufacturingYear: (lastPolicy as any).manufacturing_year || f.manufacturingYear,
+        idv: (lastPolicy as any).idv || f.idv,
+        ncb: (lastPolicy as any).ncb || f.ncb,
+        discount: (lastPolicy as any).discount || f.discount,
+        netOd: (lastPolicy as any).net_od || f.netOd,
+        ref: (lastPolicy as any).ref || f.ref,
+        totalOd: (lastPolicy as any).total_od || f.totalOd,
+        netPremium: (lastPolicy as any).net_premium || f.netPremium,
+        totalPremium: (lastPolicy as any).total_premium || f.totalPremium,
+        brokerage: (lastPolicy as any).brokerage || f.brokerage,
+        cashback: (lastPolicy as any).cashback_amount || f.cashback,
+        branch: (lastPolicy as any).branch || f.branch,
+        rollover: (lastPolicy as any).rollover || f.rollover,
+        callerName: (lastPolicy as any).caller_name || f.callerName,
+        executive: (lastPolicy as any).executive || f.executive,
+        opsExecutive: (lastPolicy as any).ops_executive || f.opsExecutive,
       }));
     } else {
       // Fallback to demo data if no search results
@@ -1857,26 +1641,8 @@ function PageManualForm() {
   // State for async validation errors
   const [asyncErrors, setAsyncErrors] = useState<{[key: string]: string[]}>({});
 
-  // Load real caller names on component mount
-  useEffect(() => {
-    const loadCallerNames = async () => {
-      try {
-        const response = await DualStorageService.getTelecallers();
-        if (response.success && response.data) {
-          const names = response.data
-            .map((telecaller: any) => telecaller.name)
-            .filter((name: string) => name && name !== 'Unknown');
-          setCallerNames(names);
-        }
-      } catch (error) {
-        console.warn('Failed to load caller names:', error);
-        // Fallback to mock data
-        setCallerNames(['Priya Singh', 'Rahul Kumar', 'Anjali Sharma']);
-      }
-    };
-    
-    loadCallerNames();
-  }, []);
+
+  // Handle adding new telecaller
 
   // Comprehensive validation (synchronous part)
   const errors = useMemo(() => {
@@ -2012,10 +1778,10 @@ function PageManualForm() {
               Found {vehicleSearchResults.length} previous policy(ies) for this vehicle:
             </div>
             {vehicleSearchResults.slice(0, 3).map((policy, index) => (
-              <div key={policy.id} className="text-xs text-green-700 mb-1">
-                {index + 1}. Policy: {policy.policy_number} | 
-                Insurer: {policy.insurer} | 
-                Date: {new Date(policy.created_at).toLocaleDateString()}
+              <div key={(policy as any).id} className="text-xs text-green-700 mb-1">
+                {index + 1}. Policy: {(policy as any).policy_number} | 
+                Insurer: {(policy as any).insurer} | 
+                Date: {new Date((policy as any).created_at).toLocaleDateString()}
               </div>
             ))}
             <button 
@@ -2041,7 +1807,37 @@ function PageManualForm() {
 
         {/* Dates & Values */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-          <LabeledInput label="Issue Date" value={form.issueDate} onChange={v=>set('issueDate', v)}/>
+          <LabeledInput 
+            label="Issue Date" 
+            type="date"
+            value={(() => {
+              const dateValue = form.issueDate;
+              if (dateValue) {
+                // If date is in DD-MM-YYYY format, convert to YYYY-MM-DD
+                if (dateValue.includes('-') && dateValue.split('-')[0].length === 2) {
+                  const [day, month, year] = dateValue.split('-');
+                  return `${year}-${month}-${day}`;
+                }
+                // If already in YYYY-MM-DD format, return as is
+                return dateValue;
+              }
+              return dateValue;
+            })()}
+            onChange={(value) => {
+              // Ensure date is in YYYY-MM-DD format
+              if (value) {
+                const date = new Date(value);
+                if (!isNaN(date.getTime())) {
+                  const formattedDate = date.toISOString().split('T')[0];
+                  set('issueDate', formattedDate);
+                } else {
+                  set('issueDate', value);
+                }
+              } else {
+                set('issueDate', value);
+              }
+            }}
+          />
           <LabeledInput label="Expiry Date" value={form.expiryDate} onChange={v=>set('expiryDate', v)}/>
           <LabeledInput label="IDV (₹)" value={form.idv} onChange={v=>set('idv', v)}/>
           <LabeledInput label="NCB (%)" value={form.ncb} onChange={v=>set('ncb', v)}/>
@@ -2076,14 +1872,14 @@ function PageManualForm() {
 
         {/* People & Notes */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-          <LabeledInput label="Executive" value={form.executive} onChange={v=>set('executive', v)}/>
-          <LabeledInput label="Ops Executive" value={form.opsExecutive} onChange={v=>set('opsExecutive', v)}/>
-          <AutocompleteInput label="Caller Name" value={form.callerName} onChange={v=>set('callerName', v)} getSuggestions={getFilteredCallerSuggestions} onAddNew={handleAddNewTelecaller} showAddNew={true}/>
+          <LabeledSelect label="Executive" value={form.executive} onChange={v=>set('executive', v)} options={["Yashwanth", "Kavya", "Bhagya", "Sandesh", "Yallappa", "Nethravathi", "Tejaswini"]}/>
+          <LabeledSelect label="Ops Executive" value={form.opsExecutive} onChange={v=>set('opsExecutive', v)} options={["NA", "Ravi", "Pavan", "Manjunath"]}/>
+          <LabeledInput label="Caller Name" value={form.callerName} onChange={v=>set('callerName', v)} placeholder="Enter caller name"/>
           <LabeledInput label="Mobile Number" required placeholder="9xxxxxxxxx" value={form.mobile} onChange={v=>set('mobile', v)}/>
-          <LabeledInput label="Rollover/Renewal" hint="internal code" value={form.rollover} onChange={v=>set('rollover', v)}/>
-          <LabeledInput label="Customer Name" value={form.customerName} onChange={v=>set('customerName', v)}/>
+          <LabeledSelect label="Rollover/Renewal" value={form.rollover} onChange={v=>set('rollover', v)} options={["ROLLOVER", "RENEWAL"]}/>
           <LabeledInput label="Customer Email ID" value={form.customerEmail} onChange={v=>set('customerEmail', v)}/>
-          <LabeledInput label="Branch" required value={form.branch} onChange={v=>set('branch', v)}/>
+          <LabeledInput label="Customer Name" value={form.customerName} onChange={v=>set('customerName', v)}/>
+          <LabeledSelect label="Branch" required value={form.branch} onChange={v=>set('branch', v)} options={["MYSORE", "BANASHANKARI", "ADUGODI"]}/>
           <LabeledInput label="Remark" placeholder="Any note" value={form.remark} onChange={v=>set('remark', v)}/>
         </div>
 
@@ -2313,11 +2109,12 @@ function PageManualGrid() {
     if (!row.vehicle) {
       errors.push('Vehicle Number is required');
     } else {
+
       const cleanValue = row.vehicle.replace(/\s/g, '');
       const traditionalPattern = /^[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}$/;
       const bhSeriesPattern = /^[0-9]{2}BH[0-9]{4}[A-Z]{1,2}$/;
       if (!traditionalPattern.test(cleanValue) && !bhSeriesPattern.test(cleanValue)) {
-        errors.push('Vehicle Number must be in format: KA01AB1234, KA 51 MM 1214, or 23 BH 7699 J');
+        errors.push('Vehicle number must be in valid format (e.g., KA01AB1234 or 12BH1234AB)');
       }
     }
     
@@ -2352,9 +2149,14 @@ function PageManualGrid() {
       errors.push('Invalid mobile number format (10 digits starting with 6-9)');
     }
     
-    // Total Premium validation
-    if (row.totalPremium && (isNaN(parseFloat(row.totalPremium)) || parseFloat(row.totalPremium) <= 0)) {
-      errors.push('Total Premium must be a valid positive number');
+    // Enhanced Total Premium validation
+    if (row.totalPremium) {
+      const totalPremium = parseFloat(row.totalPremium) || 0;
+      if (totalPremium <= 0) {
+        errors.push('Total Premium must be greater than ₹0');
+      } else if (totalPremium > 10000000) {
+        errors.push('Total Premium cannot exceed ₹1 crore');
+      }
     }
     
     // Date validation
@@ -3362,7 +3164,7 @@ function PageReview() {
     pdfData: {},
     manualExtras: {}
   });
-  const [_callerNames, setCallerNames] = useState<string[]>([]);
+
 
   // Load available uploads for review
   useEffect(() => {
@@ -3448,90 +3250,9 @@ function PageReview() {
     return () => clearInterval(interval);
   }, []);
 
-  // Load real caller names on component mount
-  useEffect(() => {
-    const loadCallerNames = async () => {
-      try {
-        const response = await DualStorageService.getTelecallers();
-        if (response.success && response.data) {
-          const names = response.data
-            .map((telecaller: any) => telecaller.name)
-            .filter((name: string) => name && name !== 'Unknown');
-          setCallerNames(names);
-        }
-      } catch (error) {
-        console.warn('Failed to load caller names:', error);
-        // Fallback to mock data
-        setCallerNames(['Priya Singh', 'Rahul Kumar', 'Anjali Sharma']);
-      }
-    };
-    
-    loadCallerNames();
-  }, []);
 
-  // Smart suggestions for caller names
-  // const __getSmartSuggestions = (fieldName: string) => {
-  //   if (fieldName === 'callerName') {
-  //     return callerNames; // Real caller names from database
-  //   }
-  //   return [];
-  // };
-
-  // Filtered caller suggestions for autocomplete
-  const getFilteredCallerSuggestions = async (input: string): Promise<string[]> => {
-    if (input.length < 2) return [];
-    
-    try {
-      const response = await DualStorageService.getTelecallers();
-      if (response.success && response.data) {
-        const filteredNames = response.data
-          .map((telecaller: any) => telecaller.name)
-          .filter((name: string) => 
-            name && 
-            name !== 'Unknown' && 
-            name.toLowerCase().includes(input.toLowerCase())
-          )
-          .slice(0, 5); // Limit to 5 suggestions
-        return filteredNames;
-      }
-    } catch (error) {
-      console.warn('Failed to get caller suggestions:', error);
-    }
-    
-    // Fallback to mock data with filtering
-    const mockCallers = ['Priya Singh', 'Rahul Kumar', 'Anjali Sharma'];
-    return mockCallers.filter(name => 
-      name.toLowerCase().includes(input.toLowerCase())
-    );
-  };
 
   // Handle adding new telecaller
-  const handleAddNewTelecaller = async (telecallerName: string) => {
-    try {
-      // Auto-select the new telecaller
-      updateManualExtras('callerName', telecallerName);
-      
-      const result = await DualStorageService.addTelecaller({
-        name: telecallerName,
-        email: '',
-        phone: '',
-        branch: editableData.manualExtras.branch || manualExtras.branch || 'Default'
-      });
-      
-      if (result.success) {
-        // Refresh the caller names list
-        const updatedResponse = await DualStorageService.getTelecallers();
-        if (updatedResponse.success && updatedResponse.data) {
-          const names = updatedResponse.data
-            .map((telecaller: any) => telecaller.name)
-            .filter((name: string) => name && name !== 'Unknown');
-          setCallerNames(names);
-        }
-      }
-    } catch (error) {
-      console.error('Error adding telecaller:', error);
-    }
-  };
 
   const loadUploadData = async (uploadId: string) => {
     try {
@@ -3658,11 +3379,12 @@ function PageReview() {
     
     // Format validation
     if (editableData.pdfData.vehicle_number) {
+
       const cleanValue = editableData.pdfData.vehicle_number.replace(/\s/g, '');
       const traditionalPattern = /^[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}$/;
       const bhSeriesPattern = /^[0-9]{2}BH[0-9]{4}[A-Z]{1,2}$/;
       if (!traditionalPattern.test(cleanValue) && !bhSeriesPattern.test(cleanValue)) {
-        errors.push('Invalid vehicle number format (e.g., KA01AB1234, KA 51 MM 1214, or 23 BH 7699 J)');
+        errors.push('Vehicle number must be in valid format (e.g., KA01AB1234 or 12BH1234AB)');
       }
     }
     
@@ -3731,35 +3453,18 @@ function PageReview() {
           setEditableData({ pdfData: {}, manualExtras: {} });
         }, 2000);
       } else {
-        console.error('❌ Policy confirmation failed:', result.error);
+        console.log('❌ Policy confirmation failed:', result.error);
         setSubmitMessage({ 
           type: 'error', 
-          message: `Policy confirmation failed: ${result.error || 'Unknown error'}` 
+          message: result.error || 'Failed to save policy. Please try again.' 
         });
       }
       
     } catch (error) {
       console.error('❌ Confirm & Save error:', error);
-      let errorMessage = 'Failed to save policy. Please try again.';
-      
-      // Provide more specific error messages
-      if (error.message) {
-        if (error.message.includes('Telecaller')) {
-          errorMessage = 'Error: Please select a valid telecaller from the list or add a new one.';
-        } else if (error.message.includes('already exists')) {
-          errorMessage = 'Error: This policy number already exists. Please use a different policy number.';
-        } else if (error.message.includes('required')) {
-          errorMessage = 'Error: Please fill in all required fields (Policy Number, Vehicle Number, Executive, Mobile).';
-        } else if (error.message.includes('Invalid vehicle number')) {
-          errorMessage = 'Error: Please enter a valid vehicle number format (e.g., KA01AB1234).';
-        } else {
-          errorMessage = `Error: ${error.message}`;
-        }
-      }
-      
       setSubmitMessage({ 
         type: 'error', 
-        message: errorMessage
+        message: 'Failed to save policy. Please try again.' 
       });
     } finally {
       setIsLoading(false);
@@ -4052,8 +3757,34 @@ function PageReview() {
             />
             <LabeledInput 
               label="Issue Date" 
-              value={editableData.pdfData.issue_date || pdfData.issue_date}
-              onChange={(value) => updatePdfData('issue_date', value)}
+              type="date"
+              value={(() => {
+                const dateValue = editableData.pdfData.issue_date || pdfData.issue_date;
+                if (dateValue) {
+                  // If date is in DD-MM-YYYY format, convert to YYYY-MM-DD
+                  if (dateValue.includes('-') && dateValue.split('-')[0].length === 2) {
+                    const [day, month, year] = dateValue.split('-');
+                    return `${year}-${month}-${day}`;
+                  }
+                  // If already in YYYY-MM-DD format, return as is
+                  return dateValue;
+                }
+                return dateValue;
+              })()}
+              onChange={(value) => {
+                // Ensure date is in YYYY-MM-DD format
+                if (value) {
+                  const date = new Date(value);
+                  if (!isNaN(date.getTime())) {
+                    const formattedDate = date.toISOString().split('T')[0];
+                    updatePdfData('issue_date', formattedDate);
+                  } else {
+                    updatePdfData('issue_date', value);
+                  }
+                } else {
+                  updatePdfData('issue_date', value);
+                }
+              }}
             />
             <LabeledInput 
               label="Expiry Date" 
@@ -4096,12 +3827,6 @@ function PageReview() {
               value={editableData.pdfData.total_premium || pdfData.total_premium}
               onChange={(value) => updatePdfData('total_premium', value)}
             />
-            <LabeledInput 
-              label="Customer Name" 
-              value={editableData.pdfData.customer_name || pdfData.customer_name}
-              onChange={(value) => updatePdfData('customer_name', value)}
-              hint="extracted from PDF"
-            />
           </div>
         </div>
 
@@ -4111,26 +3836,23 @@ function PageReview() {
             ✏️ Manual Extras (from Sales Rep)
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <LabeledInput 
+            <LabeledSelect 
               label="Executive" 
               value={editableData.manualExtras.executive || manualExtras.executive}
               onChange={(value) => updateManualExtras('executive', value)}
-              hint="sales rep name"
+              options={["Yashwanth", "Kavya", "Bhagya", "Sandesh", "Yallappa", "Nethravathi", "Tejaswini"]}
             />
-            <LabeledInput 
+            <LabeledSelect 
               label="Ops Executive" 
               value={editableData.manualExtras.opsExecutive || manualExtras.opsExecutive}
               onChange={(value) => updateManualExtras('opsExecutive', value)}
-              hint="ops executive name"
+              options={["NA", "Ravi", "Pavan", "Manjunath"]}
             />
-            <AutocompleteInput 
+            <LabeledInput 
               label="Caller Name" 
               value={editableData.manualExtras.callerName || manualExtras.callerName}
               onChange={(value) => updateManualExtras('callerName', value)}
               hint="telecaller name"
-              getSuggestions={getFilteredCallerSuggestions}
-              onAddNew={handleAddNewTelecaller}
-              showAddNew={true}
             />
             <LabeledInput 
               label="Customer Email ID" 
@@ -4142,16 +3864,22 @@ function PageReview() {
               value={editableData.manualExtras.mobile || manualExtras.mobile}
               onChange={(value) => updateManualExtras('mobile', value)}
             />
-            <LabeledInput 
+            <LabeledSelect 
               label="Rollover/Renewal" 
               value={editableData.manualExtras.rollover || manualExtras.rollover}
               onChange={(value) => updateManualExtras('rollover', value)}
-              hint="internal code"
+              options={["ROLLOVER", "RENEWAL"]}
             />
             <LabeledInput 
+              label="Customer Name" 
+              value={editableData.manualExtras.customerName || manualExtras.customerName}
+              onChange={(value) => updateManualExtras('customerName', value)}
+            />
+            <LabeledSelect 
               label="Branch" 
               value={editableData.manualExtras.branch || manualExtras.branch}
               onChange={(value) => updateManualExtras('branch', value)}
+              options={["MYSORE", "BANASHANKARI", "ADUGODI"]}
               required
             />
             <div style={{ display: 'none' }}>
@@ -4378,7 +4106,7 @@ function PagePolicyDetail() {
   // Debounced search
   const debouncedSearch = useMemo(
     () => {
-      let timeoutId: number;
+      let timeoutId: ReturnType<typeof setTimeout>;
       return (query: string) => {
         clearTimeout(timeoutId);
         timeoutId = setTimeout(() => handleSearch(query), 300);
@@ -5018,7 +4746,6 @@ function PageOverview() {
           setMetrics(metricsResponse.data);
           setDataSource(metricsResponse.source);
           
-          
           // Use real trend data from backend instead of demo data
           let transformedTrend = demoTrend;
           if (metricsResponse.data.dailyTrend && Array.isArray(metricsResponse.data.dailyTrend)) {
@@ -5043,15 +4770,12 @@ function PageOverview() {
   }, []);
 
   const formatCurrency = (amount: number) => {
-    if (amount === null || amount === undefined || isNaN(amount)) {
-      return "₹0.0L";
-    }
     return `₹${(amount / 100000).toFixed(1)}L`;
   };
 
   return (
     <>
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Tile 
           label="GWP" 
           info="(Gross Written Premium)" 
@@ -5294,28 +5018,74 @@ function PageExplorer() {
 
   const downloadCSV = () => {
     const headers = ['Telecaller', 'Make', 'Model', 'Insurer', 'Issue Date', 'Expiry Date', 'Type of Business', 'Branch', '# Policies', 'GWP', 'Total Premium', 'Total OD', 'Avg Cashback %', 'Cashback (₹)', 'Net (₹)'];
-    const csvContent = [
-      headers.join(','),
-      ...filtered.map(row => [
-        row.rep,
-        `"${row.make}"`,
-        `"${row.model}"`,
-        `"${row.insurer}"`,
-        row.issueDate && row.issueDate !== 'N/A' ? new Date(row.issueDate).toLocaleDateString('en-GB') : 'N/A',
-        row.expiryDate && row.expiryDate !== 'N/A' ? new Date(row.expiryDate).toLocaleDateString('en-GB') : 'N/A',
-        row.rollover,
-        row.branch,
-        row.policies,
-        row.gwp,
-        row.totalPremium || 0,
-        row.totalOD || 0,
-        parseFloat(row.cashbackPctAvg || 0).toFixed(1),
-        row.cashback,
-        row.net
-      ].join(','))
-    ].join('\n');
     
-    const blob = new Blob([csvContent], { type: 'text/csv' });
+    // Helper function to properly escape CSV values
+    const escapeCSV = (value: any) => {
+      if (value === null || value === undefined) return '';
+      const str = String(value);
+      
+      // Clean the string: remove all types of line breaks and normalize whitespace
+      const cleanedStr = str
+        .replace(/\r\n/g, ' ')  // Windows line breaks
+        .replace(/\n/g, ' ')    // Unix line breaks  
+        .replace(/\r/g, ' ')    // Old Mac line breaks
+        .replace(/\s+/g, ' ')   // Multiple spaces to single space
+        .trim();                // Remove leading/trailing spaces
+      
+      // Always wrap in quotes for safety and escape internal quotes
+      return `"${cleanedStr.replace(/"/g, '""')}"`;
+    };
+    
+    // Helper function to format dates consistently
+    const formatDate = (dateStr: any) => {
+      if (!dateStr || dateStr === 'N/A') return 'N/A';
+      try {
+        const date = new Date(dateStr);
+        if (isNaN(date.getTime())) return 'N/A';
+        // Use consistent DD-MM-YYYY format
+        return date.toLocaleDateString('en-GB', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric'
+        });
+      } catch (error) {
+        return 'N/A';
+      }
+    };
+    
+    // Helper function to format numbers consistently
+    const formatNumber = (value: any) => {
+      if (value === null || value === undefined || value === '') return '0';
+      const num = parseFloat(value);
+      return isNaN(num) ? '0' : num.toString();
+    };
+    
+    const csvRows = [
+      headers.map(escapeCSV).join(','),
+      ...filtered.map(row => [
+        escapeCSV(row.rep),
+        escapeCSV(row.make),
+        escapeCSV(row.model),
+        escapeCSV(row.insurer),
+        escapeCSV(formatDate(row.issueDate)),
+        escapeCSV(formatDate(row.expiryDate)),
+        escapeCSV(row.rollover),
+        escapeCSV(row.branch),
+        escapeCSV(row.policies),
+        escapeCSV(formatNumber(row.gwp)),
+        escapeCSV(formatNumber(row.totalPremium)),
+        escapeCSV(formatNumber(row.totalOD)),
+        escapeCSV(parseFloat(row.cashbackPctAvg || 0).toFixed(1)),
+        escapeCSV(formatNumber(row.cashback)),
+        escapeCSV(formatNumber(row.net))
+      ].join(','))
+    ];
+    
+    const csvContent = csvRows.join('\n');
+    
+    // Add UTF-8 BOM for proper Excel compatibility
+    const BOM = '\uFEFF';
+    const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -6282,18 +6052,6 @@ function NicsanCRMMock() {
 
   return (
     <div className="min-h-screen bg-zinc-50">
-      {/* Backend Status Indicator */}
-      {ENABLE_DEBUG && backendStatus && (
-        <div className={`px-4 py-2 text-xs font-medium ${
-          backendStatus.backendAvailable 
-            ? 'bg-green-100 text-green-800' 
-            : 'bg-red-100 text-red-800'
-        }`}>
-          🔗 Backend: {backendStatus.backendAvailable ? 'Connected' : 'Disconnected'} 
-          | Mock: {ENABLE_MOCK_DATA ? 'Enabled' : 'Disabled'}
-          | Debug: {ENABLE_DEBUG ? 'On' : 'Off'}
-        </div>
-      )}
       
       <TopTabs tab={tab} setTab={setTab} user={user} onLogout={()=>setUser(null)} />
       {tab === "ops" ? (
