@@ -3,6 +3,7 @@ const router = express.Router();
 const multer = require('multer');
 const storageService = require('../services/storageService');
 const emailService = require('../services/emailService');
+const whatsappService = require('../services/whatsappService');
 const { authenticateToken, requireOps } = require('../middleware/auth');
 const { query } = require('../config/database');
 
@@ -47,6 +48,10 @@ router.post('/pdf', authenticateToken, requireOps, upload.single('pdf'), async (
         manualExtras[fieldName] = req.body[key];
       }
     });
+
+    // Debug: Log manual extras received
+    console.log('🔍 PDF Upload - Manual extras received:', manualExtras);
+    console.log('🔍 PDF Upload - Customer name in manual extras:', manualExtras.customerName);
 
     const uploadData = {
       file: req.file,
@@ -214,7 +219,7 @@ router.post('/:uploadId/confirm', authenticateToken, requireOps, async (req, res
         caller_name: editedData.manualExtras.caller_name || editedData.manualExtras.callerName || '', // Map callerName to caller_name
         customer_email: editedData.manualExtras.customerEmail || editedData.manualExtras.customer_email || '',
         ops_executive: editedData.manualExtras.opsExecutive || editedData.manualExtras.ops_executive || '',
-        // customer_name now comes from PDF extracted data (editedData.pdfData.customer_name)
+        customer_name: editedData.manualExtras.customer_name || editedData.manualExtras.customerName || editedData.pdfData.customer_name || '', // Map customer_name from manual extras or PDF data
         source: 'PDF_UPLOAD',
         s3_key: upload.s3_key,
         confidence_score: upload.extracted_data?.extracted_data?.confidence_score || 0.8
@@ -227,7 +232,7 @@ router.post('/:uploadId/confirm', authenticateToken, requireOps, async (req, res
         ...upload.extracted_data.extracted_data,
         ...upload.extracted_data.manual_extras,
         caller_name: upload.extracted_data.manual_extras?.caller_name || upload.extracted_data.manual_extras?.callerName || '', // Map callerName to caller_name
-        // customer_name now comes from PDF extracted data (upload.extracted_data.extracted_data.customer_name)
+        customer_name: upload.extracted_data.manual_extras?.customer_name || upload.extracted_data.manual_extras?.customerName || upload.extracted_data.extracted_data?.customer_name || '', // Map customer_name from manual extras or PDF data
         source: 'PDF_UPLOAD',
         s3_key: upload.s3_key
       };
@@ -239,7 +244,8 @@ router.post('/:uploadId/confirm', authenticateToken, requireOps, async (req, res
     console.log('🔍 Policy data validation:', {
       policy_number: policyData.policy_number,
       vehicle_number: policyData.vehicle_number,
-      caller_name: policyData.caller_name
+      caller_name: policyData.caller_name,
+      customer_name: policyData.customer_name
     });
     
     if (!policyData.policy_number || !policyData.vehicle_number) {
@@ -332,6 +338,33 @@ router.post('/:uploadId/confirm', authenticateToken, requireOps, async (req, res
       } catch (emailError) {
         console.error('⚠️ Email service error:', emailError.message);
         // Don't fail policy creation if email fails
+      }
+
+      // NEW: Send PDF via WhatsApp to customer
+      try {
+        const customerPhone = policyData.customer_phone || policyData.customerPhone;
+        if (customerPhone) {
+          console.log('📱 Sending policy PDF via WhatsApp to customer:', customerPhone);
+          
+          const whatsappResult = await whatsappService.sendPolicyWhatsApp(
+            customerPhone,
+            policyData,
+            upload.s3_key,  // Original PDF S3 key
+            upload.filename  // Original PDF filename
+          );
+          
+          if (whatsappResult.success) {
+            console.log('✅ PDF sent via WhatsApp successfully:', whatsappResult.textMessageId, whatsappResult.documentMessageId);
+          } else {
+            console.error('⚠️ WhatsApp sending failed:', whatsappResult.error);
+            // Don't fail policy creation if WhatsApp fails
+          }
+        } else {
+          console.log('⚠️ No customer phone found, skipping WhatsApp sending');
+        }
+      } catch (whatsappError) {
+        console.error('⚠️ WhatsApp service error:', whatsappError.message);
+        // Don't fail policy creation if WhatsApp fails
       }
       
       res.json({

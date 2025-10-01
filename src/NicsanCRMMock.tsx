@@ -9,8 +9,9 @@ import { SettingsProvider, useSettings } from './contexts/SettingsContext';
 import HorizontalLogo from './assets/images/HorizontalLogo.svg';
 
 // Environment variables
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
-const ENABLE_MOCK_DATA = import.meta.env.VITE_ENABLE_MOCK_DATA === 'true';
+// const ENABLE_MOCK_DATA = import.meta.env.VITE_ENABLE_MOCK_DATA === 'true';
 
 // --- Nicsan CRM v1 UI/UX Mock (updated) ---
 // Adds: Password-protected login, optimized Manual Form, Founder filters, KPI dashboard (your new metrics)
@@ -186,9 +187,12 @@ function Card({ title, desc, children, actions }: { title: string; desc?: string
   )
 }
 
-function Tile({ label, value, sub, info }: { label: string; value: string; sub?: string; info?: string }) {
+function Tile({ label, value, sub, info, onClick }: { label: string; value: string; sub?: string; info?: string; onClick?: () => void }) {
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-zinc-100 p-4">
+    <div 
+      className={`bg-white rounded-2xl shadow-sm border border-zinc-100 p-4 ${onClick ? 'cursor-pointer hover:shadow-md transition-shadow' : ''}`}
+      onClick={onClick}
+    >
       <div className="text-xs text-zinc-500 flex items-center gap-1">{label} {info && <span className="text-[10px] text-zinc-400">({info})</span>}</div>
       <div className="text-2xl font-semibold mt-1">{value}</div>
       {sub && <div className="text-xs text-emerald-600 mt-1">{sub}</div>}
@@ -225,6 +229,7 @@ function PageUpload() {
   const [uploadStatus, setUploadStatus] = useState<string>('');
   const [uploadedFiles, setUploadedFiles] = useState<any[]>([]);
   const [selectedInsurer, setSelectedInsurer] = useState<string>('TATA_AIG');
+  const [callerNames, setCallerNames] = useState<string[]>([]);
   
   // Available insurers configuration
   const availableInsurers = [
@@ -486,6 +491,59 @@ function PageUpload() {
     setManualExtras(prev => ({ ...prev, [field]: value }));
   };
 
+  // Load telecaller names on component mount
+  useEffect(() => {
+    const loadTelecallers = async () => {
+      try {
+        const response = await DualStorageService.getTelecallers();
+        if (response.success && Array.isArray(response.data)) {
+          const names = response.data
+            .map((telecaller: any) => telecaller.name)
+            .filter((name: string) => name && name !== 'Unknown');
+          setCallerNames(names);
+        }
+      } catch (error) {
+        console.error('Failed to load telecallers:', error);
+      }
+    };
+    loadTelecallers();
+  }, []);
+
+  // Get filtered caller suggestions
+  const getFilteredCallerSuggestions = async (input: string): Promise<string[]> => {
+    if (!input || input.length < 2) return [];
+    
+    return callerNames.filter(name => 
+      name.toLowerCase().includes(input.toLowerCase())
+    );
+  };
+
+  // Handle adding new telecaller
+  const handleAddNewTelecaller = async (name: string) => {
+    try {
+      const response = await DualStorageService.addTelecaller({
+        name: name,
+        email: '',
+        phone: '',
+        branch: 'Default Branch',
+        is_active: true
+      });
+      
+      if (response.success) {
+        // Refresh caller names list
+        const updatedCallers = await DualStorageService.getTelecallers();
+        if (updatedCallers.success) {
+          const names = updatedCallers.data
+            .map((telecaller: any) => telecaller.name)
+            .filter((name: string) => name && name !== 'Unknown');
+          setCallerNames(names);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to add new telecaller:', error);
+    }
+  };
+
 
   // Smart suggestions for caller names
   // const __getSmartSuggestions = (fieldName: string) => {
@@ -557,13 +615,14 @@ function PageUpload() {
               </select>
             </div>
             <div>
-              <label className="block text-xs text-blue-700 mb-1">Caller Name</label>
-              <input 
-                type="text" 
+              <AutocompleteInput 
+                label="Caller Name" 
                 placeholder="Telecaller name"
                 value={manualExtras.callerName}
-                onChange={(e) => handleManualExtrasChange('callerName', e.target.value)}
-                className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                onChange={(value) => handleManualExtrasChange('callerName', value)}
+                getSuggestions={getFilteredCallerSuggestions}
+                onAddNew={handleAddNewTelecaller}
+                showAddNew={true}
               />
             </div>
             <div>
@@ -921,6 +980,161 @@ function LabeledSelect({ label, value, onChange, options, required, error }: {
   )
 }
 
+// AutocompleteInput component for telecaller name functionality
+function AutocompleteInput({ 
+  label, 
+  placeholder, 
+  value, 
+  onChange, 
+  getSuggestions, 
+  onAddNew, 
+  showAddNew = false, 
+  required = false, 
+  error,
+  useManualFormStyle = false,
+  useReviewPageStyle = false
+}: { 
+  label: string; 
+  placeholder?: string; 
+  value: string; 
+  onChange: (value: string) => void; 
+  getSuggestions?: (input: string) => Promise<string[]>; 
+  onAddNew?: (name: string) => void; 
+  showAddNew?: boolean; 
+  required?: boolean; 
+  error?: string;
+  useManualFormStyle?: boolean;
+  useReviewPageStyle?: boolean;
+}) {
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [showAddNewOption, setShowAddNewOption] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Debounced search function
+  const debouncedGetSuggestions = useMemo(() => {
+    let timeoutId: ReturnType<typeof setTimeout>;
+    return (input: string) => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(async () => {
+        if (input.length >= 2 && getSuggestions) {
+          setIsLoading(true);
+          try {
+            const newSuggestions = await getSuggestions(input);
+            setSuggestions(newSuggestions);
+            setShowSuggestions(true);
+            setShowAddNewOption(newSuggestions.length === 0 && showAddNew);
+          } catch (error) {
+            console.warn('Failed to get suggestions:', error);
+            setSuggestions([]);
+            setShowAddNewOption(showAddNew);
+          } finally {
+            setIsLoading(false);
+          }
+        }
+      }, 300);
+    };
+  }, [getSuggestions, showAddNew]);
+
+  const handleInputChange = (inputValue: string) => {
+    onChange && onChange(inputValue);
+    debouncedGetSuggestions(inputValue);
+  };
+
+  const handleSuggestionClick = (suggestion: string) => {
+    onChange && onChange(suggestion);
+    setShowSuggestions(false);
+    setShowAddNewOption(false);
+  };
+
+  const handleAddNew = () => {
+    if (onAddNew) {
+      onAddNew(value);
+    }
+    setShowSuggestions(false);
+    setShowAddNewOption(false);
+  };
+
+  // Close suggestions when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setShowSuggestions(false);
+        setShowAddNewOption(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  return (
+    <div className="relative" ref={containerRef}>
+      <label className="block">
+        <div className={`text-xs mb-1 ${
+          useManualFormStyle || useReviewPageStyle ? 'text-zinc-600' : 'text-blue-700'
+        }`}>
+          {label} {required && <span className="text-rose-600">*</span>}
+        </div>
+        <input 
+          ref={inputRef}
+          type="text"
+          value={value}
+          onChange={(e) => handleInputChange(e.target.value)}
+          onFocus={() => {
+            if (suggestions.length > 0) {
+              setShowSuggestions(true);
+            }
+          }}
+          className={`w-full px-3 py-2 border focus:outline-none focus:ring-2 ${
+            useManualFormStyle || useReviewPageStyle
+              ? `rounded-xl focus:ring-indigo-200 ${error ? 'border-red-300 bg-red-50' : 'border-zinc-300'}`
+              : `rounded-lg text-sm focus:ring-blue-200 ${error ? 'border-red-300 bg-red-50' : 'border-blue-300'}`
+          }`}
+          placeholder={placeholder}
+        />
+        {error && (
+          <div className="text-xs text-red-600 mt-1">{error}</div>
+        )}
+      </label>
+
+      {/* Suggestions dropdown */}
+      {(showSuggestions || showAddNewOption) && (
+        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+          {isLoading && (
+            <div className="px-3 py-2 text-sm text-gray-500">
+              Loading suggestions...
+            </div>
+          )}
+          
+          {!isLoading && suggestions.map((suggestion, index) => (
+            <div
+              key={index}
+              className="px-3 py-2 text-sm hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+              onClick={() => handleSuggestionClick(suggestion)}
+            >
+              {suggestion}
+            </div>
+          ))}
+          
+          {showAddNewOption && (
+            <div
+              className="px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 cursor-pointer border-t border-gray-200 font-medium"
+              onClick={handleAddNew}
+            >
+              + Add "{value}" as new telecaller
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 
 // Optimized manual form with QuickFill and two-way cashback calc
 function PageManualForm() {
@@ -968,6 +1182,7 @@ function PageManualForm() {
   const [vehicleSearchResults, setVehicleSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const [validationMode, setValidationMode] = useState<'progressive' | 'strict'>('progressive');
+  const [callerNames, setCallerNames] = useState<string[]>([]);
   
   const set = (k:string,v:any)=> {
     setForm((f:any)=>({ ...f, [k]: v }));
@@ -1409,6 +1624,59 @@ function PageManualForm() {
       }
     } else {
       setVehicleSearchResults([]);
+    }
+  };
+
+  // Load telecaller names on component mount
+  useEffect(() => {
+    const loadTelecallers = async () => {
+      try {
+        const response = await DualStorageService.getTelecallers();
+        if (response.success && Array.isArray(response.data)) {
+          const names = response.data
+            .map((telecaller: any) => telecaller.name)
+            .filter((name: string) => name && name !== 'Unknown');
+          setCallerNames(names);
+        }
+      } catch (error) {
+        console.error('Failed to load telecallers:', error);
+      }
+    };
+    loadTelecallers();
+  }, []);
+
+  // Get filtered caller suggestions
+  const getFilteredCallerSuggestions = async (input: string): Promise<string[]> => {
+    if (!input || input.length < 2) return [];
+    
+    return callerNames.filter(name => 
+      name.toLowerCase().includes(input.toLowerCase())
+    );
+  };
+
+  // Handle adding new telecaller
+  const handleAddNewTelecaller = async (name: string) => {
+    try {
+      const response = await DualStorageService.addTelecaller({
+        name: name,
+        email: '',
+        phone: '',
+        branch: 'Default Branch',
+        is_active: true
+      });
+      
+      if (response.success) {
+        // Refresh caller names list
+        const updatedCallers = await DualStorageService.getTelecallers();
+        if (updatedCallers.success) {
+          const names = updatedCallers.data
+            .map((telecaller: any) => telecaller.name)
+            .filter((name: string) => name && name !== 'Unknown');
+          setCallerNames(names);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to add new telecaller:', error);
     }
   };
 
@@ -1871,7 +2139,16 @@ function PageManualForm() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
           <LabeledSelect label="Executive" value={form.executive} onChange={v=>set('executive', v)} options={["Yashwanth", "Kavya", "Bhagya", "Sandesh", "Yallappa", "Nethravathi", "Tejaswini"]}/>
           <LabeledSelect label="Ops Executive" value={form.opsExecutive} onChange={v=>set('opsExecutive', v)} options={["NA", "Ravi", "Pavan", "Manjunath"]}/>
-          <LabeledInput label="Caller Name" value={form.callerName} onChange={v=>set('callerName', v)} placeholder="Enter caller name"/>
+          <AutocompleteInput 
+            label="Caller Name" 
+            placeholder="Enter caller name"
+            value={form.callerName}
+            onChange={(value) => set('callerName', value)}
+            getSuggestions={getFilteredCallerSuggestions}
+            onAddNew={handleAddNewTelecaller}
+            showAddNew={true}
+            useManualFormStyle={true}
+          />
           <LabeledInput label="Mobile Number" required placeholder="9xxxxxxxxx" value={form.mobile} onChange={v=>set('mobile', v)}/>
           <LabeledSelect label="Rollover/Renewal" value={form.rollover} onChange={v=>set('rollover', v)} options={["ROLLOVER", "RENEWAL"]}/>
           <LabeledInput label="Customer Email ID" value={form.customerEmail} onChange={v=>set('customerEmail', v)}/>
@@ -3161,7 +3438,60 @@ function PageReview() {
     pdfData: {},
     manualExtras: {}
   });
+  const [callerNames, setCallerNames] = useState<string[]>([]);
 
+  // Load telecaller names on component mount
+  useEffect(() => {
+    const loadTelecallers = async () => {
+      try {
+        const response = await DualStorageService.getTelecallers();
+        if (response.success && Array.isArray(response.data)) {
+          const names = response.data
+            .map((telecaller: any) => telecaller.name)
+            .filter((name: string) => name && name !== 'Unknown');
+          setCallerNames(names);
+        }
+      } catch (error) {
+        console.error('Failed to load telecallers:', error);
+      }
+    };
+    loadTelecallers();
+  }, []);
+
+  // Get filtered caller suggestions
+  const getFilteredCallerSuggestions = async (input: string): Promise<string[]> => {
+    if (!input || input.length < 2) return [];
+    
+    return callerNames.filter(name => 
+      name.toLowerCase().includes(input.toLowerCase())
+    );
+  };
+
+  // Handle adding new telecaller
+  const handleAddNewTelecaller = async (name: string) => {
+    try {
+      const response = await DualStorageService.addTelecaller({
+        name: name,
+        email: '',
+        phone: '',
+        branch: 'Default Branch',
+        is_active: true
+      });
+      
+      if (response.success) {
+        // Refresh caller names list
+        const updatedCallers = await DualStorageService.getTelecallers();
+        if (updatedCallers.success) {
+          const names = updatedCallers.data
+            .map((telecaller: any) => telecaller.name)
+            .filter((name: string) => name && name !== 'Unknown');
+          setCallerNames(names);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to add new telecaller:', error);
+    }
+  };
 
   // Load available uploads for review
   useEffect(() => {
@@ -3845,11 +4175,15 @@ function PageReview() {
               onChange={(value) => updateManualExtras('opsExecutive', value)}
               options={["NA", "Ravi", "Pavan", "Manjunath"]}
             />
-            <LabeledInput 
+            <AutocompleteInput 
               label="Caller Name" 
+              placeholder="Telecaller name"
               value={editableData.manualExtras.callerName || manualExtras.callerName}
               onChange={(value) => updateManualExtras('callerName', value)}
-              hint="telecaller name"
+              getSuggestions={getFilteredCallerSuggestions}
+              onAddNew={handleAddNewTelecaller}
+              showAddNew={true}
+              useReviewPageStyle={true}
             />
             <LabeledInput 
               label="Customer Email ID" 
@@ -4588,10 +4922,150 @@ const demoPolicies = [
 const fmtINR = (n:number|string)=> typeof n === 'string' ? n : `₹${Math.round(n).toLocaleString('en-IN')}`;
 const pct = (n:number|string)=> typeof n === 'string' ? n : `${(n).toFixed(1)}%`;
 
+// Total OD Breakdown Component
+function TotalODBreakdown() {
+  const [breakdownType, setBreakdownType] = useState<'daily' | 'monthly' | 'financial-year'>('daily');
+  const [data, setData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [dataSource, setDataSource] = useState<string>('');
+
+  useEffect(() => {
+    loadBreakdownData();
+  }, [breakdownType]);
+
+  const loadBreakdownData = async () => {
+    setLoading(true);
+    try {
+      let response;
+      if (breakdownType === 'daily') {
+        response = await DualStorageService.getTotalODDaily('30d');
+      } else if (breakdownType === 'monthly') {
+        response = await DualStorageService.getTotalODMonthly('12m');
+      } else {
+        response = await DualStorageService.getTotalODFinancialYear(3);
+      }
+      
+      if (response.success) {
+        setData(response.data);
+        setDataSource(response.source);
+      }
+    } catch (error) {
+      console.error('Failed to load Total OD breakdown:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatCurrency = (amount: number) => {
+    if (amount === null || amount === undefined || isNaN(amount)) {
+      return "₹0.0L";
+    }
+    return `₹${(amount / 100000).toFixed(1)}L`;
+  };
+
+  const formatDate = (dateStr: string) => {
+    if (breakdownType === 'financial-year') {
+      return `FY ${dateStr}`;
+    } else if (breakdownType === 'monthly') {
+      return new Date(dateStr).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
+    } else {
+      return new Date(dateStr).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+    }
+  };
+
+  const getDataKey = () => {
+    switch (breakdownType) {
+      case 'daily': return 'date';
+      case 'monthly': return 'month';
+      case 'financial-year': return 'financial_year';
+      default: return 'date';
+    }
+  };
+
+  return (
+    <Card title="Total OD Breakdown" desc={`${breakdownType} analysis (Data Source: ${dataSource || 'Loading...'})`}>
+      <div className="mb-4">
+        <div className="flex gap-2">
+          <button 
+            onClick={() => setBreakdownType('daily')}
+            className={`px-3 py-1 rounded text-sm ${breakdownType === 'daily' ? 'bg-blue-500 text-white' : 'bg-gray-200 hover:bg-gray-300'}`}
+          >
+            Daily
+          </button>
+          <button 
+            onClick={() => setBreakdownType('monthly')}
+            className={`px-3 py-1 rounded text-sm ${breakdownType === 'monthly' ? 'bg-blue-500 text-white' : 'bg-gray-200 hover:bg-gray-300'}`}
+          >
+            Monthly
+          </button>
+          <button 
+            onClick={() => setBreakdownType('financial-year')}
+            className={`px-3 py-1 rounded text-sm ${breakdownType === 'financial-year' ? 'bg-blue-500 text-white' : 'bg-gray-200 hover:bg-gray-300'}`}
+          >
+            Financial Year
+          </button>
+        </div>
+      </div>
+      
+      {loading ? (
+        <div className="text-center py-8">
+          <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2" />
+          <div>Loading Total OD breakdown...</div>
+        </div>
+      ) : (
+        <div className="h-64">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={data}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+              <XAxis 
+                dataKey={getDataKey()} 
+                tickFormatter={formatDate}
+                angle={-45}
+                textAnchor="end"
+                height={60}
+              />
+              <YAxis tickFormatter={(value) => `₹${(value / 100000).toFixed(1)}L`} />
+              <Tooltip 
+                formatter={(value: number) => [formatCurrency(value), 'Total OD']}
+                labelFormatter={(label) => `Date: ${formatDate(label)}`}
+              />
+              <Bar dataKey="total_od" fill="#8884d8" />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      
+      {data.length > 0 && (
+        <div className="mt-4 text-sm text-gray-600">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+              <div className="font-medium">Total Policies</div>
+              <div className="text-lg font-bold">{data.reduce((sum, item) => sum + (item.policy_count || 0), 0)}</div>
+            </div>
+            <div>
+              <div className="font-medium">Total OD</div>
+              <div className="text-lg font-bold">{formatCurrency(data.reduce((sum, item) => sum + (item.total_od || 0), 0))}</div>
+            </div>
+            <div>
+              <div className="font-medium">Avg OD per Policy</div>
+              <div className="text-lg font-bold">{formatCurrency(data.reduce((sum, item) => sum + (item.avg_od_per_policy || 0), 0) / data.length)}</div>
+            </div>
+            <div>
+              <div className="font-medium">Max OD</div>
+              <div className="text-lg font-bold">{formatCurrency(Math.max(...data.map(item => item.max_od || 0)))}</div>
+            </div>
+          </div>
+        </div>
+      )}
+    </Card>
+  );
+}
+
 function PageOverview() {
   const [metrics, setMetrics] = useState<any>(null);
   const [trendData, setTrendData] = useState<any[]>([]);
   const [dataSource, setDataSource] = useState<string>('');
+  const [showTotalODBreakdown, setShowTotalODBreakdown] = useState(false);
 
   useEffect(() => {
     const loadDashboardData = async () => {
@@ -4654,6 +5128,13 @@ function PageOverview() {
           info="(Brokerage − Cashback)" 
           value={metrics ? formatCurrency(metrics.basicMetrics?.netRevenue) : "₹1.26L"}
         />
+        <Tile 
+          label="Total OD" 
+          info="(Outstanding Debt)" 
+          value={metrics ? formatCurrency(metrics.basicMetrics?.totalOutstandingDebt) : "₹0.00L"}
+          sub="Total outstanding amount"
+          onClick={() => setShowTotalODBreakdown(!showTotalODBreakdown)}
+        />
       </div>
       <Card title="14-day Trend" desc={`GWP & Net (Data Source: ${dataSource || 'Loading...'})`}>
         <div className="h-64">
@@ -4679,6 +5160,9 @@ function PageOverview() {
           </ResponsiveContainer>
         </div>
       </Card>
+      
+      {/* Total OD Breakdown Section */}
+      {showTotalODBreakdown && <TotalODBreakdown />}
     </>
   )
 }
@@ -5315,9 +5799,17 @@ function PageFounderSettings() {
   const [hasChanges, setHasChanges] = useState(false);
   const [validationErrors, setValidationErrors] = useState<any>({});
 
+  // Telecaller management state
+  const [telecallers, setTelecallers] = useState<any[]>([]);
+  const [telecallerSearch, setTelecallerSearch] = useState('');
+  const [isLoadingTelecallers, setIsLoadingTelecallers] = useState(false);
+  const [telecallerError, setTelecallerError] = useState<string | null>(null);
+  const [telecallerSuccess, setTelecallerSuccess] = useState<string | null>(null);
+
   // Load settings on component mount
   useEffect(() => {
     loadSettings();
+    loadTelecallers();
   }, []);
 
   // Track changes
@@ -5345,6 +5837,68 @@ function PageFounderSettings() {
       setError(error.message || 'Failed to load settings');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Load all telecallers
+  const loadTelecallers = async () => {
+    setIsLoadingTelecallers(true);
+    setTelecallerError(null);
+    try {
+      const response = await fetch(`${API_BASE_URL}/telecallers/all`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      if (data.success) {
+        setTelecallers(data.data);
+      } else {
+        setTelecallerError(data.error || 'Failed to load telecallers');
+      }
+    } catch (error: any) {
+      setTelecallerError(error.message || 'Failed to load telecallers');
+    } finally {
+      setIsLoadingTelecallers(false);
+    }
+  };
+
+  // Toggle telecaller status
+  const toggleTelecallerStatus = async (id: number, currentStatus: boolean, name: string) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/telecallers/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ 
+          name: name,
+          is_active: !currentStatus 
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      if (data.success) {
+        setTelecallerSuccess(`Telecaller ${!currentStatus ? 'activated' : 'deactivated'} successfully`);
+        loadTelecallers(); // Refresh list
+        // Clear success message after 3 seconds
+        setTimeout(() => setTelecallerSuccess(null), 3000);
+      } else {
+        setTelecallerError(data.error || 'Failed to update telecaller');
+      }
+    } catch (error: any) {
+      setTelecallerError(error.message || 'Failed to update telecaller');
     }
   };
 
@@ -5524,6 +6078,97 @@ function PageFounderSettings() {
         >
           Reset
         </button>
+      </div>
+
+      {/* Telecaller Management Section */}
+      <div className="mt-8 pt-6 border-t border-gray-200">
+        <h3 className="text-lg font-semibold mb-4">Telecaller Status Management</h3>
+        
+        {/* Telecaller Error/Success Messages */}
+        {telecallerError && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+            <div className="text-sm text-red-800">{telecallerError}</div>
+          </div>
+        )}
+        
+        {telecallerSuccess && (
+          <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+            <div className="text-sm text-green-800">{telecallerSuccess}</div>
+          </div>
+        )}
+        
+        {/* Search Input */}
+        <div className="mb-4">
+          <input
+            type="text"
+            placeholder="Search telecaller by name..."
+            value={telecallerSearch}
+            onChange={(e) => setTelecallerSearch(e.target.value)}
+            className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          />
+        </div>
+        
+        {/* Telecaller List */}
+        <div className="space-y-2">
+          {telecallers
+            .filter(telecaller => 
+              telecaller.name.toLowerCase().includes(telecallerSearch.toLowerCase())
+            )
+            .map(telecaller => (
+              <div key={telecaller.id} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50">
+                <div className="flex-1">
+                  <div className="font-medium text-gray-900">{telecaller.name}</div>
+                  <div className="text-sm text-gray-500">
+                    {telecaller.policy_count} policies • 
+                    Created: {new Date(telecaller.created_at).toLocaleDateString()}
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                    telecaller.is_active 
+                      ? 'bg-green-100 text-green-800' 
+                      : 'bg-red-100 text-red-800'
+                  }`}>
+                    {telecaller.is_active ? 'Active' : 'Inactive'}
+                  </span>
+                  <button
+                    onClick={() => toggleTelecallerStatus(telecaller.id, telecaller.is_active, telecaller.name)}
+                    disabled={isLoadingTelecallers}
+                    className={`px-3 py-1 rounded text-sm font-medium ${
+                      telecaller.is_active 
+                        ? 'bg-red-500 text-white hover:bg-red-600' 
+                        : 'bg-green-500 text-white hover:bg-green-600'
+                    } disabled:opacity-50`}
+                  >
+                    {telecaller.is_active ? 'Deactivate' : 'Activate'}
+                  </button>
+                </div>
+              </div>
+            ))}
+        </div>
+        
+        {/* Empty State */}
+        {telecallers.length === 0 && !isLoadingTelecallers && (
+          <div className="text-center py-8 text-gray-500">
+            No telecallers found.
+          </div>
+        )}
+        
+        {/* Loading State */}
+        {isLoadingTelecallers && (
+          <div className="text-center py-8 text-gray-500">
+            Loading telecallers...
+          </div>
+        )}
+        
+        {/* No Results */}
+        {telecallerSearch.length >= 2 && telecallers.filter(telecaller => 
+          telecaller.name.toLowerCase().includes(telecallerSearch.toLowerCase())
+        ).length === 0 && !isLoadingTelecallers && (
+          <div className="text-center py-4 text-gray-500">
+            No telecallers found matching "{telecallerSearch}"
+          </div>
+        )}
       </div>
     </Card>
   )
@@ -5715,13 +6360,13 @@ function NicsanCRMMock() {
   const [tab, setTab] = useState<"ops"|"founder">("ops");
   const [opsPage, setOpsPage] = useState("upload");
   const [founderPage, setFounderPage] = useState("overview");
-  const [backendStatus, setBackendStatus] = useState<any>(null);
+  // const [backendStatus, setBackendStatus] = useState<any>(null);
 
   // Check backend status on component mount
   useEffect(() => {
     const checkBackendStatus = async () => {
-      const status = DualStorageService.getEnvironmentInfo();
-      setBackendStatus(status);
+      // const status = DualStorageService.getEnvironmentInfo();
+      // setBackendStatus(status);
       
       if (ENABLE_DEBUG) {
       }
@@ -5738,18 +6383,6 @@ function NicsanCRMMock() {
 
   return (
     <div className="min-h-screen bg-zinc-50">
-      {/* Backend Status Indicator */}
-      {ENABLE_DEBUG && backendStatus && (
-        <div className={`px-4 py-2 text-xs font-medium ${
-          backendStatus.data?.backendAvailable 
-            ? 'bg-green-100 text-green-800' 
-            : 'bg-red-100 text-red-800'
-        }`}>
-          🔗 Backend: {backendStatus.data?.backendAvailable ? 'Connected' : 'Disconnected'} 
-          | Mock: {ENABLE_MOCK_DATA ? 'Enabled' : 'Disabled'}
-          | Debug: {ENABLE_DEBUG ? 'On' : 'Off'}
-        </div>
-      )}
       
       <TopTabs tab={tab} setTab={setTab} user={user} onLogout={()=>setUser(null)} />
       {tab === "ops" ? (
