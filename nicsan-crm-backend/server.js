@@ -16,10 +16,7 @@ const corsOptions = {
     const allowedOrigins = [
       'https://app.nicsanin.com',
       'https://staging.nicsanin.com',
-      'http://localhost:3000',
-      'http://localhost:5173',
-      'http://127.0.0.1:3000',
-      'http://127.0.0.1:5173'
+      process.env.FRONTEND_URL || 'https://app.nicsanin.com'
     ];
     
     if (allowedOrigins.indexOf(origin) !== -1) {
@@ -148,9 +145,9 @@ app.use('*', (req, res) => {
 // Start server
 server.listen(PORT, () => {
   console.log('🚀 Nicsan CRM Backend running on port ' + PORT);
-  console.log('🏥 Health check: http://localhost:' + PORT + '/health');
-  console.log('🔗 API base: http://localhost:' + PORT + '/api');
-  console.log('🔌 WebSocket server: ws://localhost:' + PORT);
+  console.log('🏥 Health check: /health');
+  console.log('🔗 API base: /api');
+  console.log('🔌 WebSocket server: ws://' + (process.env.HOST || 'localhost') + ':' + PORT);
   console.log('🌐 CORS enabled for: https://app.nicsanin.com, https://staging.nicsanin.com');
 });
 

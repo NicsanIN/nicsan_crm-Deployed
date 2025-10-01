@@ -92,8 +92,7 @@ const generateS3Key = async (filename, selectedInsurer, fileBuffer) => {
     
     console.log(`📁 S3 Key: Using ${insurer} for file ${filename} (detected: ${detectedInsurer}, selected: ${selectedInsurer})`);
     
-    const key = `uploads/${insurer}/${timestamp}_${randomId}.${extension}`;
-    return withPrefix(key);
+    return withPrefix(`uploads/${insurer}/${timestamp}_${randomId}.${extension}`);
     
   } catch (error) {
     console.error('❌ Insurer detection failed, using selected insurer:', error);
@@ -102,8 +101,7 @@ const generateS3Key = async (filename, selectedInsurer, fileBuffer) => {
     const randomId = Math.random().toString(36).substring(2, 15);
     const extension = filename.split('.').pop();
     
-    const key = `uploads/${selectedInsurer}/${timestamp}_${randomId}.${extension}`;
-    return withPrefix(key);
+    return withPrefix(`uploads/${selectedInsurer}/${timestamp}_${randomId}.${extension}`);
   }
 };
 
@@ -112,22 +110,16 @@ const generatePolicyS3Key = (policyId, source = 'PDF_UPLOAD') => {
   const timestamp = Date.now();
   const randomId = Math.random().toString(36).substring(2, 15);
   
-  let key;
   switch (source) {
     case 'PDF_UPLOAD':
-      key = `data/policies/confirmed/${timestamp}_${randomId}_${policyId}.json`;
-      break;
+      return withPrefix(`data/policies/confirmed/${timestamp}_${randomId}_${policyId}.json`);
     case 'MANUAL_FORM':
-      key = `data/policies/manual/${timestamp}_${randomId}_${policyId}.json`;
-      break;
+      return withPrefix(`data/policies/manual/${timestamp}_${randomId}_${policyId}.json`);
     case 'BULK_ENTRY':
-      key = `data/policies/bulk/${timestamp}_${randomId}_${policyId}.json`;
-      break;
+      return withPrefix(`data/policies/bulk/${timestamp}_${randomId}_${policyId}.json`);
     default:
-      key = `data/policies/other/${timestamp}_${randomId}_${policyId}.json`;
+      return withPrefix(`data/policies/other/${timestamp}_${randomId}_${policyId}.json`);
   }
-  
-  return withPrefix(key);
 };
 
 // Upload JSON data to S3 - SDK v3

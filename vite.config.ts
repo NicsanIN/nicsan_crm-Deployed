@@ -19,11 +19,11 @@ export default defineConfig({
     }
   },
   define: {
-    // Set environment variables for development
-    'import.meta.env.VITE_API_BASE_URL': JSON.stringify('http://localhost:3001/api'),
-    'import.meta.env.VITE_WEBSOCKET_URL': JSON.stringify('http://localhost:3001'),
-    'import.meta.env.VITE_WS_URL': JSON.stringify('http://localhost:3001'),
-    'import.meta.env.VITE_API_TIMEOUT': JSON.stringify('30000'),
-    'import.meta.env.VITE_ENABLE_DEBUG_LOGGING': JSON.stringify('true')
+    // Environment variables will be set by the build process
+    'import.meta.env.VITE_API_BASE_URL': JSON.stringify(process.env.VITE_API_BASE_URL || ''),
+    'import.meta.env.VITE_WEBSOCKET_URL': JSON.stringify(process.env.VITE_WEBSOCKET_URL || ''),
+    'import.meta.env.VITE_WS_URL': JSON.stringify(process.env.VITE_WS_URL || ''),
+    'import.meta.env.VITE_API_TIMEOUT': JSON.stringify(process.env.VITE_API_TIMEOUT || '30000'),
+    'import.meta.env.VITE_ENABLE_DEBUG_LOGGING': JSON.stringify(process.env.VITE_ENABLE_DEBUG_LOGGING || 'false')
   }
 })
