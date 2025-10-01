@@ -84,7 +84,7 @@ class BackendApiService {
   // Telecallers from backend
   async getTelecallers(): Promise<BackendApiResult> {
     try {
-      const response = await fetch('${API_BASE_URL}/telecallers', {
+      const response = await fetch(`${API_BASE_URL}/telecallers`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
@@ -122,7 +122,7 @@ class BackendApiService {
         console.log('🔄 BackendApiService: Adding new telecaller...');
       }
 
-      const response = await fetch('${API_BASE_URL}/telecallers', {
+      const response = await fetch(`${API_BASE_URL}/telecallers`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,

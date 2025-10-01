@@ -17,5 +17,13 @@ export default defineConfig({
     alias: {
       '@': '/src'
     }
+  },
+  define: {
+    // Set environment variables for development
+    'import.meta.env.VITE_API_BASE_URL': JSON.stringify('http://localhost:3001/api'),
+    'import.meta.env.VITE_WEBSOCKET_URL': JSON.stringify('http://localhost:3001'),
+    'import.meta.env.VITE_WS_URL': JSON.stringify('http://localhost:3001'),
+    'import.meta.env.VITE_API_TIMEOUT': JSON.stringify('30000'),
+    'import.meta.env.VITE_ENABLE_DEBUG_LOGGING': JSON.stringify('true')
   }
 })

@@ -66,6 +66,7 @@ app.use('/api/policies', require('./routes/policies'));
 app.use('/api/upload', require('./routes/upload'));
 app.use('/api/dashboard', require('./routes/dashboard'));
 app.use('/api/settings', require('./routes/settings'));
+app.use('/api/telecallers', require('./routes/telecallers'));
 app.use('/api/debug', require('./routes/debug'));
 
 // Initialize WebSocket Service (handles Socket.IO internally)
