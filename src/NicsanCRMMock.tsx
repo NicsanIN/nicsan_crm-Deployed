@@ -10,7 +10,7 @@ import HorizontalLogo from './assets/images/HorizontalLogo.svg';
 
 // Environment variables
 const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
-const ENABLE_MOCK_DATA = import.meta.env.VITE_ENABLE_MOCK_DATA === 'true';
+// const ENABLE_MOCK_DATA = import.meta.env.VITE_ENABLE_MOCK_DATA === 'true';
 
 // --- Nicsan CRM v1 UI/UX Mock (updated) ---
 // Adds: Password-protected login, optimized Manual Form, Founder filters, KPI dashboard (your new metrics)
@@ -1014,7 +1014,7 @@ function AutocompleteInput({
 
   // Debounced search function
   const debouncedGetSuggestions = useMemo(() => {
-    let timeoutId: number;
+    let timeoutId: ReturnType<typeof setTimeout>;
     return (input: string) => {
       clearTimeout(timeoutId);
       timeoutId = setTimeout(async () => {
@@ -6359,13 +6359,13 @@ function NicsanCRMMock() {
   const [tab, setTab] = useState<"ops"|"founder">("ops");
   const [opsPage, setOpsPage] = useState("upload");
   const [founderPage, setFounderPage] = useState("overview");
-  const [backendStatus, setBackendStatus] = useState<any>(null);
+  // const [backendStatus, setBackendStatus] = useState<any>(null);
 
   // Check backend status on component mount
   useEffect(() => {
     const checkBackendStatus = async () => {
-      const status = DualStorageService.getEnvironmentInfo();
-      setBackendStatus(status);
+      // const status = DualStorageService.getEnvironmentInfo();
+      // setBackendStatus(status);
       
       if (ENABLE_DEBUG) {
       }
