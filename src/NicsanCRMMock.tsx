@@ -2251,7 +2251,7 @@ function PageManualGrid() {
       cashback: "", 
       customerName: "",
       branch: "",
-      paymentMethod: "Cash",
+      paymentMethod: "",
       status: "OK" 
     };
     
@@ -2459,6 +2459,7 @@ function PageManualGrid() {
 
     // Allow native single-cell paste into inputs
     if (!isBulk && isInputTarget) {
+      // Let the browser handle the paste naturally
       return;
     }
 
@@ -2519,7 +2520,8 @@ function PageManualGrid() {
             customerName: cells[27] || "",
             customerEmail: cells[28] || "",
             branch: cells[29] || "",
-            remark: cells[30] || "",
+            paymentMethod: cells[30] || "",
+            remark: cells[31] || "",
             cashback: "", // Not in Excel - keep empty
             status: "OK" 
           };
@@ -2802,6 +2804,7 @@ function PageManualGrid() {
         rollover: row.rollover || '',
         customer_name: row.customerName || '',
         branch: row.branch || '',
+        payment_method: row.paymentMethod || 'Cash',
         remark: row.remark || '',
         cashback: (parseFloat(row.cashback) || 0).toString(),
         source: 'MANUAL_GRID'
@@ -3308,14 +3311,12 @@ function PageManualGrid() {
                     />
                   </td>
                   <td className="px-1">
-                    <select 
-                      value={r.paymentMethod || 'Cash'} 
+                    <input 
+                      value={r.paymentMethod || ''} 
                       onChange={(e) => updateRow(i, 'paymentMethod', e.target.value)}
                       className="w-full border-none outline-none bg-transparent text-sm"
-                    >
-                      <option value="Cash">Cash</option>
-                      <option value="Direct">Direct</option>
-                    </select>
+                      placeholder="Cash or Direct"
+                    />
                   </td>
                   <td className="px-1">
                     <input 

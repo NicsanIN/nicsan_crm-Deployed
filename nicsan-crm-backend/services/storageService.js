@@ -104,7 +104,7 @@ async savePolicy(policyData) {
       idv, ncb, discount, net_od, ref, total_od, net_premium, total_premium,
       cashback_percentage, cashback_amount, customer_paid, customer_cheque_no,
       our_cheque_no, executive, ops_executive, caller_name, mobile, rollover, customer_name, customer_email, branch, remark,
-      brokerage, cashback, source, s3_key, confidence_score
+      brokerage, cashback, source, s3_key, confidence_score, payment_method
     } = policyData;
 
     // Check for duplicate policy number before insert
