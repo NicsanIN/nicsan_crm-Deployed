@@ -228,6 +228,7 @@ function PageUpload() {
   const [uploadStatus, setUploadStatus] = useState<string>('');
   const [uploadedFiles, setUploadedFiles] = useState<any[]>([]);
   const [selectedInsurer, setSelectedInsurer] = useState<string>('TATA_AIG');
+  const [callerNames, setCallerNames] = useState<string[]>([]);
   
   // Available insurers configuration
   const availableInsurers = [
@@ -489,6 +490,59 @@ function PageUpload() {
     setManualExtras(prev => ({ ...prev, [field]: value }));
   };
 
+  // Load telecaller names on component mount
+  useEffect(() => {
+    const loadTelecallers = async () => {
+      try {
+        const response = await DualStorageService.getTelecallers();
+        if (response.success && Array.isArray(response.data)) {
+          const names = response.data
+            .map((telecaller: any) => telecaller.name)
+            .filter((name: string) => name && name !== 'Unknown');
+          setCallerNames(names);
+        }
+      } catch (error) {
+        console.error('Failed to load telecallers:', error);
+      }
+    };
+    loadTelecallers();
+  }, []);
+
+  // Get filtered caller suggestions
+  const getFilteredCallerSuggestions = async (input: string): Promise<string[]> => {
+    if (!input || input.length < 2) return [];
+    
+    return callerNames.filter(name => 
+      name.toLowerCase().includes(input.toLowerCase())
+    );
+  };
+
+  // Handle adding new telecaller
+  const handleAddNewTelecaller = async (name: string) => {
+    try {
+      const response = await DualStorageService.addTelecaller({
+        name: name,
+        email: '',
+        phone: '',
+        branch: 'Default Branch',
+        is_active: true
+      });
+      
+      if (response.success) {
+        // Refresh caller names list
+        const updatedCallers = await DualStorageService.getTelecallers();
+        if (updatedCallers.success) {
+          const names = updatedCallers.data
+            .map((telecaller: any) => telecaller.name)
+            .filter((name: string) => name && name !== 'Unknown');
+          setCallerNames(names);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to add new telecaller:', error);
+    }
+  };
+
 
   // Smart suggestions for caller names
   // const __getSmartSuggestions = (fieldName: string) => {
@@ -560,13 +614,14 @@ function PageUpload() {
               </select>
             </div>
             <div>
-              <label className="block text-xs text-blue-700 mb-1">Caller Name</label>
-              <input 
-                type="text" 
+              <AutocompleteInput 
+                label="Caller Name" 
                 placeholder="Telecaller name"
                 value={manualExtras.callerName}
-                onChange={(e) => handleManualExtrasChange('callerName', e.target.value)}
-                className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                onChange={(value) => handleManualExtrasChange('callerName', value)}
+                getSuggestions={getFilteredCallerSuggestions}
+                onAddNew={handleAddNewTelecaller}
+                showAddNew={true}
               />
             </div>
             <div>
@@ -924,6 +979,161 @@ function LabeledSelect({ label, value, onChange, options, required, error }: {
   )
 }
 
+// AutocompleteInput component for telecaller name functionality
+function AutocompleteInput({ 
+  label, 
+  placeholder, 
+  value, 
+  onChange, 
+  getSuggestions, 
+  onAddNew, 
+  showAddNew = false, 
+  required = false, 
+  error,
+  useManualFormStyle = false,
+  useReviewPageStyle = false
+}: { 
+  label: string; 
+  placeholder?: string; 
+  value: string; 
+  onChange: (value: string) => void; 
+  getSuggestions?: (input: string) => Promise<string[]>; 
+  onAddNew?: (name: string) => void; 
+  showAddNew?: boolean; 
+  required?: boolean; 
+  error?: string;
+  useManualFormStyle?: boolean;
+  useReviewPageStyle?: boolean;
+}) {
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [showAddNewOption, setShowAddNewOption] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Debounced search function
+  const debouncedGetSuggestions = useMemo(() => {
+    let timeoutId: number;
+    return (input: string) => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(async () => {
+        if (input.length >= 2 && getSuggestions) {
+          setIsLoading(true);
+          try {
+            const newSuggestions = await getSuggestions(input);
+            setSuggestions(newSuggestions);
+            setShowSuggestions(true);
+            setShowAddNewOption(newSuggestions.length === 0 && showAddNew);
+          } catch (error) {
+            console.warn('Failed to get suggestions:', error);
+            setSuggestions([]);
+            setShowAddNewOption(showAddNew);
+          } finally {
+            setIsLoading(false);
+          }
+        }
+      }, 300);
+    };
+  }, [getSuggestions, showAddNew]);
+
+  const handleInputChange = (inputValue: string) => {
+    onChange && onChange(inputValue);
+    debouncedGetSuggestions(inputValue);
+  };
+
+  const handleSuggestionClick = (suggestion: string) => {
+    onChange && onChange(suggestion);
+    setShowSuggestions(false);
+    setShowAddNewOption(false);
+  };
+
+  const handleAddNew = () => {
+    if (onAddNew) {
+      onAddNew(value);
+    }
+    setShowSuggestions(false);
+    setShowAddNewOption(false);
+  };
+
+  // Close suggestions when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setShowSuggestions(false);
+        setShowAddNewOption(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  return (
+    <div className="relative" ref={containerRef}>
+      <label className="block">
+        <div className={`text-xs mb-1 ${
+          useManualFormStyle || useReviewPageStyle ? 'text-zinc-600' : 'text-blue-700'
+        }`}>
+          {label} {required && <span className="text-rose-600">*</span>}
+        </div>
+        <input 
+          ref={inputRef}
+          type="text"
+          value={value}
+          onChange={(e) => handleInputChange(e.target.value)}
+          onFocus={() => {
+            if (suggestions.length > 0) {
+              setShowSuggestions(true);
+            }
+          }}
+          className={`w-full px-3 py-2 border focus:outline-none focus:ring-2 ${
+            useManualFormStyle || useReviewPageStyle
+              ? `rounded-xl focus:ring-indigo-200 ${error ? 'border-red-300 bg-red-50' : 'border-zinc-300'}`
+              : `rounded-lg text-sm focus:ring-blue-200 ${error ? 'border-red-300 bg-red-50' : 'border-blue-300'}`
+          }`}
+          placeholder={placeholder}
+        />
+        {error && (
+          <div className="text-xs text-red-600 mt-1">{error}</div>
+        )}
+      </label>
+
+      {/* Suggestions dropdown */}
+      {(showSuggestions || showAddNewOption) && (
+        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+          {isLoading && (
+            <div className="px-3 py-2 text-sm text-gray-500">
+              Loading suggestions...
+            </div>
+          )}
+          
+          {!isLoading && suggestions.map((suggestion, index) => (
+            <div
+              key={index}
+              className="px-3 py-2 text-sm hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+              onClick={() => handleSuggestionClick(suggestion)}
+            >
+              {suggestion}
+            </div>
+          ))}
+          
+          {showAddNewOption && (
+            <div
+              className="px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 cursor-pointer border-t border-gray-200 font-medium"
+              onClick={handleAddNew}
+            >
+              + Add "{value}" as new telecaller
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 
 // Optimized manual form with QuickFill and two-way cashback calc
 function PageManualForm() {
@@ -971,6 +1181,7 @@ function PageManualForm() {
   const [vehicleSearchResults, setVehicleSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const [validationMode, setValidationMode] = useState<'progressive' | 'strict'>('progressive');
+  const [callerNames, setCallerNames] = useState<string[]>([]);
   
   const set = (k:string,v:any)=> {
     setForm((f:any)=>({ ...f, [k]: v }));
@@ -1412,6 +1623,59 @@ function PageManualForm() {
       }
     } else {
       setVehicleSearchResults([]);
+    }
+  };
+
+  // Load telecaller names on component mount
+  useEffect(() => {
+    const loadTelecallers = async () => {
+      try {
+        const response = await DualStorageService.getTelecallers();
+        if (response.success && Array.isArray(response.data)) {
+          const names = response.data
+            .map((telecaller: any) => telecaller.name)
+            .filter((name: string) => name && name !== 'Unknown');
+          setCallerNames(names);
+        }
+      } catch (error) {
+        console.error('Failed to load telecallers:', error);
+      }
+    };
+    loadTelecallers();
+  }, []);
+
+  // Get filtered caller suggestions
+  const getFilteredCallerSuggestions = async (input: string): Promise<string[]> => {
+    if (!input || input.length < 2) return [];
+    
+    return callerNames.filter(name => 
+      name.toLowerCase().includes(input.toLowerCase())
+    );
+  };
+
+  // Handle adding new telecaller
+  const handleAddNewTelecaller = async (name: string) => {
+    try {
+      const response = await DualStorageService.addTelecaller({
+        name: name,
+        email: '',
+        phone: '',
+        branch: 'Default Branch',
+        is_active: true
+      });
+      
+      if (response.success) {
+        // Refresh caller names list
+        const updatedCallers = await DualStorageService.getTelecallers();
+        if (updatedCallers.success) {
+          const names = updatedCallers.data
+            .map((telecaller: any) => telecaller.name)
+            .filter((name: string) => name && name !== 'Unknown');
+          setCallerNames(names);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to add new telecaller:', error);
     }
   };
 
@@ -1874,7 +2138,16 @@ function PageManualForm() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
           <LabeledSelect label="Executive" value={form.executive} onChange={v=>set('executive', v)} options={["Yashwanth", "Kavya", "Bhagya", "Sandesh", "Yallappa", "Nethravathi", "Tejaswini"]}/>
           <LabeledSelect label="Ops Executive" value={form.opsExecutive} onChange={v=>set('opsExecutive', v)} options={["NA", "Ravi", "Pavan", "Manjunath"]}/>
-          <LabeledInput label="Caller Name" value={form.callerName} onChange={v=>set('callerName', v)} placeholder="Enter caller name"/>
+          <AutocompleteInput 
+            label="Caller Name" 
+            placeholder="Enter caller name"
+            value={form.callerName}
+            onChange={(value) => set('callerName', value)}
+            getSuggestions={getFilteredCallerSuggestions}
+            onAddNew={handleAddNewTelecaller}
+            showAddNew={true}
+            useManualFormStyle={true}
+          />
           <LabeledInput label="Mobile Number" required placeholder="9xxxxxxxxx" value={form.mobile} onChange={v=>set('mobile', v)}/>
           <LabeledSelect label="Rollover/Renewal" value={form.rollover} onChange={v=>set('rollover', v)} options={["ROLLOVER", "RENEWAL"]}/>
           <LabeledInput label="Customer Email ID" value={form.customerEmail} onChange={v=>set('customerEmail', v)}/>
@@ -3164,7 +3437,60 @@ function PageReview() {
     pdfData: {},
     manualExtras: {}
   });
+  const [callerNames, setCallerNames] = useState<string[]>([]);
 
+  // Load telecaller names on component mount
+  useEffect(() => {
+    const loadTelecallers = async () => {
+      try {
+        const response = await DualStorageService.getTelecallers();
+        if (response.success && Array.isArray(response.data)) {
+          const names = response.data
+            .map((telecaller: any) => telecaller.name)
+            .filter((name: string) => name && name !== 'Unknown');
+          setCallerNames(names);
+        }
+      } catch (error) {
+        console.error('Failed to load telecallers:', error);
+      }
+    };
+    loadTelecallers();
+  }, []);
+
+  // Get filtered caller suggestions
+  const getFilteredCallerSuggestions = async (input: string): Promise<string[]> => {
+    if (!input || input.length < 2) return [];
+    
+    return callerNames.filter(name => 
+      name.toLowerCase().includes(input.toLowerCase())
+    );
+  };
+
+  // Handle adding new telecaller
+  const handleAddNewTelecaller = async (name: string) => {
+    try {
+      const response = await DualStorageService.addTelecaller({
+        name: name,
+        email: '',
+        phone: '',
+        branch: 'Default Branch',
+        is_active: true
+      });
+      
+      if (response.success) {
+        // Refresh caller names list
+        const updatedCallers = await DualStorageService.getTelecallers();
+        if (updatedCallers.success) {
+          const names = updatedCallers.data
+            .map((telecaller: any) => telecaller.name)
+            .filter((name: string) => name && name !== 'Unknown');
+          setCallerNames(names);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to add new telecaller:', error);
+    }
+  };
 
   // Load available uploads for review
   useEffect(() => {
@@ -3848,11 +4174,15 @@ function PageReview() {
               onChange={(value) => updateManualExtras('opsExecutive', value)}
               options={["NA", "Ravi", "Pavan", "Manjunath"]}
             />
-            <LabeledInput 
+            <AutocompleteInput 
               label="Caller Name" 
+              placeholder="Telecaller name"
               value={editableData.manualExtras.callerName || manualExtras.callerName}
               onChange={(value) => updateManualExtras('callerName', value)}
-              hint="telecaller name"
+              getSuggestions={getFilteredCallerSuggestions}
+              onAddNew={handleAddNewTelecaller}
+              showAddNew={true}
+              useReviewPageStyle={true}
             />
             <LabeledInput 
               label="Customer Email ID" 
