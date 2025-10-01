@@ -238,7 +238,8 @@ function PageUpload() {
     customerPaid: '',
     customerChequeNo: '',
     ourChequeNo: '',
-    branch: ''
+    branch: '',
+    paymentMethod: 'Cash'
   });
   const [manualExtrasSaved, setManualExtrasSaved] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -350,7 +351,8 @@ function PageUpload() {
           customerPaid: '',
           customerChequeNo: '',
           ourChequeNo: '',
-          branch: ''
+          branch: '',
+          paymentMethod: 'Cash'
         });
         setManualExtrasSaved(false);
       } else {
@@ -712,6 +714,17 @@ function PageUpload() {
                 className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
                 required
               />
+            </div>
+            <div>
+              <label className="block text-xs text-blue-700 mb-1">Payment Method</label>
+              <select 
+                value={manualExtras.paymentMethod}
+                onChange={(e) => handleManualExtrasChange('paymentMethod', e.target.value)}
+                className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+              >
+                <option value="Cash">Cash</option>
+                <option value="Direct">Direct</option>
+              </select>
             </div>
             <div className="md:col-span-2">
               <label className="block text-xs text-blue-700 mb-1">Remark</label>
@@ -1161,7 +1174,8 @@ function PageManualForm() {
             cashback: "",
             customerName: "",
             customerEmail: "",
-            branch: ""
+            branch: "",
+            paymentMethod: "Cash"
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState<{type: 'success' | 'error', message: string} | null>(null);
@@ -2064,6 +2078,17 @@ function PageManualForm() {
           <LabeledInput label="Customer Paid (₹)" value={form.customerPaid} onChange={v=>set('customerPaid', v)}/>
           <LabeledInput label="Customer Cheque No" value={form.customerChequeNo} onChange={v=>set('customerChequeNo', v)}/>
           <LabeledInput label="Our Cheque No" value={form.ourChequeNo} onChange={v=>set('ourChequeNo', v)}/>
+          <div>
+            <label className="block text-xs text-gray-600 mb-1">Payment Method</label>
+            <select 
+              value={form.paymentMethod}
+              onChange={(e) => set('paymentMethod', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+            >
+              <option value="Cash">Cash</option>
+              <option value="Direct">Direct</option>
+            </select>
+          </div>
         </div>
 
         {/* Brokerage & Additional */}
@@ -2226,6 +2251,7 @@ function PageManualGrid() {
       cashback: "", 
       customerName: "",
       branch: "",
+      paymentMethod: "Cash",
       status: "OK" 
     };
     
@@ -2983,6 +3009,7 @@ function PageManualGrid() {
                 <th className="py-2 px-1">Customer Name</th>
                 <th className="py-2 px-1">Customer Email ID</th>
                 <th className="py-2 px-1">Branch <span className="text-red-500">*</span></th>
+                <th className="py-2 px-1">Payment Method</th>
                 <th className="py-2 px-1">Remark</th>
                 <th className="py-2 px-1">Status</th>
               </tr>
@@ -3281,6 +3308,16 @@ function PageManualGrid() {
                     />
                   </td>
                   <td className="px-1">
+                    <select 
+                      value={r.paymentMethod || 'Cash'} 
+                      onChange={(e) => updateRow(i, 'paymentMethod', e.target.value)}
+                      className="w-full border-none outline-none bg-transparent text-sm"
+                    >
+                      <option value="Cash">Cash</option>
+                      <option value="Direct">Direct</option>
+                    </select>
+                  </td>
+                  <td className="px-1">
                     <input 
                       value={r.remark} 
                       onChange={(e) => updateRow(i, 'remark', e.target.value)}
@@ -3363,6 +3400,10 @@ function PageReview() {
     manualExtras: {}
   });
   const [_callerNames, setCallerNames] = useState<string[]>([]);
+  
+  // Verification popup state
+  const [showVerificationModal, setShowVerificationModal] = useState(false);
+  const [pendingSaveData, setPendingSaveData] = useState<any>(null);
 
   // Load available uploads for review
   useEffect(() => {
@@ -3691,6 +3732,31 @@ function PageReview() {
         return;
       }
       
+      // Show verification popup before saving
+      
+      setPendingSaveData({
+        pdfData: editableData.pdfData,
+        manualExtras: editableData.manualExtras
+      });
+      setShowVerificationModal(true);
+      
+    } catch (error) {
+      console.error('❌ Confirm & Save error:', error);
+      setSubmitMessage({ 
+        type: 'error', 
+        message: 'Failed to prepare for save. Please try again.' 
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Handle verification confirmation
+  const handleVerificationConfirm = async () => {
+    setShowVerificationModal(false);
+    setIsLoading(true);
+    
+    try {
       // Check if this is a mock upload
       if (reviewData.id.startsWith('mock_')) {
         // Simulate successful save for mock data
@@ -3712,10 +3778,7 @@ function PageReview() {
       }
       
       // Send edited data to backend
-      const result = await DualStorageService.confirmUploadAsPolicy(reviewData.id, {
-        pdfData: editableData.pdfData,
-        manualExtras: editableData.manualExtras
-      });
+      const result = await DualStorageService.confirmUploadAsPolicy(reviewData.id, pendingSaveData);
       
       if (result.success) {
         console.log('✅ Policy confirmed successfully with edited data!');
@@ -3766,10 +3829,64 @@ function PageReview() {
     }
   };
 
+  // Handle verification cancellation
+  const handleVerificationCancel = () => {
+    setShowVerificationModal(false);
+    setPendingSaveData(null);
+  };
+
   const handleRejectToManual = () => {
     // In real app, this would redirect to manual form with some pre-filled data
     setReviewData(null);
     // You could navigate to manual form here
+  };
+
+  // Verification modal component
+  const VerificationModal = ({ isOpen, onConfirm, onCancel, email, phone }: { isOpen: boolean; onConfirm: () => void; onCancel: () => void; email: string; phone: string }) => {
+    if (!isOpen) return null;
+    
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+          <h3 className="text-lg font-semibold mb-4">📋 Verify Contact Details</h3>
+          
+          <div className="space-y-3 mb-6">
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-medium">📧 Email:</span>
+              <span className={`px-2 py-1 rounded text-sm ${email ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                {email || 'Not provided'}
+              </span>
+            </div>
+            
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-medium">📱 Phone:</span>
+              <span className={`px-2 py-1 rounded text-sm ${phone ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                {phone || 'Not provided'}
+              </span>
+            </div>
+          </div>
+          
+          <div className="text-sm text-gray-600 mb-4">
+            Please verify these contact details are correct before saving the policy.
+          </div>
+          
+          <div className="flex gap-3">
+            <button 
+              onClick={onConfirm} 
+              className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+            >
+              ✅ Correct - Save Policy
+            </button>
+            <button 
+              onClick={onCancel} 
+              className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+            >
+              ❌ Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   // For demo purposes, show mock data
@@ -4154,6 +4271,17 @@ function PageReview() {
               onChange={(value) => updateManualExtras('branch', value)}
               required
             />
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">Payment Method</label>
+              <select 
+                value={editableData.manualExtras.paymentMethod || manualExtras.paymentMethod || 'Cash'}
+                onChange={(e) => updateManualExtras('paymentMethod', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+              >
+                <option value="Cash">Cash</option>
+                <option value="Direct">Direct</option>
+              </select>
+            </div>
             <div style={{ display: 'none' }}>
               <LabeledInput 
                 label="Brokerage (₹)" 
@@ -4257,6 +4385,15 @@ function PageReview() {
           </button>
         </div>
       </Card>
+
+      {/* Verification Modal */}
+      <VerificationModal 
+        isOpen={showVerificationModal}
+        onConfirm={handleVerificationConfirm}
+        onCancel={handleVerificationCancel}
+        email={editableData.manualExtras.customerEmail || manualExtras.customerEmail}
+        phone={editableData.manualExtras.mobile || manualExtras.mobile}
+      />
     </>
   )
 }
@@ -4656,6 +4793,10 @@ function PagePolicyDetail() {
               <div className="flex justify-between">
                 <span>Branch:</span>
                 <span className="font-medium">{policy.branch || "N/A"}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Payment Method:</span>
+                <span className="font-medium">{policy.payment_method || "Cash"}</span>
               </div>
               <div className="flex justify-between">
                 <span>Type of Business:</span>

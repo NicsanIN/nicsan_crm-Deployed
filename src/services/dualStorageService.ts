@@ -318,6 +318,7 @@ class DualStorageService {
       customer_paid: 12150,
       customer_cheque_no: 'CHQ123456',
       our_cheque_no: 'CHQ789012',
+      payment_method: 'Cash',
       status: 'SAVED',
       confidence_score: 0.98,
       created_by: 'System',

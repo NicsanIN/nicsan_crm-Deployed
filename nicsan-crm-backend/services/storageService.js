@@ -146,8 +146,8 @@ async savePolicy(policyData) {
           idv, ncb, discount, net_od, ref, total_od, net_premium, total_premium,
           cashback_percentage, cashback_amount, customer_paid, customer_cheque_no,
           our_cheque_no, executive, ops_executive, caller_name, mobile, rollover, customer_name, customer_email, branch, remark,
-          brokerage, cashback, source, s3_key, confidence_score
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38)
+          brokerage, cashback, source, s3_key, confidence_score, payment_method
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39)
         RETURNING *
       `;
       
@@ -157,7 +157,7 @@ async savePolicy(policyData) {
         idv, ncb, discount, net_od, ref, total_od, net_premium, total_premium,
         cashback_percentage, cashback_amount, customer_paid, customer_cheque_no,
         our_cheque_no, executive, ops_executive, caller_name, mobile, rollover, customer_name, customer_email, branch, remark,
-        brokerage, cashback, source, s3_key, confidence_score
+        brokerage, cashback, source, s3_key, confidence_score, payment_method
       ];
     } else {
       // Use fallback query without customer_name column
@@ -169,8 +169,8 @@ async savePolicy(policyData) {
           idv, ncb, discount, net_od, ref, total_od, net_premium, total_premium,
           cashback_percentage, cashback_amount, customer_paid, customer_cheque_no,
           our_cheque_no, executive, ops_executive, caller_name, mobile, rollover, remark,
-          brokerage, cashback, source, s3_key, confidence_score
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35)
+          brokerage, cashback, source, s3_key, confidence_score, payment_method
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36)
         RETURNING *
       `;
       
@@ -180,7 +180,7 @@ async savePolicy(policyData) {
         idv, ncb, discount, net_od, ref, total_od, net_premium, total_premium,
         cashback_percentage, cashback_amount, customer_paid, customer_cheque_no,
         our_cheque_no, executive, ops_executive, caller_name, mobile, rollover, remark,
-        brokerage, cashback, source, s3_key, confidence_score
+        brokerage, cashback, source, s3_key, confidence_score, payment_method
       ];
     }
 
