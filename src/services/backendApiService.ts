@@ -120,12 +120,19 @@ class BackendApiService {
     try {
       if (ENABLE_DEBUG) {
         console.log('🔄 BackendApiService: Adding new telecaller...');
+        console.log('🔍 Auth token:', localStorage.getItem('authToken') ? 'Present' : 'Missing');
+        console.log('🔍 Telecaller data:', telecallerData);
+      }
+
+      const authToken = localStorage.getItem('authToken');
+      if (!authToken) {
+        throw new Error('No authentication token found. Please log in again.');
       }
 
       const response = await fetch(`${API_BASE_URL}/telecallers`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          'Authorization': `Bearer ${authToken}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(telecallerData),

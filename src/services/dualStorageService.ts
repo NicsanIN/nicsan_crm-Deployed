@@ -163,6 +163,10 @@ class DualStorageService {
 
   // Add new telecaller
   async addTelecaller(telecallerData: any): Promise<DualStorageResult> {
+    if (ENABLE_DEBUG) {
+      console.log('🔄 DualStorageService: Adding telecaller...', telecallerData);
+    }
+    
     return this.executeDualStoragePattern(
       () => this.backendApiService.addTelecaller(telecallerData),
       null,
