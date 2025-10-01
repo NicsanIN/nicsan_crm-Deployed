@@ -9,6 +9,7 @@ import { SettingsProvider, useSettings } from './contexts/SettingsContext';
 import HorizontalLogo from './assets/images/HorizontalLogo.svg';
 
 // Environment variables
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
 // const ENABLE_MOCK_DATA = import.meta.env.VITE_ENABLE_MOCK_DATA === 'true';
 
@@ -5844,7 +5845,7 @@ function PageFounderSettings() {
     setIsLoadingTelecallers(true);
     setTelecallerError(null);
     try {
-      const response = await fetch('http://localhost:3001/api/telecallers/all', {
+      const response = await fetch(`${API_BASE_URL}/telecallers/all`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
           'Content-Type': 'application/json'
@@ -5871,7 +5872,7 @@ function PageFounderSettings() {
   // Toggle telecaller status
   const toggleTelecallerStatus = async (id: number, currentStatus: boolean, name: string) => {
     try {
-      const response = await fetch(`http://localhost:3001/api/telecallers/${id}`, {
+      const response = await fetch(`${API_BASE_URL}/telecallers/${id}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,

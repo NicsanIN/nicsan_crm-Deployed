@@ -871,7 +871,7 @@ const response = await fetch(`${API_BASE_URL}/policies`, {
         console.log('🔍 BackendApiService: getTotalODDaily called with period:', period);
       }
 
-      const url = `http://localhost:3001/api/dashboard/total-od/daily?period=${period}`;
+      const url = `${API_BASE_URL}/dashboard/total-od/daily?period=${period}`;
       
       if (ENABLE_DEBUG) {
         console.log('🔍 BackendApiService: Calling URL:', url);
@@ -915,7 +915,7 @@ const response = await fetch(`${API_BASE_URL}/policies`, {
         console.log('🔍 BackendApiService: getTotalODMonthly called with period:', period);
       }
 
-      const url = `http://localhost:3001/api/dashboard/total-od/monthly?period=${period}`;
+      const url = `${API_BASE_URL}/dashboard/total-od/monthly?period=${period}`;
       
       if (ENABLE_DEBUG) {
         console.log('🔍 BackendApiService: Calling URL:', url);
@@ -959,7 +959,7 @@ const response = await fetch(`${API_BASE_URL}/policies`, {
         console.log('🔍 BackendApiService: getTotalODFinancialYear called with years:', years);
       }
 
-      const url = `http://localhost:3001/api/dashboard/total-od/financial-year?years=${years}`;
+      const url = `${API_BASE_URL}/dashboard/total-od/financial-year?years=${years}`;
       
       if (ENABLE_DEBUG) {
         console.log('🔍 BackendApiService: Calling URL:', url);
