@@ -154,6 +154,9 @@ router.get('/payments/executive', authenticateToken, requireFounder, async (req,
         policy_number,
         vehicle_number,
         total_premium,
+        payment_received,
+        received_date,
+        received_by,
         created_at
       FROM policies 
       WHERE payment_method = 'NICSAN' 
@@ -170,6 +173,44 @@ router.get('/payments/executive', authenticateToken, requireFounder, async (req,
     res.status(500).json({
       success: false,
       error: error.message || 'Failed to get executive payments'
+    });
+  }
+});
+
+// Mark payment as received
+router.put('/payments/received/:policyNumber', authenticateToken, requireFounder, async (req, res) => {
+  try {
+    const { policyNumber } = req.params;
+    const { received_by } = req.body;
+    const received_date = new Date().toISOString();
+
+    const result = await query(`
+      UPDATE policies 
+      SET payment_received = true, 
+          received_date = $1, 
+          received_by = $2,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE policy_number = $3
+      RETURNING policy_number, customer_name, payment_received, received_date, received_by
+    `, [received_date, received_by, policyNumber]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Policy not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: result.rows[0],
+      message: 'Payment marked as received successfully'
+    });
+  } catch (error) {
+    console.error('Mark payment received error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to mark payment as received'
     });
   }
 });

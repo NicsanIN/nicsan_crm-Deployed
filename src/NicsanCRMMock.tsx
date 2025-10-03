@@ -5918,27 +5918,31 @@ function PagePayments() {
   const [payments, setPayments] = useState<any[]>([]);
   const [dataSource, setDataSource] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
+  const [viewMode, setViewMode] = useState<'summary' | 'detail'>('summary');
+  const [selectedExecutive, setSelectedExecutive] = useState<string>('');
+  const [receivedPayments, setReceivedPayments] = useState<Set<string>>(new Set());
+  const [isUpdating, setIsUpdating] = useState<{[key: string]: boolean}>({});
+
+  const loadExecutivePayments = async () => {
+    try {
+      setIsLoading(true);
+      // Use dual storage pattern: S3 → Database → Mock Data
+      const response = await DualStorageService.getExecutivePayments();
+      
+      if (response.success) {
+        setPayments(Array.isArray(response.data) ? response.data : []);
+        setDataSource(response.source);
+      }
+    } catch (error) {
+      console.error('Failed to load executive payments:', error);
+      setPayments([]);
+      setDataSource('MOCK_DATA');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const loadExecutivePayments = async () => {
-      try {
-        setIsLoading(true);
-        // Use dual storage pattern: S3 → Database → Mock Data
-        const response = await DualStorageService.getExecutivePayments();
-        
-        if (response.success) {
-          setPayments(Array.isArray(response.data) ? response.data : []);
-          setDataSource(response.source);
-        }
-      } catch (error) {
-        console.error('Failed to load executive payments:', error);
-        setPayments([]);
-        setDataSource('MOCK_DATA');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
     loadExecutivePayments();
   }, []);
 
@@ -5958,10 +5962,111 @@ function PagePayments() {
     }
   };
 
+  const formatReceivedDate = (dateString: string) => {
+    if (!dateString) return 'N/A';
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleString('en-GB', {
+        day: '2-digit',
+        month: '2-digit', 
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch {
+      return dateString;
+    }
+  };
+
   // Calculate summary metrics
   const totalAmount = payments.reduce((sum, payment) => sum + (parseFloat(payment.customer_paid) || 0), 0);
   const executiveCount = new Set(payments.map(p => p.executive)).size;
-  const pendingCount = payments.filter(p => !p.our_cheque_no || p.our_cheque_no === '').length;
+  const receivedAmount = payments
+    .filter(p => receivedPayments.has(`${p.policy_number}_${p.customer_name}`) || p.payment_received === true)
+    .reduce((sum, payment) => sum + (parseFloat(payment.customer_paid) || 0), 0);
+  const pendingAmount = totalAmount - receivedAmount;
+
+  // Calculate executive summary
+  const calculateExecutiveSummary = (payments: any[]) => {
+    const summary = payments.reduce((acc, payment) => {
+      const exec = payment.executive;
+      if (!acc[exec]) {
+        acc[exec] = {
+          executive: exec,
+          totalPaid: 0,
+          receivedAmount: 0,
+          pendingAmount: 0,
+          recordCount: 0,
+          receivedCount: 0
+        };
+      }
+      
+      const amount = parseFloat(payment.customer_paid) || 0;
+      acc[exec].totalPaid += amount;
+      acc[exec].recordCount += 1;
+      
+      // Check if received using payment_received field or local state
+      const isReceived = receivedPayments.has(`${payment.policy_number}_${payment.customer_name}`) || payment.payment_received === true;
+      if (isReceived) {
+        acc[exec].receivedAmount += amount;
+        acc[exec].receivedCount += 1;
+      } else {
+        acc[exec].pendingAmount += amount;
+      }
+      
+      return acc;
+    }, {});
+    
+    return Object.values(summary);
+  };
+
+  // Get payments for selected executive
+  const getPaymentsForExecutive = (executive: string) => {
+    return payments.filter(p => p.executive === executive);
+  };
+
+  // Navigation functions
+  const viewExecutiveDetails = (executive: string) => {
+    setSelectedExecutive(executive);
+    setViewMode('detail');
+  };
+
+  const backToSummary = () => {
+    setSelectedExecutive('');
+    setViewMode('summary');
+  };
+
+  // Function to mark payment as received
+  const markAsReceived = async (paymentId: string, payment: any) => {
+    setIsUpdating(prev => ({ ...prev, [paymentId]: true }));
+    
+    try {
+      // Call backend API to mark payment as received
+      const response = await DualStorageService.markPaymentAsReceived(
+        payment.policy_number, 
+        'current_user' // In real implementation, get from auth context
+      );
+      
+      if (response.success) {
+        // Update local state
+        setReceivedPayments(prev => new Set([...prev, paymentId]));
+        
+        // Refresh data to get updated payment status
+        await loadExecutivePayments();
+        
+        console.log(`Payment marked as received: ${paymentId}`, response.data);
+      } else {
+        console.error('Failed to mark payment as received:', response);
+      }
+    } catch (error) {
+      console.error('Failed to mark as received:', error);
+    } finally {
+      setIsUpdating(prev => ({ ...prev, [paymentId]: false }));
+    }
+  };
+
+  const executiveSummary = calculateExecutiveSummary(payments);
+  const filteredPayments = getPaymentsForExecutive(selectedExecutive);
 
   return (
     <>
@@ -5969,21 +6074,21 @@ function PagePayments() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-6">
         <Tile 
           label="Total Payments" 
-          info="(Executive processed)"
+          info="(All executive payments)"
           value={formatCurrency(totalAmount)} 
           sub={`${payments.length} transactions`}
         />
         <Tile 
-          label="Active Executives" 
-          info="(Processing payments)"
-          value={executiveCount.toString()} 
-          sub="Unique executives"
+          label="Received Amount" 
+          info="(Processed payments)"
+          value={formatCurrency(receivedAmount)} 
+          sub={`${payments.filter(p => receivedPayments.has(`${p.policy_number}_${p.customer_name}`) || p.payment_received === true).length} received`}
         />
         <Tile 
-          label="Pending Cheques" 
-          info="(Awaiting our cheque)"
-          value={pendingCount.toString()} 
-          sub="Need processing"
+          label="Pending Amount" 
+          info="(Awaiting processing)"
+          value={formatCurrency(pendingAmount)} 
+          sub={`${payments.length - payments.filter(p => receivedPayments.has(`${p.policy_number}_${p.customer_name}`) || p.payment_received === true).length} pending`}
         />
         <Tile 
           label="Data Source" 
@@ -5993,64 +6098,156 @@ function PagePayments() {
         />
       </div>
 
-      {/* Executive Payments Table */}
-      <Card title="Executive Payments" desc={`Payments processed through executives (Data Source: ${dataSource || 'Loading...'})`}>
-        {isLoading ? (
-          <div className="text-center py-8">
-            <div className="text-sm text-zinc-600">Loading executive payments...</div>
-          </div>
-        ) : payments.length === 0 ? (
-          <div className="text-center py-8">
-            <div className="text-sm text-zinc-600">No executive payments found</div>
-            <div className="text-xs text-zinc-500 mt-1">Payments will appear here when executives process NICSAN payments</div>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-zinc-500 border-b">
-                  <th className="py-2 px-2">Executive</th>
-                  <th className="py-2 px-2">Customer Name</th>
-                  <th className="py-2 px-2">Customer Paid</th>
-                  <th className="py-2 px-2">Customer Cheque No</th>
-                  <th className="py-2 px-2">Our Cheque No</th>
-                  <th className="py-2 px-2">Issue Date</th>
-                  <th className="py-2 px-2">Policy Number</th>
-                  <th className="py-2 px-2">Vehicle Number</th>
-                </tr>
-              </thead>
-              <tbody>
-                {payments.map((payment, index) => (
-                  <tr key={index} className="border-b hover:bg-zinc-50">
-                    <td className="py-2 px-2 font-medium">{payment.executive || 'N/A'}</td>
-                    <td className="py-2 px-2">{payment.customer_name || 'N/A'}</td>
-                    <td className="py-2 px-2 font-medium">{formatCurrency(parseFloat(payment.customer_paid) || 0)}</td>
-                    <td className="py-2 px-2">{payment.customer_cheque_no || 'N/A'}</td>
-                    <td className="py-2 px-2">{payment.our_cheque_no || 'Pending'}</td>
-                    <td className="py-2 px-2">{formatDate(payment.issue_date)}</td>
-                    <td className="py-2 px-2 font-mono text-xs">{payment.policy_number || 'N/A'}</td>
-                    <td className="py-2 px-2 font-mono text-xs">{payment.vehicle_number || 'N/A'}</td>
+      {/* Conditional Content */}
+      {viewMode === 'summary' ? (
+        <Card title="Executive Summary" desc={`Click on executive to view individual payment records (Data Source: ${dataSource || 'Loading...'})`}>
+          {isLoading ? (
+            <div className="text-center py-8">
+              <div className="text-sm text-zinc-600">Loading executive payments...</div>
+            </div>
+          ) : executiveSummary.length === 0 ? (
+            <div className="text-center py-8">
+              <div className="text-sm text-zinc-600">No executive payments found</div>
+              <div className="text-xs text-zinc-500 mt-1">Payments will appear here when executives process NICSAN payments</div>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-zinc-500 border-b bg-gray-50">
+                    <th className="py-2 px-2 font-medium">Executive Name</th>
+                    <th className="py-2 px-2 font-medium">Total Amount</th>
+                    <th className="py-2 px-2 font-medium">Received</th>
+                    <th className="py-2 px-2 font-medium">Pending</th>
+                    <th className="py-2 px-2 font-medium">Records</th>
+                    <th className="py-2 px-2 font-medium text-center">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {executiveSummary.map((exec, index) => (
+                    <tr key={index} className="border-b hover:bg-gray-50 transition-colors">
+                      <td className="py-2 px-2 font-medium text-gray-900">{exec.executive || 'N/A'}</td>
+                      <td className="py-2 px-2 font-semibold text-gray-900">{formatCurrency(exec.totalPaid)}</td>
+                      <td className="py-2 px-2 font-medium text-green-600">{formatCurrency(exec.receivedAmount)}</td>
+                      <td className="py-2 px-2 font-medium text-orange-600">{formatCurrency(exec.pendingAmount)}</td>
+                      <td className="py-2 px-2 text-gray-600">{exec.recordCount}</td>
+                      <td className="py-2 px-2 text-center">
+                        <button 
+                          onClick={() => viewExecutiveDetails(exec.executive)}
+                          className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-2 py-1 rounded transition-colors"
+                        >
+                          View Details
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          
+          {executiveSummary.length > 0 && (
+            <div className="text-center text-sm mt-4">
+              {dataSource === 'BACKEND_API' ? (
+                <span className="text-green-600 font-medium">
+                  ✅ Showing {executiveSummary.length} executives from backend
+                </span>
+              ) : (
+                <span className="text-blue-500">
+                  📊 Showing demo data (fallback)
+                </span>
+              )}
+            </div>
+          )}
+        </Card>
+      ) : (
+        <Card title={`${selectedExecutive} - Payment Details`} desc="Individual payment records for selected executive">
+          <div className="mb-4">
+            <button 
+              onClick={backToSummary}
+              className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+            >
+              ← Back to Executive Summary
+            </button>
           </div>
-        )}
-        
-        {payments.length > 0 && (
-          <div className="text-center text-sm mt-4">
-            {dataSource === 'BACKEND_API' ? (
-              <span className="text-green-600 font-medium">
-                ✅ Showing {payments.length} executive payments from backend
+          
+          {filteredPayments.length === 0 ? (
+            <div className="text-center py-8">
+              <div className="text-sm text-zinc-600">No payment records found for {selectedExecutive}</div>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-zinc-500 border-b bg-gray-50">
+                    <th className="py-2 px-2 font-medium">Customer Name</th>
+                    <th className="py-2 px-2 font-medium">Amount</th>
+                    <th className="py-2 px-2 font-medium">Customer Cheque</th>
+                    <th className="py-2 px-2 font-medium">Our Cheque</th>
+                    <th className="py-2 px-2 font-medium">Issue Date</th>
+                    <th className="py-2 px-2 font-medium">Policy No</th>
+                    <th className="py-2 px-2 font-medium text-center">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredPayments.map((payment, index) => {
+                    const paymentId = `${payment.policy_number}_${payment.customer_name}`;
+                    const isReceived = receivedPayments.has(paymentId) || payment.payment_received === true;
+                    const isUpdatingPayment = isUpdating[paymentId];
+                    
+                    return (
+                      <tr key={index} className="border-b hover:bg-gray-50 transition-colors">
+                        <td className="py-2 px-2 font-medium text-gray-900">{payment.customer_name || 'N/A'}</td>
+                        <td className="py-2 px-2 font-semibold text-green-700">{formatCurrency(parseFloat(payment.customer_paid) || 0)}</td>
+                        <td className="py-2 px-2 text-gray-600">{payment.customer_cheque_no || 'N/A'}</td>
+                        <td className="py-2 px-2 text-gray-600">{payment.our_cheque_no || 'N/A'}</td>
+                        <td className="py-2 px-2 text-gray-600">{formatDate(payment.issue_date)}</td>
+                        <td className="py-2 px-2 font-mono text-xs text-gray-600">{payment.policy_number || 'N/A'}</td>
+                        <td className="py-2 px-2 text-center">
+                          {isReceived ? (
+                            <div className="inline-flex flex-col items-center space-y-1">
+                              <div className="flex items-center space-x-1 text-green-600">
+                                <span className="text-sm">✅</span>
+                                <span className="text-xs font-medium">Received</span>
+                              </div>
+                              {payment.received_date && (
+                                <div className="text-xs text-gray-500">
+                                  {formatReceivedDate(payment.received_date)}
+                                </div>
+                              )}
+                              {payment.received_by && (
+                                <div className="text-xs text-gray-500">
+                                  By: {payment.received_by}
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <button 
+                              onClick={() => markAsReceived(paymentId, payment)}
+                              disabled={isUpdatingPayment}
+                              className="bg-green-600 hover:bg-green-700 text-white text-xs px-2 py-1 rounded disabled:opacity-50 transition-colors"
+                            >
+                              {isUpdatingPayment ? 'Processing...' : 'Mark Received'}
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+          
+          {filteredPayments.length > 0 && (
+            <div className="text-center text-sm mt-4">
+              <span className="text-blue-600 font-medium">
+                📊 Showing {filteredPayments.length} payment records for {selectedExecutive}
               </span>
-            ) : (
-              <span className="text-blue-500">
-                📊 Showing demo data (fallback)
-              </span>
-            )}
-          </div>
-        )}
-      </Card>
+            </div>
+          )}
+        </Card>
+      )}
     </>
   )
 }

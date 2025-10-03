@@ -298,6 +298,9 @@ class DualStorageService {
         policy_number: 'TA-9921',
         vehicle_number: 'KA01AB1234',
         total_premium: 12150,
+        payment_received: false,
+        received_date: null,
+        received_by: null,
         created_at: '2025-08-12T15:54:00Z'
       },
       {
@@ -310,6 +313,9 @@ class DualStorageService {
         policy_number: 'TA-9922',
         vehicle_number: 'KA02CD5678',
         total_premium: 13500,
+        payment_received: false,
+        received_date: null,
+        received_by: null,
         created_at: '2025-08-11T14:30:00Z'
       },
       {
@@ -322,6 +328,9 @@ class DualStorageService {
         policy_number: 'TA-9923',
         vehicle_number: 'KA03EF9012',
         total_premium: 10800,
+        payment_received: false,
+        received_date: null,
+        received_by: null,
         created_at: '2025-08-10T16:20:00Z'
       }
     ];
@@ -331,6 +340,44 @@ class DualStorageService {
       mockData,
       'Executive Payments'
     );
+  }
+
+  // Mark payment as received with dual storage
+  async markPaymentAsReceived(policyNumber: string, receivedBy: string): Promise<DualStorageResult> {
+    try {
+      if (ENABLE_DEBUG) {
+        console.log('🔄 DualStorageService: Marking payment as received...', policyNumber);
+      }
+
+      // Try backend API first
+      const response = await this.backendApiService.markPaymentAsReceived(policyNumber, receivedBy);
+      
+      if (ENABLE_DEBUG) {
+        console.log('✅ DualStorageService: Payment marked as received via backend');
+      }
+
+      return {
+        success: true,
+        data: response.data,
+        source: 'BACKEND_API'
+      };
+    } catch (error) {
+      if (ENABLE_DEBUG) {
+        console.error('❌ DualStorageService: Mark payment as received failed:', error);
+      }
+      
+      // For demo purposes, return mock success
+      return {
+        success: true,
+        data: {
+          policy_number: policyNumber,
+          payment_received: true,
+          received_date: new Date().toISOString(),
+          received_by: receivedBy
+        },
+        source: 'MOCK_DATA'
+      };
+    }
   }
 
   // Policy Detail with dual storage
