@@ -5120,22 +5120,32 @@ function TotalODBreakdown() {
       
       {data.length > 0 && (
         <div className="mt-4 text-sm text-gray-600">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div>
-              <div className="font-medium">Total Policies</div>
-              <div className="text-lg font-bold">{data.reduce((sum, item) => sum + (item.policy_count || 0), 0)}</div>
-            </div>
-            <div>
-              <div className="font-medium">Total OD</div>
-              <div className="text-lg font-bold">{formatCurrency(data.reduce((sum, item) => sum + (item.total_od || 0), 0))}</div>
-            </div>
-            <div>
-              <div className="font-medium">Avg OD per Policy</div>
-              <div className="text-lg font-bold">{formatCurrency(data.reduce((sum, item) => sum + (item.avg_od_per_policy || 0), 0) / data.length)}</div>
-            </div>
-            <div>
-              <div className="font-medium">Max OD</div>
-              <div className="text-lg font-bold">{formatCurrency(Math.max(...data.map(item => item.max_od || 0)))}</div>
+          {/* Daily Breakdown Table */}
+          <div className="mt-6">
+            <div className="font-medium mb-3">Daily Breakdown</div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm border border-gray-200 rounded-lg">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-3 py-2 text-left border-b">Date</th>
+                    <th className="px-3 py-2 text-right border-b">Policies</th>
+                    <th className="px-3 py-2 text-right border-b">Total OD</th>
+                    <th className="px-3 py-2 text-right border-b">Avg OD</th>
+                    <th className="px-3 py-2 text-right border-b">Max OD</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.map((item, index) => (
+                    <tr key={index} className="hover:bg-gray-50">
+                      <td className="px-3 py-2 border-b">{formatDate(item.date || item.month || item.financial_year)}</td>
+                      <td className="px-3 py-2 text-right border-b">{item.policy_count || 0}</td>
+                      <td className="px-3 py-2 text-right border-b">{formatCurrency(item.total_od || 0)}</td>
+                      <td className="px-3 py-2 text-right border-b">{formatCurrency(item.avg_od_per_policy || 0)}</td>
+                      <td className="px-3 py-2 text-right border-b">{formatCurrency(item.max_od || 0)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
