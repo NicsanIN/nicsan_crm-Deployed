@@ -148,7 +148,8 @@ const initializeDatabase = async () => {
       ADD COLUMN IF NOT EXISTS ops_executive VARCHAR(255),
       ADD COLUMN IF NOT EXISTS whatsapp_sent BOOLEAN DEFAULT FALSE,
       ADD COLUMN IF NOT EXISTS whatsapp_message_id VARCHAR(255),
-      ADD COLUMN IF NOT EXISTS payment_method VARCHAR(50) DEFAULT 'Cash'
+      ADD COLUMN IF NOT EXISTS payment_method VARCHAR(50) DEFAULT 'INSURER',
+      ADD COLUMN IF NOT EXISTS payment_sub_method VARCHAR(50)
     `);
 
     // Insert default telecallers

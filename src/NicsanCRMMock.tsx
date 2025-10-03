@@ -239,7 +239,8 @@ function PageUpload() {
     customerChequeNo: '',
     ourChequeNo: '',
     branch: '',
-    paymentMethod: 'Cash'
+    paymentMethod: 'INSURER',
+    paymentSubMethod: ''
   });
   const [manualExtrasSaved, setManualExtrasSaved] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -719,13 +720,32 @@ function PageUpload() {
               <label className="block text-xs text-blue-700 mb-1">Payment Method</label>
               <select 
                 value={manualExtras.paymentMethod}
-                onChange={(e) => handleManualExtrasChange('paymentMethod', e.target.value)}
+                onChange={(e) => {
+                  handleManualExtrasChange('paymentMethod', e.target.value);
+                  if (e.target.value !== 'NICSAN') {
+                    handleManualExtrasChange('paymentSubMethod', '');
+                  }
+                }}
                 className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
               >
-                <option value="Cash">Cash</option>
-                <option value="Direct">Direct</option>
+                <option value="INSURER">INSURER</option>
+                <option value="NICSAN">NICSAN</option>
               </select>
             </div>
+            {manualExtras.paymentMethod === 'NICSAN' && (
+              <div>
+                <label className="block text-xs text-blue-700 mb-1">Payment Sub-Method</label>
+                <select 
+                  value={manualExtras.paymentSubMethod}
+                  onChange={(e) => handleManualExtrasChange('paymentSubMethod', e.target.value)}
+                  className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                >
+                  <option value="">Select Sub-Method</option>
+                  <option value="DIRECT">DIRECT</option>
+                  <option value="EXECUTIVE">EXECUTIVE</option>
+                </select>
+              </div>
+            )}
             <div className="md:col-span-2">
               <label className="block text-xs text-blue-700 mb-1">Remark</label>
               <textarea 
@@ -1175,7 +1195,8 @@ function PageManualForm() {
             customerName: "",
             customerEmail: "",
             branch: "",
-            paymentMethod: "Cash"
+            paymentMethod: "INSURER",
+            paymentSubMethod: ""
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState<{type: 'success' | 'error', message: string} | null>(null);
@@ -2082,13 +2103,32 @@ function PageManualForm() {
             <label className="block text-xs text-gray-600 mb-1">Payment Method</label>
             <select 
               value={form.paymentMethod}
-              onChange={(e) => set('paymentMethod', e.target.value)}
+              onChange={(e) => {
+                set('paymentMethod', e.target.value);
+                if (e.target.value !== 'NICSAN') {
+                  set('paymentSubMethod', '');
+                }
+              }}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
             >
-              <option value="Cash">Cash</option>
-              <option value="Direct">Direct</option>
+              <option value="INSURER">INSURER</option>
+              <option value="NICSAN">NICSAN</option>
             </select>
           </div>
+          {form.paymentMethod === 'NICSAN' && (
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">Payment Sub-Method</label>
+              <select 
+                value={form.paymentSubMethod}
+                onChange={(e) => set('paymentSubMethod', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+              >
+                <option value="">Select Sub-Method</option>
+                <option value="DIRECT">DIRECT</option>
+                <option value="EXECUTIVE">EXECUTIVE</option>
+              </select>
+            </div>
+          )}
         </div>
 
         {/* Brokerage & Additional */}
@@ -2252,6 +2292,7 @@ function PageManualGrid() {
       customerName: "",
       branch: "",
       paymentMethod: "",
+      paymentSubMethod: "",
       status: "OK" 
     };
     
@@ -2804,7 +2845,8 @@ function PageManualGrid() {
         rollover: row.rollover || '',
         customer_name: row.customerName || '',
         branch: row.branch || '',
-        payment_method: row.paymentMethod || 'Cash',
+        payment_method: row.paymentMethod || 'INSURER',
+        payment_sub_method: row.paymentSubMethod || '',
         remark: row.remark || '',
         cashback: (parseFloat(row.cashback) || 0).toString(),
         source: 'MANUAL_GRID'
@@ -3013,6 +3055,7 @@ function PageManualGrid() {
                 <th className="py-2 px-1">Customer Email ID</th>
                 <th className="py-2 px-1">Branch <span className="text-red-500">*</span></th>
                 <th className="py-2 px-1">Payment Method</th>
+                <th className="py-2 px-1">Payment Sub-Method</th>
                 <th className="py-2 px-1">Remark</th>
                 <th className="py-2 px-1">Status</th>
               </tr>
@@ -3313,9 +3356,23 @@ function PageManualGrid() {
                   <td className="px-1">
                     <input 
                       value={r.paymentMethod || ''} 
-                      onChange={(e) => updateRow(i, 'paymentMethod', e.target.value)}
+                      onChange={(e) => {
+                        updateRow(i, 'paymentMethod', e.target.value);
+                        if (e.target.value !== 'NICSAN') {
+                          updateRow(i, 'paymentSubMethod', '');
+                        }
+                      }}
                       className="w-full border-none outline-none bg-transparent text-sm"
-                      placeholder="Cash or Direct"
+                      placeholder="INSURER or NICSAN"
+                    />
+                  </td>
+                  <td className="px-1">
+                    <input 
+                      value={r.paymentSubMethod || ''} 
+                      onChange={(e) => updateRow(i, 'paymentSubMethod', e.target.value)}
+                      className="w-full border-none outline-none bg-transparent text-sm"
+                      placeholder={r.paymentMethod === 'NICSAN' ? "DIRECT or EXECUTIVE" : ""}
+                      disabled={r.paymentMethod !== 'NICSAN'}
                     />
                   </td>
                   <td className="px-1">
@@ -4275,14 +4332,33 @@ function PageReview() {
             <div>
               <label className="block text-xs text-gray-600 mb-1">Payment Method</label>
               <select 
-                value={editableData.manualExtras.paymentMethod || manualExtras.paymentMethod || 'Cash'}
-                onChange={(e) => updateManualExtras('paymentMethod', e.target.value)}
+                value={editableData.manualExtras.paymentMethod || manualExtras.paymentMethod || 'INSURER'}
+                onChange={(e) => {
+                  updateManualExtras('paymentMethod', e.target.value);
+                  if (e.target.value !== 'NICSAN') {
+                    updateManualExtras('paymentSubMethod', '');
+                  }
+                }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
               >
-                <option value="Cash">Cash</option>
-                <option value="Direct">Direct</option>
+                <option value="INSURER">INSURER</option>
+                <option value="NICSAN">NICSAN</option>
               </select>
             </div>
+            {(editableData.manualExtras.paymentMethod || manualExtras.paymentMethod) === 'NICSAN' && (
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">Payment Sub-Method</label>
+                <select 
+                  value={editableData.manualExtras.paymentSubMethod || manualExtras.paymentSubMethod || ''}
+                  onChange={(e) => updateManualExtras('paymentSubMethod', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                >
+                  <option value="">Select Sub-Method</option>
+                  <option value="DIRECT">DIRECT</option>
+                  <option value="EXECUTIVE">EXECUTIVE</option>
+                </select>
+              </div>
+            )}
             <div style={{ display: 'none' }}>
               <LabeledInput 
                 label="Brokerage (₹)" 
@@ -4797,7 +4873,12 @@ function PagePolicyDetail() {
               </div>
               <div className="flex justify-between">
                 <span>Payment Method:</span>
-                <span className="font-medium">{policy.payment_method || "Cash"}</span>
+                <span className="font-medium">
+                  {policy.payment_method || "INSURER"}
+                  {policy.payment_method === 'NICSAN' && policy.payment_sub_method && (
+                    <span className="text-gray-600 ml-2">({policy.payment_sub_method})</span>
+                  )}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span>Type of Business:</span>
