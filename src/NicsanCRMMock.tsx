@@ -5922,6 +5922,8 @@ function PagePayments() {
   const [selectedExecutive, setSelectedExecutive] = useState<string>('');
   const [receivedPayments, setReceivedPayments] = useState<Set<string>>(new Set());
   const [isUpdating, setIsUpdating] = useState<{[key: string]: boolean}>({});
+  const [selectedMonth, setSelectedMonth] = useState<string>('');
+  const [selectedYear, setSelectedYear] = useState<string>('');
 
   const loadExecutivePayments = async () => {
     try {
@@ -5944,6 +5946,15 @@ function PagePayments() {
 
   useEffect(() => {
     loadExecutivePayments();
+  }, []);
+
+  // Set default to current month
+  useEffect(() => {
+    const now = new Date();
+    const currentMonth = (now.getMonth() + 1).toString().padStart(2, '0');
+    const currentYear = now.getFullYear().toString();
+    setSelectedMonth(currentMonth);
+    setSelectedYear(currentYear);
   }, []);
 
   const formatCurrency = (amount: number) => {
@@ -5978,15 +5989,29 @@ function PagePayments() {
     }
   };
 
-  // Calculate summary metrics
-  const totalAmount = payments.reduce((sum, payment) => sum + (parseFloat(payment.customer_paid) || 0), 0);
-  const executiveCount = new Set(payments.map(p => p.executive)).size;
-  const receivedAmount = payments
+  // Filter payments by month and year
+  const filteredPayments = payments.filter(payment => {
+    if (!selectedMonth && !selectedYear) return true; // Show all if no filter
+    
+    const paymentDate = new Date(payment.issue_date);
+    const month = (paymentDate.getMonth() + 1).toString().padStart(2, '0');
+    const year = paymentDate.getFullYear().toString();
+    
+    const monthMatch = !selectedMonth || month === selectedMonth;
+    const yearMatch = !selectedYear || year === selectedYear;
+    
+    return monthMatch && yearMatch;
+  });
+
+  // Calculate summary metrics using filtered data
+  const totalAmount = filteredPayments.reduce((sum, payment) => sum + (parseFloat(payment.customer_paid) || 0), 0);
+  const executiveCount = new Set(filteredPayments.map(p => p.executive)).size;
+  const receivedAmount = filteredPayments
     .filter(p => receivedPayments.has(`${p.policy_number}_${p.customer_name}`) || p.payment_received === true)
     .reduce((sum, payment) => sum + (parseFloat(payment.customer_paid) || 0), 0);
   const pendingAmount = totalAmount - receivedAmount;
 
-  // Calculate executive summary
+  // Calculate executive summary using filtered data
   const calculateExecutiveSummary = (payments: any[]) => {
     const summary = payments.reduce((acc, payment) => {
       const exec = payment.executive;
@@ -6065,8 +6090,8 @@ function PagePayments() {
     }
   };
 
-  const executiveSummary = calculateExecutiveSummary(payments);
-  const filteredPayments = getPaymentsForExecutive(selectedExecutive);
+  const executiveSummary = calculateExecutiveSummary(filteredPayments);
+  const executiveDetailPayments = getPaymentsForExecutive(selectedExecutive);
 
   return (
     <>
@@ -6076,19 +6101,19 @@ function PagePayments() {
           label="Total Payments" 
           info="(All executive payments)"
           value={formatCurrency(totalAmount)} 
-          sub={`${payments.length} transactions`}
+          sub={`${filteredPayments.length} transactions`}
         />
         <Tile 
           label="Received Amount" 
           info="(Processed payments)"
           value={formatCurrency(receivedAmount)} 
-          sub={`${payments.filter(p => receivedPayments.has(`${p.policy_number}_${p.customer_name}`) || p.payment_received === true).length} received`}
+          sub={`${filteredPayments.filter(p => receivedPayments.has(`${p.policy_number}_${p.customer_name}`) || p.payment_received === true).length} received`}
         />
         <Tile 
           label="Pending Amount" 
           info="(Awaiting processing)"
           value={formatCurrency(pendingAmount)} 
-          sub={`${payments.length - payments.filter(p => receivedPayments.has(`${p.policy_number}_${p.customer_name}`) || p.payment_received === true).length} pending`}
+          sub={`${filteredPayments.length - filteredPayments.filter(p => receivedPayments.has(`${p.policy_number}_${p.customer_name}`) || p.payment_received === true).length} pending`}
         />
         <Tile 
           label="Data Source" 
@@ -6096,6 +6121,69 @@ function PagePayments() {
           value={dataSource || 'Loading...'} 
           sub="Backend or Mock"
         />
+      </div>
+
+      {/* Month/Year Filter */}
+      <div className="mb-6">
+        <div className="flex gap-4 items-end">
+          <div className="flex-1">
+            <label className="block text-sm font-medium text-gray-700 mb-2">Filter by Month</label>
+            <select 
+              value={selectedMonth} 
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="">All Months</option>
+              <option value="01">January</option>
+              <option value="02">February</option>
+              <option value="03">March</option>
+              <option value="04">April</option>
+              <option value="05">May</option>
+              <option value="06">June</option>
+              <option value="07">July</option>
+              <option value="08">August</option>
+              <option value="09">September</option>
+              <option value="10">October</option>
+              <option value="11">November</option>
+              <option value="12">December</option>
+            </select>
+          </div>
+          <div className="flex-1">
+            <label className="block text-sm font-medium text-gray-700 mb-2">Filter by Year</label>
+            <select 
+              value={selectedYear} 
+              onChange={(e) => setSelectedYear(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="">All Years</option>
+              <option value="2025">2025</option>
+              <option value="2024">2024</option>
+              <option value="2023">2023</option>
+              <option value="2022">2022</option>
+            </select>
+          </div>
+          <div className="flex gap-2">
+            <button 
+              onClick={() => {
+                setSelectedMonth('');
+                setSelectedYear('');
+              }}
+              className="px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
+            >
+              Clear Filters
+            </button>
+            <button 
+              onClick={() => {
+                const now = new Date();
+                setSelectedMonth((now.getMonth() + 1).toString().padStart(2, '0'));
+                setSelectedYear(now.getFullYear().toString());
+              }}
+              className="px-4 py-2 text-sm bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg transition-colors"
+            >
+              Current Month
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Conditional Content */}
@@ -6190,7 +6278,7 @@ function PagePayments() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredPayments.map((payment, index) => {
+                  {executiveDetailPayments.map((payment, index) => {
                     const paymentId = `${payment.policy_number}_${payment.customer_name}`;
                     const isReceived = receivedPayments.has(paymentId) || payment.payment_received === true;
                     const isUpdatingPayment = isUpdating[paymentId];

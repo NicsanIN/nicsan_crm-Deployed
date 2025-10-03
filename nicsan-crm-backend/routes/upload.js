@@ -220,6 +220,13 @@ router.post('/:uploadId/confirm', authenticateToken, requireOps, async (req, res
         customer_cheque_no: editedData.manualExtras.customerChequeNo || editedData.manualExtras.customer_cheque_no || '', // Map customerChequeNo to customer_cheque_no
         our_cheque_no: editedData.manualExtras.ourChequeNo || editedData.manualExtras.our_cheque_no || '', // Map ourChequeNo to our_cheque_no
         customer_paid: editedData.manualExtras.customerPaid || editedData.manualExtras.customer_paid || '', // Map customerPaid to customer_paid
+        
+        // ✅ ADD: Cashback calculations
+        cashback_percentage: (editedData.manualExtras?.cashback && editedData.pdfData?.total_premium) ? 
+          ((parseFloat(editedData.manualExtras.cashback) / parseFloat(editedData.pdfData.total_premium)) * 100) : 0,
+        cashback_amount: parseFloat(editedData.manualExtras?.cashback) || 0,
+        brokerage: parseFloat(editedData.manualExtras?.brokerage) || 0,
+        
         // customer_name now comes from PDF extracted data (editedData.pdfData.customer_name)
         source: 'PDF_UPLOAD',
         s3_key: upload.s3_key,
@@ -227,18 +234,39 @@ router.post('/:uploadId/confirm', authenticateToken, requireOps, async (req, res
       };
       
       console.log('✅ Using edited data for policy creation');
+      console.log('🔍 Cashback data being processed:', {
+        cashback: editedData.manualExtras?.cashback,
+        total_premium: editedData.pdfData?.total_premium,
+        cashback_percentage: policyData.cashback_percentage,
+        cashback_amount: policyData.cashback_amount,
+        brokerage: policyData.brokerage
+      });
     } else {
       // Fallback to original data with field mapping
       policyData = {
         ...upload.extracted_data.extracted_data,
         ...upload.extracted_data.manual_extras,
         caller_name: upload.extracted_data.manual_extras?.caller_name || upload.extracted_data.manual_extras?.callerName || '', // Map callerName to caller_name
+        
+        // ✅ ADD: Cashback calculations for fallback case
+        cashback_percentage: (upload.extracted_data.manual_extras?.cashback && upload.extracted_data.extracted_data?.total_premium) ? 
+          ((parseFloat(upload.extracted_data.manual_extras.cashback) / parseFloat(upload.extracted_data.extracted_data.total_premium)) * 100) : 0,
+        cashback_amount: parseFloat(upload.extracted_data.manual_extras?.cashback) || 0,
+        brokerage: parseFloat(upload.extracted_data.manual_extras?.brokerage) || 0,
+        
         // customer_name now comes from PDF extracted data (upload.extracted_data.extracted_data.customer_name)
         source: 'PDF_UPLOAD',
         s3_key: upload.s3_key
       };
       
       console.log('⚠️ Using original data for policy creation (no edited data provided)');
+      console.log('🔍 Cashback data being processed (fallback):', {
+        cashback: upload.extracted_data.manual_extras?.cashback,
+        total_premium: upload.extracted_data.extracted_data?.total_premium,
+        cashback_percentage: policyData.cashback_percentage,
+        cashback_amount: policyData.cashback_amount,
+        brokerage: policyData.brokerage
+      });
     }
     
     // Validate policy data
