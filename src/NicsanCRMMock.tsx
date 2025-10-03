@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useRef, useEffect } from "react";
-import { Upload, FileText, CheckCircle2, AlertTriangle, Table2, Settings, LayoutDashboard, Users, BarChart3, BadgeInfo, Filter, Lock, LogOut, Car, SlidersHorizontal, TrendingUp, RefreshCw } from "lucide-react";
+import { Upload, FileText, CheckCircle2, AlertTriangle, Table2, Settings, LayoutDashboard, Users, BarChart3, BadgeInfo, Filter, Lock, LogOut, Car, SlidersHorizontal, TrendingUp, RefreshCw, CreditCard } from "lucide-react";
 import { ResponsiveContainer, CartesianGrid, BarChart, Bar, Legend, Area, AreaChart, XAxis, YAxis, Tooltip } from "recharts";
 import { authUtils } from './services/api';
 import { policiesAPI } from './services/api';
@@ -1801,25 +1801,13 @@ function PageManualForm() {
         branch: form.branch || '',
         brokerage: (parseFloat(form.brokerage) || 0).toString(),
         cashback: (parseFloat(form.cashback) || 0).toString(),
+        payment_method: form.paymentMethod || 'INSURER',
+        payment_sub_method: form.paymentSubMethod || '',
         source: 'MANUAL_FORM'
       };
 
       // Debug: Log the policy data being sent
       console.log('🔍 Manual Form - Policy data being sent:', policyData);
-      console.log('🔍 Manual Form - Numeric values:', {
-        idv: policyData.idv,
-        ncb: policyData.ncb,
-        discount: policyData.discount,
-        net_od: policyData.net_od,
-        total_od: policyData.total_od,
-        net_premium: policyData.net_premium,
-        total_premium: policyData.total_premium,
-        cashback_percentage: policyData.cashback_percentage,
-        cashback_amount: policyData.cashback_amount,
-        customer_paid: policyData.customer_paid,
-        brokerage: policyData.brokerage,
-        cashback: policyData.cashback
-      });
 
       // Submit to API
       const response = await DualStorageService.saveManualForm(policyData);
@@ -3835,6 +3823,7 @@ function PageReview() {
         return;
       }
       
+      
       // Send edited data to backend
       const result = await DualStorageService.confirmUploadAsPolicy(reviewData.id, pendingSaveData);
       
@@ -4525,6 +4514,7 @@ function PagePolicyDetail() {
         setPolicyData(response.data);
         setDataSource(response.source);
         
+        
         if (ENABLE_DEBUG) {
         }
       }
@@ -4876,10 +4866,16 @@ function PagePolicyDetail() {
                 <span className="font-medium">
                   {policy.payment_method || "INSURER"}
                   {policy.payment_method === 'NICSAN' && policy.payment_sub_method && (
-                    <span className="text-gray-600 ml-2">({policy.payment_sub_method})</span>
+                    <span className="text-blue-600 ml-2 font-semibold">({policy.payment_sub_method})</span>
                   )}
                 </span>
               </div>
+              {policy.payment_method === 'NICSAN' && policy.payment_sub_method && (
+                <div className="flex justify-between">
+                  <span>Payment Sub-Method:</span>
+                  <span className="font-medium text-blue-600">{policy.payment_sub_method}</span>
+                </div>
+              )}
               <div className="flex justify-between">
                 <span>Type of Business:</span>
                 <span className="font-medium">{policy.rollover || "N/A"}</span>
@@ -5047,6 +5043,7 @@ function FounderSidebar({ page, setPage }: { page: string; setPage: (p: string) 
     { id: "leaderboard", label: "Rep Leaderboard", icon: Users },
     { id: "explorer", label: "Sales Explorer", icon: BarChart3 },
     { id: "sources", label: "Data Sources", icon: BarChart3 },
+    { id: "payments", label: "Payments", icon: CreditCard },
     { id: "tests", label: "Dev/Test", icon: SlidersHorizontal },
     { id: "settings", label: "Settings", icon: Settings },
   ]
@@ -5917,6 +5914,147 @@ function PageSources() {
   )
 }
 
+function PagePayments() {
+  const [payments, setPayments] = useState<any[]>([]);
+  const [dataSource, setDataSource] = useState<string>('');
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const loadExecutivePayments = async () => {
+      try {
+        setIsLoading(true);
+        // Use dual storage pattern: S3 → Database → Mock Data
+        const response = await DualStorageService.getExecutivePayments();
+        
+        if (response.success) {
+          setPayments(Array.isArray(response.data) ? response.data : []);
+          setDataSource(response.source);
+        }
+      } catch (error) {
+        console.error('Failed to load executive payments:', error);
+        setPayments([]);
+        setDataSource('MOCK_DATA');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    loadExecutivePayments();
+  }, []);
+
+  const formatCurrency = (amount: number) => {
+    if (amount === null || amount === undefined || isNaN(amount)) {
+      return "₹0";
+    }
+    return `₹${amount.toLocaleString('en-IN')}`;
+  };
+
+  const formatDate = (dateString: string) => {
+    if (!dateString) return 'N/A';
+    try {
+      return new Date(dateString).toLocaleDateString('en-GB');
+    } catch {
+      return dateString;
+    }
+  };
+
+  // Calculate summary metrics
+  const totalAmount = payments.reduce((sum, payment) => sum + (parseFloat(payment.customer_paid) || 0), 0);
+  const executiveCount = new Set(payments.map(p => p.executive)).size;
+  const pendingCount = payments.filter(p => !p.our_cheque_no || p.our_cheque_no === '').length;
+
+  return (
+    <>
+      {/* Summary Tiles */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-6">
+        <Tile 
+          label="Total Payments" 
+          info="(Executive processed)"
+          value={formatCurrency(totalAmount)} 
+          sub={`${payments.length} transactions`}
+        />
+        <Tile 
+          label="Active Executives" 
+          info="(Processing payments)"
+          value={executiveCount.toString()} 
+          sub="Unique executives"
+        />
+        <Tile 
+          label="Pending Cheques" 
+          info="(Awaiting our cheque)"
+          value={pendingCount.toString()} 
+          sub="Need processing"
+        />
+        <Tile 
+          label="Data Source" 
+          info="(Payment data origin)"
+          value={dataSource || 'Loading...'} 
+          sub="Backend or Mock"
+        />
+      </div>
+
+      {/* Executive Payments Table */}
+      <Card title="Executive Payments" desc={`Payments processed through executives (Data Source: ${dataSource || 'Loading...'})`}>
+        {isLoading ? (
+          <div className="text-center py-8">
+            <div className="text-sm text-zinc-600">Loading executive payments...</div>
+          </div>
+        ) : payments.length === 0 ? (
+          <div className="text-center py-8">
+            <div className="text-sm text-zinc-600">No executive payments found</div>
+            <div className="text-xs text-zinc-500 mt-1">Payments will appear here when executives process NICSAN payments</div>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-zinc-500 border-b">
+                  <th className="py-2 px-2">Executive</th>
+                  <th className="py-2 px-2">Customer Name</th>
+                  <th className="py-2 px-2">Customer Paid</th>
+                  <th className="py-2 px-2">Customer Cheque No</th>
+                  <th className="py-2 px-2">Our Cheque No</th>
+                  <th className="py-2 px-2">Issue Date</th>
+                  <th className="py-2 px-2">Policy Number</th>
+                  <th className="py-2 px-2">Vehicle Number</th>
+                </tr>
+              </thead>
+              <tbody>
+                {payments.map((payment, index) => (
+                  <tr key={index} className="border-b hover:bg-zinc-50">
+                    <td className="py-2 px-2 font-medium">{payment.executive || 'N/A'}</td>
+                    <td className="py-2 px-2">{payment.customer_name || 'N/A'}</td>
+                    <td className="py-2 px-2 font-medium">{formatCurrency(parseFloat(payment.customer_paid) || 0)}</td>
+                    <td className="py-2 px-2">{payment.customer_cheque_no || 'N/A'}</td>
+                    <td className="py-2 px-2">{payment.our_cheque_no || 'Pending'}</td>
+                    <td className="py-2 px-2">{formatDate(payment.issue_date)}</td>
+                    <td className="py-2 px-2 font-mono text-xs">{payment.policy_number || 'N/A'}</td>
+                    <td className="py-2 px-2 font-mono text-xs">{payment.vehicle_number || 'N/A'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        
+        {payments.length > 0 && (
+          <div className="text-center text-sm mt-4">
+            {dataSource === 'BACKEND_API' ? (
+              <span className="text-green-600 font-medium">
+                ✅ Showing {payments.length} executive payments from backend
+              </span>
+            ) : (
+              <span className="text-blue-500">
+                📊 Showing demo data (fallback)
+              </span>
+            )}
+          </div>
+        )}
+      </Card>
+    </>
+  )
+}
+
 function PageFounderSettings() {
   const [settings, setSettings] = useState({
     brokeragePercent: '15',
@@ -6555,6 +6693,7 @@ function NicsanCRMMock() {
           {founderPage === "leaderboard" && <PageLeaderboard/>}
           {founderPage === "explorer" && <PageExplorer/>}
           {founderPage === "sources" && <PageSources/>}
+          {founderPage === "payments" && <PagePayments/>}
           {founderPage === "tests" && <PageTests/>}
           {founderPage === "settings" && <PageFounderSettings/>}
         </Shell>

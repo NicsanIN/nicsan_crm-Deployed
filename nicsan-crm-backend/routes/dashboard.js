@@ -140,6 +140,40 @@ router.get('/data-sources', authenticateToken, requireFounder, async (req, res) 
   }
 });
 
+// Get executive payments
+router.get('/payments/executive', authenticateToken, requireFounder, async (req, res) => {
+  try {
+    const result = await query(`
+      SELECT 
+        executive,
+        customer_paid,
+        customer_cheque_no,
+        our_cheque_no,
+        issue_date,
+        customer_name,
+        policy_number,
+        vehicle_number,
+        total_premium,
+        created_at
+      FROM policies 
+      WHERE payment_method = 'NICSAN' 
+        AND payment_sub_method = 'EXECUTIVE'
+      ORDER BY issue_date DESC
+    `);
+
+    res.json({
+      success: true,
+      data: result.rows
+    });
+  } catch (error) {
+    console.error('Executive payments error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to get executive payments'
+    });
+  }
+});
+
 // Get Total OD daily breakdown
 router.get('/total-od/daily', authenticateToken, requireFounder, async (req, res) => {
   try {

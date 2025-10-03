@@ -215,6 +215,11 @@ router.post('/:uploadId/confirm', authenticateToken, requireOps, async (req, res
         caller_name: editedData.manualExtras.caller_name || editedData.manualExtras.callerName || '', // Map callerName to caller_name
         customer_email: editedData.manualExtras.customerEmail || editedData.manualExtras.customer_email || '',
         ops_executive: editedData.manualExtras.opsExecutive || editedData.manualExtras.ops_executive || '',
+        payment_method: editedData.manualExtras.paymentMethod || editedData.manualExtras.payment_method || 'INSURER', // Map paymentMethod to payment_method
+        payment_sub_method: editedData.manualExtras.paymentSubMethod || editedData.manualExtras.payment_sub_method || '', // Map paymentSubMethod to payment_sub_method
+        customer_cheque_no: editedData.manualExtras.customerChequeNo || editedData.manualExtras.customer_cheque_no || '', // Map customerChequeNo to customer_cheque_no
+        our_cheque_no: editedData.manualExtras.ourChequeNo || editedData.manualExtras.our_cheque_no || '', // Map ourChequeNo to our_cheque_no
+        customer_paid: editedData.manualExtras.customerPaid || editedData.manualExtras.customer_paid || '', // Map customerPaid to customer_paid
         // customer_name now comes from PDF extracted data (editedData.pdfData.customer_name)
         source: 'PDF_UPLOAD',
         s3_key: upload.s3_key,
