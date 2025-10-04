@@ -291,6 +291,101 @@ class DualStorageService {
     );
   }
 
+  // Executive Payments with dual storage
+  async getExecutivePayments(): Promise<DualStorageResult> {
+    const mockData = [
+      {
+        executive: 'Priya Singh',
+        customer_paid: 12150,
+        customer_cheque_no: 'CHQ123456',
+        our_cheque_no: 'CHQ789012',
+        issue_date: '2025-08-12',
+        customer_name: 'John Doe',
+        policy_number: 'TA-9921',
+        vehicle_number: 'KA01AB1234',
+        total_premium: 12150,
+        payment_received: false,
+        received_date: null,
+        received_by: null,
+        created_at: '2025-08-12T15:54:00Z'
+      },
+      {
+        executive: 'Rahul Kumar',
+        customer_paid: 13500,
+        customer_cheque_no: 'CHQ123457',
+        our_cheque_no: '',
+        issue_date: '2025-08-11',
+        customer_name: 'Jane Smith',
+        policy_number: 'TA-9922',
+        vehicle_number: 'KA02CD5678',
+        total_premium: 13500,
+        payment_received: false,
+        received_date: null,
+        received_by: null,
+        created_at: '2025-08-11T14:30:00Z'
+      },
+      {
+        executive: 'Anjali Sharma',
+        customer_paid: 10800,
+        customer_cheque_no: 'CHQ123458',
+        our_cheque_no: 'CHQ789013',
+        issue_date: '2025-08-10',
+        customer_name: 'Mike Johnson',
+        policy_number: 'TA-9923',
+        vehicle_number: 'KA03EF9012',
+        total_premium: 10800,
+        payment_received: false,
+        received_date: null,
+        received_by: null,
+        created_at: '2025-08-10T16:20:00Z'
+      }
+    ];
+
+    return this.executeDualStoragePattern(
+      () => this.backendApiService.getExecutivePayments(),
+      mockData,
+      'Executive Payments'
+    );
+  }
+
+  // Mark payment as received with dual storage
+  async markPaymentAsReceived(policyNumber: string, receivedBy: string): Promise<DualStorageResult> {
+    try {
+      if (ENABLE_DEBUG) {
+        console.log('🔄 DualStorageService: Marking payment as received...', policyNumber);
+      }
+
+      // Try backend API first
+      const response = await this.backendApiService.markPaymentAsReceived(policyNumber, receivedBy);
+      
+      if (ENABLE_DEBUG) {
+        console.log('✅ DualStorageService: Payment marked as received via backend');
+      }
+
+      return {
+        success: true,
+        data: response.data,
+        source: 'BACKEND_API'
+      };
+    } catch (error) {
+      if (ENABLE_DEBUG) {
+        console.error('❌ DualStorageService: Mark payment as received failed:', error);
+      }
+      
+      // For demo purposes, return mock success
+      return {
+        success: true,
+        data: {
+          policy_number: policyNumber,
+          payment_received: true,
+          received_date: new Date().toISOString(),
+          received_by: receivedBy
+        },
+        source: 'MOCK_DATA'
+      };
+    }
+  }
+
   // Policy Detail with dual storage
   async getPolicyDetail(policyId: string): Promise<DualStorageResult> {
     const mockData = {
@@ -324,6 +419,8 @@ class DualStorageService {
       customer_paid: 12150,
       customer_cheque_no: 'CHQ123456',
       our_cheque_no: 'CHQ789012',
+      payment_method: 'NICSAN',
+      payment_sub_method: 'EXECUTIVE',
       status: 'SAVED',
       confidence_score: 0.98,
       created_by: 'System',
@@ -352,9 +449,15 @@ class DualStorageService {
         policy_number: 'TA-9921',
         vehicle_number: 'KA01AB1234',
         insurer: 'Tata AIG',
-      total_premium: 12150,
-      customer_name: 'John Doe',
-      cashback: 600,
+        total_premium: 12150,
+        customer_name: 'John Doe',
+        cashback: 600,
+        payment_method: 'NICSAN',
+        payment_sub_method: 'EXECUTIVE',
+        executive: 'Priya Singh',
+        customer_paid: 12150,
+        customer_cheque_no: 'CHQ123456',
+        our_cheque_no: 'CHQ789012',
         status: 'SAVED',
         source: 'PDF_UPLOAD',
         created_at: new Date().toISOString()
@@ -365,7 +468,10 @@ class DualStorageService {
         vehicle_number: 'KA05CJ7777',
         insurer: 'Digit',
         total_premium: 11500,
+        customer_name: 'Jane Smith',
         cashback: 500,
+        payment_method: 'INSURER',
+        payment_sub_method: '',
         status: 'SAVED',
         source: 'MANUAL_FORM',
         created_at: new Date().toISOString()
@@ -378,6 +484,12 @@ class DualStorageService {
         total_premium: 13200,
         customer_name: 'Sarah Wilson',
         cashback: 700,
+        payment_method: 'NICSAN',
+        payment_sub_method: 'DIRECT',
+        executive: 'Rahul Kumar',
+        customer_paid: 13200,
+        customer_cheque_no: 'CHQ123457',
+        our_cheque_no: '',
         status: 'SAVED',
         source: 'PDF_UPLOAD',
         created_at: new Date().toISOString()
@@ -390,6 +502,8 @@ class DualStorageService {
         total_premium: 12800,
         customer_name: 'Michael Brown',
         cashback: 650,
+        payment_method: 'INSURER',
+        payment_sub_method: '',
         status: 'SAVED',
         source: 'MANUAL_FORM',
         created_at: new Date().toISOString()
@@ -402,6 +516,12 @@ class DualStorageService {
         total_premium: 12500,
         customer_name: 'Emily Davis',
         cashback: 600,
+        payment_method: 'NICSAN',
+        payment_sub_method: 'EXECUTIVE',
+        executive: 'Anjali Sharma',
+        customer_paid: 12500,
+        customer_cheque_no: 'CHQ123458',
+        our_cheque_no: 'CHQ789013',
         status: 'SAVED',
         source: 'PDF_UPLOAD',
         created_at: new Date().toISOString()
