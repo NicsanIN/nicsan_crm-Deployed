@@ -3579,13 +3579,6 @@ function PageReview() {
       console.error('Failed to add new telecaller:', error);
     }
   };
-=======
-  const [_callerNames, setCallerNames] = useState<string[]>([]);
-  
-  // Verification popup state
-  const [showVerificationModal, setShowVerificationModal] = useState(false);
-  const [pendingSaveData, setPendingSaveData] = useState<any>(null);
->>>>>>> origin/founders/payments
 
   // Load available uploads for review
   useEffect(() => {
