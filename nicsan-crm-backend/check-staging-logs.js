@@ -9,7 +9,7 @@ try {
   
   if (!taskArn || taskArn === 'None') {
     console.log('❌ No running tasks found');
-    return;
+    process.exit(0);
   }
   
   console.log('✅ Found task:', taskArn);

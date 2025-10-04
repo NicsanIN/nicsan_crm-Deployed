@@ -1282,7 +1282,7 @@ function PageManualForm() {
       case 'policyNumber':
         if (!value) {
           errors.push('Policy Number is required');
-        } else if (!/^[A-Z0-9\-_\/ ]{3,50}$/.test(value)) {
+        } else if (!/^[A-Z0-9\-_/ ]{3,50}$/.test(value)) {
           errors.push('Policy Number must be 3-50 characters (letters, numbers, hyphens, underscores, forward slashes, spaces)');
         }
         break;
@@ -1978,7 +1978,7 @@ function PageManualForm() {
       return errors;
     }
     
-    if (!/^[A-Z0-9\-_\/ ]{3,50}$/.test(value)) {
+    if (!/^[A-Z0-9\-_/ ]{3,50}$/.test(value)) {
       return errors; // Format validation handled by sync validation
     }
     
@@ -2431,7 +2431,7 @@ function PageManualGrid() {
     // Policy Number validation
     if (!row.policy) {
       errors.push('Policy Number is required');
-    } else if (!/^[A-Z0-9\-_\/ ]{3,50}$/.test(row.policy)) {
+    } else if (!/^[A-Z0-9\-_/ ]{3,50}$/.test(row.policy)) {
       errors.push('Policy Number must be 3-50 characters (letters, numbers, hyphens, underscores, forward slashes, spaces)');
     }
     
@@ -4549,6 +4549,7 @@ function PagePolicyDetail() {
         setAvailablePolicies(response.data || []);
         
         if (ENABLE_DEBUG) {
+          console.log('Available policies loaded successfully');
         }
       }
     } catch (error) {
@@ -4576,6 +4577,7 @@ function PagePolicyDetail() {
         
         
         if (ENABLE_DEBUG) {
+          console.log('Available policies loaded successfully');
         }
       }
     } catch (error) {
@@ -6492,6 +6494,7 @@ function PageFounderSettings() {
         setDataSource(response.source || 'Unknown');
         
         if (ENABLE_DEBUG) {
+          console.log('Available policies loaded successfully');
         }
       } else {
         setError(response.error || 'Failed to load settings');
