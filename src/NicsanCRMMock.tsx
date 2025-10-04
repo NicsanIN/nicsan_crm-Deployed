@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useRef, useEffect } from "react";
-import { Upload, FileText, CheckCircle2, AlertTriangle, Table2, Settings, LayoutDashboard, Users, BarChart3, BadgeInfo, Filter, Lock, LogOut, Car, SlidersHorizontal, TrendingUp, RefreshCw, CreditCard } from "lucide-react";
+import { Upload, FileText, CheckCircle2, AlertTriangle, Table2, Settings, LayoutDashboard, Users, BarChart3, BadgeInfo, Filter, LogOut, Car, SlidersHorizontal, TrendingUp, RefreshCw, CreditCard } from "lucide-react";
 import { ResponsiveContainer, CartesianGrid, BarChart, Bar, Legend, Area, AreaChart, XAxis, YAxis, Tooltip } from "recharts";
 import { authUtils } from './services/api';
 import { policiesAPI } from './services/api';
@@ -369,7 +369,8 @@ function PageUpload() {
           ourChequeNo: '',
           customerName: '',
           branch: '',
-          paymentMethod: 'Cash'
+          paymentMethod: 'Cash',
+          paymentSubMethod: ''
         });
         setManualExtrasSaved(false);
       } else {
@@ -6106,14 +6107,20 @@ function PagePayments() {
 
   // Calculate summary metrics using filtered data
   const totalAmount = filteredPayments.reduce((sum, payment) => sum + (parseFloat(payment.customer_paid) || 0), 0);
-  const executiveCount = new Set(filteredPayments.map(p => p.executive)).size;
   const receivedAmount = filteredPayments
     .filter(p => receivedPayments.has(`${p.policy_number}_${p.customer_name}`) || p.payment_received === true)
     .reduce((sum, payment) => sum + (parseFloat(payment.customer_paid) || 0), 0);
   const pendingAmount = totalAmount - receivedAmount;
 
   // Calculate executive summary using filtered data
-  const calculateExecutiveSummary = (payments: any[]) => {
+  const calculateExecutiveSummary = (payments: any[]): Array<{
+    executive: string;
+    totalPaid: number;
+    receivedAmount: number;
+    pendingAmount: number;
+    recordCount: number;
+    receivedCount: number;
+  }> => {
     const summary = payments.reduce((acc, payment) => {
       const exec = payment.executive;
       if (!acc[exec]) {
