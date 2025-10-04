@@ -20,6 +20,7 @@ class BackendApiService {
 
   private constructor() {
     if (ENABLE_DEBUG) {
+      console.log('BackendApiService initialized');
     }
   }
 
@@ -364,6 +365,85 @@ const response = await fetch(`${API_BASE_URL}/policies`, {
     } catch (error) {
       if (ENABLE_DEBUG) {
         console.error('❌ BackendApiService: All policies failed:', error);
+      }
+      throw error;
+    }
+  }
+
+  // Executive Payments from backend
+  async getExecutivePayments(): Promise<BackendApiResult> {
+    try {
+      if (ENABLE_DEBUG) {
+        console.log('🔄 BackendApiService: Getting executive payments...');
+      }
+
+      const response = await fetch(`${BACKEND_URL}/api/dashboard/payments/executive`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      
+      if (ENABLE_DEBUG) {
+        console.log('✅ BackendApiService: Executive payments response received');
+      }
+
+      return {
+        success: true,
+        data: result.data,
+        source: 'BACKEND_API'
+      };
+    } catch (error) {
+      if (ENABLE_DEBUG) {
+        console.error('❌ BackendApiService: Executive payments failed:', error);
+      }
+      throw error;
+    }
+  }
+
+  // Mark payment as received
+  async markPaymentAsReceived(policyNumber: string, receivedBy: string): Promise<BackendApiResult> {
+    try {
+      if (ENABLE_DEBUG) {
+        console.log('🔄 BackendApiService: Marking payment as received...', policyNumber);
+      }
+
+      const response = await fetch(`${BACKEND_URL}/api/dashboard/payments/received/${policyNumber}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          received_by: receivedBy
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      
+      if (ENABLE_DEBUG) {
+        console.log('✅ BackendApiService: Payment marked as received successfully');
+      }
+
+      return {
+        success: true,
+        data: result.data,
+        source: 'BACKEND_API'
+      };
+    } catch (error) {
+      if (ENABLE_DEBUG) {
+        console.error('❌ BackendApiService: Mark payment as received failed:', error);
       }
       throw error;
     }

@@ -220,12 +220,30 @@ router.post('/:uploadId/confirm', authenticateToken, requireOps, async (req, res
         customer_email: editedData.manualExtras.customerEmail || editedData.manualExtras.customer_email || '',
         ops_executive: editedData.manualExtras.opsExecutive || editedData.manualExtras.ops_executive || '',
         customer_name: editedData.manualExtras.customer_name || editedData.manualExtras.customerName || editedData.pdfData.customer_name || '', // Map customer_name from manual extras or PDF data
+        payment_method: editedData.manualExtras.paymentMethod || editedData.manualExtras.payment_method || 'INSURER', // Map paymentMethod to payment_method
+        payment_sub_method: editedData.manualExtras.paymentSubMethod || editedData.manualExtras.payment_sub_method || '', // Map paymentSubMethod to payment_sub_method
+        customer_cheque_no: editedData.manualExtras.customerChequeNo || editedData.manualExtras.customer_cheque_no || '', // Map customerChequeNo to customer_cheque_no
+        our_cheque_no: editedData.manualExtras.ourChequeNo || editedData.manualExtras.our_cheque_no || '', // Map ourChequeNo to our_cheque_no
+        customer_paid: editedData.manualExtras.customerPaid || editedData.manualExtras.customer_paid || '', // Map customerPaid to customer_paid
+        
+        // ✅ ADD: Cashback calculations
+        cashback_percentage: (editedData.manualExtras?.cashback && editedData.pdfData?.total_premium) ? 
+          ((parseFloat(editedData.manualExtras.cashback) / parseFloat(editedData.pdfData.total_premium)) * 100) : 0,
+        cashback_amount: parseFloat(editedData.manualExtras?.cashback) || 0,
+        brokerage: parseFloat(editedData.manualExtras?.brokerage) || 0,
         source: 'PDF_UPLOAD',
         s3_key: upload.s3_key,
         confidence_score: upload.extracted_data?.extracted_data?.confidence_score || 0.8
       };
       
       console.log('✅ Using edited data for policy creation');
+      console.log('🔍 Cashback data being processed:', {
+        cashback: editedData.manualExtras?.cashback,
+        total_premium: editedData.pdfData?.total_premium,
+        cashback_percentage: policyData.cashback_percentage,
+        cashback_amount: policyData.cashback_amount,
+        brokerage: policyData.brokerage
+      });
     } else {
       // Fallback to original data with field mapping
       policyData = {
@@ -233,11 +251,24 @@ router.post('/:uploadId/confirm', authenticateToken, requireOps, async (req, res
         ...upload.extracted_data.manual_extras,
         caller_name: upload.extracted_data.manual_extras?.caller_name || upload.extracted_data.manual_extras?.callerName || '', // Map callerName to caller_name
         customer_name: upload.extracted_data.manual_extras?.customer_name || upload.extracted_data.manual_extras?.customerName || upload.extracted_data.extracted_data?.customer_name || '', // Map customer_name from manual extras or PDF data
+        
+        // ✅ ADD: Cashback calculations for fallback case
+        cashback_percentage: (upload.extracted_data.manual_extras?.cashback && upload.extracted_data.extracted_data?.total_premium) ? 
+          ((parseFloat(upload.extracted_data.manual_extras.cashback) / parseFloat(upload.extracted_data.extracted_data.total_premium)) * 100) : 0,
+        cashback_amount: parseFloat(upload.extracted_data.manual_extras?.cashback) || 0,
+        brokerage: parseFloat(upload.extracted_data.manual_extras?.brokerage) || 0,
         source: 'PDF_UPLOAD',
         s3_key: upload.s3_key
       };
       
       console.log('⚠️ Using original data for policy creation (no edited data provided)');
+      console.log('🔍 Cashback data being processed (fallback):', {
+        cashback: upload.extracted_data.manual_extras?.cashback,
+        total_premium: upload.extracted_data.extracted_data?.total_premium,
+        cashback_percentage: policyData.cashback_percentage,
+        cashback_amount: policyData.cashback_amount,
+        brokerage: policyData.brokerage
+      });
     }
     
     // Validate policy data

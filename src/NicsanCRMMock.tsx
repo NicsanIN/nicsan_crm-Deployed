@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useRef, useEffect } from "react";
-import { Upload, FileText, CheckCircle2, AlertTriangle, Table2, Settings, LayoutDashboard, Users, BarChart3, BadgeInfo, Filter, LogOut, Car, SlidersHorizontal, TrendingUp, RefreshCw } from "lucide-react";
+import { Upload, FileText, CheckCircle2, AlertTriangle, Table2, Settings, LayoutDashboard, Users, BarChart3, BadgeInfo, Filter, LogOut, Car, SlidersHorizontal, TrendingUp, RefreshCw, CreditCard } from "lucide-react";
 import { ResponsiveContainer, CartesianGrid, BarChart, Bar, Legend, Area, AreaChart, XAxis, YAxis, Tooltip } from "recharts";
 import { authUtils } from './services/api';
 import { policiesAPI } from './services/api';
@@ -254,7 +254,9 @@ function PageUpload() {
     customerChequeNo: '',
     ourChequeNo: '',
     customerName: '',
-    branch: ''
+    branch: '',
+    paymentMethod: 'INSURER',
+    paymentSubMethod: ''
   });
   const [manualExtrasSaved, setManualExtrasSaved] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -366,7 +368,9 @@ function PageUpload() {
           customerChequeNo: '',
           ourChequeNo: '',
           customerName: '',
-          branch: ''
+          branch: '',
+          paymentMethod: 'Cash',
+          paymentSubMethod: ''
         });
         setManualExtrasSaved(false);
       } else {
@@ -731,6 +735,36 @@ function PageUpload() {
                 <option value="ADUGODI">ADUGODI</option>
               </select>
             </div>
+            <div>
+              <label className="block text-xs text-blue-700 mb-1">Payment Method</label>
+              <select 
+                value={manualExtras.paymentMethod}
+                onChange={(e) => {
+                  handleManualExtrasChange('paymentMethod', e.target.value);
+                  if (e.target.value !== 'NICSAN') {
+                    handleManualExtrasChange('paymentSubMethod', '');
+                  }
+                }}
+                className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+              >
+                <option value="INSURER">INSURER</option>
+                <option value="NICSAN">NICSAN</option>
+              </select>
+            </div>
+            {manualExtras.paymentMethod === 'NICSAN' && (
+              <div>
+                <label className="block text-xs text-blue-700 mb-1">Payment Sub-Method</label>
+                <select 
+                  value={manualExtras.paymentSubMethod}
+                  onChange={(e) => handleManualExtrasChange('paymentSubMethod', e.target.value)}
+                  className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                >
+                  <option value="">Select Sub-Method</option>
+                  <option value="DIRECT">DIRECT</option>
+                  <option value="EXECUTIVE">EXECUTIVE</option>
+                </select>
+              </div>
+            )}
             <div className="md:col-span-2">
               <label className="block text-xs text-blue-700 mb-1">Remark</label>
               <textarea 
@@ -1173,7 +1207,9 @@ function PageManualForm() {
             cashback: "",
             customerName: "",
             customerEmail: "",
-            branch: ""
+            branch: "",
+            paymentMethod: "INSURER",
+            paymentSubMethod: ""
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState<{type: 'success' | 'error', message: string} | null>(null);
@@ -1246,7 +1282,7 @@ function PageManualForm() {
       case 'policyNumber':
         if (!value) {
           errors.push('Policy Number is required');
-        } else if (!/^[A-Z0-9\-_\/ ]{3,50}$/.test(value)) {
+        } else if (!/^[A-Z0-9\-_/ ]{3,50}$/.test(value)) {
           errors.push('Policy Number must be 3-50 characters (letters, numbers, hyphens, underscores, forward slashes, spaces)');
         }
         break;
@@ -1815,25 +1851,13 @@ function PageManualForm() {
         branch: form.branch || '',
         brokerage: (parseFloat(form.brokerage) || 0).toString(),
         cashback: (parseFloat(form.cashback) || 0).toString(),
+        payment_method: form.paymentMethod || 'INSURER',
+        payment_sub_method: form.paymentSubMethod || '',
         source: 'MANUAL_FORM'
       };
 
       // Debug: Log the policy data being sent
       console.log('🔍 Manual Form - Policy data being sent:', policyData);
-      console.log('🔍 Manual Form - Numeric values:', {
-        idv: policyData.idv,
-        ncb: policyData.ncb,
-        discount: policyData.discount,
-        net_od: policyData.net_od,
-        total_od: policyData.total_od,
-        net_premium: policyData.net_premium,
-        total_premium: policyData.total_premium,
-        cashback_percentage: policyData.cashback_percentage,
-        cashback_amount: policyData.cashback_amount,
-        customer_paid: policyData.customer_paid,
-        brokerage: policyData.brokerage,
-        cashback: policyData.cashback
-      });
 
       // Submit to API
       const response = await DualStorageService.saveManualForm(policyData);
@@ -1954,7 +1978,7 @@ function PageManualForm() {
       return errors;
     }
     
-    if (!/^[A-Z0-9\-_\/ ]{3,50}$/.test(value)) {
+    if (!/^[A-Z0-9\-_/ ]{3,50}$/.test(value)) {
       return errors; // Format validation handled by sync validation
     }
     
@@ -2125,6 +2149,36 @@ function PageManualForm() {
           <LabeledInput label="Customer Paid (₹)" value={form.customerPaid} onChange={v=>set('customerPaid', v)}/>
           <LabeledInput label="Customer Cheque No" value={form.customerChequeNo} onChange={v=>set('customerChequeNo', v)}/>
           <LabeledInput label="Our Cheque No" value={form.ourChequeNo} onChange={v=>set('ourChequeNo', v)}/>
+          <div>
+            <label className="block text-xs text-gray-600 mb-1">Payment Method</label>
+            <select 
+              value={form.paymentMethod}
+              onChange={(e) => {
+                set('paymentMethod', e.target.value);
+                if (e.target.value !== 'NICSAN') {
+                  set('paymentSubMethod', '');
+                }
+              }}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+            >
+              <option value="INSURER">INSURER</option>
+              <option value="NICSAN">NICSAN</option>
+            </select>
+          </div>
+          {form.paymentMethod === 'NICSAN' && (
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">Payment Sub-Method</label>
+              <select 
+                value={form.paymentSubMethod}
+                onChange={(e) => set('paymentSubMethod', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+              >
+                <option value="">Select Sub-Method</option>
+                <option value="DIRECT">DIRECT</option>
+                <option value="EXECUTIVE">EXECUTIVE</option>
+              </select>
+            </div>
+          )}
         </div>
 
         {/* Brokerage & Additional */}
@@ -2296,6 +2350,8 @@ function PageManualGrid() {
       cashback: "", 
       customerName: "",
       branch: "",
+      paymentMethod: "",
+      paymentSubMethod: "",
       status: "OK" 
     };
     
@@ -2375,7 +2431,7 @@ function PageManualGrid() {
     // Policy Number validation
     if (!row.policy) {
       errors.push('Policy Number is required');
-    } else if (!/^[A-Z0-9\-_\/ ]{3,50}$/.test(row.policy)) {
+    } else if (!/^[A-Z0-9\-_/ ]{3,50}$/.test(row.policy)) {
       errors.push('Policy Number must be 3-50 characters (letters, numbers, hyphens, underscores, forward slashes, spaces)');
     }
     
@@ -2509,6 +2565,7 @@ function PageManualGrid() {
 
     // Allow native single-cell paste into inputs
     if (!isBulk && isInputTarget) {
+      // Let the browser handle the paste naturally
       return;
     }
 
@@ -2569,7 +2626,8 @@ function PageManualGrid() {
             customerName: cells[27] || "",
             customerEmail: cells[28] || "",
             branch: cells[29] || "",
-            remark: cells[30] || "",
+            paymentMethod: cells[30] || "",
+            remark: cells[31] || "",
             cashback: "", // Not in Excel - keep empty
             status: "OK" 
           };
@@ -2852,6 +2910,8 @@ function PageManualGrid() {
         rollover: row.rollover || '',
         customer_name: row.customerName || '',
         branch: row.branch || '',
+        payment_method: row.paymentMethod || 'INSURER',
+        payment_sub_method: row.paymentSubMethod || '',
         remark: row.remark || '',
         cashback: (parseFloat(row.cashback) || 0).toString(),
         source: 'MANUAL_GRID'
@@ -3059,6 +3119,8 @@ function PageManualGrid() {
                 <th className="py-2 px-1">Customer Name</th>
                 <th className="py-2 px-1">Customer Email ID</th>
                 <th className="py-2 px-1">Branch <span className="text-red-500">*</span></th>
+                <th className="py-2 px-1">Payment Method</th>
+                <th className="py-2 px-1">Payment Sub-Method</th>
                 <th className="py-2 px-1">Remark</th>
                 <th className="py-2 px-1">Status</th>
               </tr>
@@ -3358,6 +3420,28 @@ function PageManualGrid() {
                   </td>
                   <td className="px-1">
                     <input 
+                      value={r.paymentMethod || ''} 
+                      onChange={(e) => {
+                        updateRow(i, 'paymentMethod', e.target.value);
+                        if (e.target.value !== 'NICSAN') {
+                          updateRow(i, 'paymentSubMethod', '');
+                        }
+                      }}
+                      className="w-full border-none outline-none bg-transparent text-sm"
+                      placeholder="INSURER or NICSAN"
+                    />
+                  </td>
+                  <td className="px-1">
+                    <input 
+                      value={r.paymentSubMethod || ''} 
+                      onChange={(e) => updateRow(i, 'paymentSubMethod', e.target.value)}
+                      className="w-full border-none outline-none bg-transparent text-sm"
+                      placeholder={r.paymentMethod === 'NICSAN' ? "DIRECT or EXECUTIVE" : ""}
+                      disabled={r.paymentMethod !== 'NICSAN'}
+                    />
+                  </td>
+                  <td className="px-1">
+                    <input 
                       value={r.remark} 
                       onChange={(e) => updateRow(i, 'remark', e.target.value)}
                       className="w-full border-none outline-none bg-transparent text-sm"
@@ -3439,6 +3523,10 @@ function PageReview() {
     manualExtras: {}
   });
   const [callerNames, setCallerNames] = useState<string[]>([]);
+  
+  // Verification popup state
+  const [showVerificationModal, setShowVerificationModal] = useState(false);
+  const [pendingSaveData, setPendingSaveData] = useState<any>(null);
 
   // Load telecaller names on component mount
   useEffect(() => {
@@ -3740,6 +3828,31 @@ function PageReview() {
         return;
       }
       
+      // Show verification popup before saving
+      
+      setPendingSaveData({
+        pdfData: editableData.pdfData,
+        manualExtras: editableData.manualExtras
+      });
+      setShowVerificationModal(true);
+      
+    } catch (error) {
+      console.error('❌ Confirm & Save error:', error);
+      setSubmitMessage({ 
+        type: 'error', 
+        message: 'Failed to prepare for save. Please try again.' 
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Handle verification confirmation
+  const handleVerificationConfirm = async () => {
+    setShowVerificationModal(false);
+    setIsLoading(true);
+    
+    try {
       // Check if this is a mock upload
       if (reviewData.id.startsWith('mock_')) {
         // Simulate successful save for mock data
@@ -3760,11 +3873,9 @@ function PageReview() {
         return;
       }
       
+      
       // Send edited data to backend
-      const result = await DualStorageService.confirmUploadAsPolicy(reviewData.id, {
-        pdfData: editableData.pdfData,
-        manualExtras: editableData.manualExtras
-      });
+      const result = await DualStorageService.confirmUploadAsPolicy(reviewData.id, pendingSaveData);
       
       if (result.success) {
         console.log('✅ Policy confirmed successfully with edited data!');
@@ -3798,10 +3909,64 @@ function PageReview() {
     }
   };
 
+  // Handle verification cancellation
+  const handleVerificationCancel = () => {
+    setShowVerificationModal(false);
+    setPendingSaveData(null);
+  };
+
   const handleRejectToManual = () => {
     // In real app, this would redirect to manual form with some pre-filled data
     setReviewData(null);
     // You could navigate to manual form here
+  };
+
+  // Verification modal component
+  const VerificationModal = ({ isOpen, onConfirm, onCancel, email, phone }: { isOpen: boolean; onConfirm: () => void; onCancel: () => void; email: string; phone: string }) => {
+    if (!isOpen) return null;
+    
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+          <h3 className="text-lg font-semibold mb-4">📋 Verify Contact Details</h3>
+          
+          <div className="space-y-3 mb-6">
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-medium">📧 Email:</span>
+              <span className={`px-2 py-1 rounded text-sm ${email ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                {email || 'Not provided'}
+              </span>
+            </div>
+            
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-medium">📱 Phone:</span>
+              <span className={`px-2 py-1 rounded text-sm ${phone ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                {phone || 'Not provided'}
+              </span>
+            </div>
+          </div>
+          
+          <div className="text-sm text-gray-600 mb-4">
+            Please verify these contact details are correct before saving the policy.
+          </div>
+          
+          <div className="flex gap-3">
+            <button 
+              onClick={onConfirm} 
+              className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+            >
+              ✅ Correct - Save Policy
+            </button>
+            <button 
+              onClick={onCancel} 
+              className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+            >
+              ❌ Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   // For demo purposes, show mock data
@@ -4213,6 +4378,36 @@ function PageReview() {
               options={["MYSORE", "BANASHANKARI", "ADUGODI"]}
               required
             />
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">Payment Method</label>
+              <select 
+                value={editableData.manualExtras.paymentMethod || manualExtras.paymentMethod || 'INSURER'}
+                onChange={(e) => {
+                  updateManualExtras('paymentMethod', e.target.value);
+                  if (e.target.value !== 'NICSAN') {
+                    updateManualExtras('paymentSubMethod', '');
+                  }
+                }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+              >
+                <option value="INSURER">INSURER</option>
+                <option value="NICSAN">NICSAN</option>
+              </select>
+            </div>
+            {(editableData.manualExtras.paymentMethod || manualExtras.paymentMethod) === 'NICSAN' && (
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">Payment Sub-Method</label>
+                <select 
+                  value={editableData.manualExtras.paymentSubMethod || manualExtras.paymentSubMethod || ''}
+                  onChange={(e) => updateManualExtras('paymentSubMethod', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                >
+                  <option value="">Select Sub-Method</option>
+                  <option value="DIRECT">DIRECT</option>
+                  <option value="EXECUTIVE">EXECUTIVE</option>
+                </select>
+              </div>
+            )}
             <div style={{ display: 'none' }}>
               <LabeledInput 
                 label="Brokerage (₹)" 
@@ -4316,6 +4511,15 @@ function PageReview() {
           </button>
         </div>
       </Card>
+
+      {/* Verification Modal */}
+      <VerificationModal 
+        isOpen={showVerificationModal}
+        onConfirm={handleVerificationConfirm}
+        onCancel={handleVerificationCancel}
+        email={editableData.manualExtras.customerEmail || manualExtras.customerEmail}
+        phone={editableData.manualExtras.mobile || manualExtras.mobile}
+      />
     </>
   )
 }
@@ -4345,6 +4549,7 @@ function PagePolicyDetail() {
         setAvailablePolicies(response.data || []);
         
         if (ENABLE_DEBUG) {
+          console.log('Available policies loaded successfully');
         }
       }
     } catch (error) {
@@ -4370,7 +4575,9 @@ function PagePolicyDetail() {
         setPolicyData(response.data);
         setDataSource(response.source);
         
+        
         if (ENABLE_DEBUG) {
+          console.log('Available policies loaded successfully');
         }
       }
     } catch (error) {
@@ -4717,6 +4924,21 @@ function PagePolicyDetail() {
                 <span className="font-medium">{policy.branch || "N/A"}</span>
               </div>
               <div className="flex justify-between">
+                <span>Payment Method:</span>
+                <span className="font-medium">
+                  {policy.payment_method || "INSURER"}
+                  {policy.payment_method === 'NICSAN' && policy.payment_sub_method && (
+                    <span className="text-blue-600 ml-2 font-semibold">({policy.payment_sub_method})</span>
+                  )}
+                </span>
+              </div>
+              {policy.payment_method === 'NICSAN' && policy.payment_sub_method && (
+                <div className="flex justify-between">
+                  <span>Payment Sub-Method:</span>
+                  <span className="font-medium text-blue-600">{policy.payment_sub_method}</span>
+                </div>
+              )}
+              <div className="flex justify-between">
                 <span>Type of Business:</span>
                 <span className="font-medium">{policy.rollover || "N/A"}</span>
               </div>
@@ -4883,6 +5105,7 @@ function FounderSidebar({ page, setPage }: { page: string; setPage: (p: string) 
     { id: "leaderboard", label: "Rep Leaderboard", icon: Users },
     { id: "explorer", label: "Sales Explorer", icon: BarChart3 },
     { id: "sources", label: "Data Sources", icon: BarChart3 },
+    { id: "payments", label: "Payments", icon: CreditCard },
     { id: "tests", label: "Dev/Test", icon: SlidersHorizontal },
     { id: "settings", label: "Settings", icon: Settings },
   ]
@@ -5037,22 +5260,32 @@ function TotalODBreakdown() {
       
       {data.length > 0 && (
         <div className="mt-4 text-sm text-gray-600">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div>
-              <div className="font-medium">Total Policies</div>
-              <div className="text-lg font-bold">{data.reduce((sum, item) => sum + (item.policy_count || 0), 0)}</div>
-            </div>
-            <div>
-              <div className="font-medium">Total OD</div>
-              <div className="text-lg font-bold">{formatCurrency(data.reduce((sum, item) => sum + (item.total_od || 0), 0))}</div>
-            </div>
-            <div>
-              <div className="font-medium">Avg OD per Policy</div>
-              <div className="text-lg font-bold">{formatCurrency(data.reduce((sum, item) => sum + (item.avg_od_per_policy || 0), 0) / data.length)}</div>
-            </div>
-            <div>
-              <div className="font-medium">Max OD</div>
-              <div className="text-lg font-bold">{formatCurrency(Math.max(...data.map(item => item.max_od || 0)))}</div>
+          {/* Daily Breakdown Table */}
+          <div className="mt-6">
+            <div className="font-medium mb-3">Daily Breakdown</div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm border border-gray-200 rounded-lg">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-3 py-2 text-left border-b">Date</th>
+                    <th className="px-3 py-2 text-right border-b">Policies</th>
+                    <th className="px-3 py-2 text-right border-b">Total OD</th>
+                    <th className="px-3 py-2 text-right border-b">Avg OD</th>
+                    <th className="px-3 py-2 text-right border-b">Max OD</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.map((item, index) => (
+                    <tr key={index} className="hover:bg-gray-50">
+                      <td className="px-3 py-2 border-b">{formatDate(item.date || item.month || item.financial_year)}</td>
+                      <td className="px-3 py-2 text-right border-b">{item.policy_count || 0}</td>
+                      <td className="px-3 py-2 text-right border-b">{formatCurrency(item.total_od || 0)}</td>
+                      <td className="px-3 py-2 text-right border-b">{formatCurrency(item.avg_od_per_policy || 0)}</td>
+                      <td className="px-3 py-2 text-right border-b">{formatCurrency(item.max_od || 0)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
@@ -5785,6 +6018,438 @@ function PageSources() {
   )
 }
 
+function PagePayments() {
+  const [payments, setPayments] = useState<any[]>([]);
+  const [dataSource, setDataSource] = useState<string>('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [viewMode, setViewMode] = useState<'summary' | 'detail'>('summary');
+  const [selectedExecutive, setSelectedExecutive] = useState<string>('');
+  const [receivedPayments, setReceivedPayments] = useState<Set<string>>(new Set());
+  const [isUpdating, setIsUpdating] = useState<{[key: string]: boolean}>({});
+  const [selectedMonth, setSelectedMonth] = useState<string>('');
+  const [selectedYear, setSelectedYear] = useState<string>('');
+
+  const loadExecutivePayments = async () => {
+    try {
+      setIsLoading(true);
+      // Use dual storage pattern: S3 → Database → Mock Data
+      const response = await DualStorageService.getExecutivePayments();
+      
+      if (response.success) {
+        setPayments(Array.isArray(response.data) ? response.data : []);
+        setDataSource(response.source);
+      }
+    } catch (error) {
+      console.error('Failed to load executive payments:', error);
+      setPayments([]);
+      setDataSource('MOCK_DATA');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadExecutivePayments();
+  }, []);
+
+  // Set default to current month
+  useEffect(() => {
+    const now = new Date();
+    const currentMonth = (now.getMonth() + 1).toString().padStart(2, '0');
+    const currentYear = now.getFullYear().toString();
+    setSelectedMonth(currentMonth);
+    setSelectedYear(currentYear);
+  }, []);
+
+  const formatCurrency = (amount: number) => {
+    if (amount === null || amount === undefined || isNaN(amount)) {
+      return "₹0";
+    }
+    return `₹${amount.toLocaleString('en-IN')}`;
+  };
+
+  const formatDate = (dateString: string) => {
+    if (!dateString) return 'N/A';
+    try {
+      return new Date(dateString).toLocaleDateString('en-GB');
+    } catch {
+      return dateString;
+    }
+  };
+
+  const formatReceivedDate = (dateString: string) => {
+    if (!dateString) return 'N/A';
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleString('en-GB', {
+        day: '2-digit',
+        month: '2-digit', 
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch {
+      return dateString;
+    }
+  };
+
+  // Filter payments by month and year
+  const filteredPayments = payments.filter(payment => {
+    if (!selectedMonth && !selectedYear) return true; // Show all if no filter
+    
+    const paymentDate = new Date(payment.issue_date);
+    const month = (paymentDate.getMonth() + 1).toString().padStart(2, '0');
+    const year = paymentDate.getFullYear().toString();
+    
+    const monthMatch = !selectedMonth || month === selectedMonth;
+    const yearMatch = !selectedYear || year === selectedYear;
+    
+    return monthMatch && yearMatch;
+  });
+
+  // Calculate summary metrics using filtered data
+  const totalAmount = filteredPayments.reduce((sum, payment) => sum + (parseFloat(payment.customer_paid) || 0), 0);
+  const receivedAmount = filteredPayments
+    .filter(p => receivedPayments.has(`${p.policy_number}_${p.customer_name}`) || p.payment_received === true)
+    .reduce((sum, payment) => sum + (parseFloat(payment.customer_paid) || 0), 0);
+  const pendingAmount = totalAmount - receivedAmount;
+
+  // Calculate executive summary using filtered data
+  const calculateExecutiveSummary = (payments: any[]): Array<{
+    executive: string;
+    totalPaid: number;
+    receivedAmount: number;
+    pendingAmount: number;
+    recordCount: number;
+    receivedCount: number;
+  }> => {
+    const summary = payments.reduce((acc, payment) => {
+      const exec = payment.executive;
+      if (!acc[exec]) {
+        acc[exec] = {
+          executive: exec,
+          totalPaid: 0,
+          receivedAmount: 0,
+          pendingAmount: 0,
+          recordCount: 0,
+          receivedCount: 0
+        };
+      }
+      
+      const amount = parseFloat(payment.customer_paid) || 0;
+      acc[exec].totalPaid += amount;
+      acc[exec].recordCount += 1;
+      
+      // Check if received using payment_received field or local state
+      const isReceived = receivedPayments.has(`${payment.policy_number}_${payment.customer_name}`) || payment.payment_received === true;
+      if (isReceived) {
+        acc[exec].receivedAmount += amount;
+        acc[exec].receivedCount += 1;
+      } else {
+        acc[exec].pendingAmount += amount;
+      }
+      
+      return acc;
+    }, {});
+    
+    return Object.values(summary);
+  };
+
+  // Get payments for selected executive
+  const getPaymentsForExecutive = (executive: string) => {
+    return payments.filter(p => p.executive === executive);
+  };
+
+  // Navigation functions
+  const viewExecutiveDetails = (executive: string) => {
+    setSelectedExecutive(executive);
+    setViewMode('detail');
+  };
+
+  const backToSummary = () => {
+    setSelectedExecutive('');
+    setViewMode('summary');
+  };
+
+  // Function to mark payment as received
+  const markAsReceived = async (paymentId: string, payment: any) => {
+    setIsUpdating(prev => ({ ...prev, [paymentId]: true }));
+    
+    try {
+      // Call backend API to mark payment as received
+      const response = await DualStorageService.markPaymentAsReceived(
+        payment.policy_number, 
+        'current_user' // In real implementation, get from auth context
+      );
+      
+      if (response.success) {
+        // Update local state
+        setReceivedPayments(prev => new Set([...prev, paymentId]));
+        
+        // Refresh data to get updated payment status
+        await loadExecutivePayments();
+        
+        console.log(`Payment marked as received: ${paymentId}`, response.data);
+      } else {
+        console.error('Failed to mark payment as received:', response);
+      }
+    } catch (error) {
+      console.error('Failed to mark as received:', error);
+    } finally {
+      setIsUpdating(prev => ({ ...prev, [paymentId]: false }));
+    }
+  };
+
+  const executiveSummary = calculateExecutiveSummary(filteredPayments);
+  const executiveDetailPayments = getPaymentsForExecutive(selectedExecutive);
+
+  return (
+    <>
+      {/* Summary Tiles */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-6">
+        <Tile 
+          label="Total Payments" 
+          info="(All executive payments)"
+          value={formatCurrency(totalAmount)} 
+          sub={`${filteredPayments.length} transactions`}
+        />
+        <Tile 
+          label="Received Amount" 
+          info="(Processed payments)"
+          value={formatCurrency(receivedAmount)} 
+          sub={`${filteredPayments.filter(p => receivedPayments.has(`${p.policy_number}_${p.customer_name}`) || p.payment_received === true).length} received`}
+        />
+        <Tile 
+          label="Pending Amount" 
+          info="(Awaiting processing)"
+          value={formatCurrency(pendingAmount)} 
+          sub={`${filteredPayments.length - filteredPayments.filter(p => receivedPayments.has(`${p.policy_number}_${p.customer_name}`) || p.payment_received === true).length} pending`}
+        />
+        <Tile 
+          label="Data Source" 
+          info="(Payment data origin)"
+          value={dataSource || 'Loading...'} 
+          sub="Backend or Mock"
+        />
+      </div>
+
+      {/* Month/Year Filter */}
+      <div className="mb-6">
+        <div className="flex gap-4 items-end">
+          <div className="flex-1">
+            <label className="block text-sm font-medium text-gray-700 mb-2">Filter by Month</label>
+            <select 
+              value={selectedMonth} 
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="">All Months</option>
+              <option value="01">January</option>
+              <option value="02">February</option>
+              <option value="03">March</option>
+              <option value="04">April</option>
+              <option value="05">May</option>
+              <option value="06">June</option>
+              <option value="07">July</option>
+              <option value="08">August</option>
+              <option value="09">September</option>
+              <option value="10">October</option>
+              <option value="11">November</option>
+              <option value="12">December</option>
+            </select>
+          </div>
+          <div className="flex-1">
+            <label className="block text-sm font-medium text-gray-700 mb-2">Filter by Year</label>
+            <select 
+              value={selectedYear} 
+              onChange={(e) => setSelectedYear(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="">All Years</option>
+              <option value="2025">2025</option>
+              <option value="2024">2024</option>
+              <option value="2023">2023</option>
+              <option value="2022">2022</option>
+            </select>
+          </div>
+          <div className="flex gap-2">
+            <button 
+              onClick={() => {
+                setSelectedMonth('');
+                setSelectedYear('');
+              }}
+              className="px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
+            >
+              Clear Filters
+            </button>
+            <button 
+              onClick={() => {
+                const now = new Date();
+                setSelectedMonth((now.getMonth() + 1).toString().padStart(2, '0'));
+                setSelectedYear(now.getFullYear().toString());
+              }}
+              className="px-4 py-2 text-sm bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg transition-colors"
+            >
+              Current Month
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Conditional Content */}
+      {viewMode === 'summary' ? (
+        <Card title="Executive Summary" desc={`Click on executive to view individual payment records (Data Source: ${dataSource || 'Loading...'})`}>
+          {isLoading ? (
+            <div className="text-center py-8">
+              <div className="text-sm text-zinc-600">Loading executive payments...</div>
+            </div>
+          ) : executiveSummary.length === 0 ? (
+            <div className="text-center py-8">
+              <div className="text-sm text-zinc-600">No executive payments found</div>
+              <div className="text-xs text-zinc-500 mt-1">Payments will appear here when executives process NICSAN payments</div>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-zinc-500 border-b bg-gray-50">
+                    <th className="py-2 px-2 font-medium">Executive Name</th>
+                    <th className="py-2 px-2 font-medium">Total Amount</th>
+                    <th className="py-2 px-2 font-medium">Received</th>
+                    <th className="py-2 px-2 font-medium">Pending</th>
+                    <th className="py-2 px-2 font-medium">Records</th>
+                    <th className="py-2 px-2 font-medium text-center">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {executiveSummary.map((exec, index) => (
+                    <tr key={index} className="border-b hover:bg-gray-50 transition-colors">
+                      <td className="py-2 px-2 font-medium text-gray-900">{exec.executive || 'N/A'}</td>
+                      <td className="py-2 px-2 font-semibold text-gray-900">{formatCurrency(exec.totalPaid)}</td>
+                      <td className="py-2 px-2 font-medium text-green-600">{formatCurrency(exec.receivedAmount)}</td>
+                      <td className="py-2 px-2 font-medium text-orange-600">{formatCurrency(exec.pendingAmount)}</td>
+                      <td className="py-2 px-2 text-gray-600">{exec.recordCount}</td>
+                      <td className="py-2 px-2 text-center">
+                        <button 
+                          onClick={() => viewExecutiveDetails(exec.executive)}
+                          className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-2 py-1 rounded transition-colors"
+                        >
+                          View Details
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          
+          {executiveSummary.length > 0 && (
+            <div className="text-center text-sm mt-4">
+              {dataSource === 'BACKEND_API' ? (
+                <span className="text-green-600 font-medium">
+                  ✅ Showing {executiveSummary.length} executives from backend
+                </span>
+              ) : (
+                <span className="text-blue-500">
+                  📊 Showing demo data (fallback)
+                </span>
+              )}
+            </div>
+          )}
+        </Card>
+      ) : (
+        <Card title={`${selectedExecutive} - Payment Details`} desc="Individual payment records for selected executive">
+          <div className="mb-4">
+            <button 
+              onClick={backToSummary}
+              className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+            >
+              ← Back to Executive Summary
+            </button>
+          </div>
+          
+          {filteredPayments.length === 0 ? (
+            <div className="text-center py-8">
+              <div className="text-sm text-zinc-600">No payment records found for {selectedExecutive}</div>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-zinc-500 border-b bg-gray-50">
+                    <th className="py-2 px-2 font-medium">Customer Name</th>
+                    <th className="py-2 px-2 font-medium">Amount</th>
+                    <th className="py-2 px-2 font-medium">Customer Cheque</th>
+                    <th className="py-2 px-2 font-medium">Our Cheque</th>
+                    <th className="py-2 px-2 font-medium">Issue Date</th>
+                    <th className="py-2 px-2 font-medium">Policy No</th>
+                    <th className="py-2 px-2 font-medium text-center">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {executiveDetailPayments.map((payment, index) => {
+                    const paymentId = `${payment.policy_number}_${payment.customer_name}`;
+                    const isReceived = receivedPayments.has(paymentId) || payment.payment_received === true;
+                    const isUpdatingPayment = isUpdating[paymentId];
+                    
+                    return (
+                      <tr key={index} className="border-b hover:bg-gray-50 transition-colors">
+                        <td className="py-2 px-2 font-medium text-gray-900">{payment.customer_name || 'N/A'}</td>
+                        <td className="py-2 px-2 font-semibold text-green-700">{formatCurrency(parseFloat(payment.customer_paid) || 0)}</td>
+                        <td className="py-2 px-2 text-gray-600">{payment.customer_cheque_no || 'N/A'}</td>
+                        <td className="py-2 px-2 text-gray-600">{payment.our_cheque_no || 'N/A'}</td>
+                        <td className="py-2 px-2 text-gray-600">{formatDate(payment.issue_date)}</td>
+                        <td className="py-2 px-2 font-mono text-xs text-gray-600">{payment.policy_number || 'N/A'}</td>
+                        <td className="py-2 px-2 text-center">
+                          {isReceived ? (
+                            <div className="inline-flex flex-col items-center space-y-1">
+                              <div className="flex items-center space-x-1 text-green-600">
+                                <span className="text-sm">✅</span>
+                                <span className="text-xs font-medium">Received</span>
+                              </div>
+                              {payment.received_date && (
+                                <div className="text-xs text-gray-500">
+                                  {formatReceivedDate(payment.received_date)}
+                                </div>
+                              )}
+                              {payment.received_by && (
+                                <div className="text-xs text-gray-500">
+                                  By: {payment.received_by}
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <button 
+                              onClick={() => markAsReceived(paymentId, payment)}
+                              disabled={isUpdatingPayment}
+                              className="bg-green-600 hover:bg-green-700 text-white text-xs px-2 py-1 rounded disabled:opacity-50 transition-colors"
+                            >
+                              {isUpdatingPayment ? 'Processing...' : 'Mark Received'}
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+          
+          {filteredPayments.length > 0 && (
+            <div className="text-center text-sm mt-4">
+              <span className="text-blue-600 font-medium">
+                📊 Showing {filteredPayments.length} payment records for {selectedExecutive}
+              </span>
+            </div>
+          )}
+        </Card>
+      )}
+    </>
+  )
+}
+
 function PageFounderSettings() {
   const [settings, setSettings] = useState({
     brokeragePercent: '15',
@@ -5829,6 +6494,7 @@ function PageFounderSettings() {
         setDataSource(response.source || 'Unknown');
         
         if (ENABLE_DEBUG) {
+          console.log('Available policies loaded successfully');
         }
       } else {
         setError(response.error || 'Failed to load settings');
@@ -6411,6 +7077,7 @@ function NicsanCRMMock() {
           {founderPage === "leaderboard" && <PageLeaderboard/>}
           {founderPage === "explorer" && <PageExplorer/>}
           {founderPage === "sources" && <PageSources/>}
+          {founderPage === "payments" && <PagePayments/>}
           {founderPage === "tests" && <PageTests/>}
           {founderPage === "settings" && <PageFounderSettings/>}
         </Shell>
