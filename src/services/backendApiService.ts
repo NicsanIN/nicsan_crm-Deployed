@@ -376,7 +376,7 @@ const response = await fetch(`${API_BASE_URL}/policies`, {
         console.log('🔄 BackendApiService: Getting executive payments...');
       }
 
-      const response = await fetch('http://localhost:3001/api/dashboard/payments/executive', {
+      const response = await fetch(`${BACKEND_URL}/api/dashboard/payments/executive`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
@@ -414,7 +414,7 @@ const response = await fetch(`${API_BASE_URL}/policies`, {
         console.log('🔄 BackendApiService: Marking payment as received...', policyNumber);
       }
 
-      const response = await fetch(`http://localhost:3001/api/dashboard/payments/received/${policyNumber}`, {
+      const response = await fetch(`${BACKEND_URL}/api/dashboard/payments/received/${policyNumber}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
