@@ -5,20 +5,20 @@ import { authUtils } from './services/api';
 import { policiesAPI } from './services/api';
 import DualStorageService from './services/dualStorageService';
 import CrossDeviceSyncDemo from './components/CrossDeviceSyncDemo';
-// Page components are imported but not used in this mock file
-// import SalesExplorerPage from './pages/founders/SalesExplorer/PageExplorer';
-// import RepLeaderboardPage from './pages/founders/RepLeaderboard/PageLeaderboard';
-// import DataSourcePage from './pages/founders/DataSource/DataSource';
-// import PaymentsPage from './pages/founders/Payments/Payments';
-// import CompanyOverviewPage from './pages/founders/CompanyOverview/CompanyOverview';
-// import FounderSettingsPage from './pages/founders/Settings/Settings';
-// import KPIDashboardPage from './pages/founders/KPIDashboard/KPIDashboard';
-// import DevTestPage from './pages/founders/DevTest/DevTest';
-// import ReviewConfirmPage from './pages/operations/ReviewConfirm/ReviewConfirm';
-// import GridEntryPage from './pages/operations/GridEntry/GridEntry';
-// import PolicyDetailPage from './pages/operations/PolicyDetail/PolicyDetail';
-// import ManualFormPage from './pages/operations/ManualForm/ManualForm';
-// import PDFUploadPage from './pages/operations/PDFUpload/PDFUpload';
+// Import page components
+import SalesExplorerPage from './pages/founders/SalesExplorer/PageExplorer';
+import RepLeaderboardPage from './pages/founders/RepLeaderboard/PageLeaderboard';
+import DataSourcePage from './pages/founders/DataSource/DataSource';
+import PaymentsPage from './pages/founders/Payments/Payments';
+import CompanyOverviewPage from './pages/founders/CompanyOverview/CompanyOverview';
+import FounderSettingsPage from './pages/founders/Settings/Settings';
+import KPIDashboardPage from './pages/founders/KPIDashboard/KPIDashboard';
+import DevTestPage from './pages/founders/DevTest/DevTest';
+import ReviewConfirmPage from './pages/operations/ReviewConfirm/ReviewConfirm';
+import GridEntryPage from './pages/operations/GridEntry/GridEntry';
+import PolicyDetailPage from './pages/operations/PolicyDetail/PolicyDetail';
+import ManualFormPage from './pages/operations/ManualForm/ManualForm';
+import PDFUploadPage from './pages/operations/PDFUpload/PDFUpload';
 import { SettingsProvider, useSettings } from './contexts/SettingsContext';
 import HorizontalLogo from './assets/images/HorizontalLogo.svg';
 import jsPDF from 'jspdf';
@@ -7178,53 +7178,6 @@ function PageKPIs() {
   )
 }
 
-// ---------- DEV/TESTS ----------
-function PageTests() {
-  // Simple run-time tests for core form math (no framework)
-  type Case = { name: string; total: number; pct?: number; amt?: number; expectAmt?: number; expectPct?: number };
-  const cases: Case[] = [
-    { name: "pct→amt", total: 10000, pct: 10, expectAmt: 1000 },
-    { name: "amt→pct", total: 20000, amt: 500, expectPct: 2.5 },
-    { name: "zero-total", total: 0, pct: 10, expectAmt: 0 },
-  ];
-  const results = cases.map(c => {
-    const calcAmt = c.pct != null ? Math.round((c.total * c.pct) / 100) : (c.amt ?? 0);
-    const calcPct = c.amt != null && c.total > 0 ? +( (c.amt / c.total) * 100 ).toFixed(1) : (c.pct ?? 0);
-    const passAmt = c.expectAmt == null || c.expectAmt === calcAmt;
-    const passPct = c.expectPct == null || c.expectPct === calcPct;
-    return { ...c, calcAmt, calcPct, pass: passAmt && passPct };
-  });
-  const allPass = results.every(r => r.pass);
-  return (
-    <Card title="Dev/Test" desc="Lightweight checks for cashback math">
-      <div className="text-sm mb-2">Overall: {allPass ? <span className="text-emerald-700">✅ PASS</span> : <span className="text-rose-700">❌ FAIL</span>}</div>
-      <div className="overflow-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-left text-zinc-500">
-              <th className="py-2">Case</th><th>Total</th><th>Input %</th><th>Input ₹</th><th>Calc ₹</th><th>Calc %</th><th>Expected ₹</th><th>Expected %</th><th>Result</th>
-            </tr>
-          </thead>
-          <tbody>
-            {results.map((r,i)=> (
-              <tr key={i} className="border-t">
-                <td className="py-2">{r.name}</td>
-                <td>{r.total}</td>
-                <td>{r.pct ?? "—"}</td>
-                <td>{r.amt ?? "—"}</td>
-                <td>{r.calcAmt}</td>
-                <td>{r.calcPct}</td>
-                <td>{r.expectAmt ?? "—"}</td>
-                <td>{r.expectPct ?? "—"}</td>
-                <td>{r.pass ? "✅" : "❌"}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </Card>
-  );
-}
 
 function NicsanCRMMock() {
   const [user, setUser] = useState<{name:string; email?:string; role:"ops"|"founder"}|null>(() => {
@@ -7278,11 +7231,11 @@ function NicsanCRMMock() {
       }} />
       {tab === "ops" ? (
         <Shell sidebar={<OpsSidebar page={opsPage} setPage={setOpsPage} />}>
-          {opsPage === "upload" && <PageUpload/>}
-          {opsPage === "review" && <PageReview/>}
-          {opsPage === "manual-form" && <PageManualForm/>}
-          {opsPage === "manual-grid" && <PageManualGrid/>}
-          {opsPage === "policy-detail" && <PagePolicyDetail/>}
+          {opsPage === "upload" && <PDFUploadPage/>}
+          {opsPage === "review" && <ReviewConfirmPage/>}
+          {opsPage === "manual-form" && <ManualFormPage/>}
+          {opsPage === "manual-grid" && <GridEntryPage/>}
+          {opsPage === "policy-detail" && <PolicyDetailPage/>}
           {opsPage === "sync-demo" && <CrossDeviceSyncDemo/>}
           {opsPage === "settings" && (
             <Card title="Ops Settings" desc="Keyboard shortcuts + defaults (makes data entry faster)">
@@ -7297,14 +7250,14 @@ function NicsanCRMMock() {
         </Shell>
       ) : (
         <Shell sidebar={<FounderSidebar page={founderPage} setPage={setFounderPage} />}>
-          {founderPage === "overview" && <PageOverview/>}
-          {founderPage === "kpis" && <PageKPIs/>}
-          {founderPage === "leaderboard" && <PageLeaderboard/>}
-          {founderPage === "explorer" && <PageExplorer/>}
-          {founderPage === "sources" && <PageSources/>}
-          {founderPage === "payments" && <PagePayments/>}
-          {founderPage === "tests" && <PageTests/>}
-          {founderPage === "settings" && <PageFounderSettings/>}
+          {founderPage === "overview" && <CompanyOverviewPage/>}
+          {founderPage === "kpis" && <KPIDashboardPage/>}
+          {founderPage === "leaderboard" && <RepLeaderboardPage/>}
+          {founderPage === "explorer" && <SalesExplorerPage/>}
+          {founderPage === "sources" && <DataSourcePage/>}
+          {founderPage === "payments" && <PaymentsPage/>}
+          {founderPage === "tests" && <DevTestPage/>}
+          {founderPage === "settings" && <FounderSettingsPage/>}
         </Shell>
       )}
     </div>
