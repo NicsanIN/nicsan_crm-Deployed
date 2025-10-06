@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useRef, useEffect } from "react";
+import React, { useMemo, useState, useRef, useEffect, createContext, useContext } from "react";
 import { Upload, FileText, CheckCircle2, AlertTriangle, Table2, Settings, LayoutDashboard, Users, BarChart3, BadgeInfo, Filter, LogOut, Car, SlidersHorizontal, TrendingUp, RefreshCw, CreditCard } from "lucide-react";
 import { ResponsiveContainer, CartesianGrid, BarChart, Bar, Legend, Area, AreaChart, XAxis, YAxis, Tooltip } from "recharts";
 import { authUtils } from './services/api';
@@ -7,6 +7,73 @@ import DualStorageService from './services/dualStorageService';
 import CrossDeviceSyncDemo from './components/CrossDeviceSyncDemo';
 import { SettingsProvider, useSettings } from './contexts/SettingsContext';
 import HorizontalLogo from './assets/images/HorizontalLogo.svg';
+
+// Smart Cache Context
+interface CacheEntry {
+  data: any;
+  timestamp: number;
+  source: string;
+}
+
+interface CacheContextType {
+  getCache: (key: string) => CacheEntry | null;
+  setCache: (key: string, data: any, source: string) => void;
+  shouldRefresh: (key: string, maxAge: number) => boolean;
+  clearCache: (key?: string) => void;
+}
+
+const CacheContext = createContext<CacheContextType | null>(null);
+
+const useCache = () => {
+  const context = useContext(CacheContext);
+  if (!context) {
+    throw new Error('useCache must be used within a CacheProvider');
+  }
+  return context;
+};
+
+// Cache Provider Component
+function CacheProvider({ children }: { children: React.ReactNode }) {
+  const [cache, setCacheState] = useState<Record<string, CacheEntry>>({});
+
+  const getCache = (key: string): CacheEntry | null => {
+    return cache[key] || null;
+  };
+
+  const setCache = (key: string, data: any, source: string) => {
+    setCacheState(prev => ({
+      ...prev,
+      [key]: {
+        data,
+        timestamp: Date.now(),
+        source
+      }
+    }));
+  };
+
+  const shouldRefresh = (key: string, maxAge: number = 5 * 60 * 1000): boolean => {
+    const entry = cache[key];
+    if (!entry) return true;
+    return (Date.now() - entry.timestamp) > maxAge;
+  };
+
+  const clearCache = (key?: string) => {
+    if (key) {
+      setCacheState(prev => {
+        const { [key]: removed, ...rest } = prev;
+        return rest;
+      });
+    } else {
+      setCacheState({});
+    }
+  };
+
+  return (
+    <CacheContext.Provider value={{ getCache, setCache, shouldRefresh, clearCache }}>
+      {children}
+    </CacheContext.Provider>
+  );
+}
 
 // Environment variables
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
@@ -90,7 +157,7 @@ function LoginPage({ onLogin }: { onLogin: (user: { name: string; email: string;
             alt="Nicsan CRM" 
             className="h-[20.3843px] w-auto"
           />
-          <span className="text-[28px] font-clash font-bold text-zinc-900 leading-[20.3843px] mt-0.5">CRM V1</span>
+          <span className="text-[28px] font-clash font-bold text-zinc-900 leading-[20.3843px] mt-0.5">CRM</span>
         </div>
         
         
@@ -148,15 +215,25 @@ function TopTabs({ tab, setTab, user, onLogout }: { tab: "ops" | "founder"; setT
             alt="Nicsan CRM" 
             className="h-[20.3843px] w-auto"
           />
-          <span className="text-[28px] font-clash font-bold text-zinc-900 leading-[20.3843px] mt-0.5">CRM V1</span>
+          <span className="text-[28px] font-clash font-bold text-zinc-900 leading-[20.3843px] mt-0.5">CRM</span>
         </div>
         <div className="ml-auto flex items-center gap-2">
+          {user.role === 'ops' ? (
+            // Simplified view for Operations users
+            <>
+              <div className="text-sm text-zinc-600 px-2 py-1 rounded-lg bg-zinc-100">Operations</div>
+              <button onClick={onLogout} className="px-3 py-2 rounded-lg border flex items-center gap-2"><LogOut className="w-4 h-4"/> Logout</button>
+            </>
+          ) : (
+            // Full view for Founder users
+            <>
           <div className="rounded-xl bg-zinc-100 p-1 flex gap-2">
             <button onClick={() => setTab("ops")} className={`px-4 py-2 rounded-lg text-sm ${tab === "ops" ? "bg-white shadow" : "text-zinc-600"}`}>Operations</button>
             <button onClick={() => !founderDisabled && setTab("founder")} className={`px-4 py-2 rounded-lg text-sm ${tab === "founder" ? "bg-white shadow" : founderDisabled?"text-zinc-300 cursor-not-allowed":"text-zinc-600"}`}>Founder</button>
           </div>
-          <div className="text-sm text-zinc-600 px-2 py-1 rounded-lg bg-zinc-100">{user.name} · {user.role.toUpperCase()}</div>
           <button onClick={onLogout} className="px-3 py-2 rounded-lg border flex items-center gap-2"><LogOut className="w-4 h-4"/> Logout</button>
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -3977,18 +4054,6 @@ function PageReview() {
           <div className="text-6xl mb-4">📄</div>
           <div className="text-lg font-medium mb-2">No PDF data to review</div>
           <div className="text-sm">Upload a PDF with manual extras first to see the review screen.</div>
-          <div className="mt-4 p-3 bg-blue-50 rounded-lg text-blue-700 text-sm">
-            💡 <strong>Workflow:</strong> Go to PDF Upload → Fill Manual Extras → Save → Drop PDF → Come back here to Review
-          </div>
-          
-          {/* Debug Info */}
-          <div className="mt-4 p-3 bg-yellow-50 rounded-lg text-yellow-700 text-sm">
-            🔍 <strong>Debug:</strong> availableUploads.length = {availableUploads.length}
-            <br />
-            🔍 <strong>Debug:</strong> reviewData = {reviewData ? 'exists' : 'null'}
-            <br />
-            🔍 <strong>Debug:</strong> Check browser console for detailed logs
-          </div>
           
           {/* Test Button */}
           <div className="mt-4">
@@ -4059,27 +4124,6 @@ function PageReview() {
   if (!reviewData && availableUploads.length > 0) {
     return (
       <Card title="Review & Confirm" desc="Select an upload to review">
-        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-          <div className="text-sm text-blue-800">
-            💡 <strong>Workflow:</strong> PDF Upload → Manual Extras → Textract Processing → Review & Confirm → Save to Database
-          </div>
-        </div>
-        
-        {/* Debug Info */}
-        <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-          <div className="text-sm text-yellow-800">
-            🔍 <strong>Debug:</strong> Found {availableUploads.length} upload(s) in localStorage
-            {availableUploads.length > 0 && (
-              <div className="mt-2 text-xs">
-                {availableUploads.map(upload => (
-                  <div key={upload.id}>
-                    • {upload.filename} - Status: {upload.status} - Insurer: {upload.extracted_data?.insurer || 'N/A'}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
         <div className="mb-6 p-4 bg-zinc-50 rounded-xl">
           <div className="flex items-center justify-between mb-3">
             <div className="text-sm font-medium">📄 Select Upload to Review</div>
@@ -5401,6 +5445,7 @@ function PageOverview() {
 }
 
 function PageLeaderboard() {
+  const cache = useCache();
   const [reps, setReps] = useState<any[]>([]);
   const [dataSource, setDataSource] = useState<string>('');
   const [sortField, setSortField] = useState<string>('');
@@ -5453,6 +5498,17 @@ function PageLeaderboard() {
 
   useEffect(() => {
     const loadSalesReps = async () => {
+      const cacheKey = 'sales-reps';
+      const maxAge = 2 * 60 * 1000; // 2 minutes cache
+      
+      // Check cache first
+      const cached = cache.getCache(cacheKey);
+      if (cached && !cache.shouldRefresh(cacheKey, maxAge)) {
+        setReps(cached.data);
+        setDataSource(cached.source);
+        return;
+      }
+      
       try {
         // Use dual storage pattern: S3 → Database → Mock Data
         const response = await DualStorageService.getSalesReps();
@@ -5460,18 +5516,25 @@ function PageLeaderboard() {
         if (response.success) {
           if (ENABLE_DEBUG) {
           }
-          setReps(Array.isArray(response.data) ? response.data : []);
+          const data = Array.isArray(response.data) ? response.data : [];
+          setReps(data);
           setDataSource(response.source);
+          
+          // Cache the data
+          cache.setCache(cacheKey, data, response.source);
         }
       } catch (error) {
         console.error('Failed to load sales reps:', error);
         setReps(demoReps);
         setDataSource('MOCK_DATA');
+        
+        // Cache fallback data
+        cache.setCache(cacheKey, demoReps, 'MOCK_DATA');
       }
     };
     
     loadSalesReps();
-  }, []);
+  }, [cache]);
 
   return (
     <Card title="Rep Leaderboard" desc={`Lead→Sale % = Converted / Leads Assigned; CAC/policy = daily rep cost / converted (Data Source: ${dataSource || 'Loading...'})`}>
@@ -5552,6 +5615,7 @@ function PageLeaderboard() {
 }
 
 function PageExplorer() {
+  const cache = useCache();
   const [make, setMake] = useState("All");
   const [model, setModel] = useState("All");
   const [insurer, setInsurer] = useState("All");
@@ -5725,6 +5789,17 @@ function PageExplorer() {
 
   useEffect(() => {
     const loadSalesExplorer = async () => {
+      const cacheKey = `sales-explorer-${make}-${model}-${insurer}-${cashbackMax}-${branch}-${rollover}-${rep}-${vehiclePrefix}-${fromDate}-${toDate}-${expiryFromDate}-${expiryToDate}`;
+      const maxAge = 1 * 60 * 1000; // 1 minute cache for filtered data
+      
+      // Check cache first
+      const cached = cache.getCache(cacheKey);
+      if (cached && !cache.shouldRefresh(cacheKey, maxAge)) {
+        setPolicies(cached.data);
+        setDataSource(cached.source);
+        return;
+      }
+      
       try {
         // Use dual storage pattern: S3 → Database → Mock Data
         const filters = { make, model, insurer, cashbackMax, branch, rollover, rep, vehiclePrefix, fromDate, toDate, expiryFromDate, expiryToDate };
@@ -5753,16 +5828,22 @@ function PageExplorer() {
           
           setPolicies(data);
           setDataSource(response.source);
+          
+          // Cache the data
+          cache.setCache(cacheKey, data, response.source);
         }
       } catch (error) {
         console.error('Failed to load sales explorer:', error);
         setPolicies(demoPolicies);
         setDataSource('MOCK_DATA');
+        
+        // Cache fallback data
+        cache.setCache(cacheKey, demoPolicies, 'MOCK_DATA');
       }
     };
     
     loadSalesExplorer();
-  }, [make, model, insurer, cashbackMax, branch, rollover, rep, vehiclePrefix, fromDate, toDate, expiryFromDate, expiryToDate]);
+  }, [cache, make, model, insurer, cashbackMax, branch, rollover, rep, vehiclePrefix, fromDate, toDate, expiryFromDate, expiryToDate]);
 
   const filtered = (policies || []).filter(p => {
     const makeMatch = make === 'All' || p.make === make;
@@ -5955,11 +6036,23 @@ function PageExplorer() {
 }
 
 function PageSources() {
+  const cache = useCache();
   const [dataSources, setDataSources] = useState<any[]>([]);
   const [dataSource, setDataSource] = useState<string>('');
 
   useEffect(() => {
     const loadDataSources = async () => {
+      const cacheKey = 'data-sources';
+      const maxAge = 5 * 60 * 1000; // 5 minutes cache
+      
+      // Check cache first
+      const cached = cache.getCache(cacheKey);
+      if (cached && !cache.shouldRefresh(cacheKey, maxAge)) {
+        setDataSources(cached.data);
+        setDataSource(cached.source);
+        return;
+      }
+      
       try {
         // Use dual storage pattern: S3 → Database → Mock Data
         const response = await DualStorageService.getDataSources();
@@ -5969,16 +6062,21 @@ function PageSources() {
           setDataSources(newDataSources);
           setDataSource(response.source);
           
+          // Cache the data
+          cache.setCache(cacheKey, newDataSources, response.source);
         }
       } catch (error) {
         console.error('Failed to load data sources:', error);
         setDataSources(demoSources);
         setDataSource('MOCK_DATA');
+        
+        // Cache fallback data
+        cache.setCache(cacheKey, demoSources, 'MOCK_DATA');
       }
     };
     
     loadDataSources();
-  }, []);
+  }, [cache]);
 
   // Debug logging for chart data
   if (ENABLE_DEBUG) {
@@ -6842,12 +6940,24 @@ function PageFounderSettings() {
 
 // ---------- KPI DASHBOARD ----------
 function PageKPIs() {
+  const cache = useCache();
   const { settings } = useSettings();
   const [kpiData, setKpiData] = useState<any>(null);
   const [dataSource, setDataSource] = useState<string>('');
 
   useEffect(() => {
     const loadKPIData = async () => {
+      const cacheKey = 'kpi-data';
+      const maxAge = 3 * 60 * 1000; // 3 minutes cache
+      
+      // Check cache first
+      const cached = cache.getCache(cacheKey);
+      if (cached && !cache.shouldRefresh(cacheKey, maxAge)) {
+        setKpiData(cached.data);
+        setDataSource(cached.source);
+        return;
+      }
+      
       try {
         // Use dual storage pattern: S3 → Database → Mock Data
         const response = await DualStorageService.getDashboardMetrics();
@@ -6855,6 +6965,9 @@ function PageKPIs() {
         if (response.success) {
           setKpiData(response.data);
           setDataSource(response.source);
+          
+          // Cache the data
+          cache.setCache(cacheKey, response.data, response.source);
           
           if (ENABLE_DEBUG) {
           }
@@ -6866,7 +6979,7 @@ function PageKPIs() {
     };
     
     loadKPIData();
-  }, []);
+  }, [cache]);
 
   // Use ONLY real data from backend - no hardcoded assumptions
   const totalPolicies = kpiData?.basicMetrics?.totalPolicies || 0;
@@ -7022,11 +7135,28 @@ function PageTests() {
 }
 
 function NicsanCRMMock() {
-  const [user, setUser] = useState<{name:string; email?:string; role:"ops"|"founder"}|null>(null);
+  const [user, setUser] = useState<{name:string; email?:string; role:"ops"|"founder"}|null>(() => {
+    // Initialize user from localStorage to prevent login loop
+    try {
+      const savedUser = localStorage.getItem('nicsan-crm-user');
+      return savedUser ? JSON.parse(savedUser) : null;
+    } catch {
+      return null;
+    }
+  });
   const [tab, setTab] = useState<"ops"|"founder">("ops");
   const [opsPage, setOpsPage] = useState("upload");
   const [founderPage, setFounderPage] = useState("overview");
   // const [backendStatus, setBackendStatus] = useState<any>(null);
+
+  // Persist user state to localStorage
+  useEffect(() => {
+    if (user) {
+      localStorage.setItem('nicsan-crm-user', JSON.stringify(user));
+    } else {
+      localStorage.removeItem('nicsan-crm-user');
+    }
+  }, [user]);
 
   // Check backend status on component mount
   useEffect(() => {
@@ -7050,7 +7180,10 @@ function NicsanCRMMock() {
   return (
     <div className="min-h-screen bg-zinc-50">
       
-      <TopTabs tab={tab} setTab={setTab} user={user} onLogout={()=>setUser(null)} />
+      <TopTabs tab={tab} setTab={setTab} user={user} onLogout={()=>{
+        setUser(null);
+        localStorage.removeItem('nicsan-crm-user');
+      }} />
       {tab === "ops" ? (
         <Shell sidebar={<OpsSidebar page={opsPage} setPage={setOpsPage} />}>
           {opsPage === "upload" && <PageUpload/>}
@@ -7089,7 +7222,9 @@ function NicsanCRMMock() {
 export default function App() {
   return (
     <SettingsProvider>
+      <CacheProvider>
       <NicsanCRMMock />
+      </CacheProvider>
     </SettingsProvider>
   );
 }
