@@ -185,7 +185,7 @@ function generateEmailContent(policyData) {
         }
         
         .highlight { 
-          color: #e74c3c; 
+          color: #d7263d; 
           font-weight: bold; 
         }
         
@@ -299,19 +299,19 @@ function generateEmailContent(policyData) {
           <div class="social-links" style="margin: 15px 0;">
             <a href="https://www.instagram.com/nicsanin?igsh=bzZ2cmFqMHFodzFt&utm_source=qr" 
                target="_blank" 
-               style="display: inline-block; margin: 0 10px; padding: 10px 15px; background-color: #e74c3c; color: #ffffff; text-decoration: none; border-radius: 5px; font-weight: bold;">
+               style="display: inline-block; margin: 0 10px; padding: 10px 15px; background-color: #004e98; color: #ffffff; text-decoration: none; border-radius: 5px; font-weight: bold;">
                 📷 Instagram
              </a>
              
              <a href="https://x.com/nicsanin?s=11" 
                 target="_blank" 
-                style="display: inline-block; margin: 0 10px; padding: 10px 15px; background-color: #e74c3c; color: #ffffff; text-decoration: none; border-radius: 5px; font-weight: bold;">
+                style="display: inline-block; margin: 0 10px; padding: 10px 15px; background-color: #004e98; color: #ffffff; text-decoration: none; border-radius: 5px; font-weight: bold;">
                 🐦 X (Twitter)
              </a>
              
              <a href="https://www.linkedin.com/company/nicsanin/" 
                 target="_blank" 
-                style="display: inline-block; margin: 0 10px; padding: 10px 15px; background-color: #e74c3c; color: #ffffff; text-decoration: none; border-radius: 5px; font-weight: bold;">
+                style="display: inline-block; margin: 0 10px; padding: 10px 15px; background-color: #004e98; color: #ffffff; text-decoration: none; border-radius: 5px; font-weight: bold;">
                 💼 LinkedIn
              </a>
           </div>
@@ -333,7 +333,7 @@ function generateEmailContent(policyData) {
                style="display: block; width: 100%; height: auto;">
         </div>
         
-        <p style="margin-top: 20px; font-size: 14px; opacity: 0.8;">™ 2025 Nicsan Insurance. All rights reserved.</p>
+        <p style="margin-top: 20px; font-size: 10px; color: #000000;">™ 2025 Nicsan Insurance. All rights reserved.</p>
       </body>
       </html>
     `;
