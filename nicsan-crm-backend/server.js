@@ -16,6 +16,8 @@ const corsOptions = {
     const allowedOrigins = [
       'https://app.nicsanin.com',
       'https://staging.nicsanin.com',
+      'http://localhost:3000',
+      'http://localhost:3001',
       process.env.FRONTEND_URL || 'https://app.nicsanin.com'
     ];
     
