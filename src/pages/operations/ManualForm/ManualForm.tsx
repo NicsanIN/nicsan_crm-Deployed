@@ -554,45 +554,7 @@ function PageManualForm() {
       return errors;
     };
   
-    // Get field-specific errors for progressive validation
-    // const __getFieldErrors = (fieldName: string) => {
-    //   if (validationMode === 'progressive' && !fieldTouched[fieldName]) {
-    //     return [];
-    //   }
-    //   
-    //   // For policy number, return async errors
-    //   if (fieldName === 'policyNumber') {
-    //     return asyncErrors[fieldName] || [];
-    //   }
-    //   
-    //   // For other fields, return synchronous validation
-    //   return validateField(fieldName, form[fieldName]);
-    // };
-  
-    // Smart suggestions based on patterns
-    // const __getSmartSuggestions = (fieldName: string) => {
-    //   const suggestions: string[] = [];
-    //   
-    //   switch (fieldName) {
-    //     case 'make':
-    //       suggestions.push('Maruti', 'Hyundai', 'Honda', 'Tata', 'Mahindra', 'Toyota', 'Ford', 'Nissan');
-    //       break;
-    //     case 'model':
-    //       if (form.make === 'Maruti') {
-    //         suggestions.push('Swift', 'Dzire', 'Alto', 'WagonR', 'Baleno', 'Ertiga');
-    //       } else if (form.make === 'Hyundai') {
-    //         suggestions.push('i20', 'i10', 'Verna', 'Creta', 'Venue', 'Santro');
-    //       }
-    //       break;
-    //     case 'insurer':
-    //       suggestions.push('Tata AIG', 'ICICI Lombard', 'Bajaj Allianz', 'HDFC Ergo', 'Reliance General', 'Oriental Insurance');
-    //       break;
-    //     case 'callerName':
-    //       return callerNames; // Real caller names from database
-    //   }
-    //   
-    //   return suggestions;
-    // };
+    
   
     // Filtered caller suggestions for autocomplete
     const getFilteredCallerSuggestions = async (input: string): Promise<string[]> => {
