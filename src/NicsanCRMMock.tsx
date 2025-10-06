@@ -7,6 +7,7 @@ import DualStorageService from './services/dualStorageService';
 import CrossDeviceSyncDemo from './components/CrossDeviceSyncDemo';
 import { SettingsProvider, useSettings } from './contexts/SettingsContext';
 
+
 // Environment variables
 const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
 const ENABLE_MOCK_DATA = import.meta.env.VITE_ENABLE_MOCK_DATA === 'true';
@@ -5068,9 +5069,9 @@ const demoSources = [
   { name: "CSV_IMPORT", policies: 200, gwp: 2050000 },
 ]
 const demoReps = [
-  { name: "Priya Singh", leads: 120, converted: 22, gwp: 260000, brokerage: 39000, cashback: 10000, net: 29000, cac: Math.round(1800 / 22) },
-  { name: "Rahul Kumar", leads: 110, converted: 18, gwp: 210000, brokerage: 31500, cashback: 9000, net: 22500, cac: Math.round(1800 / 18) },
-  { name: "Anjali Sharma", leads: 90, converted: 20, gwp: 240000, brokerage: 36000, cashback: 8000, net: 28000, cac: Math.round(1800 / 20) },
+  { name: "Priya Singh", leads: 120, converted: 22, gwp: 260000, brokerage: 39000, cashback: 10000, net: 29000, total_od: 450000, cac: Math.round(1800 / 22) },
+  { name: "Rahul Kumar", leads: 110, converted: 18, gwp: 210000, brokerage: 31500, cashback: 9000, net: 22500, total_od: 380000, cac: Math.round(1800 / 18) },
+  { name: "Anjali Sharma", leads: 90, converted: 20, gwp: 240000, brokerage: 36000, cashback: 8000, net: 28000, total_od: 420000, cac: Math.round(1800 / 20) },
 ]
 const demoPolicies = [
   { rep: 'Priya Singh', make: 'Maruti', model: 'Swift', policies: 12, gwp: 130000, cashbackPctAvg: 2.4, cashback: 3100, net: 16900 },
@@ -5385,6 +5386,10 @@ function PageLeaderboard() {
           aValue = a.net_revenue || a.net || 0;
           bValue = b.net_revenue || b.net || 0;
           break;
+        case 'totalOd':
+          aValue = a.total_od || 0;
+          bValue = b.total_od || 0;
+          break;
         default:
           return 0;
       }
@@ -5400,8 +5405,6 @@ function PageLeaderboard() {
         const response = await DualStorageService.getSalesReps();
         
         if (response.success) {
-          if (ENABLE_DEBUG) {
-          }
           setReps(Array.isArray(response.data) ? response.data : []);
           setDataSource(response.source);
         }
@@ -5468,6 +5471,12 @@ function PageLeaderboard() {
               >
                 Net {sortField === 'net' && (sortDirection === 'asc' ? '↑' : '↓')}
               </th>
+              <th 
+                className="cursor-pointer hover:bg-zinc-100 px-2 py-1 rounded transition-colors"
+                onClick={() => handleSort('totalOd')}
+              >
+                Total OD {sortField === 'totalOd' && (sortDirection === 'asc' ? '↑' : '↓')}
+              </th>
               <th>Lead→Sale %</th>
               <th>CAC/Policy</th>
             </tr>
@@ -5482,6 +5491,7 @@ function PageLeaderboard() {
                 <td>₹{((r.brokerage || 0)/1000).toFixed(1)}k</td>
                 <td>₹{((r.cashback || 0)/1000).toFixed(1)}k</td>
                 <td>₹{((r.net_revenue || r.net || 0)/1000).toFixed(1)}k</td>
+                <td>₹{((r.total_od || 0)/1000).toFixed(1)}k</td>
                 <td>{(((r.converted || 0)/((r.leads_assigned || r.leads) || 1))*100).toFixed(1)}%</td>
                 <td>₹{(r.cac || 0).toFixed(0)}</td>
               </tr>

@@ -881,6 +881,7 @@ async savePolicy(policyData) {
       const policyData = {
         ...formData,
         caller_name: formData.caller_name || formData.callerName || '', // Map callerName to caller_name
+        total_od: formData.totalOd || formData.total_od || 0, // Map totalOd to total_od
         source: 'MANUAL_FORM',
         confidence_score: 99.99 // Manual entry = 99.99% confidence (max for DECIMAL(4,2))
       };
@@ -906,6 +907,7 @@ async savePolicy(policyData) {
             const policyData = {
               ...entry,
               caller_name: entry.caller_name || entry.callerName || '', // Map callerName to caller_name
+              total_od: entry.totalOd || entry.total_od || 0, // Map totalOd to total_od
               source: 'MANUAL_GRID',
               confidence_score: 99.99 // Manual entry = 99.99% confidence (max for DECIMAL(4,2))
             };
@@ -1243,6 +1245,7 @@ async savePolicy(policyData) {
         SUM(brokerage) as brokerage,
         SUM(cashback_amount) as cashback,
         SUM(brokerage - cashback_amount) as net_revenue,
+        SUM(total_od) as total_od,
         AVG(cashback_percentage) as avg_cashback_pct
       FROM policies 
       GROUP BY COALESCE(caller_name, 'Unknown')

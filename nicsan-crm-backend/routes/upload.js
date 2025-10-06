@@ -220,6 +220,7 @@ router.post('/:uploadId/confirm', authenticateToken, requireOps, async (req, res
         customer_cheque_no: editedData.manualExtras.customerChequeNo || editedData.manualExtras.customer_cheque_no || '', // Map customerChequeNo to customer_cheque_no
         our_cheque_no: editedData.manualExtras.ourChequeNo || editedData.manualExtras.our_cheque_no || '', // Map ourChequeNo to our_cheque_no
         customer_paid: editedData.manualExtras.customerPaid || editedData.manualExtras.customer_paid || '', // Map customerPaid to customer_paid
+        total_od: editedData.manualExtras.totalOd || editedData.manualExtras.total_od || editedData.pdfData?.total_od || 0, // Map totalOd to total_od
         
         // ✅ ADD: Cashback calculations
         cashback_percentage: (editedData.manualExtras?.cashback && editedData.pdfData?.total_premium) ? 
@@ -247,6 +248,7 @@ router.post('/:uploadId/confirm', authenticateToken, requireOps, async (req, res
         ...upload.extracted_data.extracted_data,
         ...upload.extracted_data.manual_extras,
         caller_name: upload.extracted_data.manual_extras?.caller_name || upload.extracted_data.manual_extras?.callerName || '', // Map callerName to caller_name
+        total_od: upload.extracted_data.manual_extras?.totalOd || upload.extracted_data.manual_extras?.total_od || upload.extracted_data.extracted_data?.total_od || 0, // Map totalOd to total_od
         
         // ✅ ADD: Cashback calculations for fallback case
         cashback_percentage: (upload.extracted_data.manual_extras?.cashback && upload.extracted_data.extracted_data?.total_premium) ? 
