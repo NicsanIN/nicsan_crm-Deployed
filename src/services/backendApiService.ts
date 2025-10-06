@@ -161,6 +161,53 @@ class BackendApiService {
     }
   }
 
+  // Update telecaller status
+  async updateTelecallerStatus(id: number, name: string, isActive: boolean): Promise<BackendApiResult> {
+    try {
+      if (ENABLE_DEBUG) {
+        console.log('🔄 BackendApiService: Updating telecaller status...', { id, name, isActive });
+      }
+
+      const authToken = localStorage.getItem('authToken');
+      if (!authToken) {
+        throw new Error('No authentication token found. Please log in again.');
+      }
+
+      const response = await fetch(`${API_BASE_URL}/telecallers/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          name: name,
+          is_active: isActive 
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      
+      if (ENABLE_DEBUG) {
+        console.log('✅ BackendApiService: Telecaller status updated successfully');
+      }
+
+      return {
+        success: true,
+        data: result.data,
+        source: 'BACKEND_API'
+      };
+    } catch (error) {
+      if (ENABLE_DEBUG) {
+        console.error('❌ BackendApiService: Update telecaller status failed:', error);
+      }
+      throw error;
+    }
+  }
+
   // Sales Reps from backend
   async getSalesReps(): Promise<BackendApiResult> {
     try {

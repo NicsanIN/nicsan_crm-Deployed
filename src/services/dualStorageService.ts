@@ -174,6 +174,19 @@ class DualStorageService {
     );
   }
 
+  // Update telecaller status
+  async updateTelecallerStatus(id: number, name: string, isActive: boolean): Promise<DualStorageResult> {
+    if (ENABLE_DEBUG) {
+      console.log('🔄 DualStorageService: Updating telecaller status...', { id, name, isActive });
+    }
+    
+    return this.executeDualStoragePattern(
+      () => this.backendApiService.updateTelecallerStatus(id, name, isActive),
+      null,
+      'Update Telecaller Status'
+    );
+  }
+
   // Sales Reps with dual storage
   async getSalesReps(): Promise<DualStorageResult> {
     const mockData = [

@@ -106,22 +106,11 @@ function PageFounderSettings() {
       setIsLoadingTelecallers(true);
       setTelecallerError(null);
       try {
-        const response = await fetch('http://localhost:3001/api/telecallers/all', {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-            'Content-Type': 'application/json'
-          }
-        });
-        
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-        
-        const data = await response.json();
-        if (data.success) {
-          setTelecallers(data.data);
+        const result = await DualStorageService.getTelecallers();
+        if (result.success) {
+          setTelecallers(result.data);
         } else {
-          setTelecallerError(data.error || 'Failed to load telecallers');
+          setTelecallerError(result.error || 'Failed to load telecallers');
         }
       } catch (error: any) {
         setTelecallerError(error.message || 'Failed to load telecallers');
@@ -133,30 +122,14 @@ function PageFounderSettings() {
     // Toggle telecaller status
     const toggleTelecallerStatus = async (id: number, currentStatus: boolean, name: string) => {
       try {
-        const response = await fetch(`http://localhost:3001/api/telecallers/${id}`, {
-          method: 'PUT',
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ 
-            name: name,
-            is_active: !currentStatus 
-          })
-        });
-        
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-        
-        const data = await response.json();
-        if (data.success) {
+        const result = await DualStorageService.updateTelecallerStatus(id, name, !currentStatus);
+        if (result.success) {
           setTelecallerSuccess(`Telecaller ${!currentStatus ? 'activated' : 'deactivated'} successfully`);
           loadTelecallers(); // Refresh list
           // Clear success message after 3 seconds
           setTimeout(() => setTelecallerSuccess(null), 3000);
         } else {
-          setTelecallerError(data.error || 'Failed to update telecaller');
+          setTelecallerError(result.error || 'Failed to update telecaller');
         }
       } catch (error: any) {
         setTelecallerError(error.message || 'Failed to update telecaller');
