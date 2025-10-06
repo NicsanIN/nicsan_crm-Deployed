@@ -149,7 +149,7 @@ server.listen(PORT, () => {
   console.log('🚀 Nicsan CRM Backend running on port ' + PORT);
   console.log('🏥 Health check: /health');
   console.log('🔗 API base: /api');
-  console.log('🔌 WebSocket server: ws://' + (process.env.HOST || 'localhost') + ':' + PORT);
+  console.log('🔌 WebSocket server: ws://' + (process.env.HOST || '0.0.0.0') + ':' + PORT);
   console.log('🌐 CORS enabled for: https://app.nicsanin.com, https://staging.nicsanin.com');
 });
 
