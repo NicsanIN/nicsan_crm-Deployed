@@ -1,23 +1,44 @@
 import React, { useMemo, useState, useRef, useEffect } from "react";
-import { Upload, FileText, CheckCircle2, AlertTriangle, Table2, Settings, LayoutDashboard, Users, BarChart3, BadgeInfo, Filter, LogOut, Car, SlidersHorizontal, TrendingUp, RefreshCw, CreditCard } from "lucide-react";
+import { Upload, FileText, CheckCircle2, AlertTriangle, Table2, Settings, LayoutDashboard, Users, BarChart3, BadgeInfo, Filter, Lock, LogOut, Car, SlidersHorizontal, TrendingUp, RefreshCw, CreditCard, Download } from "lucide-react";
 import { ResponsiveContainer, CartesianGrid, BarChart, Bar, Legend, Area, AreaChart, XAxis, YAxis, Tooltip } from "recharts";
 import { authUtils } from './services/api';
 import { policiesAPI } from './services/api';
 import DualStorageService from './services/dualStorageService';
 import CrossDeviceSyncDemo from './components/CrossDeviceSyncDemo';
+import PageExplorer from './pages/founders/SalesExplorer/PageExplorer';
+import PageLeaderboard from './pages/founders/RepLeaderboard/PageLeaderboard';
+import PageSources from './pages/founders/DataSource/DataSource';
+import PagePayments from './pages/founders/Payments/Payments';
+import PageOverview from './pages/founders/CompanyOverview/CompanyOverview';
+import PageFounderSettings from './pages/founders/Settings/Settings';
+import PageKPIs from './pages/founders/KPIDashboard/KPIDashboard';
+import PageTests from './pages/founders/DevTest/DevTest';
+import PageReview from './pages/operations/ReviewConfirm/ReviewConfirm';
+import PageManualGrid from './pages/operations/GridEntry/GridEntry';
+import PagePolicyDetail from './pages/operations/PolicyDetail/PolicyDetail';
+import PageManualForm from './pages/operations/ManualForm/ManualForm';
+import PageUpload from './pages/operations/PDFUpload/PDFUpload';
 import { SettingsProvider, useSettings } from './contexts/SettingsContext';
 import HorizontalLogo from './assets/images/HorizontalLogo.svg';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+
+// Extend jsPDF type to include autoTable
+declare module 'jspdf' {
+  interface jsPDF {
+    autoTable: (options: any) => jsPDF;
+  }
+}
 
 // Environment variables
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
-// const ENABLE_MOCK_DATA = import.meta.env.VITE_ENABLE_MOCK_DATA === 'true';
+const ENABLE_MOCK_DATA = import.meta.env.VITE_ENABLE_MOCK_DATA === 'true';
 
 // --- Nicsan CRM v1 UI/UX Mock (updated) ---
 // Adds: Password-protected login, optimized Manual Form, Founder filters, KPI dashboard (your new metrics)
 // Now: Manual Form includes ALL requested columns; PDF flow includes a small manual entry panel.
 // Tailwind CSS assumed. Static demo state only.
-
 // ---------- AUTH ----------
 function LoginPage({ onLogin }: { onLogin: (user: { name: string; email: string; role: "ops" | "founder" }) => void }) {
   const [email, setEmail] = useState("");
@@ -225,6 +246,7 @@ function OpsSidebar({ page, setPage }: { page: string; setPage: (p: string) => v
   )
 }
 
+<<<<<<< HEAD
 function PageUpload() {
   const [uploadStatus, setUploadStatus] = useState<string>('');
   const [uploadedFiles, setUploadedFiles] = useState<any[]>([]);
@@ -939,6 +961,9 @@ function PageUpload() {
     </>
   )
 }
+=======
+
+>>>>>>> a2f93eb96d62921769c341f47ef436706c4eadfe
 
 function LabeledInput({ label, placeholder, hint, required, value, onChange, error, suggestions, type = "text" }: { 
   label: string; 
@@ -978,6 +1003,7 @@ function LabeledInput({ label, placeholder, hint, required, value, onChange, err
   )
 }
 
+<<<<<<< HEAD
 
 function LabeledSelect({ label, value, onChange, options, required, error }: { 
   label: string; 
@@ -1016,6 +1042,9 @@ function LabeledSelect({ label, value, onChange, options, required, error }: {
 
 // AutocompleteInput component for telecaller name functionality
 function AutocompleteInput({ 
+=======
+export function AutocompleteInput({ 
+>>>>>>> a2f93eb96d62921769c341f47ef436706c4eadfe
   label, 
   placeholder, 
   value, 
@@ -1047,6 +1076,7 @@ function AutocompleteInput({
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
+<<<<<<< HEAD
   // Debounced search function
   const debouncedGetSuggestions = useMemo(() => {
     let timeoutId: ReturnType<typeof setTimeout>;
@@ -1062,6 +1092,32 @@ function AutocompleteInput({
             setShowAddNewOption(newSuggestions.length === 0 && showAddNew);
           } catch (error) {
             console.warn('Failed to get suggestions:', error);
+=======
+  // Debounced suggestions loading
+  const debouncedGetSuggestions = useMemo(
+    () => {
+      let timeoutId: NodeJS.Timeout;
+      return (input: string) => {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(async () => {
+          if (input.length >= 2 && getSuggestions) {
+            setIsLoading(true);
+            try {
+              const newSuggestions = await getSuggestions(input);
+              setSuggestions(newSuggestions);
+              setShowSuggestions(true);
+              
+              // Show "Add New" option if no suggestions found
+              setShowAddNewOption(newSuggestions.length === 0 && showAddNew);
+            } catch (error) {
+              console.warn('Failed to get suggestions:', error);
+              setSuggestions([]);
+              setShowAddNewOption(showAddNew);
+            } finally {
+              setIsLoading(false);
+            }
+          } else {
+>>>>>>> a2f93eb96d62921769c341f47ef436706c4eadfe
             setSuggestions([]);
             setShowAddNewOption(showAddNew);
           } finally {
@@ -1170,6 +1226,7 @@ function AutocompleteInput({
 }
 
 
+<<<<<<< HEAD
 // Optimized manual form with QuickFill and two-way cashback calc
 function PageManualForm() {
   const [form, setForm] = useState<any>({
@@ -5095,6 +5152,9 @@ function PagePolicyDetail() {
   )
 }
 
+=======
+// Optimized manual form with QuickFill and two-way cashback cal
+>>>>>>> a2f93eb96d62921769c341f47ef436706c4eadfe
 // ---------- FOUNDER ----------
 function FounderSidebar({ page, setPage }: { page: string; setPage: (p: string) => void }) {
   const items = [
@@ -5128,9 +5188,9 @@ const demoSources = [
   { name: "CSV_IMPORT", policies: 200, gwp: 2050000 },
 ]
 const demoReps = [
-  { name: "Priya Singh", leads: 120, converted: 22, gwp: 260000, brokerage: 39000, cashback: 10000, net: 29000, cac: Math.round(1800 / 22) },
-  { name: "Rahul Kumar", leads: 110, converted: 18, gwp: 210000, brokerage: 31500, cashback: 9000, net: 22500, cac: Math.round(1800 / 18) },
-  { name: "Anjali Sharma", leads: 90, converted: 20, gwp: 240000, brokerage: 36000, cashback: 8000, net: 28000, cac: Math.round(1800 / 20) },
+  { name: "Priya Singh", leads: 120, converted: 22, gwp: 260000, brokerage: 39000, cashback: 10000, net: 29000, total_od: 450000, cac: Math.round(1800 / 22) },
+  { name: "Rahul Kumar", leads: 110, converted: 18, gwp: 210000, brokerage: 31500, cashback: 9000, net: 22500, total_od: 380000, cac: Math.round(1800 / 18) },
+  { name: "Anjali Sharma", leads: 90, converted: 20, gwp: 240000, brokerage: 36000, cashback: 8000, net: 28000, total_od: 420000, cac: Math.round(1800 / 20) },
 ]
 const demoPolicies = [
   { rep: 'Priya Singh', make: 'Maruti', model: 'Swift', policies: 12, gwp: 130000, cashbackPctAvg: 2.4, cashback: 3100, net: 16900 },
@@ -5142,6 +5202,7 @@ const demoPolicies = [
 // ---- KPI helpers ----
 const fmtINR = (n:number|string)=> typeof n === 'string' ? n : `₹${Math.round(n).toLocaleString('en-IN')}`;
 const pct = (n:number|string)=> typeof n === 'string' ? n : `${(n).toFixed(1)}%`;
+<<<<<<< HEAD
 
 // Total OD Breakdown Component
 function TotalODBreakdown() {
@@ -7018,6 +7079,8 @@ function PageTests() {
   );
 }
 
+=======
+>>>>>>> a2f93eb96d62921769c341f47ef436706c4eadfe
 function NicsanCRMMock() {
   const [user, setUser] = useState<{name:string; email?:string; role:"ops"|"founder"}|null>(null);
   const [tab, setTab] = useState<"ops"|"founder">("ops");

@@ -189,6 +189,7 @@ class BackendApiService {
         brokerage: rep.brokerage,
         cashback: rep.cashback,
         net_revenue: rep.net_revenue,
+        total_od: rep.total_od,        // Map total_od → total_od
         cac: Math.round(1800 / rep.policies) // Calculate CAC
       }));
 
