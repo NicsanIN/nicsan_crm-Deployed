@@ -1,11 +1,8 @@
 
 import { useState, useEffect } from 'react';
 import { Card } from '../../../components/common/Card';
-import { Download, Filter, CheckCircle2, Clock, AlertTriangle, Eye, EyeOff, RefreshCw } from 'lucide-react';
+// import { Download, Filter, CheckCircle2, Clock, AlertTriangle, Eye, EyeOff, RefreshCw } from 'lucide-react';
 import DualStorageService from '../../../services/dualStorageService';
-
-// Environment variables
-const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
 
 // Tile component for displaying metrics
 function Tile({ label, value, sub, info, onClick }: { label: string; value: string; sub?: string; info?: string; onClick?: () => void }) {
@@ -23,28 +20,28 @@ function Tile({ label, value, sub, info, onClick }: { label: string; value: stri
 }
 
 // Mock data for demo purposes
-const demoPayments = [
-  {
-    id: '1',
-    executive: 'John Doe',
-    month: '01',
-    year: '2024',
-    totalAmount: 150000,
-    received: false,
-    receivedDate: null,
-    notes: 'Monthly commission payment'
-  },
-  {
-    id: '2', 
-    executive: 'Jane Smith',
-    month: '01',
-    year: '2024',
-    totalAmount: 120000,
-    received: true,
-    receivedDate: '2024-01-15',
-    notes: 'Monthly commission payment'
-  }
-];
+// const demoPayments = [
+//   {
+//     id: '1',
+//     executive: 'John Doe',
+//     month: '01',
+//     year: '2024',
+//     totalAmount: 150000,
+//     received: false,
+//     receivedDate: null,
+//     notes: 'Monthly commission payment'
+//   },
+//   {
+//     id: '2', 
+//     executive: 'Jane Smith',
+//     month: '01',
+//     year: '2024',
+//     totalAmount: 120000,
+//     received: true,
+//     receivedDate: '2024-01-15',
+//     notes: 'Monthly commission payment'
+//   }
+// ];
 
 function PagePayments() {
     const [payments, setPayments] = useState<any[]>([]);

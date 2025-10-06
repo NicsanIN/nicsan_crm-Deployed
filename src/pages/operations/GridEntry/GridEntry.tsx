@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Card } from '../../../components/common/Card';
-import { Plus, Save, Trash2, RefreshCw, CheckCircle2, AlertTriangle, Clock, Eye, Edit3 } from 'lucide-react';
+// import { Plus, Save, Trash2, RefreshCw, CheckCircle2, AlertTriangle, Clock, Eye, Edit3 } from 'lucide-react';
 import DualStorageService from '../../../services/dualStorageService';
 
 // Environment variables
-const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
+// const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
 
 function PageManualGrid() {
     const [rows, setRows] = useState<any[]>([]);

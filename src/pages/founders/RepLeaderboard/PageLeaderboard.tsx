@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Card } from '../../../components/common/Card';
 import { Download, Filter } from 'lucide-react';
 import DualStorageService from '../../../services/dualStorageService';

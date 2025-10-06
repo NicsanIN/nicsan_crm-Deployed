@@ -1,34 +1,26 @@
 import React, { useMemo, useState, useRef, useEffect, createContext, useContext } from "react";
-import { Upload, FileText, CheckCircle2, AlertTriangle, Table2, Settings, LayoutDashboard, Users, BarChart3, BadgeInfo, Filter, Lock, LogOut, Car, SlidersHorizontal, TrendingUp, RefreshCw, CreditCard, Download } from "lucide-react";
+import { Upload, FileText, CheckCircle2, AlertTriangle, Table2, Settings, LayoutDashboard, Users, BarChart3, BadgeInfo, Filter, LogOut, Car, SlidersHorizontal, TrendingUp, RefreshCw, CreditCard } from "lucide-react";
 import { ResponsiveContainer, CartesianGrid, BarChart, Bar, Legend, Area, AreaChart, XAxis, YAxis, Tooltip } from "recharts";
 import { authUtils } from './services/api';
 import { policiesAPI } from './services/api';
 import DualStorageService from './services/dualStorageService';
 import CrossDeviceSyncDemo from './components/CrossDeviceSyncDemo';
-import PageExplorer from './pages/founders/SalesExplorer/PageExplorer';
-import PageLeaderboard from './pages/founders/RepLeaderboard/PageLeaderboard';
-import PageSources from './pages/founders/DataSource/DataSource';
-import PagePayments from './pages/founders/Payments/Payments';
-import PageOverview from './pages/founders/CompanyOverview/CompanyOverview';
-import PageFounderSettings from './pages/founders/Settings/Settings';
-import PageKPIs from './pages/founders/KPIDashboard/KPIDashboard';
-import PageTests from './pages/founders/DevTest/DevTest';
-import PageReview from './pages/operations/ReviewConfirm/ReviewConfirm';
-import PageManualGrid from './pages/operations/GridEntry/GridEntry';
-import PagePolicyDetail from './pages/operations/PolicyDetail/PolicyDetail';
-import PageManualForm from './pages/operations/ManualForm/ManualForm';
-import PageUpload from './pages/operations/PDFUpload/PDFUpload';
+// Page components are imported but not used in this mock file
+// import SalesExplorerPage from './pages/founders/SalesExplorer/PageExplorer';
+// import RepLeaderboardPage from './pages/founders/RepLeaderboard/PageLeaderboard';
+// import DataSourcePage from './pages/founders/DataSource/DataSource';
+// import PaymentsPage from './pages/founders/Payments/Payments';
+// import CompanyOverviewPage from './pages/founders/CompanyOverview/CompanyOverview';
+// import FounderSettingsPage from './pages/founders/Settings/Settings';
+// import KPIDashboardPage from './pages/founders/KPIDashboard/KPIDashboard';
+// import DevTestPage from './pages/founders/DevTest/DevTest';
+// import ReviewConfirmPage from './pages/operations/ReviewConfirm/ReviewConfirm';
+// import GridEntryPage from './pages/operations/GridEntry/GridEntry';
+// import PolicyDetailPage from './pages/operations/PolicyDetail/PolicyDetail';
+// import ManualFormPage from './pages/operations/ManualForm/ManualForm';
+// import PDFUploadPage from './pages/operations/PDFUpload/PDFUpload';
 import { SettingsProvider, useSettings } from './contexts/SettingsContext';
 import HorizontalLogo from './assets/images/HorizontalLogo.svg';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
-
-// Extend jsPDF type to include autoTable
-declare module 'jspdf' {
-  interface jsPDF {
-    autoTable: (options: any) => jsPDF;
-  }
-}
 
 // Smart Cache Context
 interface CacheEntry {
@@ -100,7 +92,7 @@ function CacheProvider({ children }: { children: React.ReactNode }) {
 // Environment variables
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
-const ENABLE_MOCK_DATA = import.meta.env.VITE_ENABLE_MOCK_DATA === 'true';
+// const ENABLE_MOCK_DATA = import.meta.env.VITE_ENABLE_MOCK_DATA === 'true';
 
 // --- Nicsan CRM v1 UI/UX Mock (updated) ---
 // Adds: Password-protected login, optimized Manual Form, Founder filters, KPI dashboard (your new metrics)

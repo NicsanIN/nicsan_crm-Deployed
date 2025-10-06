@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { Card } from '../../../components/common/Card';
-import { Upload, FileText, CheckCircle2, AlertTriangle, RefreshCw, Download, Eye, Trash2, User, Phone, Mail, Building, DollarSign, Calendar, Clock, Shield, Car, MapPin } from 'lucide-react';
+// import { Upload, FileText, CheckCircle2, AlertTriangle, RefreshCw, Download, Eye, Trash2, User, Phone, Mail, Building, DollarSign, Calendar, Clock, Shield, Car, MapPin } from 'lucide-react';
 import DualStorageService from '../../../services/dualStorageService';
 import { AutocompleteInput } from '../../../NicsanCRMMock';
 
 // Environment variables
-const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
+// const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
 
 
 function PageUpload() {

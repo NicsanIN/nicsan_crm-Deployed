@@ -5,7 +5,7 @@ import DualStorageService from '../../../services/dualStorageService';
 import { AutocompleteInput } from '../../../NicsanCRMMock';
 
 // Environment variables
-const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
+// const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
 
 // LabeledInput component
 function LabeledInput({ label, value, onChange, type = "text", placeholder, hint, required = false }: {
@@ -893,7 +893,6 @@ function PageReview() {
                 label="Caller Name" 
                 value={editableData.manualExtras.callerName || manualExtras.callerName}
                 onChange={(value) => updateManualExtras('callerName', value)}
-                hint="telecaller name"
                 getSuggestions={getFilteredCallerSuggestions}
                 onAddNew={handleAddNewTelecaller}
                 showAddNew={true}

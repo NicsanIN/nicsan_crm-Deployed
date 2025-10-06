@@ -1,11 +1,11 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Card } from '../../../components/common/Card';
-import { Save, RefreshCw, CheckCircle2, AlertTriangle, User, Car, Building, Phone, Mail, MapPin, Calendar, DollarSign, FileText, Shield, Clock, Eye, Edit3, Trash2, Plus, Search, Download } from 'lucide-react';
+import { Car } from 'lucide-react';
 import DualStorageService from '../../../services/dualStorageService';
 import { AutocompleteInput } from '../../../NicsanCRMMock';
 
 // Environment variables
-const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
+// const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
 
 // LabeledInput component
 function LabeledInput({ label, value, onChange, type = "text", placeholder, hint, required = false }: {
