@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Card } from '../../../components/common/Card';
-import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
+import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, BarChart, Bar } from 'recharts';
+import { RefreshCw } from 'lucide-react';
 import DualStorageService from '../../../services/dualStorageService';
 
 // Environment variables
@@ -39,13 +40,151 @@ function Tile({ label, value, sub, info, onClick }: { label: string; value: stri
   );
 }
 
-// TotalODBreakdown component (placeholder)
+// TotalODBreakdown component
 function TotalODBreakdown() {
+  const [breakdownType, setBreakdownType] = useState<'daily' | 'monthly' | 'financial-year'>('daily');
+  const [data, setData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [dataSource, setDataSource] = useState<string>('');
+
+  useEffect(() => {
+    loadBreakdownData();
+  }, [breakdownType]);
+
+  const loadBreakdownData = async () => {
+    setLoading(true);
+    try {
+      let response;
+      if (breakdownType === 'daily') {
+        response = await DualStorageService.getTotalODDaily('30d');
+      } else if (breakdownType === 'monthly') {
+        response = await DualStorageService.getTotalODMonthly('12m');
+      } else {
+        response = await DualStorageService.getTotalODFinancialYear(3);
+      }
+      
+      if (response.success) {
+        setData(response.data);
+        setDataSource(response.source);
+      }
+    } catch (error) {
+      console.error('Failed to load Total OD breakdown:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatCurrency = (amount: number) => {
+    if (amount === null || amount === undefined || isNaN(amount)) {
+      return "₹0.0L";
+    }
+    return `₹${(amount / 100000).toFixed(1)}L`;
+  };
+
+  const formatDate = (dateStr: string) => {
+    if (breakdownType === 'financial-year') {
+      return `FY ${dateStr}`;
+    } else if (breakdownType === 'monthly') {
+      return new Date(dateStr).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
+    } else {
+      return new Date(dateStr).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+    }
+  };
+
+  const getDataKey = () => {
+    switch (breakdownType) {
+      case 'daily': return 'date';
+      case 'monthly': return 'month';
+      case 'financial-year': return 'financial_year';
+      default: return 'date';
+    }
+  };
+
   return (
-    <Card title="Total OD Breakdown" desc="Detailed breakdown of outstanding debt">
-      <div className="text-center text-gray-500 py-8">
-        <p>Total OD Breakdown component will be implemented here</p>
+    <Card title="Total OD Breakdown" desc={`${breakdownType} analysis (Data Source: ${dataSource || 'Loading...'})`}>
+      <div className="mb-4">
+        <div className="flex gap-2">
+          <button 
+            onClick={() => setBreakdownType('daily')}
+            className={`px-3 py-1 rounded text-sm ${breakdownType === 'daily' ? 'bg-blue-500 text-white' : 'bg-gray-200 hover:bg-gray-300'}`}
+          >
+            Daily
+          </button>
+          <button 
+            onClick={() => setBreakdownType('monthly')}
+            className={`px-3 py-1 rounded text-sm ${breakdownType === 'monthly' ? 'bg-blue-500 text-white' : 'bg-gray-200 hover:bg-gray-300'}`}
+          >
+            Monthly
+          </button>
+          <button 
+            onClick={() => setBreakdownType('financial-year')}
+            className={`px-3 py-1 rounded text-sm ${breakdownType === 'financial-year' ? 'bg-blue-500 text-white' : 'bg-gray-200 hover:bg-gray-300'}`}
+          >
+            Financial Year
+          </button>
+        </div>
       </div>
+      
+      {loading ? (
+        <div className="text-center py-8">
+          <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2" />
+          <div>Loading Total OD breakdown...</div>
+        </div>
+      ) : (
+        <div className="h-64">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={data}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+              <XAxis 
+                dataKey={getDataKey()} 
+                tickFormatter={formatDate}
+                angle={-45}
+                textAnchor="end"
+                height={60}
+              />
+              <YAxis tickFormatter={(value) => `₹${(value / 100000).toFixed(1)}L`} />
+              <Tooltip 
+                formatter={(value: number) => [formatCurrency(value), 'Total OD']}
+                labelFormatter={(label) => `Date: ${formatDate(label)}`}
+              />
+              <Bar dataKey="total_od" fill="#8884d8" />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      
+      {data.length > 0 && (
+        <div className="mt-4 text-sm text-gray-600">
+          {/* Daily Breakdown Table */}
+          <div className="mt-6">
+            <div className="font-medium mb-3">Daily Breakdown</div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm border border-gray-200 rounded-lg">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-3 py-2 text-left border-b">Date</th>
+                    <th className="px-3 py-2 text-right border-b">Policies</th>
+                    <th className="px-3 py-2 text-right border-b">Total OD</th>
+                    <th className="px-3 py-2 text-right border-b">Avg OD</th>
+                    <th className="px-3 py-2 text-right border-b">Max OD</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.map((item, index) => (
+                    <tr key={index} className="hover:bg-gray-50">
+                      <td className="px-3 py-2 border-b">{formatDate(item.date || item.month || item.financial_year)}</td>
+                      <td className="px-3 py-2 text-right border-b">{item.policy_count || 0}</td>
+                      <td className="px-3 py-2 text-right border-b">{formatCurrency(item.total_od || 0)}</td>
+                      <td className="px-3 py-2 text-right border-b">{formatCurrency(item.avg_od_per_policy || 0)}</td>
+                      <td className="px-3 py-2 text-right border-b">{formatCurrency(item.max_od || 0)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
     </Card>
   );
 }
