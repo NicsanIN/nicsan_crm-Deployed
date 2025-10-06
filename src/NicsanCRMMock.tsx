@@ -29,16 +29,9 @@ declare module 'jspdf' {
   }
 }
 
-
 // Environment variables
 const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
 const ENABLE_MOCK_DATA = import.meta.env.VITE_ENABLE_MOCK_DATA === 'true';
-
-// --- Nicsan CRM v1 UI/UX Mock (updated) ---
-// Adds: Password-protected login, optimized Manual Form, Founder filters, KPI dashboard (your new metrics)
-// Now: Manual Form includes ALL requested columns; PDF flow includes a small manual entry panel.
-// Tailwind CSS assumed. Static demo state only.
-
 // ---------- AUTH ----------
 function LoginPage({ onLogin }: { onLogin: (user: { name: string; email: string; role: "ops" | "founder" }) => void }) {
   const [email, setEmail] = useState("");
@@ -270,7 +263,7 @@ function LabeledInput({ label, placeholder, hint, required, value, onChange, err
   )
 }
 
-function AutocompleteInput({ 
+export function AutocompleteInput({ 
   label, 
   placeholder, 
   hint, 
@@ -446,15 +439,7 @@ function LabeledSelect({ label, value, onChange, options, required, error }: {
   )
 }
 
-// Optimized manual form with QuickFill and two-way cashback calc
-
-
-
-
-
-
-
-
+// Optimized manual form with QuickFill and two-way cashback cal
 // ---------- FOUNDER ----------
 function FounderSidebar({ page, setPage }: { page: string; setPage: (p: string) => void }) {
   const items = [
@@ -502,27 +487,6 @@ const demoPolicies = [
 // ---- KPI helpers ----
 const fmtINR = (n:number|string)=> typeof n === 'string' ? n : `₹${Math.round(n).toLocaleString('en-IN')}`;
 const pct = (n:number|string)=> typeof n === 'string' ? n : `${(n).toFixed(1)}%`;
-
-// Total OD Breakdown Component
-
-
-
-
-
-
-
-
-
-
-
-
-
-// ---------- KPI DASHBOARD ----------
-
-
-// ---------- DEV/TESTS ----------
-
-
 function NicsanCRMMock() {
   const [user, setUser] = useState<{name:string; email?:string; role:"ops"|"founder"}|null>(null);
   const [tab, setTab] = useState<"ops"|"founder">("ops");

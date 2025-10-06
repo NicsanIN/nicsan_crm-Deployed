@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card } from '../../../components/common/Card';
 import { CheckCircle2, AlertTriangle } from 'lucide-react';
 import DualStorageService from '../../../services/dualStorageService';
+import { AutocompleteInput } from '../../../NicsanCRMMock';
 
 // Environment variables
 const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
@@ -34,114 +35,6 @@ function LabeledInput({ label, value, onChange, type = "text", placeholder, hint
   );
 }
 
-// AutocompleteInput component
-function AutocompleteInput({ label, value, onChange, options, placeholder, hint, required = false, getSuggestions, onAddNew, showAddNew }: {
-  label: string;
-  value: any;
-  onChange: (value: any) => void;
-  options: string[];
-  placeholder?: string;
-  hint?: string;
-  required?: boolean;
-  getSuggestions?: (input: string) => Promise<string[]>;
-  onAddNew?: (telecallerName: string) => Promise<void>;
-  showAddNew?: boolean;
-}) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [filteredOptions, setFilteredOptions] = useState(options);
-  const [suggestions, setSuggestions] = useState<string[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-
-  useEffect(() => {
-    if (value) {
-      setFilteredOptions(options.filter(option => 
-        option.toLowerCase().includes(value.toLowerCase())
-      ));
-      
-      // Get suggestions if getSuggestions function is provided
-      if (getSuggestions) {
-        setIsLoading(true);
-        getSuggestions(value).then(sugs => {
-          setSuggestions(sugs);
-          setIsLoading(false);
-        });
-      }
-    } else {
-      setFilteredOptions(options);
-      setSuggestions([]);
-    }
-  }, [value, options, getSuggestions]);
-
-  return (
-    <div className="space-y-1 relative">
-      <label className="text-sm font-medium text-zinc-700 flex items-center gap-1">
-        {label}
-        {required && <span className="text-red-500">*</span>}
-      </label>
-      <input
-        type="text"
-        value={value || ''}
-        onChange={(e) => {
-          onChange(e.target.value);
-          setIsOpen(true);
-        }}
-        onFocus={() => setIsOpen(true)}
-        onBlur={() => setTimeout(() => setIsOpen(false), 200)}
-        placeholder={placeholder}
-        className="w-full px-3 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-      />
-      {hint && <p className="text-xs text-zinc-500">{hint}</p>}
-      
-      {isOpen && (filteredOptions.length > 0 || suggestions.length > 0 || showAddNew) && (
-        <div className="absolute z-10 w-full mt-1 bg-white border border-zinc-200 rounded-lg shadow-lg max-h-40 overflow-y-auto">
-          {isLoading && (
-            <div className="px-3 py-2 text-sm text-zinc-500">Loading suggestions...</div>
-          )}
-          
-          {!isLoading && filteredOptions.map((option, index) => (
-            <div
-              key={index}
-              className="px-3 py-2 hover:bg-zinc-50 cursor-pointer"
-              onClick={() => {
-                onChange(option);
-                setIsOpen(false);
-              }}
-            >
-              {option}
-            </div>
-          ))}
-          
-          {!isLoading && suggestions.map((suggestion, index) => (
-            <div
-              key={`suggestion-${index}`}
-              className="px-3 py-2 hover:bg-zinc-50 cursor-pointer"
-              onClick={() => {
-                onChange(suggestion);
-                setIsOpen(false);
-              }}
-            >
-              {suggestion}
-            </div>
-          ))}
-          
-          {showAddNew && value && !filteredOptions.includes(value) && !suggestions.includes(value) && (
-            <div
-              className="px-3 py-2 hover:bg-blue-50 cursor-pointer text-blue-600 border-t border-zinc-200"
-              onClick={() => {
-                if (onAddNew) {
-                  onAddNew(value);
-                }
-                setIsOpen(false);
-              }}
-            >
-              + Add "{value}" as new telecaller
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
 
 function PageReview() {
     const [reviewData, setReviewData] = useState<any>(null);
@@ -1000,7 +893,6 @@ function PageReview() {
                 label="Caller Name" 
                 value={editableData.manualExtras.callerName || manualExtras.callerName}
                 onChange={(value) => updateManualExtras('callerName', value)}
-                options={_callerNames}
                 hint="telecaller name"
                 getSuggestions={getFilteredCallerSuggestions}
                 onAddNew={handleAddNewTelecaller}
