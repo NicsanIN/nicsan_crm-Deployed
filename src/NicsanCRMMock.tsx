@@ -1,11 +1,20 @@
 import React, { useMemo, useState, useRef, useEffect } from "react";
-import { Upload, FileText, CheckCircle2, AlertTriangle, Table2, Settings, LayoutDashboard, Users, BarChart3, BadgeInfo, Filter, Lock, LogOut, Car, SlidersHorizontal, TrendingUp, RefreshCw, CreditCard } from "lucide-react";
+import { Upload, FileText, CheckCircle2, AlertTriangle, Table2, Settings, LayoutDashboard, Users, BarChart3, BadgeInfo, Filter, Lock, LogOut, Car, SlidersHorizontal, TrendingUp, RefreshCw, CreditCard, Download } from "lucide-react";
 import { ResponsiveContainer, CartesianGrid, BarChart, Bar, Legend, Area, AreaChart, XAxis, YAxis, Tooltip } from "recharts";
 import { authUtils } from './services/api';
 import { policiesAPI } from './services/api';
 import DualStorageService from './services/dualStorageService';
 import CrossDeviceSyncDemo from './components/CrossDeviceSyncDemo';
 import { SettingsProvider, useSettings } from './contexts/SettingsContext';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+
+// Extend jsPDF type to include autoTable
+declare module 'jspdf' {
+  interface jsPDF {
+    autoTable: (options: any) => jsPDF;
+  }
+}
 
 
 // Environment variables
@@ -354,7 +363,8 @@ function PageUpload() {
           customerChequeNo: '',
           ourChequeNo: '',
           branch: '',
-          paymentMethod: 'Cash'
+          paymentMethod: 'Cash',
+          paymentSubMethod: ''
         });
         setManualExtrasSaved(false);
       } else {
@@ -564,7 +574,7 @@ function PageUpload() {
         setUploadStatus(`❌ Failed to add telecaller: ${result.error}`);
       }
     } catch (error) {
-      setUploadStatus(`❌ Error adding telecaller: ${error.message}`);
+      setUploadStatus(`❌ Error adding telecaller: ${(error as Error).message}`);
     }
   };
 
@@ -1013,7 +1023,7 @@ function AutocompleteInput({
   // Debounced suggestions loading
   const debouncedGetSuggestions = useMemo(
     () => {
-      let timeoutId: number;
+      let timeoutId: NodeJS.Timeout;
       return (input: string) => {
         clearTimeout(timeoutId);
         timeoutId = setTimeout(async () => {
@@ -1670,7 +1680,7 @@ function PageManualForm() {
   const quickFill = async () => {
     if (vehicleSearchResults.length > 0) {
       // Use most recent policy data (already sorted by created_at DESC)
-      const lastPolicy = vehicleSearchResults[0];
+      const lastPolicy = vehicleSearchResults[0] as any;
       
       setForm((f: any) => ({
         ...f,
@@ -2035,7 +2045,7 @@ function PageManualForm() {
             <div className="text-sm font-medium text-green-800 mb-2">
               Found {vehicleSearchResults.length} previous policy(ies) for this vehicle:
             </div>
-            {vehicleSearchResults.slice(0, 3).map((policy, index) => (
+            {vehicleSearchResults.slice(0, 3).map((policy: any, index) => (
               <div key={policy.id} className="text-xs text-green-700 mb-1">
                 {index + 1}. Policy: {policy.policy_number} | 
                 Insurer: {policy.insurer} | 
@@ -3854,17 +3864,17 @@ function PageReview() {
       let errorMessage = 'Failed to save policy. Please try again.';
       
       // Provide more specific error messages
-      if (error.message) {
-        if (error.message.includes('Telecaller')) {
+      if ((error as Error).message) {
+        if ((error as Error).message.includes('Telecaller')) {
           errorMessage = 'Error: Please select a valid telecaller from the list or add a new one.';
-        } else if (error.message.includes('already exists')) {
+        } else if ((error as Error).message.includes('already exists')) {
           errorMessage = 'Error: This policy number already exists. Please use a different policy number.';
-        } else if (error.message.includes('required')) {
+        } else if ((error as Error).message.includes('required')) {
           errorMessage = 'Error: Please fill in all required fields (Policy Number, Vehicle Number, Executive, Mobile).';
-        } else if (error.message.includes('Invalid vehicle number')) {
+        } else if ((error as Error).message.includes('Invalid vehicle number')) {
           errorMessage = 'Error: Please enter a valid vehicle number format (e.g., KA01AB1234).';
         } else {
-          errorMessage = `Error: ${error.message}`;
+          errorMessage = `Error: ${(error as Error).message}`;
         }
       }
       
@@ -4583,7 +4593,7 @@ function PagePolicyDetail() {
   // Debounced search
   const debouncedSearch = useMemo(
     () => {
-      let timeoutId: number;
+      let timeoutId: NodeJS.Timeout;
       return (query: string) => {
         clearTimeout(timeoutId);
         timeoutId = setTimeout(() => handleSearch(query), 300);
@@ -5398,6 +5408,71 @@ function PageLeaderboard() {
     });
   };
 
+  const downloadPDF = () => {
+    try {
+      const doc = new jsPDF();
+      
+      // Header
+      doc.setFontSize(18);
+      doc.text('Rep Leaderboard - Key Metrics', 14, 22);
+      
+      // Date and period
+      doc.setFontSize(10);
+      doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 30);
+      
+      // Prepare data for PDF (4 fields only)
+      const pdfData = getSortedReps().map(rep => [
+        rep.name,
+        rep.leads_assigned || rep.leads || 0,
+        rep.converted || 0,
+        `₹${((rep.total_od || 0)/1000).toFixed(1)}k`
+      ]);
+      
+      // Add table
+      autoTable(doc, {
+        head: [['Telecaller', 'Leads Assigned', 'Converted', 'Total OD']],
+        body: pdfData,
+        startY: 40,
+        columnStyles: {
+          0: { cellWidth: 50 },  // Telecaller
+          1: { cellWidth: 30 },  // Leads Assigned
+          2: { cellWidth: 25 },  // Converted  
+          3: { cellWidth: 45 }    // Total OD - wider to prevent footnotes
+        },
+        styles: { 
+          fontSize: 10,
+          cellPadding: 4,
+          overflow: 'visible'
+        },
+        headStyles: { 
+          fillColor: [71, 85, 105],
+          textColor: [255, 255, 255],
+          fontStyle: 'bold'
+        },
+        alternateRowStyles: {
+          fillColor: [248, 250, 252]
+        }
+      });
+      
+      // Footer
+      const pageCount = (doc as any).internal.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.text(`Page ${i} of ${pageCount}`, 14, doc.internal.pageSize.height - 10);
+        doc.text('Generated by NicsanCRM', doc.internal.pageSize.width - 50, doc.internal.pageSize.height - 10);
+      }
+      
+      // Download
+      const filename = `rep-leaderboard-${new Date().toISOString().split('T')[0]}.pdf`;
+      doc.save(filename);
+      
+    } catch (error) {
+      console.error('PDF Download Error:', error);
+      alert('Failed to generate PDF. Please check console for details.');
+    }
+  };
+
   useEffect(() => {
     const loadSalesReps = async () => {
       try {
@@ -5427,6 +5502,13 @@ function PageLeaderboard() {
           <button className="px-3 py-1 rounded-lg text-sm text-zinc-600">Last 90d</button>
         </div>
         <div className="ml-auto flex items-center gap-2 text-sm">
+          <button 
+            onClick={downloadPDF}
+            className="flex items-center gap-2 px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <Download className="w-4 h-4"/>
+            Download PDF
+          </button>
           <Filter className="w-4 h-4"/> <span>Sort by</span>
           <select className="border rounded-lg px-2 py-1">
             <option>Net</option>
@@ -6015,14 +6097,14 @@ function PagePayments() {
 
   // Calculate summary metrics using filtered data
   const totalAmount = filteredPayments.reduce((sum, payment) => sum + (parseFloat(payment.customer_paid) || 0), 0);
-  const executiveCount = new Set(filteredPayments.map(p => p.executive)).size;
+  // const executiveCount = new Set(filteredPayments.map(p => p.executive)).size;
   const receivedAmount = filteredPayments
     .filter(p => receivedPayments.has(`${p.policy_number}_${p.customer_name}`) || p.payment_received === true)
     .reduce((sum, payment) => sum + (parseFloat(payment.customer_paid) || 0), 0);
   const pendingAmount = totalAmount - receivedAmount;
 
   // Calculate executive summary using filtered data
-  const calculateExecutiveSummary = (payments: any[]) => {
+  const calculateExecutiveSummary = (payments: any[]): any[] => {
     const summary = payments.reduce((acc, payment) => {
       const exec = payment.executive;
       if (!acc[exec]) {
@@ -6222,7 +6304,7 @@ function PagePayments() {
                   </tr>
                 </thead>
                 <tbody>
-                  {executiveSummary.map((exec, index) => (
+                  {executiveSummary.map((exec: any, index) => (
                     <tr key={index} className="border-b hover:bg-gray-50 transition-colors">
                       <td className="py-2 px-2 font-medium text-gray-900">{exec.executive || 'N/A'}</td>
                       <td className="py-2 px-2 font-semibold text-gray-900">{formatCurrency(exec.totalPaid)}</td>
