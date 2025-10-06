@@ -1104,7 +1104,7 @@ function LabeledSelect({ label, value, onChange, options, required, error }: {
 }
 
 // AutocompleteInput component for telecaller name functionality
-export function AutocompleteInput({
+export function AutocompleteInput({ 
   label, 
   placeholder, 
   value, 
@@ -1148,17 +1148,17 @@ export function AutocompleteInput({
             const newSuggestions = await getSuggestions(input);
             setSuggestions(newSuggestions);
             setShowSuggestions(true);
-            setShowAddNewOption(newSuggestions.length === 0 && showAddNew);
-          } catch (error) {
-            console.warn('Failed to get suggestions:', error);
+              setShowAddNewOption(newSuggestions.length === 0 && showAddNew);
+            } catch (error) {
+              console.warn('Failed to get suggestions:', error);
+              setSuggestions([]);
+              setShowAddNewOption(showAddNew);
+            } finally {
+              setIsLoading(false);
+            }
+          } else {
             setSuggestions([]);
             setShowAddNewOption(showAddNew);
-          } finally {
-            setIsLoading(false);
-          }
-        } else {
-          setSuggestions([]);
-          setShowAddNewOption(showAddNew);
         }
       }, 300);
     };
