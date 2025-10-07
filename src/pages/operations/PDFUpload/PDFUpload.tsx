@@ -70,8 +70,16 @@ function LabeledAutocompleteInput({
           type="text"
           value={value || ''}
           onChange={(e) => handleInputChange(e.target.value)}
-          onFocus={() => {
-            if (suggestions.length > 0) setIsOpen(true);
+          onFocus={async () => {
+            if (value.length >= 2) {
+              try {
+                const newSuggestions = await getSuggestions(value);
+                setSuggestions(newSuggestions);
+                setIsOpen(newSuggestions.length > 0);
+              } catch (error) {
+                console.error('Error fetching suggestions on focus:', error);
+              }
+            }
           }}
           onBlur={() => {
             // Delay to allow clicking on suggestions
@@ -429,7 +437,10 @@ function PageUpload() {
       if (input.length < 2) return [];
       
       try {
+        console.log('🔍 Getting caller suggestions for:', input);
         const response = await DualStorageService.getTelecallers();
+        console.log('📞 Telecallers response:', response);
+        
         if (response.success && response.data) {
           const filteredNames = response.data
             .map((telecaller: any) => telecaller.name)
@@ -439,17 +450,22 @@ function PageUpload() {
               name.toLowerCase().includes(input.toLowerCase())
             )
             .slice(0, 5); // Limit to 5 suggestions
+          
+          console.log('✅ Filtered suggestions:', filteredNames);
           return filteredNames;
         }
       } catch (error) {
-        console.warn('Failed to get caller suggestions:', error);
+        console.warn('❌ Failed to get caller suggestions:', error);
       }
       
       // Fallback to mock data with filtering
+      console.log('🔄 Using fallback mock data');
       const mockCallers = ['Priya Singh', 'Rahul Kumar', 'Anjali Sharma'];
-      return mockCallers.filter(name => 
+      const filtered = mockCallers.filter(name => 
         name.toLowerCase().includes(input.toLowerCase())
       );
+      console.log('📝 Mock suggestions:', filtered);
+      return filtered;
     };
   
     // Handle adding new telecaller
