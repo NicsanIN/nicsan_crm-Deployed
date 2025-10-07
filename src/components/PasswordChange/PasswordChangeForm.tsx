@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { Eye, EyeOff, CheckCircle, AlertCircle } from 'lucide-react';
+import { passwordService } from '../../services/passwordService';
+import type { PasswordChangeRequest } from '../../types/passwordTypes';
 
 const PasswordChangeForm: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -47,29 +49,15 @@ const PasswordChangeForm: React.FC = () => {
     setSuccess('');
 
     try {
-      // Get token from localStorage
-      const token = localStorage.getItem('authToken');
-      if (!token) {
-        throw new Error('You must be logged in to change your password');
-      }
+      const passwordData: PasswordChangeRequest = {
+        currentPassword: formData.currentPassword,
+        newPassword: formData.newPassword,
+        confirmPassword: formData.confirmPassword
+      };
 
-      // Make API call directly
-      const response = await fetch('http://localhost:3001/api/password/change-own', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          currentPassword: formData.currentPassword,
-          newPassword: formData.newPassword,
-          confirmPassword: formData.confirmPassword
-        })
-      });
+      const response = await passwordService.changeOwnPassword(passwordData);
 
-      const data = await response.json();
-
-      if (data.success) {
+      if (response.success) {
         setSuccess('Password changed successfully!');
         setFormData({
           currentPassword: '',
@@ -77,7 +65,7 @@ const PasswordChangeForm: React.FC = () => {
           confirmPassword: ''
         });
       } else {
-        setError(data.error || 'Failed to change password');
+        setError(response.error || 'Failed to change password');
       }
     } catch (err: any) {
       setError(err.message || 'Failed to change password');
