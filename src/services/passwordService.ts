@@ -9,7 +9,7 @@ import type {
 export const passwordService = {
   // Operations: Change own password
   changeOwnPassword: async (data: PasswordChangeRequest) => {
-    return apiCall('/api/password/change-own', {
+    return apiCall('/password/change-own', {
       method: 'POST',
       body: JSON.stringify(data)
     });
@@ -17,7 +17,7 @@ export const passwordService = {
 
   // Founders: Change any user's password
   changeAnyPassword: async (data: AdminPasswordChangeRequest) => {
-    return apiCall('/api/password/admin/change-any', {
+    return apiCall('/password/admin/change-any', {
       method: 'POST',
       body: JSON.stringify(data)
     });
@@ -25,13 +25,13 @@ export const passwordService = {
 
   // Get password change history
   getPasswordHistory: async (): Promise<PasswordHistoryItem[]> => {
-    const response = await apiCall<PasswordHistoryItem[]>('/api/password/history');
+    const response = await apiCall<PasswordHistoryItem[]>('/password/history');
     return response.data || [];
   },
 
   // Get all users (for founders)
   getAllUsers: async (): Promise<User[]> => {
-    const response = await apiCall<User[]>('/api/password/users');
+    const response = await apiCall<User[]>('/password/users');
     return response.data || [];
   }
 };

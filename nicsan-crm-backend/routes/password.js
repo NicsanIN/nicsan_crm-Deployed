@@ -163,8 +163,7 @@ router.get('/history', authenticateToken, async (req, res) => {
           pcl.action,
           pcl.timestamp,
           u1.name as changed_by_name,
-          u2.name as target_user_name,
-          pcl.reason
+          u2.name as target_user_name
         FROM password_change_logs pcl
         JOIN users u1 ON pcl.changed_by = u1.id
         JOIN users u2 ON pcl.target_user = u2.id
