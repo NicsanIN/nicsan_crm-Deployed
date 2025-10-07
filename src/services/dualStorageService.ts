@@ -43,6 +43,7 @@ class DualStorageService {
   ): Promise<DualStorageResult> {
     
     if (ENABLE_DEBUG) {
+      console.log(`Starting dual storage operation: ${_operationName}`);
     }
 
     // Step 1: Try Backend API (Primary Storage)
@@ -51,6 +52,7 @@ class DualStorageService {
         const result = await backendMethod();
         
         if (ENABLE_DEBUG) {
+          console.log('Backend API operation successful');
         }
         
         return {

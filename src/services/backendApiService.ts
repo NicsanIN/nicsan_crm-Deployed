@@ -20,6 +20,7 @@ class BackendApiService {
 
   private constructor() {
     if (ENABLE_DEBUG) {
+      console.log('BackendApiService initialized');
     }
   }
 
