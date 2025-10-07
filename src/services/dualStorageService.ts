@@ -174,6 +174,19 @@ class DualStorageService {
     );
   }
 
+  // Update telecaller status
+  async updateTelecallerStatus(id: number, name: string, isActive: boolean): Promise<DualStorageResult> {
+    if (ENABLE_DEBUG) {
+      console.log('🔄 DualStorageService: Updating telecaller status...', { id, name, isActive });
+    }
+    
+    return this.executeDualStoragePattern(
+      () => this.backendApiService.updateTelecallerStatus(id, name, isActive),
+      null,
+      'Update Telecaller Status'
+    );
+  }
+
   // Sales Reps with dual storage
   async getSalesReps(): Promise<DualStorageResult> {
     const mockData = [
@@ -186,6 +199,7 @@ class DualStorageService {
         brokerage: 39000,
         cashback: 10000,
         net_revenue: 29000,
+        total_od: 450000,
         conversion_rate: 0.183,
         cac: 82
       },
@@ -198,6 +212,7 @@ class DualStorageService {
         brokerage: 31500,
         cashback: 9000,
         net_revenue: 22500,
+        total_od: 380000,
         conversion_rate: 0.164,
         cac: 100
       },
@@ -210,6 +225,7 @@ class DualStorageService {
         brokerage: 36000,
         cashback: 8000,
         net_revenue: 28000,
+        total_od: 420000,
         conversion_rate: 0.222,
         cac: 90
       }
