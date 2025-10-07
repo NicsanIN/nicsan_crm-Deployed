@@ -602,6 +602,7 @@ function PageUpload() {
   // Handle adding new telecaller
   const handleAddNewTelecaller = async (name: string) => {
     try {
+      console.log('🔄 Adding new telecaller:', name);
       const response = await DualStorageService.addTelecaller({
         name: name,
         email: '',
@@ -611,7 +612,11 @@ function PageUpload() {
       });
       
       if (response.success) {
-        // Refresh caller names list
+        console.log('✅ Telecaller added successfully');
+        // Add to local state immediately for better UX
+        setCallerNames(prev => [...prev, name]);
+        
+        // Also refresh from backend to ensure consistency
         const updatedCallers = await DualStorageService.getTelecallers();
         if (updatedCallers.success) {
           const names = updatedCallers.data
@@ -619,9 +624,11 @@ function PageUpload() {
             .filter((name: string) => name && name !== 'Unknown');
           setCallerNames(names);
         }
+      } else {
+        console.error('❌ Failed to add telecaller:', response.error);
       }
     } catch (error) {
-      console.error('Failed to add new telecaller:', error);
+      console.error('❌ Failed to add new telecaller:', error);
     }
   };
 
@@ -1134,9 +1141,12 @@ function AutocompleteInput({
           setIsLoading(true);
           try {
             const newSuggestions = await getSuggestions(input);
+            console.log('🔍 AutocompleteInput: Got suggestions:', newSuggestions);
             setSuggestions(newSuggestions);
             setShowSuggestions(true);
-            setShowAddNewOption(newSuggestions.length === 0 && showAddNew);
+            const shouldShowAddNew = newSuggestions.length === 0 && showAddNew;
+            console.log('🔍 AutocompleteInput: Should show add new:', shouldShowAddNew, 'showAddNew:', showAddNew);
+            setShowAddNewOption(shouldShowAddNew);
           } catch (error) {
             console.warn('Failed to get suggestions:', error);
             setSuggestions([]);
@@ -1160,9 +1170,15 @@ function AutocompleteInput({
     setShowAddNewOption(false);
   };
 
-  const handleAddNew = () => {
-    if (onAddNew) {
-      onAddNew(value);
+  const handleAddNew = async () => {
+    if (onAddNew && value.trim()) {
+      try {
+        await onAddNew(value.trim());
+        // Clear the input after successful addition
+        onChange && onChange('');
+      } catch (error) {
+        console.error('Failed to add new telecaller:', error);
+      }
     }
     setShowSuggestions(false);
     setShowAddNewOption(false);
@@ -1770,6 +1786,7 @@ function PageManualForm() {
   // Handle adding new telecaller
   const handleAddNewTelecaller = async (name: string) => {
     try {
+      console.log('🔄 Adding new telecaller:', name);
       const response = await DualStorageService.addTelecaller({
         name: name,
         email: '',
@@ -1779,7 +1796,11 @@ function PageManualForm() {
       });
       
       if (response.success) {
-        // Refresh caller names list
+        console.log('✅ Telecaller added successfully');
+        // Add to local state immediately for better UX
+        setCallerNames(prev => [...prev, name]);
+        
+        // Also refresh from backend to ensure consistency
         const updatedCallers = await DualStorageService.getTelecallers();
         if (updatedCallers.success) {
           const names = updatedCallers.data
@@ -1787,9 +1808,11 @@ function PageManualForm() {
             .filter((name: string) => name && name !== 'Unknown');
           setCallerNames(names);
         }
+      } else {
+        console.error('❌ Failed to add telecaller:', response.error);
       }
     } catch (error) {
-      console.error('Failed to add new telecaller:', error);
+      console.error('❌ Failed to add new telecaller:', error);
     }
   };
 
@@ -3635,6 +3658,7 @@ function PageReview() {
   // Handle adding new telecaller
   const handleAddNewTelecaller = async (name: string) => {
     try {
+      console.log('🔄 Adding new telecaller:', name);
       const response = await DualStorageService.addTelecaller({
         name: name,
         email: '',
@@ -3644,7 +3668,11 @@ function PageReview() {
       });
       
       if (response.success) {
-        // Refresh caller names list
+        console.log('✅ Telecaller added successfully');
+        // Add to local state immediately for better UX
+        setCallerNames(prev => [...prev, name]);
+        
+        // Also refresh from backend to ensure consistency
         const updatedCallers = await DualStorageService.getTelecallers();
         if (updatedCallers.success) {
           const names = updatedCallers.data
@@ -3652,9 +3680,11 @@ function PageReview() {
             .filter((name: string) => name && name !== 'Unknown');
           setCallerNames(names);
         }
+      } else {
+        console.error('❌ Failed to add telecaller:', response.error);
       }
     } catch (error) {
-      console.error('Failed to add new telecaller:', error);
+      console.error('❌ Failed to add new telecaller:', error);
     }
   };
 
