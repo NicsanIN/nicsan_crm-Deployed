@@ -263,6 +263,7 @@ function PageUpload() {
             executive: '',
             opsExecutive: '',
             callerName: '',
+            customerName: '',
             mobile: '',
             customerEmail: '',
             rollover: '',
