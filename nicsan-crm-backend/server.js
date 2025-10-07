@@ -42,6 +42,7 @@ app.use('/api/dashboard', require('./routes/dashboard'));
 app.use('/api/settings', require('./routes/settings'));
 app.use('/api/telecallers', require('./routes/telecallers'));
 app.use('/api/password', require('./routes/password'));
+app.use('/api/users', require('./routes/users'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {

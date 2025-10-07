@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { Settings, Users, Lock, BarChart3 } from 'lucide-react';
+import { Settings, Users, Lock, BarChart3, UserPlus } from 'lucide-react';
 import BusinessSettings from '../../../components/Settings/BusinessSettings';
 import TelecallerManagement from '../../../components/Settings/TelecallerManagement';
 import FoundersPasswordManagement from '../../../components/PasswordChange/FoundersPasswordManagement';
+import UserManagement from '../../../components/Settings/UserManagement';
 
-type SettingsTab = 'business' | 'telecallers' | 'passwords';
+type SettingsTab = 'business' | 'telecallers' | 'passwords' | 'users';
 
 const PageFounderSettings: React.FC = () => {
   const [activeTab, setActiveTab] = useState<SettingsTab>('business');
@@ -24,6 +25,11 @@ const PageFounderSettings: React.FC = () => {
       id: 'passwords' as SettingsTab,
       label: 'Password Management',
       icon: Lock
+    },
+    {
+      id: 'users' as SettingsTab,
+      label: 'User Management',
+      icon: UserPlus
     }
   ];
 
@@ -35,6 +41,8 @@ const PageFounderSettings: React.FC = () => {
         return <TelecallerManagement />;
       case 'passwords':
         return <FoundersPasswordManagement />;
+      case 'users':
+        return <UserManagement />;
       default:
         return <BusinessSettings />;
       }
@@ -52,7 +60,7 @@ const PageFounderSettings: React.FC = () => {
             <p className="text-sm text-gray-600">Manage business settings, users, and system configuration</p>
           </div>
         </div>
-          
+        
         {/* Tab Navigation */}
         <div className="bg-white rounded-lg border-2 border-gray-200 p-1">
           <div className="flex space-x-1">
@@ -61,7 +69,7 @@ const PageFounderSettings: React.FC = () => {
               const isActive = activeTab === tab.id;
               
               return (
-                <button 
+          <button 
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
                   className={`flex-1 flex items-center gap-3 px-4 py-3 rounded-md text-sm font-medium transition-colors ${
@@ -72,17 +80,17 @@ const PageFounderSettings: React.FC = () => {
                 >
                   <Icon className="h-4 w-4" />
                   <span>{tab.label}</span>
-                </button>
+          </button>
               );
             })}
+            </div>
           </div>
-        </div>
-            
+          
         {/* Tab Content */}
         <div className="min-h-[400px]">
           {renderActiveTab()}
-        </div>
-      </div>
+                    </div>
+                  </div>
     );
   };
 
