@@ -1,8 +1,6 @@
-import React, { useMemo, useState, useRef, useEffect } from "react";
-import { Upload, FileText, CheckCircle2, AlertTriangle, Table2, Settings, LayoutDashboard, Users, BarChart3, BadgeInfo, Filter, Lock, LogOut, Car, SlidersHorizontal, TrendingUp, RefreshCw, CreditCard, Download } from "lucide-react";
-import { ResponsiveContainer, CartesianGrid, BarChart, Bar, Legend, Area, AreaChart, XAxis, YAxis, Tooltip } from "recharts";
+import React, { useMemo, useState, useEffect } from "react";
+import { Upload, FileText, CheckCircle2, Table2, Settings, LayoutDashboard, Users, BarChart3, Lock, LogOut, SlidersHorizontal, TrendingUp, RefreshCw, CreditCard } from "lucide-react";
 import { authUtils } from './services/api';
-import { policiesAPI } from './services/api';
 import DualStorageService from './services/dualStorageService';
 import CrossDeviceSyncDemo from './components/CrossDeviceSyncDemo';
 import PageExplorer from './pages/founders/SalesExplorer/PageExplorer';
@@ -18,9 +16,8 @@ import PageManualGrid from './pages/operations/GridEntry/GridEntry';
 import PagePolicyDetail from './pages/operations/PolicyDetail/PolicyDetail';
 import PageManualForm from './pages/operations/ManualForm/ManualForm';
 import PageUpload from './pages/operations/PDFUpload/PDFUpload';
-import { SettingsProvider, useSettings } from './contexts/SettingsContext';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import PageOperationsSettings from './pages/operations/Settings/Settings';
+import { SettingsProvider } from './contexts/SettingsContext';
 
 // Extend jsPDF type to include autoTable
 declare module 'jspdf' {
@@ -172,33 +169,6 @@ function Shell({ sidebar, children }: { sidebar: React.ReactNode; children: Reac
   )
 }
 
-function Card({ title, desc, children, actions }: { title: string; desc?: string; children?: React.ReactNode; actions?: React.ReactNode }) {
-  return (
-    <div className="bg-white rounded-2xl shadow-sm border border-zinc-100 p-4">
-      <div className="flex items-start gap-3 mb-3">
-        <div className="font-semibold text-zinc-900">{title}</div>
-        {desc && (
-          <div className="text-xs text-zinc-500 flex items-center gap-1"><BadgeInfo className="w-4 h-4"/>{desc}</div>
-        )}
-        <div className="ml-auto">{actions}</div>
-      </div>
-      {children}
-    </div>
-  )
-}
-
-function Tile({ label, value, sub, info, onClick }: { label: string; value: string; sub?: string; info?: string; onClick?: () => void }) {
-  return (
-    <div 
-      className={`bg-white rounded-2xl shadow-sm border border-zinc-100 p-4 ${onClick ? 'cursor-pointer hover:shadow-md transition-shadow' : ''}`}
-      onClick={onClick}
-    >
-      <div className="text-xs text-zinc-500 flex items-center gap-1">{label} {info && <span className="text-[10px] text-zinc-400">({info})</span>}</div>
-      <div className="text-2xl font-semibold mt-1">{value}</div>
-      {sub && <div className="text-xs text-emerald-600 mt-1">{sub}</div>}
-    </div>
-  )
-}
 
 // ---------- OPS ----------
 function OpsSidebar({ page, setPage }: { page: string; setPage: (p: string) => void }) {
@@ -227,41 +197,6 @@ function OpsSidebar({ page, setPage }: { page: string; setPage: (p: string) => v
 
 
 
-function LabeledInput({ label, placeholder, hint, required, value, onChange, error, suggestions }: { 
-  label: string; 
-  placeholder?: string; 
-  hint?: string; 
-  required?: boolean; 
-  value?: any; 
-  onChange?: (v:any)=>void;
-  error?: string;
-  suggestions?: string[];
-}) {
-  return (
-    <label className="block">
-      <div className="text-xs text-zinc-600 mb-1">
-        {label} {required && <span className="text-rose-600">*</span>} {hint && <span className="text-[10px] text-zinc-400">({hint})</span>}
-      </div>
-      <input 
-        value={value || ''} 
-        onChange={e=>onChange && onChange(e.target.value)} 
-        className={`w-full rounded-xl border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200 ${
-          error ? 'border-red-300 bg-red-50' : 'border-zinc-300'
-        }`} 
-        placeholder={placeholder} 
-      />
-      {error && (
-        <div className="text-xs text-red-600 mt-1">{error}</div>
-      )}
-      {suggestions && suggestions.length > 0 && (
-        <div className="text-xs text-blue-600 mt-1">
-          Suggestions: {suggestions.slice(0, 3).join(', ')}
-          {suggestions.length > 3 && ` +${suggestions.length - 3} more`}
-        </div>
-      )}
-    </label>
-  )
-}
 
 export function AutocompleteInput({ 
   label, 
@@ -409,35 +344,6 @@ export function AutocompleteInput({
   );
 }
 
-function LabeledSelect({ label, value, onChange, options, required, error }: { 
-  label: string; 
-  value?: any; 
-  onChange?: (v:any)=>void; 
-  options: string[];
-  required?: boolean;
-  error?: string;
-}) {
-  return (
-    <label className="block text-sm">
-      <div className="text-xs text-zinc-600 mb-1">
-        {label} {required && <span className="text-rose-600">*</span>}
-      </div>
-      <select 
-        value={value} 
-        onChange={e=>onChange && onChange(e.target.value)} 
-        className={`w-full rounded-xl border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200 ${
-          error ? 'border-red-300 bg-red-50' : 'border-zinc-300'
-        }`}
-      >
-        <option value="">Select {label}</option>
-        {options.map(o=> <option key={o} value={o}>{o}</option>)}
-      </select>
-      {error && (
-        <div className="text-xs text-red-600 mt-1">{error}</div>
-      )}
-    </label>
-  )
-}
 
 // Optimized manual form with QuickFill and two-way cashback cal
 // ---------- FOUNDER ----------
@@ -464,29 +370,6 @@ function FounderSidebar({ page, setPage }: { page: string; setPage: (p: string) 
   )
 }
 
-const demoTrend = Array.from({length: 14}).map((_,i)=> ({ day: `D-${14-i}`, gwp: 80000 + i*2500 + (i%3?3000:0), net: 65000 + i*2100 }))
-const demoSources = [
-  { name: "PDF_TATA", policies: 62, gwp: 725000 },
-  { name: "PDF_DIGIT", policies: 58, gwp: 690000 },
-  { name: "MANUAL_FORM", policies: 40, gwp: 410000 },
-  { name: "MANUAL_GRID", policies: 60, gwp: 620000 },
-  { name: "CSV_IMPORT", policies: 200, gwp: 2050000 },
-]
-const demoReps = [
-  { name: "Priya Singh", leads: 120, converted: 22, gwp: 260000, brokerage: 39000, cashback: 10000, net: 29000, total_od: 450000, cac: Math.round(1800 / 22) },
-  { name: "Rahul Kumar", leads: 110, converted: 18, gwp: 210000, brokerage: 31500, cashback: 9000, net: 22500, total_od: 380000, cac: Math.round(1800 / 18) },
-  { name: "Anjali Sharma", leads: 90, converted: 20, gwp: 240000, brokerage: 36000, cashback: 8000, net: 28000, total_od: 420000, cac: Math.round(1800 / 20) },
-]
-const demoPolicies = [
-  { rep: 'Priya Singh', make: 'Maruti', model: 'Swift', policies: 12, gwp: 130000, cashbackPctAvg: 2.4, cashback: 3100, net: 16900 },
-  { rep: 'Priya Singh', make: 'Hyundai', model: 'i20', policies: 10, gwp: 130000, cashbackPctAvg: 1.9, cashback: 2500, net: 17500 },
-  { rep: 'Rahul Kumar', make: 'Hyundai', model: 'i20', policies: 9, gwp: 115000, cashbackPctAvg: 1.1, cashback: 1200, net: 17100 },
-  { rep: 'Anjali Sharma', make: 'Maruti', model: 'Baleno', policies: 11, gwp: 125000, cashbackPctAvg: 0.9, cashback: 1100, net: 17800 },
-]
-
-// ---- KPI helpers ----
-const fmtINR = (n:number|string)=> typeof n === 'string' ? n : `₹${Math.round(n).toLocaleString('en-IN')}`;
-const pct = (n:number|string)=> typeof n === 'string' ? n : `${(n).toFixed(1)}%`;
 function NicsanCRMMock() {
   const [user, setUser] = useState<{name:string; email?:string; role:"ops"|"founder"}|null>(null);
   const [tab, setTab] = useState<"ops"|"founder">("ops");
@@ -536,17 +419,8 @@ function NicsanCRMMock() {
           {opsPage === "manual-form" && <PageManualForm/>}
           {opsPage === "manual-grid" && <PageManualGrid/>}
           {opsPage === "policy-detail" && <PagePolicyDetail/>}
+          {opsPage === "settings" && <PageOperationsSettings/>}
           {opsPage === "sync-demo" && <CrossDeviceSyncDemo/>}
-          {opsPage === "settings" && (
-            <Card title="Ops Settings" desc="Keyboard shortcuts + defaults (makes data entry faster)">
-              <ul className="list-disc pl-5 text-sm space-y-1">
-                <li><b>Hotkeys</b>: Ctrl+S (save), Ctrl+Enter (save & next), Alt+E (jump to first error)</li>
-                <li><b>Autofill</b>: Type a vehicle number to fetch last-year data (quick fill)</li>
-                <li><b>Validation</b>: Hard stops on must-have fields; warnings for minor issues</li>
-                <li><b>Dedupe</b>: Same Policy No. blocked; Vehicle+IssueDate warns</li>
-              </ul>
-            </Card>
-          )}
         </Shell>
       ) : (
         <Shell sidebar={<FounderSidebar page={founderPage} setPage={setFounderPage} />}>

@@ -1,8 +1,9 @@
 
 import { useState, useEffect } from 'react';
 import { Card } from '../../../components/common/Card';
-import { Save, RefreshCw, Plus, Search, Trash2, Edit, Check, X, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Lock } from 'lucide-react';
 import DualStorageService from '../../../services/dualStorageService';
+import WorkingPasswordChange from '../../../components/PasswordChange/WorkingPasswordChange';
 
 // Environment variables
 const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
@@ -430,6 +431,21 @@ function PageFounderSettings() {
               No telecallers found matching "{telecallerSearch}"
             </div>
           )}
+        </div>
+
+        {/* Password Management Section */}
+        <div className="mt-8 pt-6 border-t border-gray-200">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-2 bg-purple-100 rounded-lg">
+              <Lock className="h-5 w-5 text-purple-600" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">Password Management</h3>
+              <p className="text-sm text-gray-600">Manage user passwords and view password change history</p>
+            </div>
+          </div>
+          
+          <WorkingPasswordChange />
         </div>
       </Card>
     )

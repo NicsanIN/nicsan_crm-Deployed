@@ -81,7 +81,7 @@ export interface DashboardMetrics {
 }
 
 // Utility function for API calls
-async function apiCall<T>(
+export async function apiCall<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<ApiResponse<T>> {
