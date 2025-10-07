@@ -546,18 +546,6 @@ function PageReview() {
             <div className="text-6xl mb-4">📄</div>
             <div className="text-lg font-medium mb-2">No PDF data to review</div>
             <div className="text-sm">Upload a PDF with manual extras first to see the review screen.</div>
-            <div className="mt-4 p-3 bg-blue-50 rounded-lg text-blue-700 text-sm">
-              💡 <strong>Workflow:</strong> Go to PDF Upload → Fill Manual Extras → Save → Drop PDF → Come back here to Review
-            </div>
-            
-            {/* Debug Info */}
-            <div className="mt-4 p-3 bg-yellow-50 rounded-lg text-yellow-700 text-sm">
-              🔍 <strong>Debug:</strong> availableUploads.length = {availableUploads.length}
-              <br />
-              🔍 <strong>Debug:</strong> reviewData = {reviewData ? 'exists' : 'null'}
-              <br />
-              🔍 <strong>Debug:</strong> Check browser console for detailed logs
-            </div>
             
             {/* Test Button */}
             <div className="mt-4">
@@ -628,27 +616,6 @@ function PageReview() {
     if (!reviewData && availableUploads.length > 0) {
       return (
         <Card title="Review & Confirm" desc="Select an upload to review">
-          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-            <div className="text-sm text-blue-800">
-              💡 <strong>Workflow:</strong> PDF Upload → Manual Extras → Textract Processing → Review & Confirm → Save to Database
-            </div>
-          </div>
-          
-          {/* Debug Info */}
-          <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <div className="text-sm text-yellow-800">
-              🔍 <strong>Debug:</strong> Found {availableUploads.length} upload(s) in localStorage
-              {availableUploads.length > 0 && (
-                <div className="mt-2 text-xs">
-                  {availableUploads.map(upload => (
-                    <div key={upload.id}>
-                      • {upload.filename} - Status: {upload.status} - Insurer: {upload.extracted_data?.insurer || 'N/A'}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
           <div className="mb-6 p-4 bg-zinc-50 rounded-xl">
             <div className="flex items-center justify-between mb-3">
               <div className="text-sm font-medium">📄 Select Upload to Review</div>

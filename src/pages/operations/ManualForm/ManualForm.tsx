@@ -111,22 +111,22 @@ function LabeledAutocompleteInput({
             setTimeout(() => setIsOpen(false), 150);
           }}
           placeholder={placeholder}
-          className="w-full px-3 py-2.5 border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition-colors"
+          className="w-full px-3 py-2.5 border border-zinc-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 transition-colors"
         />
         
         {/* Dropdown Arrow */}
         <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
-          <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-4 h-4 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
           </svg>
         </div>
 
         {/* Suggestions Dropdown */}
         {isOpen && (
-          <div className="absolute z-50 w-full mt-1 bg-white border border-blue-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+          <div className="absolute z-50 w-full mt-1 bg-white border border-zinc-200 rounded-xl shadow-lg max-h-60 overflow-y-auto">
             {isLoading ? (
-              <div className="px-3 py-2 text-sm text-blue-500 flex items-center gap-2">
-                <div className="w-4 h-4 border-2 border-blue-300 border-t-blue-600 rounded-full animate-spin"></div>
+              <div className="px-3 py-2 text-sm text-zinc-500 flex items-center gap-2">
+                <div className="w-4 h-4 border-2 border-zinc-300 border-t-indigo-600 rounded-full animate-spin"></div>
                 Loading suggestions...
               </div>
             ) : (
@@ -799,8 +799,8 @@ function PageManualForm() {
       return errors;
     };
   
-    
   
+    
   
     // Filtered caller suggestions for autocomplete
     const getFilteredCallerSuggestions = async (input: string): Promise<string[]> => {
@@ -857,7 +857,7 @@ function PageManualForm() {
         console.error('Error adding telecaller:', error);
       }
     };
-
+  
     const handleVehicleNumberChange = async (vehicleNumber: string) => {
       set('vehicleNumber', vehicleNumber);
       
@@ -1423,8 +1423,8 @@ function PageManualForm() {
                 showAddNew={true}
                 placeholder="Enter caller name"
               />
-            </div>
-
+          </div>
+  
             {/* Second row - Mobile Number, Rollover/Renewal, Customer Email ID */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <LabeledInput 

@@ -37,7 +37,6 @@ function LabeledAutocompleteInput({
         // Open dropdown only if we have suggestions OR if we want to show "Add new" option (but not both empty)
         setIsOpen(newSuggestions.length > 0 || (showAddNew && inputValue.trim().length > 0 && newSuggestions.length === 0));
       } catch (error) {
-        console.error('Error fetching suggestions:', error);
         setSuggestions([]);
         setIsOpen(false);
       } finally {
@@ -79,7 +78,7 @@ function LabeledAutocompleteInput({
                 // Open dropdown only if we have suggestions OR if we want to show "Add new" option (but not both empty)
                 setIsOpen(newSuggestions.length > 0 || (showAddNew && value.trim().length > 0 && newSuggestions.length === 0));
               } catch (error) {
-                console.error('Error fetching suggestions on focus:', error);
+                // Silent error handling
               }
             }
           }}
@@ -180,19 +179,16 @@ function PageUpload() {
     useEffect(() => {
       const loadTelecallers = async () => {
         try {
-          console.log('🔄 Loading telecallers on component mount...');
           const response = await DualStorageService.getTelecallers();
-          console.log('📞 Telecallers response on mount:', response);
           
           if (response.success && Array.isArray(response.data)) {
             const names = response.data
               .map((telecaller: any) => telecaller.name)
               .filter((name: string) => name && name !== 'Unknown');
-            console.log('✅ Loaded caller names:', names);
             setCallerNames(names);
           }
         } catch (error) {
-          console.error('❌ Failed to load telecallers:', error);
+          console.error('Failed to load telecallers:', error);
         }
       };
       loadTelecallers();
@@ -460,24 +456,17 @@ function PageUpload() {
     const getFilteredCallerSuggestions = async (input: string): Promise<string[]> => {
       if (input.length < 2) return [];
       
-      console.log('🔍 Filtering caller suggestions for:', input);
-      console.log('📞 Current callerNames state:', callerNames);
-      
       // Use the callerNames state that was loaded on component mount
       const filteredNames = callerNames.filter(name => 
         name.toLowerCase().includes(input.toLowerCase())
       );
       
-      console.log('✅ Filtered suggestions from state:', filteredNames);
-      
       // If no suggestions from state, use mock data as fallback
       if (filteredNames.length === 0) {
-        console.log('🔄 No suggestions from state, using fallback mock data');
         const mockCallers = ['Priya Singh', 'Rahul Kumar', 'Anjali Sharma'];
         const filtered = mockCallers.filter(name => 
           name.toLowerCase().includes(input.toLowerCase())
         );
-        console.log('📝 Mock suggestions:', filtered);
         return filtered.slice(0, 5);
       }
 
