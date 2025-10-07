@@ -1,4 +1,3 @@
-import React from 'react';
 import { Settings } from 'lucide-react';
 import WorkingPasswordChange from '../../../components/PasswordChange/WorkingPasswordChange';
 
