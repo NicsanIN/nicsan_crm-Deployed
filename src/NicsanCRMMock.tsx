@@ -18,6 +18,7 @@ import PageManualForm from './pages/operations/ManualForm/ManualForm';
 import PageUpload from './pages/operations/PDFUpload/PDFUpload';
 import PageOperationsSettings from './pages/operations/Settings/Settings';
 import { SettingsProvider } from './contexts/SettingsContext';
+import HorizontalLogo from './assets/images/HorizontalLogo.svg';
 
 // Extend jsPDF type to include autoTable
 declare module 'jspdf' {
@@ -146,7 +147,14 @@ function TopTabs({ tab, setTab, user, onLogout }: { tab: "ops" | "founder"; setT
   return (
     <div className="w-full border-b border-zinc-200 bg-white sticky top-0 z-40">
       <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-3">
-        <div className="text-xl font-semibold">Nicsan CRM v1</div>
+        <div className="flex items-center gap-3">
+          <img 
+            src={HorizontalLogo} 
+            alt="Nicsan CRM" 
+            className="h-[20.3843px] w-auto"
+          />
+          <span className="text-[28px] font-clash font-bold text-zinc-900 leading-[20.3843px] mt-0.5">CRM</span>
+        </div>
         <div className="ml-auto flex items-center gap-3">
           <div className="rounded-xl bg-zinc-100 p-1 flex gap-2">
             <button onClick={() => setTab("ops")} className={`px-4 py-2 rounded-lg text-sm transition-colors ${tab === "ops" ? "bg-white shadow-sm text-zinc-900" : "text-zinc-600 hover:text-zinc-900"}`}>Operations</button>
