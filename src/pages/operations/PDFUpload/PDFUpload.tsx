@@ -34,7 +34,8 @@ function LabeledAutocompleteInput({
       try {
         const newSuggestions = await getSuggestions(inputValue);
         setSuggestions(newSuggestions);
-        setIsOpen(newSuggestions.length > 0);
+        // Open dropdown only if we have suggestions OR if we want to show "Add new" option (but not both empty)
+        setIsOpen(newSuggestions.length > 0 || (showAddNew && inputValue.trim().length > 0 && newSuggestions.length === 0));
       } catch (error) {
         console.error('Error fetching suggestions:', error);
         setSuggestions([]);
@@ -75,7 +76,8 @@ function LabeledAutocompleteInput({
               try {
                 const newSuggestions = await getSuggestions(value);
                 setSuggestions(newSuggestions);
-                setIsOpen(newSuggestions.length > 0);
+                // Open dropdown only if we have suggestions OR if we want to show "Add new" option (but not both empty)
+                setIsOpen(newSuggestions.length > 0 || (showAddNew && value.trim().length > 0 && newSuggestions.length === 0));
               } catch (error) {
                 console.error('Error fetching suggestions on focus:', error);
               }
