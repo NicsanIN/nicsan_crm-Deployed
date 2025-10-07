@@ -16,7 +16,7 @@ const TelecallerManagement: React.FC = () => {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await fetch('http://localhost:3001/api/telecallers/all', {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'https://staging-api.nicsanin.com/api'}/telecallers/all`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
           'Content-Type': 'application/json'
@@ -42,7 +42,7 @@ const TelecallerManagement: React.FC = () => {
 
   const toggleTelecallerStatus = async (id: number, currentStatus: boolean, name: string) => {
     try {
-      const response = await fetch(`http://localhost:3001/api/telecallers/${id}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'https://staging-api.nicsanin.com/api'}/telecallers/${id}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
