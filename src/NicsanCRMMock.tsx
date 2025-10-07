@@ -147,33 +147,18 @@ function TopTabs({ tab, setTab, user, onLogout }: { tab: "ops" | "founder"; setT
     <div className="w-full border-b border-zinc-200 bg-white sticky top-0 z-40">
       <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-3">
         <div className="text-xl font-semibold">Nicsan CRM v1</div>
-        <div className="ml-auto flex items-center gap-2">
-          <div className="rounded-xl bg-zinc-100 p-1 flex gap-1">
-            <button 
-              onClick={() => setTab("ops")} 
-              className={`px-6 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
-                tab === "ops" 
-                  ? "bg-white shadow-md text-zinc-900" 
-                  : "text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50"
-              }`}
-            >
-              Operations
-            </button>
-            <button 
-              onClick={() => !founderDisabled && setTab("founder")} 
-              className={`px-6 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
-                tab === "founder" 
-                  ? "bg-white shadow-md text-zinc-900" 
-                  : founderDisabled 
-                    ? "text-zinc-300 cursor-not-allowed" 
-                    : "text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50"
-              }`}
-            >
-              Founder
-            </button>
+        <div className="ml-auto flex items-center gap-3">
+          <div className="rounded-xl bg-zinc-100 p-1 flex gap-2">
+            <button onClick={() => setTab("ops")} className={`px-4 py-2 rounded-lg text-sm transition-colors ${tab === "ops" ? "bg-white shadow-sm text-zinc-900" : "text-zinc-600 hover:text-zinc-900"}`}>Operations</button>
+            <button onClick={() => !founderDisabled && setTab("founder")} className={`px-4 py-2 rounded-lg text-sm transition-colors ${tab === "founder" ? "bg-white shadow-sm text-zinc-900" : founderDisabled?"text-zinc-300 cursor-not-allowed":"text-zinc-600 hover:text-zinc-900"}`}>Founder</button>
           </div>
-          <div className="text-sm text-zinc-600 px-2 py-1 rounded-lg bg-zinc-100">{user.name} ┬╖ {user.role.toUpperCase()}</div>
-          <button onClick={onLogout} className="px-3 py-2 rounded-lg border flex items-center gap-2"><LogOut className="w-4 h-4"/> Logout</button>
+          <div className="text-sm text-zinc-600 px-3 py-2 rounded-lg bg-zinc-100 flex items-center gap-2">
+            <Users className="w-4 h-4" />
+            {user.name} ╥ {user.role.toUpperCase()}
+          </div>
+          <button onClick={onLogout} className="px-3 py-2 rounded-lg border border-zinc-300 hover:bg-zinc-50 transition-colors flex items-center gap-2 text-zinc-700">
+            <LogOut className="w-4 h-4"/> Logout
+          </button>
         </div>
       </div>
     </div>
@@ -226,8 +211,8 @@ export function AutocompleteInput({
   value, 
   onChange, 
   error, 
-  getSuggestions,
-  onAddNew,
+  getSuggestions, 
+  onAddNew, 
   showAddNew = false
 }: { 
   label: string; 
@@ -250,32 +235,32 @@ export function AutocompleteInput({
   const debouncedGetSuggestions = useMemo(
     () => {
       let timeoutId: NodeJS.Timeout;
-      return (input: string) => {
-        clearTimeout(timeoutId);
-        timeoutId = setTimeout(async () => {
-          if (input.length >= 2 && getSuggestions) {
-            setIsLoading(true);
-            try {
-              const newSuggestions = await getSuggestions(input);
-              setSuggestions(newSuggestions);
-              setShowSuggestions(true);
+    return (input: string) => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(async () => {
+        if (input.length >= 2 && getSuggestions) {
+          setIsLoading(true);
+          try {
+            const newSuggestions = await getSuggestions(input);
+            setSuggestions(newSuggestions);
+            setShowSuggestions(true);
               
               // Show "Add New" option if no suggestions found
-              setShowAddNewOption(newSuggestions.length === 0 && showAddNew);
-            } catch (error) {
-              console.warn('Failed to get suggestions:', error);
-              setSuggestions([]);
-              setShowAddNewOption(showAddNew);
-            } finally {
-              setIsLoading(false);
-            }
+            setShowAddNewOption(newSuggestions.length === 0 && showAddNew);
+          } catch (error) {
+            console.warn('Failed to get suggestions:', error);
+            setSuggestions([]);
+            setShowAddNewOption(showAddNew);
+          } finally {
+            setIsLoading(false);
+          }
           } else {
             setSuggestions([]);
             setShowSuggestions(false);
             setShowAddNewOption(false);
-          }
-        }, 300);
-      };
+        }
+      }, 300);
+    };
     },
     [getSuggestions, showAddNew]
   );
@@ -317,14 +302,14 @@ export function AutocompleteInput({
           {label} {required && <span className="text-rose-600">*</span>} {hint && <span className="text-[10px] text-zinc-400">({hint})</span>}
         </div>
         <input 
-          value={value} 
+          value={value}
           onChange={e => handleInputChange(e.target.value)}
           onFocus={handleInputFocus}
           onBlur={handleInputBlur}
           className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 ${
             error ? 'border-red-300 bg-red-50' : 'border-blue-300'
-          }`} 
-          placeholder={placeholder} 
+          }`}
+          placeholder={placeholder}
         />
         {isLoading && (
           <div className="absolute right-3 top-8 text-blue-500">
@@ -335,7 +320,7 @@ export function AutocompleteInput({
           <div className="text-xs text-red-600 mt-1">{error}</div>
         )}
       </label>
-      
+
       {/* Enhanced dropdown with Add New option */}
       {showSuggestions && (suggestions.length > 0 || showAddNewOption) && (
         <div className="absolute z-10 mt-1 w-full bg-white border border-zinc-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
