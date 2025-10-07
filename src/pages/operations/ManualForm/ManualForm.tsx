@@ -1019,7 +1019,7 @@ function PageManualForm() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
             <LabeledInput label="Executive" value={form.executive} onChange={v=>set('executive', v)}/>
             <LabeledInput label="Ops Executive" value={form.opsExecutive} onChange={v=>set('opsExecutive', v)}/>
-            <AutocompleteInput label="Caller Name" value={form.callerName} onChange={v=>set('callerName', v)} getSuggestions={getFilteredCallerSuggestions} onAddNew={handleAddNewTelecaller} showAddNew={true}/>
+            <AutocompleteInput label="Caller Name" value={form.callerName} onChange={(v: string)=>set('callerName', v)} getSuggestions={getFilteredCallerSuggestions} onAddNew={handleAddNewTelecaller} showAddNew={true}/>
             <LabeledInput label="Mobile Number" required placeholder="9xxxxxxxxx" value={form.mobile} onChange={v=>set('mobile', v)}/>
             <LabeledInput label="Rollover/Renewal" hint="internal code" value={form.rollover} onChange={v=>set('rollover', v)}/>
             <LabeledInput label="Customer Name" value={form.customerName} onChange={v=>set('customerName', v)}/>

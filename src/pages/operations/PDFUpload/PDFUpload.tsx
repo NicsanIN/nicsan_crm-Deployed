@@ -419,7 +419,7 @@ function PageUpload() {
                   label="Caller Name" 
                   placeholder="Telecaller name"
                   value={manualExtras.callerName}
-                  onChange={(value) => handleManualExtrasChange('callerName', value)}
+                  onChange={(value: string) => handleManualExtrasChange('callerName', value)}
                   getSuggestions={getFilteredCallerSuggestions}
                   onAddNew={handleAddNewTelecaller}
                   showAddNew={true}

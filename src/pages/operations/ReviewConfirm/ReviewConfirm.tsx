@@ -892,7 +892,7 @@ function PageReview() {
               <AutocompleteInput 
                 label="Caller Name" 
                 value={editableData.manualExtras.callerName || manualExtras.callerName}
-                onChange={(value) => updateManualExtras('callerName', value)}
+                onChange={(value: string) => updateManualExtras('callerName', value)}
                 getSuggestions={getFilteredCallerSuggestions}
                 onAddNew={handleAddNewTelecaller}
                 showAddNew={true}

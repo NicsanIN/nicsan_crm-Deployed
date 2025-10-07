@@ -1092,7 +1092,7 @@ function LabeledSelect({ label, value, onChange, options, required, error }: {
 }
 
 // AutocompleteInput component for telecaller name functionality
-function AutocompleteInput({ 
+export function AutocompleteInput({ 
   label, 
   placeholder, 
   value, 
