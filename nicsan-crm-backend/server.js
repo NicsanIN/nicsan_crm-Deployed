@@ -6,6 +6,12 @@ const http = require('http');
 // Load environment variables
 dotenv.config();
 
+// Debug environment variables
+console.log('🔍 Environment check:');
+console.log('JWT_SECRET:', process.env.JWT_SECRET ? 'SET' : 'NOT SET');
+console.log('DB_HOST:', process.env.DB_HOST || 'NOT SET');
+console.log('PORT:', process.env.PORT || 'NOT SET');
+
 const app = express();
 const server = http.createServer(app);
 const PORT = process.env.PORT || 3001;
