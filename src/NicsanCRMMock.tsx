@@ -7,6 +7,7 @@ import DualStorageService from './services/dualStorageService';
 import CrossDeviceSyncDemo from './components/CrossDeviceSyncDemo';
 import { SettingsProvider, useSettings } from './contexts/SettingsContext';
 import HorizontalLogo from './assets/images/HorizontalLogo.svg';
+import PageFounderSettings from './pages/founders/Settings/Settings';
 
 // Smart Cache Context
 interface CacheEntry {
