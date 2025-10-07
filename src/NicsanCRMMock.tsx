@@ -148,9 +148,29 @@ function TopTabs({ tab, setTab, user, onLogout }: { tab: "ops" | "founder"; setT
       <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-3">
         <div className="text-xl font-semibold">Nicsan CRM v1</div>
         <div className="ml-auto flex items-center gap-2">
-          <div className="rounded-xl bg-zinc-100 p-1 flex gap-2">
-            <button onClick={() => setTab("ops")} className={`px-4 py-2 rounded-lg text-sm ${tab === "ops" ? "bg-white shadow" : "text-zinc-600"}`}>Operations</button>
-            <button onClick={() => !founderDisabled && setTab("founder")} className={`px-4 py-2 rounded-lg text-sm ${tab === "founder" ? "bg-white shadow" : founderDisabled?"text-zinc-300 cursor-not-allowed":"text-zinc-600"}`}>Founder</button>
+          <div className="rounded-xl bg-zinc-100 p-1 flex gap-1">
+            <button 
+              onClick={() => setTab("ops")} 
+              className={`px-6 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
+                tab === "ops" 
+                  ? "bg-white shadow-md text-zinc-900" 
+                  : "text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50"
+              }`}
+            >
+              Operations
+            </button>
+            <button 
+              onClick={() => !founderDisabled && setTab("founder")} 
+              className={`px-6 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
+                tab === "founder" 
+                  ? "bg-white shadow-md text-zinc-900" 
+                  : founderDisabled 
+                    ? "text-zinc-300 cursor-not-allowed" 
+                    : "text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50"
+              }`}
+            >
+              Founder
+            </button>
           </div>
           <div className="text-sm text-zinc-600 px-2 py-1 rounded-lg bg-zinc-100">{user.name} ┬╖ {user.role.toUpperCase()}</div>
           <button onClick={onLogout} className="px-3 py-2 rounded-lg border flex items-center gap-2"><LogOut className="w-4 h-4"/> Logout</button>

@@ -926,7 +926,7 @@ function PageManualForm() {
           )}
   
           {/* Policy & Vehicle */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <LabeledInput label="Policy Number" required value={form.policyNumber} onChange={v=>set('policyNumber', v)}/>
             <LabeledInput label="Insurer (Company)" required placeholder="e.g., Tata AIG" value={form.insurer} onChange={v=>set('insurer', v)}/>
             <LabeledSelect label="Product Type" value={form.productType} onChange={v=>set('productType', v)} options={[
@@ -951,7 +951,7 @@ function PageManualForm() {
           </div>
   
           {/* Dates & Values */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
             <LabeledInput label="Issue Date" value={form.issueDate} onChange={v=>set('issueDate', v)}/>
             <LabeledInput label="Expiry Date" value={form.expiryDate} onChange={v=>set('expiryDate', v)}/>
             <LabeledInput label="IDV (₹)" value={form.idv} onChange={v=>set('idv', v)}/>
@@ -961,7 +961,7 @@ function PageManualForm() {
           </div>
   
           {/* Premiums */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
             <LabeledInput label="Net OD (₹)" hint="Own Damage" value={form.netOd} onChange={v=>set('netOd', v)}/>
             <LabeledInput label="Total OD (₹)" value={form.totalOd} onChange={v=>set('totalOd', v)}/>
             <LabeledInput label="Net Premium (₹)" value={form.netPremium} onChange={v=>set('netPremium', v)}/>
@@ -969,7 +969,7 @@ function PageManualForm() {
           </div>
   
           {/* Cashback & Payments */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
             <LabeledInput label="Cashback %" hint="auto-calculates amount" value={form.cashbackPct} onChange={onPctChange}/>
             <LabeledInput label="Cashback Amount (₹)" hint="fills when % given" value={form.cashbackAmt} onChange={onAmtChange}/>
             <LabeledInput label="Customer Paid (₹)" value={form.customerPaid} onChange={v=>set('customerPaid', v)}/>
@@ -1008,7 +1008,7 @@ function PageManualForm() {
           </div>
   
           {/* Brokerage & Additional */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
             <div style={{ display: 'none' }}>
               <LabeledInput label="Brokerage (₹)" hint="commission amount" value={form.brokerage} onChange={v=>set('brokerage', v)}/>
             </div>
@@ -1016,7 +1016,7 @@ function PageManualForm() {
           </div>
   
           {/* People & Notes */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
             <LabeledInput label="Executive" value={form.executive} onChange={v=>set('executive', v)}/>
             <LabeledInput label="Ops Executive" value={form.opsExecutive} onChange={v=>set('opsExecutive', v)}/>
             <AutocompleteInput label="Caller Name" value={form.callerName} onChange={(v: string)=>set('callerName', v)} getSuggestions={getFilteredCallerSuggestions} onAddNew={handleAddNewTelecaller} showAddNew={true}/>
@@ -1029,7 +1029,7 @@ function PageManualForm() {
           </div>
   
           {/* Assist panels */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
             <div className="bg-amber-50 text-amber-800 rounded-xl p-3 text-sm">
               <div className="font-medium mb-1">Error tray</div>
               {errors.length? <ul className="list-disc pl-5">{errors.map((e,i)=>(<li key={i}>{e}</li>))}</ul>:<div>No blocking errors.</div>}
@@ -1044,19 +1044,21 @@ function PageManualForm() {
             </div>
           </div>
   
-          <div className="sticky bottom-4 mt-4 flex gap-3 justify-end bg-white/60 backdrop-blur supports-[backdrop-filter]:bg-white/60 p-2 rounded-xl">
-            <button className="px-4 py-2 rounded-xl bg-white border">Save Draft</button>
+          <div className="sticky bottom-4 mt-6 flex gap-4 justify-end bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/80 p-4 rounded-xl border border-gray-200 shadow-lg">
+            <button className="px-6 py-3 rounded-xl bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors border border-gray-300">
+              Save Draft
+            </button>
             <button 
               onClick={handleSave} 
               disabled={errors.length > 0 || isSubmitting}
-              className="px-4 py-2 rounded-xl bg-zinc-900 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-6 py-3 rounded-xl bg-zinc-900 text-white hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {isSubmitting ? 'Saving...' : 'Save'}
             </button>
             <button 
               onClick={handleSaveAndNew} 
               disabled={errors.length > 0 || isSubmitting}
-              className="px-4 py-2 rounded-xl bg-indigo-600 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-6 py-3 rounded-xl bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {isSubmitting ? 'Saving...' : 'Save & New'}
             </button>
