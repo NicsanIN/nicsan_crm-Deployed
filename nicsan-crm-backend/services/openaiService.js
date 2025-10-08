@@ -212,8 +212,6 @@ class OpenAIService {
   "policy_number": "string",
   "vehicle_number": "string", 
   "insurer": "string",
-  "product_type": "string",
-  "vehicle_type": "string",
   "make": "string",
   "model": "string",
   "cc": "string",

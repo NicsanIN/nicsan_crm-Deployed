@@ -8,6 +8,39 @@ import { useAuth } from '../../../contexts/AuthContext';
 // Environment variables
 const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
 
+// LabeledSelect component
+function LabeledSelect({ label, value, onChange, options, placeholder, hint, required = false }: {
+  label: string;
+  value: any;
+  onChange: (value: any) => void;
+  options: { value: string; label: string }[];
+  placeholder?: string;
+  hint?: string;
+  required?: boolean;
+}) {
+  return (
+    <div>
+      <label className="block text-xs text-blue-700 mb-1">
+        {label}
+        {required && <span className="text-red-500">*</span>}
+      </label>
+      <select
+        value={value || ''}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+      >
+        <option value="">{placeholder || 'Select...'}</option>
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+      {hint && <p className="text-xs text-blue-500">{hint}</p>}
+    </div>
+  );
+}
+
 
 function PageUpload() {
     const { user } = useAuth();
@@ -26,6 +59,25 @@ function PageUpload() {
       { value: 'ZURICH_KOTAK', label: 'Zurich Kotak General Insurance' },
       { value: 'HDFC_ERGO', label: 'HDFC ERGO General Insurance' }
     ];
+    
+    // Dropdown options
+    const productTypeOptions = [
+      { value: "Life Insurance", label: "Life Insurance" },
+      { value: "Motor Insurance", label: "Motor Insurance" },
+      { value: "Health Insurance", label: "Health Insurance" },
+      { value: "Travel Insurance", label: "Travel Insurance" },
+      { value: "Home Insurance", label: "Home Insurance" },
+      { value: "Cyber Insurance", label: "Cyber Insurance" }
+    ];
+
+    const vehicleTypeOptions = [
+      { value: "Private Car", label: "Private Car" },
+      { value: "GCV", label: "GCV" },
+      { value: "LCV", label: "LCV" },
+      { value: "MCV", label: "MCV" },
+      { value: "HCV", label: "HCV" }
+    ];
+    
     const [manualExtras, setManualExtras] = useState({
       executive: user?.name || '',
       opsExecutive: '',
@@ -41,7 +93,9 @@ function PageUpload() {
       ourChequeNo: '',
       branch: '',
       paymentMethod: 'INSURER',
-      paymentSubMethod: ''
+      paymentSubMethod: '',
+      product_type: 'Private Car',
+      vehicle_type: 'Private Car'
     });
     const [lastUserId, setLastUserId] = useState<string | null>(null);
     const [manualExtrasSaved, setManualExtrasSaved] = useState(false);
@@ -124,8 +178,6 @@ function PageUpload() {
                 policy_number: "TA-" + Math.floor(Math.random() * 10000),
                 vehicle_number: "KA01AB" + Math.floor(Math.random() * 1000),
                 insurer: availableInsurers.find(ins => ins.value === selectedInsurer)?.label || 'Unknown',
-                product_type: "Private Car",
-                vehicle_type: "Private Car",
                 make: "Maruti",
                 model: "Swift",
                 cc: "1197",
@@ -172,7 +224,9 @@ function PageUpload() {
             ourChequeNo: '',
             branch: '',
             paymentMethod: 'Cash',
-            paymentSubMethod: ''
+            paymentSubMethod: '',
+            product_type: 'Private Car',
+            vehicle_type: 'Private Car'
           });
           setManualExtrasSaved(false);
         } else {
@@ -523,6 +577,24 @@ function PageUpload() {
                   value={manualExtras.ourChequeNo}
                   onChange={(e) => handleManualExtrasChange('ourChequeNo', e.target.value)}
                   className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                />
+              </div>
+              <div>
+                <LabeledSelect 
+                  label="Product Type" 
+                  value={manualExtras.product_type}
+                  onChange={(value) => handleManualExtrasChange('product_type', value)}
+                  options={productTypeOptions}
+                  placeholder="Select product type"
+                />
+              </div>
+              <div>
+                <LabeledSelect 
+                  label="Vehicle Type" 
+                  value={manualExtras.vehicle_type}
+                  onChange={(value) => handleManualExtrasChange('vehicle_type', value)}
+                  options={vehicleTypeOptions}
+                  placeholder="Select vehicle type"
                 />
               </div>
               <div>

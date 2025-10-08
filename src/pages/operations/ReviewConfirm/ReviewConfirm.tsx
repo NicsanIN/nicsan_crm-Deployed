@@ -120,8 +120,6 @@ function PageReview() {
                     policy_number: "TA-9921",
                     vehicle_number: "KA 51 MM 1214",
                     insurer: "Tata AIG",
-                    product_type: "Private Car",
-                    vehicle_type: "Private Car",
                     make: "Maruti",
                     model: "Swift",
                     cc: "1197",
@@ -616,8 +614,6 @@ function PageReview() {
                         policy_number: "TA-TEST",
                         vehicle_number: "KA 51 MM 1214",
                         insurer: "Tata AIG",
-                        product_type: "Private Car",
-                        vehicle_type: "Private Car",
                         make: "Maruti",
                         model: "Swift",
                         cc: "1197",
@@ -820,11 +816,6 @@ function PageReview() {
                 onChange={(value) => updatePdfData('insurer', value)}
               />
               <LabeledInput 
-                label="Product Type" 
-                value={editableData.pdfData.product_type || pdfData.product_type}
-                onChange={(value) => updatePdfData('product_type', value)}
-              />
-              <LabeledInput 
                 label="Make" 
                 value={editableData.pdfData.make || pdfData.make}
                 onChange={(value) => updatePdfData('make', value)}
@@ -937,6 +928,18 @@ function PageReview() {
                 label="Mobile Number" 
                 value={editableData.manualExtras.mobile || manualExtras.mobile}
                 onChange={(value) => updateManualExtras('mobile', value)}
+              />
+              <LabeledInput 
+                label="Product Type" 
+                value={editableData.manualExtras.product_type || manualExtras.product_type}
+                onChange={(value) => updateManualExtras('product_type', value)}
+                hint="from manual entry"
+              />
+              <LabeledInput 
+                label="Vehicle Type" 
+                value={editableData.manualExtras.vehicle_type || manualExtras.vehicle_type}
+                onChange={(value) => updateManualExtras('vehicle_type', value)}
+                hint="from manual entry"
               />
               <LabeledInput 
                 label="Rollover/Renewal" 
