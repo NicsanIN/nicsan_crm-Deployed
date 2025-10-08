@@ -99,7 +99,7 @@ function TotalODBreakdown() {
   };
 
   return (
-    <Card title="Total OD Breakdown" desc={`${breakdownType} analysis`}>
+    <Card title="Total OD Breakdown">
       <div className="mb-4">
         <div className="flex gap-2">
           <button 
