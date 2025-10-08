@@ -1341,35 +1341,32 @@ function PageManualForm() {
             <LabeledInput label="Customer Paid (₹)" value={form.customerPaid} onChange={v=>set('customerPaid', v)}/>
             <LabeledInput label="Customer Cheque No" value={form.customerChequeNo} onChange={v=>set('customerChequeNo', v)}/>
             <LabeledInput label="Our Cheque No" value={form.ourChequeNo} onChange={v=>set('ourChequeNo', v)}/>
-            <div>
-              <label className="block text-xs text-gray-600 mb-1">Payment Method</label>
-              <select 
-                value={form.paymentMethod}
-                onChange={(e) => {
-                  set('paymentMethod', e.target.value);
-                  if (e.target.value !== 'NICSAN') {
-                    set('paymentSubMethod', '');
-                  }
-                }}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
-              >
-                <option value="INSURER">INSURER</option>
-                <option value="NICSAN">NICSAN</option>
-              </select>
-            </div>
+            <LabeledSelect 
+              label="Payment Method" 
+              value={form.paymentMethod}
+              onChange={(value) => {
+                set('paymentMethod', value);
+                if (value !== 'NICSAN') {
+                  set('paymentSubMethod', '');
+                }
+              }}
+              options={[
+                { value: "INSURER", label: "INSURER" },
+                { value: "NICSAN", label: "NICSAN" }
+              ]}
+              placeholder="Select Payment Method"
+            />
             {form.paymentMethod === 'NICSAN' && (
-              <div>
-                <label className="block text-xs text-gray-600 mb-1">Payment Sub-Method</label>
-                <select 
-                  value={form.paymentSubMethod}
-                  onChange={(e) => set('paymentSubMethod', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
-                >
-                  <option value="">Select Sub-Method</option>
-                  <option value="DIRECT">DIRECT</option>
-                  <option value="EXECUTIVE">EXECUTIVE</option>
-                </select>
-              </div>
+              <LabeledSelect 
+                label="Payment Sub-Method" 
+                value={form.paymentSubMethod}
+                onChange={(value) => set('paymentSubMethod', value)}
+                options={[
+                  { value: "DIRECT", label: "DIRECT" },
+                  { value: "EXECUTIVE", label: "EXECUTIVE" }
+                ]}
+                placeholder="Select Sub-Method"
+              />
             )}
           </div>
   

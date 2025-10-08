@@ -1116,35 +1116,26 @@ function PageReview() {
                 placeholder="Select Branch"
                 required
               />
-              <div>
-                <label className="block text-xs text-gray-600 mb-1">Payment Method</label>
-                <select 
-                  value={editableData.manualExtras.paymentMethod || manualExtras.paymentMethod || 'INSURER'}
-                  onChange={(e) => {
-                    updateManualExtras('paymentMethod', e.target.value);
-                    if (e.target.value !== 'NICSAN') {
-                      updateManualExtras('paymentSubMethod', '');
-                    }
-                  }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
-                >
-                  <option value="INSURER">INSURER</option>
-                  <option value="NICSAN">NICSAN</option>
-                </select>
-              </div>
+              <LabeledSelect 
+                label="Payment Method" 
+                value={editableData.manualExtras.paymentMethod || manualExtras.paymentMethod || 'INSURER'}
+                onChange={(value) => {
+                  updateManualExtras('paymentMethod', value);
+                  if (value !== 'NICSAN') {
+                    updateManualExtras('paymentSubMethod', '');
+                  }
+                }}
+                options={["INSURER", "NICSAN"]}
+                placeholder="Select Payment Method"
+              />
               {(editableData.manualExtras.paymentMethod || manualExtras.paymentMethod) === 'NICSAN' && (
-                <div>
-                  <label className="block text-xs text-gray-600 mb-1">Payment Sub-Method</label>
-                  <select 
-                    value={editableData.manualExtras.paymentSubMethod || manualExtras.paymentSubMethod || ''}
-                    onChange={(e) => updateManualExtras('paymentSubMethod', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
-                  >
-                    <option value="">Select Sub-Method</option>
-                    <option value="DIRECT">DIRECT</option>
-                    <option value="EXECUTIVE">EXECUTIVE</option>
-                  </select>
-                </div>
+                <LabeledSelect 
+                  label="Payment Sub-Method" 
+                  value={editableData.manualExtras.paymentSubMethod || manualExtras.paymentSubMethod || ''}
+                  onChange={(value) => updateManualExtras('paymentSubMethod', value)}
+                  options={["DIRECT", "EXECUTIVE"]}
+                  placeholder="Select Sub-Method"
+                />
               )}
               <div style={{ display: 'none' }}>
                 <LabeledInput 
