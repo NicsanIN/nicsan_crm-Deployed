@@ -63,6 +63,11 @@ function PageReview() {
             opsExecutive: "",
           }
         }));
+        // Clear save messages and verification state
+        setSaveMessage(null);
+        setSubmitMessage(null);
+        setShowVerificationModal(false);
+        setPendingSaveData(null);
         setLastUserId(user.id);
       }
     }, [user, lastUserId]);

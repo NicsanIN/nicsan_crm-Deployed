@@ -519,14 +519,28 @@ export const authUtils = {
         return { success: false, error: 'No token to refresh' };
       }
 
-      // For now, we'll just return the current token
-      // In a real app, you'd have a dedicated refresh token endpoint
-      // that doesn't require login credentials
-      return { 
-        success: true, 
-        data: { token: currentToken },
-        message: 'Token refresh not implemented - using current token'
-      };
+      // Check if token is expired
+      try {
+        const payload = JSON.parse(atob(currentToken.split('.')[1]));
+        const currentTime = Date.now() / 1000;
+        
+        if (payload.exp && payload.exp < currentTime) {
+          // Token is expired, force re-authentication
+          this.removeToken();
+          return { success: false, error: 'Token expired, please re-login' };
+        }
+        
+        // Token is still valid, return it
+        return { 
+          success: true, 
+          data: { token: currentToken },
+          message: 'Token is still valid'
+        };
+      } catch (error) {
+        // Invalid token format, force re-authentication
+        this.removeToken();
+        return { success: false, error: 'Invalid token format, please re-login' };
+      }
     } catch (error) {
       return { success: false, error: 'Token refresh error' };
     }

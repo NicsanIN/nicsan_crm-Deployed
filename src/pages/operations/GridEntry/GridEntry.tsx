@@ -27,6 +27,9 @@ function PageManualGrid() {
             opsExecutive: "",
           }))
         );
+        // Clear row statuses and save messages
+        setRowStatuses({});
+        setSaveMessage(null);
         setLastUserId(user.id);
       }
     }, [user, lastUserId]);

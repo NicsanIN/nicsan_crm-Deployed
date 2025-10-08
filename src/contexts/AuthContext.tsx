@@ -67,6 +67,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const login = async (credentials: LoginRequest): Promise<boolean> => {
     try {
       setIsLoading(true);
+      
+      // Clear all cached data on login to prevent stale data
+      localStorage.removeItem('nicsan_crm_policies');
+      localStorage.removeItem('nicsan_crm_uploads');
+      localStorage.removeItem('nicsan_crm_dashboard');
+      localStorage.removeItem('nicsan_settings');
+      
       const response = await authAPI.login(credentials);
       
       if (response.success && response.data) {
@@ -108,6 +115,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const refreshUser = async () => {
     try {
+      // Clear all cached data to prevent stale data
+      localStorage.removeItem('nicsan_crm_policies');
+      localStorage.removeItem('nicsan_crm_uploads');
+      localStorage.removeItem('nicsan_crm_dashboard');
+      localStorage.removeItem('nicsan_settings');
+      
       const response = await authAPI.getProfile();
       if (response.success && response.data) {
         setUser(response.data);

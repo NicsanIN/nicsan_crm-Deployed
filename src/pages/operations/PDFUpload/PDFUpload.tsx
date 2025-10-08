@@ -46,19 +46,23 @@ function PageUpload() {
     const [lastUserId, setLastUserId] = useState<string | null>(null);
     const [manualExtrasSaved, setManualExtrasSaved] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const [_callerNames, setCallerNames] = useState<string[]>([]);
     
     // Reset manualExtras when user changes
     useEffect(() => {
       if (user && user.id !== lastUserId) {
         setManualExtras(prevExtras => ({
           ...prevExtras,
-          executive: user.name || '',
-          opsExecutive: '',
+          executive: user.name || "",
+          opsExecutive: "",
         }));
+        // Clear upload state and messages
+        setUploadStatus('');
+        setUploadedFiles([]);
+        setManualExtrasSaved(false);
         setLastUserId(user.id);
       }
     }, [user, lastUserId]);
+    const [_callerNames, setCallerNames] = useState<string[]>([]);
   
     const handleFiles = async (files: FileList) => {
       const file = files[0];

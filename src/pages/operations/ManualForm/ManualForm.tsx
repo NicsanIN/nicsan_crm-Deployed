@@ -129,6 +129,10 @@ function PageManualForm() {
           executive: user.name || "",
           opsExecutive: "",
         }));
+        // Clear form validation state
+        setFieldTouched({});
+        setValidationHistory([]);
+        setSubmitMessage(null);
         setLastUserId(user.id);
       }
     }, [user, lastUserId]);
