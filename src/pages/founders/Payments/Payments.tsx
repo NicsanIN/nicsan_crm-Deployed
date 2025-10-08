@@ -311,7 +311,7 @@ function PagePayments() {
   
         {/* Conditional Content */}
         {viewMode === 'summary' ? (
-          <Card title="Executive Summary" desc={`Click on executive to view individual payment records (Data Source: ${dataSource || 'Loading...'})`}>
+          <Card title="Executive Summary">
             {isLoading ? (
               <div className="text-center py-8">
                 <div className="text-sm text-zinc-600">Loading executive payments...</div>
@@ -357,19 +357,6 @@ function PagePayments() {
               </div>
             )}
             
-            {executiveSummary.length > 0 && (
-              <div className="text-center text-sm mt-4">
-                {dataSource === 'BACKEND_API' ? (
-                  <span className="text-green-600 font-medium">
-                    ✅ Showing {executiveSummary.length} executives from backend
-                  </span>
-                ) : (
-                  <span className="text-blue-500">
-                    📊 Showing demo data (fallback)
-                  </span>
-                )}
-              </div>
-            )}
           </Card>
         ) : (
           <Card title={`${selectedExecutive} - Payment Details`} desc="Individual payment records for selected executive">
@@ -450,13 +437,6 @@ function PagePayments() {
               </div>
             )}
             
-            {filteredPayments.length > 0 && (
-              <div className="text-center text-sm mt-4">
-                <span className="text-blue-600 font-medium">
-                  📊 Showing {filteredPayments.length} payment records for {selectedExecutive}
-                </span>
-              </div>
-            )}
           </Card>
         )}
       </>

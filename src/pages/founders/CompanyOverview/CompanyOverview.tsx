@@ -259,7 +259,7 @@ function PageOverview() {
           <Tile 
             label="Total OD" 
             value={metrics ? formatCurrency(metrics.basicMetrics?.totalOutstandingDebt) : "₹0.00L"}
-            sub="Total outstanding amount • Click to expand"
+            sub="Click to expand"
             onClick={() => setShowTotalODBreakdown(!showTotalODBreakdown)}
           />
         </div>

@@ -111,7 +111,7 @@ function PageKPIs() {
       <>
         <div className="grid grid-cols-1 gap-6">
           {/* Acquisition */}
-          <Card title="Acquisition" desc="Real metrics from backend data">
+          <Card title="Acquisition">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
               <Tile label="Conversion Rate" value={pct(conversionRate)} sub={`${totalConverted}/${totalLeads} deals`}/>
               <Tile label="Cost per Lead" value={fmtINR(costPerLead)} sub="No marketing data available"/>
@@ -121,7 +121,7 @@ function PageKPIs() {
           </Card>
   
           {/* Value & Retention */}
-          <Card title="Value & Retention" desc="Real metrics from backend data">
+          <Card title="Value & Retention">
             <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
               <Tile label="ARPA" value={fmtINR(ARPA)} sub="Based on net revenue"/>
               <Tile label="Retention" value={pct(retentionRate)} sub="No retention data available"/>
@@ -132,7 +132,7 @@ function PageKPIs() {
           </Card>
   
           {/* Insurance Health */}
-          <Card title="Insurance Health" desc="Real ratios from backend data">
+          <Card title="Insurance Health">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <Tile label="Loss Ratio" value={pct(lossRatio)} sub={`Cashback ${fmtINR(totalCashback)}`}/>
               <Tile label="Expense Ratio" value={pct(expenseRatio)} sub={`Net brokerage ${fmtINR(totalBrokerage - totalCashback)}`}/>
@@ -141,7 +141,7 @@ function PageKPIs() {
           </Card>
   
           {/* Sales Quality */}
-          <Card title="Sales Quality" desc="Metrics requiring additional data sources">
+          <Card title="Sales Quality">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <Tile label="Upsell/Cross-sell" value={pct(upsellRate)} sub="No upsell data available"/>
               <Tile label="NPS" value={pct(NPS)} sub="No survey data available"/>
@@ -150,7 +150,7 @@ function PageKPIs() {
           </Card>
   
           {/* Settings-Based Calculations */}
-          <Card title="Business Projections" desc="Calculations based on current settings">
+          <Card title="Business Projections">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
               <Tile label="Expected Brokerage" value={fmtINR(calculatedBrokerage)} sub={`${settings.brokeragePercent}% of ${fmtINR(sumGWP)}`}/>
               <Tile label="Backlog Value" value={fmtINR(expectedBacklogValue)} sub={`${totalLeads - totalConverted} pending leads`}/>

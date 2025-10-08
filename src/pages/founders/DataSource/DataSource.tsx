@@ -44,7 +44,7 @@ function PageSources() {
   }
   
   return (
-    <Card title="Contribution by Data Source" desc="Compare PDF vs Manual vs CSV (ingestion source = where data came from)">
+      <Card title="Contribution by Data Source">
       <div className="h-72">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart key={`chart-${dataSources.length}-${dataSource}`} data={dataSources.length > 0 ? dataSources : demoSources}>

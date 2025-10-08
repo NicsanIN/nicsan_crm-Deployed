@@ -249,7 +249,7 @@ function PageExplorer() {
   
   return (
     <>
-      <Card title="Sales Explorer (Motor)" desc="Filter by Make/Model; find reps with most sales and lowest cashback">
+      <Card title="Sales Explorer (Motor)">
         <div className="space-y-4 mb-6">
           {/* Primary Filters Row */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
