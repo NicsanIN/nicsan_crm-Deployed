@@ -701,38 +701,7 @@ function PageReview() {
             </div>
           )}
   
-          {/* File Info */}
-          <div className="mb-4 p-3 bg-zinc-50 rounded-lg">
-            <div className="flex items-center gap-4 text-sm">
-              <div><span className="font-medium">File:</span> {data.filename}</div>
-              <div><span className="font-medium">Status:</span> {data.status}</div>
-              <div><span className="font-medium">S3 Key:</span> {data.s3_key}</div>
-            </div>
-          </div>
   
-          {/* Confidence Score */}
-          <div className="mb-4 p-3 rounded-lg bg-zinc-50">
-            <div className="flex items-center gap-2">
-              <div className="text-sm font-medium">AI Confidence Score:</div>
-              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                pdfData.confidence_score >= 0.8 
-                  ? 'bg-green-100 text-green-700'
-                  : pdfData.confidence_score >= 0.6
-                  ? 'bg-yellow-100 text-yellow-700'
-                  : 'bg-red-100 text-red-700'
-              }`}>
-                {Math.round(pdfData.confidence_score * 100)}%
-              </span>
-            </div>
-            <div className="text-xs text-zinc-600 mt-1">
-              {pdfData.confidence_score >= 0.8 
-                ? 'High confidence - data looks good'
-                : pdfData.confidence_score >= 0.6
-                ? 'Medium confidence - please review carefully'
-                : 'Low confidence - manual review required'
-              }
-            </div>
-          </div>
   
           {/* PDF Extracted Data Section */}
           <div className="mb-6">
