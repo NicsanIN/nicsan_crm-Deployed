@@ -19,7 +19,7 @@ function LabeledInput({ label, value, onChange, type = "text", placeholder, hint
 }) {
   return (
     <div className="space-y-1">
-      <label className="text-sm font-medium text-zinc-700 flex items-center gap-1">
+      <label className="text-sm text-zinc-700 flex items-center gap-1">
         {label}
         {required && <span className="text-red-500">*</span>}
       </label>
@@ -713,13 +713,11 @@ function PageReview() {
                 label="Policy Number" 
                 value={editableData.pdfData.policy_number || pdfData.policy_number}
                 onChange={(value) => updatePdfData('policy_number', value)}
-                hint="auto-read from PDF (editable)"
               />
               <LabeledInput 
                 label="Vehicle Number" 
                 value={editableData.pdfData.vehicle_number || pdfData.vehicle_number}
                 onChange={(value) => updatePdfData('vehicle_number', value)}
-                hint="check format (editable)"
               />
               <LabeledInput 
                 label="Insurer" 
@@ -745,7 +743,6 @@ function PageReview() {
                 label="CC" 
                 value={editableData.pdfData.cc || pdfData.cc}
                 onChange={(value) => updatePdfData('cc', value)}
-                hint="engine size"
               />
               <LabeledInput 
                 label="Manufacturing Year" 
@@ -781,7 +778,6 @@ function PageReview() {
                 label="Net OD (₹)" 
                 value={editableData.pdfData.net_od || pdfData.net_od}
                 onChange={(value) => updatePdfData('net_od', value)}
-                hint="Own Damage"
               />
               <LabeledInput 
                 label="Total OD (₹)" 
@@ -802,7 +798,6 @@ function PageReview() {
                 label="Customer Name" 
                 value={editableData.pdfData.customer_name || pdfData.customer_name}
                 onChange={(value) => updatePdfData('customer_name', value)}
-                hint="extracted from PDF"
               />
             </div>
           </div>
@@ -887,7 +882,6 @@ function PageReview() {
                   label="Brokerage (₹)" 
                   value={editableData.manualExtras.brokerage || manualExtras.brokerage}
                   onChange={(value) => updateManualExtras('brokerage', value)}
-                  hint="commission amount"
                 />
               </div>
               <LabeledInput 
@@ -915,7 +909,6 @@ function PageReview() {
                   label="Remark" 
                   value={editableData.manualExtras.remark || manualExtras.remark}
                   onChange={(value) => updateManualExtras('remark', value)}
-                  hint="additional notes"
                 />
               </div>
             </div>
