@@ -218,16 +218,57 @@ class AuthService {
   // Update user
   async updateUser(id, updateData) {
     try {
-      const { email, name, role, is_active, phone, department } = updateData;
+      const { email, name, role, is_active, phone, department, password_hash } = updateData;
       
+      // Build dynamic query based on provided fields
+      const fields = [];
+      const values = [];
+      let paramCount = 1;
+
+      if (email !== undefined) {
+        fields.push(`email = $${paramCount++}`);
+        values.push(email);
+      }
+      if (name !== undefined) {
+        fields.push(`name = $${paramCount++}`);
+        values.push(name);
+      }
+      if (role !== undefined) {
+        fields.push(`role = $${paramCount++}`);
+        values.push(role);
+      }
+      if (is_active !== undefined) {
+        fields.push(`is_active = $${paramCount++}`);
+        values.push(is_active);
+      }
+      if (phone !== undefined) {
+        fields.push(`phone = $${paramCount++}`);
+        values.push(phone);
+      }
+      if (department !== undefined) {
+        fields.push(`department = $${paramCount++}`);
+        values.push(department);
+      }
+      if (password_hash !== undefined) {
+        fields.push(`password_hash = $${paramCount++}`);
+        values.push(password_hash);
+      }
+
+      if (fields.length === 0) {
+        throw new Error('No fields to update');
+      }
+
+      fields.push(`updated_at = CURRENT_TIMESTAMP`);
+      values.push(id);
+
       const queryText = `
         UPDATE users 
-        SET email = $1, name = $2, role = $3, is_active = $4, phone = $5, department = $6, updated_at = CURRENT_TIMESTAMP
-        WHERE id = $7
+        SET ${fields.join(', ')}
+        WHERE id = $${paramCount}
         RETURNING id, email, name, role, is_active, created_at, updated_at, phone, department
       `;
       
-      const result = await query(queryText, [email, name, role, is_active, phone, department, id]);
+      const result = await query(queryText, values);
       
       if (result.rows.length === 0) {
         throw new Error('User not found');
@@ -252,7 +293,11 @@ class AuthService {
         throw new Error('User not found');
       }
 
-      // Delete user
+      // Delete related records first (in correct order to avoid foreign key violations)
+      // 1. Delete password change logs that reference this user
+      await query('DELETE FROM password_change_logs WHERE changed_by = $1 OR target_user = $1', [id]);
+      
+      // 2. Now delete the user
       const queryText = 'DELETE FROM users WHERE id = $1';
       await query(queryText, [id]);
 

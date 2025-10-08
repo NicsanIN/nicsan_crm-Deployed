@@ -64,6 +64,7 @@ router.get('/leaderboard', authenticateToken, requireFounder, async (req, res) =
         COALESCE(SUM(brokerage), 0) as brokerage,
         COALESCE(SUM(cashback_amount), 0) as cashback,
         COALESCE(SUM(brokerage), 0) - COALESCE(SUM(cashback_amount), 0) as net,
+        COALESCE(SUM(total_od), 0) as total_od,
         COALESCE(AVG(cashback_percentage), 0) as avg_cashback_pct
       FROM policies 
       GROUP BY COALESCE(caller_name, 'Unknown')

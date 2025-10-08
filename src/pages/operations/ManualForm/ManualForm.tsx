@@ -1,0 +1,1612 @@
+import { useState, useEffect, useMemo } from 'react';
+import { Card } from '../../../components/common/Card';
+import { Car } from 'lucide-react';
+import DualStorageService from '../../../services/dualStorageService';
+
+// Environment variables
+// const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
+
+// LabeledInput component - Enhanced with production styling
+function LabeledInput({ label, value, onChange, type = "text", placeholder, hint, required = false }: {
+  label: string;
+  value: any;
+  onChange: (value: any) => void;
+  type?: string;
+  placeholder?: string;
+  hint?: string;
+  required?: boolean;
+}) {
+  return (
+    <div className="space-y-1">
+      <label className="text-sm font-medium text-zinc-700 flex items-center gap-1">
+        {label}
+        {required && <span className="text-red-500">*</span>}
+      </label>
+      <input
+        type={type}
+        value={value || ''}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="w-full px-3 py-2.5 border border-zinc-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 transition-colors"
+      />
+      {hint && <p className="text-xs text-zinc-500 mt-1">{hint}</p>}
+    </div>
+  );
+}
+
+// LabeledAutocompleteInput component - Custom styled to match other fields
+function LabeledAutocompleteInput({ 
+  label, 
+  value, 
+  onChange, 
+  getSuggestions, 
+  onAddNew, 
+  showAddNew = false, 
+  placeholder, 
+  required = false 
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  getSuggestions: (input: string) => Promise<string[]>;
+  onAddNew?: (value: string) => void;
+  showAddNew?: boolean;
+  placeholder?: string;
+  required?: boolean;
+}) {
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [isOpen, setIsOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleInputChange = async (inputValue: string) => {
+    onChange(inputValue);
+    
+    if (inputValue.length >= 2) {
+      setIsLoading(true);
+      try {
+        const newSuggestions = await getSuggestions(inputValue);
+        setSuggestions(newSuggestions);
+        setIsOpen(newSuggestions.length > 0);
+      } catch (error) {
+        console.error('Error fetching suggestions:', error);
+        setSuggestions([]);
+        setIsOpen(false);
+      } finally {
+        setIsLoading(false);
+      }
+    } else {
+      setSuggestions([]);
+      setIsOpen(false);
+    }
+  };
+
+  const handleSuggestionClick = (suggestion: string) => {
+    onChange(suggestion);
+    setIsOpen(false);
+  };
+
+  const handleAddNew = () => {
+    if (onAddNew && value.trim()) {
+      onAddNew(value.trim());
+      setIsOpen(false);
+    }
+  };
+
+  return (
+    <div className="space-y-1 relative">
+      <label className="text-sm font-medium text-zinc-700 flex items-center gap-1">
+        {label}
+        {required && <span className="text-red-500">*</span>}
+      </label>
+      <div className="relative">
+        <input
+          type="text"
+          value={value || ''}
+          onChange={(e) => handleInputChange(e.target.value)}
+          onFocus={() => {
+            if (suggestions.length > 0) setIsOpen(true);
+          }}
+          onBlur={() => {
+            // Delay to allow clicking on suggestions
+            setTimeout(() => setIsOpen(false), 150);
+          }}
+          placeholder={placeholder}
+          className="w-full px-3 py-2.5 border border-zinc-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 transition-colors"
+        />
+        
+        {/* Dropdown Arrow */}
+        <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
+          <svg className="w-4 h-4 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </div>
+
+        {/* Suggestions Dropdown */}
+        {isOpen && (
+          <div className="absolute z-50 w-full mt-1 bg-white border border-zinc-200 rounded-xl shadow-lg max-h-60 overflow-y-auto">
+            {isLoading ? (
+              <div className="px-3 py-2 text-sm text-zinc-500 flex items-center gap-2">
+                <div className="w-4 h-4 border-2 border-zinc-300 border-t-indigo-600 rounded-full animate-spin"></div>
+                Loading suggestions...
+              </div>
+            ) : (
+              <>
+                {suggestions.map((suggestion, index) => (
+                  <button
+                    key={index}
+                    onClick={() => handleSuggestionClick(suggestion)}
+                    className="w-full px-3 py-2 text-left text-sm text-blue-700 hover:bg-blue-50 transition-colors first:rounded-t-lg last:rounded-b-lg"
+                  >
+                    {suggestion}
+                  </button>
+                ))}
+                {showAddNew && value.trim() && !suggestions.includes(value.trim()) && (
+                  <button
+                    onClick={handleAddNew}
+                    className="w-full px-3 py-2 text-left text-sm text-blue-600 hover:bg-blue-50 transition-colors border-t border-blue-200 rounded-b-lg"
+                  >
+                    + Add "{value.trim()}" as new telecaller
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// LabeledSelect component - Enhanced with production styling
+function LabeledSelect({ label, value, onChange, options, placeholder, hint, required = false }: {
+  label: string;
+  value: any;
+  onChange: (value: any) => void;
+  options: { value: string; label: string }[];
+  placeholder?: string;
+  hint?: string;
+  required?: boolean;
+}) {
+  return (
+    <div className="space-y-1">
+      <label className="text-sm font-medium text-zinc-700 flex items-center gap-1">
+        {label}
+        {required && <span className="text-red-500">*</span>}
+      </label>
+      <select
+        value={value || ''}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full px-3 py-2.5 border border-zinc-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 transition-colors"
+      >
+        <option value="">{placeholder || 'Select...'}</option>
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+      {hint && <p className="text-xs text-zinc-500 mt-1">{hint}</p>}
+    </div>
+  );
+}
+
+// LabeledDateInput component - Custom date picker with calendar
+function LabeledDateInput({ 
+  label, 
+  value, 
+  onChange, 
+  placeholder = "dd-mm-yyyy", 
+  required = false 
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  required?: boolean;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const parseDateFromString = (dateString: string): Date | null => {
+    try {
+      // Handle dd-mm-yyyy format
+      const parts = dateString.split('-');
+      if (parts.length === 3) {
+        // Check if it's dd-mm-yyyy format (day is 1-31, month is 1-12)
+        const firstPart = parseInt(parts[0], 10);
+        const secondPart = parseInt(parts[1], 10);
+        const thirdPart = parseInt(parts[2], 10);
+        
+        if (firstPart >= 1 && firstPart <= 31 && secondPart >= 1 && secondPart <= 12) {
+          // dd-mm-yyyy format
+          const day = firstPart;
+          const month = secondPart - 1; // JavaScript months are 0-indexed
+          const year = thirdPart;
+          return new Date(year, month, day);
+        } else if (thirdPart >= 1 && thirdPart <= 31 && secondPart >= 1 && secondPart <= 12) {
+          // yyyy-mm-dd format
+          const year = firstPart;
+          const month = secondPart - 1; // JavaScript months are 0-indexed
+          const day = thirdPart;
+          return new Date(year, month, day);
+        }
+      }
+      // Fallback to standard Date parsing
+      return new Date(dateString);
+    } catch (error) {
+      return null;
+    }
+  };
+
+  const [selectedDate, setSelectedDate] = useState<Date | null>(
+    value ? parseDateFromString(value) : null
+  );
+
+  // Update selectedDate when value prop changes
+  useEffect(() => {
+    if (value) {
+      const parsedDate = parseDateFromString(value);
+      setSelectedDate(parsedDate);
+    } else {
+      setSelectedDate(null);
+    }
+  }, [value]);
+
+  const formatDate = (date: Date) => {
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}-${month}-${year}`;
+  };
+
+  const handleDateSelect = (date: Date) => {
+    setSelectedDate(date);
+    onChange(formatDate(date));
+    setIsOpen(false);
+  };
+
+  const handleClear = () => {
+    setSelectedDate(null);
+    onChange('');
+    setIsOpen(false);
+  };
+
+  const handleToday = () => {
+    const today = new Date();
+    setSelectedDate(today);
+    onChange(formatDate(today));
+    setIsOpen(false);
+  };
+
+  const getDaysInMonth = (date: Date) => {
+    return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+  };
+
+  const getFirstDayOfMonth = (date: Date) => {
+    return new Date(date.getFullYear(), date.getMonth(), 1).getDay();
+  };
+
+  const getDaysArray = (date: Date) => {
+    const daysInMonth = getDaysInMonth(date);
+    const firstDay = getFirstDayOfMonth(date);
+    const days = [];
+
+    // Previous month's trailing days
+    const prevMonth = new Date(date.getFullYear(), date.getMonth() - 1, 0);
+    const prevMonthDays = prevMonth.getDate();
+    for (let i = firstDay - 1; i >= 0; i--) {
+      days.push({
+        day: prevMonthDays - i,
+        isCurrentMonth: false,
+        date: new Date(date.getFullYear(), date.getMonth() - 1, prevMonthDays - i)
+      });
+    }
+
+    // Current month's days
+    for (let i = 1; i <= daysInMonth; i++) {
+      days.push({
+        day: i,
+        isCurrentMonth: true,
+        date: new Date(date.getFullYear(), date.getMonth(), i)
+      });
+    }
+
+    // Next month's leading days
+    const remainingDays = 42 - days.length; // 6 weeks * 7 days
+    for (let i = 1; i <= remainingDays; i++) {
+      days.push({
+        day: i,
+        isCurrentMonth: false,
+        date: new Date(date.getFullYear(), date.getMonth() + 1, i)
+      });
+    }
+
+    return days;
+  };
+
+  const monthNames = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+
+  const navigateMonth = (direction: 'prev' | 'next') => {
+    const newDate = new Date(currentDate);
+    if (direction === 'prev') {
+      newDate.setMonth(newDate.getMonth() - 1);
+    } else {
+      newDate.setMonth(newDate.getMonth() + 1);
+    }
+    setCurrentDate(newDate);
+  };
+
+  const isToday = (date: Date) => {
+    const today = new Date();
+    return date.toDateString() === today.toDateString();
+  };
+
+  const isSelected = (date: Date) => {
+    return selectedDate && date.toDateString() === selectedDate.toDateString();
+  };
+
+  return (
+    <div className="space-y-1 relative">
+      <label className="text-sm font-medium text-zinc-700 flex items-center gap-1">
+        {label}
+        {required && <span className="text-red-500">*</span>}
+      </label>
+      <div className="relative">
+        <input
+          type="text"
+          value={value || ''}
+          onChange={(e) => onChange(e.target.value)}
+          onFocus={() => setIsOpen(true)}
+          placeholder={placeholder}
+          className="w-full px-3 py-2.5 border border-zinc-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 transition-colors"
+        />
+        
+        {/* Calendar Icon */}
+        <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
+          <svg className="w-4 h-4 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+        </div>
+
+        {/* Calendar Popup */}
+        {isOpen && (
+          <div className="absolute z-50 w-full mt-1 bg-white border border-zinc-200 rounded-xl shadow-lg">
+            {/* Calendar Header */}
+            <div className="flex items-center justify-between p-3 border-b border-zinc-200">
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-zinc-900">
+                  {monthNames[currentDate.getMonth()]}, {currentDate.getFullYear()}
+                </span>
+                <svg className="w-4 h-4 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+              <div className="flex items-center gap-1">
+                {/* Year Navigation */}
+                <button
+                  onClick={() => {
+                    const newDate = new Date(currentDate);
+                    newDate.setFullYear(newDate.getFullYear() - 1);
+                    setCurrentDate(newDate);
+                  }}
+                  className="p-1 hover:bg-zinc-100 rounded transition-colors"
+                  title="Previous Year"
+                >
+                  <svg className="w-4 h-4 text-zinc-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+                  </svg>
+                </button>
+                <button
+                  onClick={() => navigateMonth('prev')}
+                  className="p-1 hover:bg-zinc-100 rounded transition-colors"
+                  title="Previous Month"
+                >
+                  <svg className="w-4 h-4 text-zinc-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                  </svg>
+                </button>
+                <button
+                  onClick={() => navigateMonth('next')}
+                  className="p-1 hover:bg-zinc-100 rounded transition-colors"
+                  title="Next Month"
+                >
+                  <svg className="w-4 h-4 text-zinc-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                <button
+                  onClick={() => {
+                    const newDate = new Date(currentDate);
+                    newDate.setFullYear(newDate.getFullYear() + 1);
+                    setCurrentDate(newDate);
+                  }}
+                  className="p-1 hover:bg-zinc-100 rounded transition-colors"
+                  title="Next Year"
+                >
+                  <svg className="w-4 h-4 text-zinc-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Calendar Grid */}
+            <div className="p-3">
+              {/* Days of week header */}
+              <div className="grid grid-cols-7 gap-1 mb-2">
+                {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((day) => (
+                  <div key={day} className="text-xs font-medium text-zinc-500 text-center py-1">
+                    {day}
+                  </div>
+                ))}
+              </div>
+
+              {/* Calendar days */}
+              <div className="grid grid-cols-7 gap-1">
+                {getDaysArray(currentDate).map((dayObj, index) => (
+                  <button
+                    key={index}
+                    onClick={() => dayObj.isCurrentMonth && handleDateSelect(dayObj.date)}
+                    className={`
+                      w-8 h-8 text-sm rounded transition-colors flex items-center justify-center
+                      ${!dayObj.isCurrentMonth 
+                        ? 'text-zinc-300 cursor-not-allowed' 
+                        : isSelected(dayObj.date)
+                        ? 'bg-zinc-800 text-white'
+                        : isToday(dayObj.date)
+                        ? 'bg-indigo-100 text-indigo-700 font-medium'
+                        : 'text-zinc-700 hover:bg-zinc-100'
+                      }
+                    `}
+                    disabled={!dayObj.isCurrentMonth}
+                  >
+                    {dayObj.day}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Calendar Footer */}
+            <div className="flex items-center justify-between p-3 border-t border-zinc-200">
+              <button
+                onClick={handleClear}
+                className="text-sm text-blue-600 hover:text-blue-700 transition-colors"
+              >
+                Clear
+              </button>
+              <button
+                onClick={handleToday}
+                className="text-sm text-blue-600 hover:text-blue-700 transition-colors"
+              >
+                Today
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+
+function PageManualForm() {
+    const [form, setForm] = useState<any>({
+      insurer: "",
+      productType: "",
+      vehicleType: "",
+      make: "",
+      model: "",
+      cc: "",
+      manufacturingYear: "",
+      policyNumber: "",
+      vehicleNumber: "",
+      issueDate: "",
+      expiryDate: "",
+      idv: "",
+      ncb: "",
+      discount: "",
+      netOd: "",
+      ref: "",
+      totalOd: "",
+      netPremium: "",
+      totalPremium: "",
+      cashbackPct: "",
+      cashbackAmt: "",
+      customerPaid: "",
+      customerChequeNo: "",
+      ourChequeNo: "",
+      executive: "",
+      opsExecutive: "",
+      callerName: "",
+      mobile: "",
+              rollover: "",
+              remark: "",
+              brokerage: "0",
+              cashback: "",
+              customerName: "",
+              customerEmail: "",
+              branch: "",
+              paymentMethod: "INSURER",
+              paymentSubMethod: ""
+    });
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [submitMessage, setSubmitMessage] = useState<{type: 'success' | 'error', message: string} | null>(null);
+    const [_validationHistory, setValidationHistory] = useState<any[]>([]);
+    const [fieldTouched, setFieldTouched] = useState<{[key: string]: boolean}>({});
+    const [vehicleSearchResults, setVehicleSearchResults] = useState([]);
+    const [isSearching, setIsSearching] = useState(false);
+    const [validationMode, setValidationMode] = useState<'progressive' | 'strict'>('progressive');
+    const [_callerNames, setCallerNames] = useState<string[]>([]);
+    
+    const set = (k:string,v:any)=> {
+      setForm((f:any)=>({ ...f, [k]: v }));
+      // Mark field as touched for progressive validation
+      setFieldTouched(prev => ({ ...prev, [k]: true }));
+    };
+    const number = (v:any)=> (v===''||v===null)?0:parseFloat(v.toString().replace(/[^0-9.]/g,''))||0;
+  
+    // Two-way binding for cashback
+    const onTotalChange = (v:any)=> {
+      const tp = number(v);
+      const pct = number(form.cashbackPct);
+      const amt = pct? Math.round(tp * pct / 100): number(form.cashbackAmt);
+      setForm({ ...form, totalPremium: v, cashbackAmt: amt?amt.toString():"" })
+    }
+    const onPctChange = (v:any)=> {
+      const tp = number(form.totalPremium); const pct = number(v);
+      const amt = tp? Math.round(tp * pct / 100): 0; setForm({ ...form, cashbackPct: v, cashbackAmt: amt?amt.toString():"" })
+    }
+    const onAmtChange = (v:any)=> {
+      const tp = number(form.totalPremium); const amt = number(v);
+      const pct = tp? ((amt/tp)*100).toFixed(1): ""; setForm({ ...form, cashbackAmt: v, cashbackPct: pct })
+    }
+  
+    // Advanced validation engine with business rules
+    const validateField = (fieldName: string, value: any, _context?: any) => {
+      const errors: string[] = [];
+      
+      // Progressive validation - only validate touched fields or all fields in strict mode
+      if (validationMode === 'progressive' && !fieldTouched[fieldName]) {
+        return errors;
+      }
+  
+      switch (fieldName) {
+        case 'policyNumber':
+          if (!value) {
+            errors.push('Policy Number is required');
+          } else if (!/^[A-Z0-9\-_\/ ]{3,50}$/.test(value)) {
+            errors.push('Policy Number must be 3-50 characters (letters, numbers, hyphens, underscores, forward slashes, spaces)');
+          }
+          break;
+          
+          case 'vehicleNumber':
+            if (!value) {
+              errors.push('Vehicle Number is required');
+            } else {
+              const cleanValue = value.replace(/\s/g, '');
+              const traditionalPattern = /^[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}$/;
+              const bhSeriesPattern = /^[0-9]{2}BH[0-9]{4}[A-Z]{1,2}$/;
+              if (!traditionalPattern.test(cleanValue) && !bhSeriesPattern.test(cleanValue)) {
+                errors.push('Vehicle Number must be in format: KA01AB1234, KA 51 MM 1214, or 23 BH 7699 J');
+              }
+            }
+            break;
+          
+        case 'insurer':
+          if (!value) {
+            errors.push('Insurer (Company) is required');
+          } else if (value.length < 3) {
+            errors.push('Insurer name must be at least 3 characters');
+          }
+          break;
+          
+        case 'productType':
+          if (!value) {
+            errors.push('Product Type is required');
+          }
+          break;
+          
+        case 'vehicleType':
+          if (!value) {
+            errors.push('Vehicle Type is required');
+          }
+          break;
+          
+        case 'make':
+          if (!value) {
+            errors.push('Make is required');
+          } else if (value.length < 2) {
+            errors.push('Make must be at least 2 characters');
+          }
+          break;
+          
+        case 'model':
+          if (!value) {
+            errors.push('Model is required');
+          } else if (value.length < 2) {
+            errors.push('Model must be at least 2 characters');
+          }
+          break;
+          
+        case 'cc':
+          if (!value) {
+            errors.push('CC (engine size) is required');
+          } else if (!/^\d{3,5}$/.test(value)) {
+            errors.push('CC must be 3-5 digits');
+          }
+          break;
+          
+        case 'manufacturingYear':
+          if (!value) {
+            errors.push('Manufacturing Year is required');
+          } else {
+            const year = parseInt(value);
+            const currentYear = new Date().getFullYear();
+            if (isNaN(year) || year < 1990 || year > currentYear + 1) {
+              errors.push(`Manufacturing Year must be between 1990 and ${currentYear + 1}`);
+            }
+          }
+          break;
+          
+        case 'issueDate':
+          if (!value) {
+            errors.push('Issue Date is required');
+          } else {
+            const issueDate = new Date(value);
+            const today = new Date();
+            if (isNaN(issueDate.getTime()) || issueDate > today) {
+              errors.push('Issue Date must be a valid date not in the future');
+            }
+          }
+          break;
+          
+        case 'expiryDate':
+          if (!value) {
+            errors.push('Expiry Date is required');
+          } else {
+            const expiryDate = new Date(value);
+            const issueDate = form.issueDate ? new Date(form.issueDate) : new Date();
+            if (isNaN(expiryDate.getTime()) || expiryDate <= issueDate) {
+              errors.push('Expiry Date must be after Issue Date');
+            }
+          }
+          break;
+          
+        case 'idv':
+          if (!value) {
+            errors.push('IDV (₹) is required');
+          } else {
+            const idv = number(value);
+            if (idv <= 0 || idv > 100000000) {
+              errors.push('IDV must be between ₹1 and ₹10 crore');
+            }
+          }
+          break;
+          
+        case 'discount':
+          if (!value) {
+            errors.push('Discount (%) is required');
+          } else {
+            const discount = number(value);
+            if (discount < 0 || discount > 100) {
+              errors.push('Discount must be between 0% and 100%');
+            }
+          }
+          break;
+          
+        case 'netOd':
+          if (!value) {
+            errors.push('Net OD (₹) is required');
+          } else {
+            const netOd = number(value);
+            if (netOd < 0 || netOd > 10000000) {
+              errors.push('Net OD must be between ₹0 and ₹1 crore');
+            }
+          }
+          break;
+          
+        case 'totalOd':
+          if (!value) {
+            errors.push('Total OD (₹) is required');
+          } else {
+            const totalOd = number(value);
+            const netOd = number(form.netOd);
+            if (totalOd < 0 || totalOd > 10000000) {
+              errors.push('Total OD must be between ₹0 and ₹1 crore');
+            } else if (totalOd < netOd) {
+              errors.push('Total OD cannot be less than Net OD');
+            }
+          }
+          break;
+          
+        case 'totalPremium':
+          if (!value) {
+            errors.push('Total Premium (₹) is required');
+          } else {
+            const totalPremium = number(value);
+            if (totalPremium <= 0 || totalPremium > 1000000) {
+              errors.push('Total Premium must be between ₹1 and ₹10 lakh');
+            }
+          }
+          break;
+          
+        case 'customerPaid':
+          if (!value) {
+            errors.push('Customer Paid is required');
+          } else if (value.length < 1) {
+            errors.push('Customer Paid must be at least 1 character');
+          } else if (value.length > 50) {
+            errors.push('Customer Paid must be less than 50 characters');
+          }
+          break;
+          
+        // Brokerage validation removed - field is hidden
+        // case 'brokerage':
+        //   if (!value) {
+        //     errors.push('Brokerage (₹) is required');
+        //   } else {
+        //     const brokerage = number(value);
+        //     const totalPremium = number(form.totalPremium);
+        //     if (brokerage < 0 || brokerage > 100000) {
+        //       errors.push('Brokerage must be between ₹0 and ₹1 lakh');
+        //     } else if (brokerage > totalPremium * 0.15) {
+        //       errors.push('Brokerage cannot exceed 15% of Total Premium');
+        //     }
+        //   }
+        //   break;
+          
+        case 'callerName':
+          if (!value) {
+            errors.push('Caller Name is required');
+          } else if (value.length < 2) {
+            errors.push('Caller Name must be at least 2 characters');
+          }
+          break;
+          
+        case 'mobile':
+          if (!value) {
+            errors.push('Mobile Number is required');
+          } else if (!/^[6-9]\d{9}$/.test(value)) {
+            errors.push('Mobile Number must be 10 digits starting with 6-9');
+          }
+          break;
+          
+        case 'rollover':
+          if (!value) {
+            errors.push('Rollover/Renewal is required');
+          } else if (value.length < 3) {
+            errors.push('Rollover/Renewal must be at least 3 characters');
+          }
+          break;
+          
+        case 'remark':
+          if (!value) {
+            errors.push('Remark is required');
+          } else if (value.length < 5) {
+            errors.push('Remark must be at least 5 characters');
+          }
+          break;
+      }
+      
+      return errors;
+    };
+  
+    // Cross-field validation
+    const validateCrossFields = () => {
+      const errors: string[] = [];
+      
+      // Premium validation
+      const netPremium = number(form.netPremium);
+      const totalPremium = number(form.totalPremium);
+      const netOd = number(form.netOd);
+      const totalOd = number(form.totalOd);
+      
+      if (netPremium > totalPremium) {
+        errors.push('Net Premium cannot exceed Total Premium');
+      }
+      
+      if (netOd > totalOd) {
+        errors.push('Net OD cannot exceed Total OD');
+      }
+      
+      // Cashback validation
+      const cashbackPct = number(form.cashbackPct);
+      const cashbackAmt = number(form.cashbackAmt);
+      
+      if (cashbackPct > 50) {
+        errors.push('Cashback percentage cannot exceed 50%');
+      }
+      
+      if (cashbackAmt > totalPremium * 0.5) {
+        errors.push('Cashback amount cannot exceed 50% of Total Premium');
+      }
+      
+      // Date validation
+      if (form.issueDate && form.expiryDate) {
+        const issueDate = new Date(form.issueDate);
+        const expiryDate = new Date(form.expiryDate);
+        const diffTime = expiryDate.getTime() - issueDate.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        if (diffDays < 30) {
+          errors.push('Policy duration must be at least 30 days');
+        }
+        
+        if (diffDays > 1095) {
+          errors.push('Policy duration cannot exceed 3 years');
+        }
+      }
+      
+      return errors;
+    };
+  
+    // Business rule validation
+    const validateBusinessRules = () => {
+      const errors: string[] = [];
+      
+      // NCB validation
+      const ncb = number(form.ncb);
+      if (ncb < 0 || ncb > 50) {
+        errors.push('NCB must be between 0% and 50%');
+      }
+      
+      // IDV vs Premium validation
+      const idv = number(form.idv);
+      const totalPremium = number(form.totalPremium);
+      if (totalPremium > idv * 0.1) {
+        errors.push('Total Premium cannot exceed 10% of IDV');
+      }
+      
+      // Executive validation
+      if (!form.executive) {
+        errors.push('Executive name is required');
+      } else if (form.executive.length < 2) {
+        errors.push('Executive name must be at least 2 characters');
+      }
+      
+      return errors;
+    };
+  
+  
+    
+  
+    // Filtered caller suggestions for autocomplete
+    const getFilteredCallerSuggestions = async (input: string): Promise<string[]> => {
+      if (input.length < 2) return [];
+      
+      try {
+        const response = await DualStorageService.getTelecallers();
+        if (response.success && response.data) {
+          const filteredNames = response.data
+            .map((telecaller: any) => telecaller.name)
+            .filter((name: string) => 
+              name && 
+              name !== 'Unknown' && 
+              name.toLowerCase().includes(input.toLowerCase())
+            )
+            .slice(0, 5); // Limit to 5 suggestions
+          return filteredNames;
+        }
+      } catch (error) {
+        console.warn('Failed to get caller suggestions:', error);
+      }
+      
+      // Fallback to mock data with filtering
+      const mockCallers = ['Priya Singh', 'Rahul Kumar', 'Anjali Sharma'];
+      return mockCallers.filter(name => 
+        name.toLowerCase().includes(input.toLowerCase())
+      );
+    };
+  
+    // Handle adding new telecaller
+    const handleAddNewTelecaller = async (telecallerName: string) => {
+      try {
+        // Auto-select the new telecaller
+        set('callerName', telecallerName);
+        
+        const result = await DualStorageService.addTelecaller({
+          name: telecallerName,
+          email: '',
+          phone: '',
+          branch: form.branch || 'Default'
+        });
+        
+        if (result.success) {
+          // Refresh the caller names list
+          const updatedResponse = await DualStorageService.getTelecallers();
+          if (updatedResponse.success && updatedResponse.data) {
+            const names = updatedResponse.data
+              .map((telecaller: any) => telecaller.name)
+              .filter((name: string) => name && name !== 'Unknown');
+            setCallerNames(names);
+          }
+        }
+      } catch (error) {
+        console.error('Error adding telecaller:', error);
+      }
+    };
+  
+    const handleVehicleNumberChange = async (vehicleNumber: string) => {
+      set('vehicleNumber', vehicleNumber);
+      
+      if (vehicleNumber && vehicleNumber.length >= 4) {
+        setIsSearching(true);
+        try {
+          const token = localStorage.getItem('authToken');
+          const response = await fetch(`/api/policies/search/vehicle/${encodeURIComponent(vehicleNumber)}`, {
+            headers: { 
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          });
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+          
+          const data = await response.json();
+          if (data.success) {
+            setVehicleSearchResults(data.data || []);
+          } else {
+            setVehicleSearchResults([]);
+          }
+        } catch (error) {
+          console.error('Vehicle search failed:', error);
+          setVehicleSearchResults([]);
+        } finally {
+          setIsSearching(false);
+        }
+      } else {
+        setVehicleSearchResults([]);
+      }
+    };
+  
+    const quickFill = async () => {
+      if (vehicleSearchResults.length > 0) {
+        // Use most recent policy data (already sorted by created_at DESC)
+        const lastPolicy = vehicleSearchResults[0] as any;
+        
+        setForm((f: any) => ({
+          ...f,
+          insurer: lastPolicy.insurer || f.insurer,
+          productType: lastPolicy.product_type || f.productType,
+          vehicleType: lastPolicy.vehicle_type || f.vehicleType,
+          make: lastPolicy.make || f.make,
+          model: lastPolicy.model || f.model,
+          cc: lastPolicy.cc || f.cc,
+          manufacturingYear: lastPolicy.manufacturing_year || f.manufacturingYear,
+          idv: lastPolicy.idv || f.idv,
+          ncb: lastPolicy.ncb || f.ncb,
+          discount: lastPolicy.discount || f.discount,
+          netOd: lastPolicy.net_od || f.netOd,
+          ref: lastPolicy.ref || f.ref,
+          totalOd: lastPolicy.total_od || f.totalOd,
+          netPremium: lastPolicy.net_premium || f.netPremium,
+          totalPremium: lastPolicy.total_premium || f.totalPremium,
+          brokerage: lastPolicy.brokerage || f.brokerage,
+          cashback: lastPolicy.cashback_amount || f.cashback,
+          branch: lastPolicy.branch || f.branch,
+          rollover: lastPolicy.rollover || f.rollover,
+          callerName: lastPolicy.caller_name || f.callerName,
+          executive: lastPolicy.executive || f.executive,
+          opsExecutive: lastPolicy.ops_executive || f.opsExecutive,
+        }));
+      } else {
+        // Fallback to demo data if no search results
+      setForm((f:any)=> ({ ...f,
+        insurer: f.insurer || "Tata AIG",
+        productType: f.productType || "Private Car",
+        vehicleType: f.vehicleType || "Private Car",
+        make: f.make || "Maruti",
+        model: f.model || "Swift",
+        cc: f.cc || "1197",
+        manufacturingYear: f.manufacturingYear || "2021",
+        idv: f.idv || "495000",
+        ncb: f.ncb || "20",
+        discount: f.discount || "0",
+        netOd: f.netOd || "5400",
+        ref: f.ref || "",
+        totalOd: f.totalOd || "7200",
+        netPremium: f.netPremium || "10800",
+        totalPremium: f.totalPremium || "12150",
+        brokerage: f.brokerage || "500",
+        cashback: f.cashback || "600",
+      }))
+      }
+    }
+  
+    // Form submission handlers
+    const handleSave = async () => {
+      await submitForm(false);
+    };
+  
+    const handleSaveAndNew = async () => {
+      await submitForm(true);
+    };
+  
+    // Keyboard shortcuts
+    useEffect(() => {
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.ctrlKey && e.key === 's') {
+          e.preventDefault();
+          handleSave();
+        } else if (e.ctrlKey && e.key === 'Enter') {
+          e.preventDefault();
+          handleSaveAndNew();
+        }
+      };
+  
+      document.addEventListener('keydown', handleKeyDown);
+      return () => document.removeEventListener('keydown', handleKeyDown);
+    }, []);
+  
+    const submitForm = async (clearAfterSave: boolean) => {
+      // Clear previous messages
+      setSubmitMessage(null);
+      
+      // Validate required branch field
+      if (!form.branch || form.branch.trim() === '') {
+        setSubmitMessage({ type: 'error', message: 'Branch field is required! Please enter branch name.' });
+        setIsSubmitting(false);
+        return;
+      }
+      
+      // Validate form
+      if (errors.length > 0) {
+        setSubmitMessage({ type: 'error', message: 'Please fix the errors before saving' });
+        return;
+      }
+  
+      setIsSubmitting(true);
+  
+      try {
+        // Prepare data for API - including all fields
+        const policyData = {
+          policy_number: form.policyNumber,
+          vehicle_number: form.vehicleNumber,
+          insurer: form.insurer,
+          product_type: form.productType || 'Private Car',
+          vehicle_type: form.vehicleType || 'Private Car',
+          make: form.make || 'Unknown',
+          model: form.model || '',
+          cc: form.cc || '',
+          manufacturing_year: form.manufacturingYear || '',
+          issue_date: form.issueDate || new Date().toISOString().split('T')[0],
+          expiry_date: form.expiryDate || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          idv: (parseFloat(form.idv) || 0).toString(),
+          ncb: (parseFloat(form.ncb) || 0).toString(),
+          discount: (parseFloat(form.discount) || 0).toString(),
+          net_od: (parseFloat(form.netOd) || 0).toString(),
+          ref: form.ref || '',
+          total_od: (parseFloat(form.totalOd) || 0).toString(),
+          net_premium: (parseFloat(form.netPremium) || 0).toString(),
+          total_premium: parseFloat(form.totalPremium).toString(),
+          cashback_percentage: parseFloat(form.cashbackPct) || 0,
+          cashback_amount: (parseFloat(form.cashbackAmt) || 0).toString(),
+          customer_paid: form.customerPaid || '',
+          customer_email: form.customerEmail || '',
+          customer_cheque_no: form.customerChequeNo || '',
+          our_cheque_no: form.ourChequeNo || '',
+          executive: form.executive || 'Unknown',
+          caller_name: form.callerName || 'Unknown',
+          mobile: form.mobile || '0000000000',
+          rollover: form.rollover || '',
+          remark: form.remark || '',
+          customer_name: form.customerName || '',
+          branch: form.branch || '',
+          brokerage: (parseFloat(form.brokerage) || 0).toString(),
+          cashback: (parseFloat(form.cashback) || 0).toString(),
+          payment_method: form.paymentMethod || 'INSURER',
+          payment_sub_method: form.paymentSubMethod || '',
+          source: 'MANUAL_FORM'
+        };
+  
+        // Debug: Log the policy data being sent
+        console.log('🔍 Manual Form - Policy data being sent:', policyData);
+  
+        // Submit to API
+        const response = await DualStorageService.saveManualForm(policyData);
+        
+        // Debug: Log the response
+        console.log('🔍 Manual Form - API Response:', response);
+        console.log('🔍 Manual Form - Response success:', response?.success);
+        console.log('🔍 Manual Form - Response data:', response?.data);
+        
+        if (response && response.success) {
+          setSubmitMessage({ 
+            type: 'success', 
+            message: `Policy saved successfully! Policy ID: ${response.data?.id || 'N/A'}` 
+          });
+          
+          if (clearAfterSave) {
+            // Reset form for new entry
+            setForm({
+              insurer: "",
+              productType: "",
+              vehicleType: "",
+              make: "",
+              model: "",
+              cc: "",
+              manufacturingYear: "",
+              policyNumber: "",
+              vehicleNumber: "",
+              issueDate: "",
+              expiryDate: "",
+              idv: "",
+              ncb: "",
+              discount: "",
+              netOd: "",
+              ref: "",
+              totalOd: "",
+              netPremium: "",
+              totalPremium: "",
+              cashbackPct: "",
+              cashbackAmt: "",
+              customerPaid: "",
+              customerChequeNo: "",
+              ourChequeNo: "",
+              executive: "",
+              callerName: "",
+              mobile: "",
+              rollover: "",
+              remark: "",
+              brokerage: "",
+              cashback: "",
+              customerName: "",
+              branch: "",
+            });
+          }
+        } else {
+          setSubmitMessage({ 
+            type: 'error', 
+            message: response.error || 'Failed to save policy' 
+          });
+        }
+      } catch (error) {
+        setSubmitMessage({ 
+          type: 'error', 
+          message: error instanceof Error ? error.message : 'Unknown error occurred' 
+        });
+      } finally {
+        setIsSubmitting(false);
+      }
+    };
+  
+    // State for async validation errors
+    const [asyncErrors, setAsyncErrors] = useState<{[key: string]: string[]}>({});
+  
+    // Load real caller names on component mount
+    useEffect(() => {
+      const loadCallerNames = async () => {
+        try {
+          const response = await DualStorageService.getTelecallers();
+          if (response.success && response.data) {
+            const names = response.data
+              .map((telecaller: any) => telecaller.name)
+              .filter((name: string) => name && name !== 'Unknown');
+            setCallerNames(names);
+          }
+        } catch (error) {
+          console.warn('Failed to load caller names:', error);
+          // Fallback to mock data
+          setCallerNames(['Priya Singh', 'Rahul Kumar', 'Anjali Sharma']);
+        }
+      };
+      
+      loadCallerNames();
+    }, []);
+  
+    // Comprehensive validation (synchronous part)
+    const errors = useMemo(() => {
+      const allErrors: string[] = [];
+      
+      // Field-level validation (synchronous only)
+      Object.keys(form).forEach(field => {
+        if (field !== 'policyNumber') { // Skip async fields
+          const fieldErrors = validateField(field, form[field]);
+          allErrors.push(...fieldErrors);
+        }
+      });
+      
+      // Cross-field validation
+      const crossFieldErrors = validateCrossFields();
+      allErrors.push(...crossFieldErrors);
+      
+      // Business rule validation
+      const businessRuleErrors = validateBusinessRules();
+      allErrors.push(...businessRuleErrors);
+      
+      // Add async errors
+      Object.values(asyncErrors).forEach(fieldErrors => {
+        allErrors.push(...fieldErrors);
+      });
+      
+      // Log validation history for analytics
+      if (allErrors.length > 0) {
+        setValidationHistory(prev => [...prev, {
+          timestamp: new Date().toISOString(),
+          errors: allErrors,
+          formData: { ...form }
+        }]);
+      }
+      
+      return allErrors;
+    }, [form, fieldTouched, validationMode, asyncErrors]);
+  
+    // Async validation for policy number
+    const validatePolicyNumberAsync = async (value: string) => {
+      const errors: string[] = [];
+      
+      if (!value) {
+        return errors;
+      }
+      
+      if (!/^[A-Z0-9\-_\/ ]{3,50}$/.test(value)) {
+        return errors; // Format validation handled by sync validation
+      }
+      
+      try {
+        const response = await DualStorageService.getAllPolicies();
+        const existingPolicies = response.success ? response.data : [];
+        const isDuplicate = existingPolicies.some((policy: any) => policy.policyNumber === value);
+        if (isDuplicate) {
+          errors.push('Policy number already exists. Please use a different number.');
+        }
+      } catch (error) {
+        console.warn('Policy number duplicate check failed:', error);
+        // Don't add error if check fails - allow user to proceed
+      }
+      
+      return errors;
+    };
+  
+    // Handle async validation for policy number
+    useEffect(() => {
+      const validatePolicyNumber = async () => {
+        if (form.policyNumber && fieldTouched.policyNumber) {
+          try {
+            const fieldErrors = await validatePolicyNumberAsync(form.policyNumber);
+            setAsyncErrors(prev => ({
+              ...prev,
+              policyNumber: fieldErrors
+            }));
+          } catch (error) {
+            console.warn('Policy number validation failed:', error);
+          }
+        }
+      };
+  
+      const timeoutId = setTimeout(validatePolicyNumber, 500); // Debounce
+      return () => clearTimeout(timeoutId);
+    }, [form.policyNumber, fieldTouched.policyNumber]);
+  
+    return (
+      <>
+        <Card title="Manual Entry - Enterprise validation mode">
+          {/* Success/Error Messages */}
+          {submitMessage && (
+            <div className={`mb-4 p-3 rounded-xl text-sm ${
+              submitMessage.type === 'success' 
+                ? 'bg-green-100 text-green-800 border border-green-200' 
+                : 'bg-red-100 text-red-800 border border-red-200'
+            }`}>
+              {submitMessage.message}
+            </div>
+          )}
+          
+          {/* Validation Mode Toggle */}
+          <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+            <div className="flex items-center justify-between">
+              <div className="text-sm font-medium text-blue-800 flex items-center gap-2">
+                <span>ℹ️</span>
+                Validation Mode: {validationMode === 'progressive' ? 'Progressive (Validates as you type)' : 'Strict (Validates all fields)'}
+              </div>
+              <button 
+                onClick={() => setValidationMode(prev => prev === 'progressive' ? 'strict' : 'progressive')}
+                className="px-3 py-1.5 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Switch to {validationMode === 'progressive' ? 'Strict' : 'Progressive'}
+              </button>
+            </div>
+          </div>
+          
+          {/* Top row: Vehicle + QuickFill */}
+          <div className="flex flex-col md:flex-row gap-3 mb-4">
+            <div className="flex-1">
+              <LabeledInput 
+                label="Vehicle Number*" 
+                required 
+                placeholder="KA01AB1234 or KA 51 MM" 
+                value={form.vehicleNumber} 
+                onChange={handleVehicleNumberChange}
+              />
+            </div>
+            <button onClick={quickFill} className="px-4 py-2.5 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 transition-colors h-[42px] mt-6">
+              Prefill from last policy
+            </button>
+            <div className="ml-auto flex items-center gap-2 text-xs text-zinc-600 mt-6">
+              <Car className="w-4 h-4"/> Make/Model autofill in v1.1
+            </div>
+          </div>
+  
+          {/* Vehicle Search Results */}
+          {isSearching && (
+            <div className="mb-4 p-3 bg-blue-50 rounded-lg">
+              <div className="text-sm text-blue-600 flex items-center gap-2">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                Searching for previous policies...
+              </div>
+            </div>
+          )}
+  
+          {vehicleSearchResults.length > 0 && !isSearching && (
+            <div className="mb-4 p-3 bg-green-50 rounded-lg">
+              <div className="text-sm font-medium text-green-800 mb-2">
+                Found {vehicleSearchResults.length} previous policy(ies) for this vehicle:
+              </div>
+              {vehicleSearchResults.slice(0, 3).map((policy: any, index) => (
+                <div key={policy.id} className="text-xs text-green-700 mb-1">
+                  {index + 1}. Policy: {policy.policy_number} | 
+                  Insurer: {policy.insurer} | 
+                  Date: {new Date(policy.created_at).toLocaleDateString()}
+                </div>
+              ))}
+              <button 
+                onClick={quickFill}
+                className="mt-2 px-3 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700"
+              >
+                Use Most Recent Policy Data
+              </button>
+            </div>
+          )}
+  
+          {/* Policy & Vehicle */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <LabeledInput label="Policy Number" required value={form.policyNumber} onChange={v=>set('policyNumber', v)}/>
+            <LabeledInput label="Insurer (Company)" required placeholder="e.g., Tata AIG" value={form.insurer} onChange={v=>set('insurer', v)}/>
+            <LabeledSelect label="Product Type" value={form.productType} onChange={v=>set('productType', v)} options={[
+              { value: "Life Insurance", label: "Life Insurance" },
+              { value: "Motor Insurance", label: "Motor Insurance" },
+              { value: "Health Insurance", label: "Health Insurance" },
+              { value: "Travel Insurance", label: "Travel Insurance" },
+              { value: "Home Insurance", label: "Home Insurance" },
+              { value: "Cyber Insurance", label: "Cyber Insurance" }
+            ]}/>
+            <LabeledSelect label="Vehicle Type" value={form.vehicleType} onChange={v=>set('vehicleType', v)} options={[
+              { value: "Private Car", label: "Private Car" },
+              { value: "GCV", label: "GCV" },
+              { value: "LCV", label: "LCV" },
+              { value: "MCV", label: "MCV" },
+              { value: "HCV", label: "HCV" }
+            ]}/>
+            <LabeledInput label="Make" placeholder="Maruti / Hyundai / …" value={form.make} onChange={v=>set('make', v)}/>
+            <LabeledInput label="Model" placeholder="Swift / i20 / …" value={form.model} onChange={v=>set('model', v)}/>
+            <LabeledInput label="CC" hint="engine size" value={form.cc} onChange={v=>set('cc', v)}/>
+            <LabeledInput label="MFG Year" value={form.manufacturingYear} onChange={v=>set('manufacturingYear', v)}/>
+          </div>
+  
+          {/* Dates & Values */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+            <LabeledDateInput label="Issue Date" value={form.issueDate} onChange={v=>set('issueDate', v)}/>
+            <LabeledDateInput label="Expiry Date" value={form.expiryDate} onChange={v=>set('expiryDate', v)}/>
+            <LabeledInput label="IDV (₹)" value={form.idv} onChange={v=>set('idv', v)}/>
+            <LabeledInput label="NCB (%)" value={form.ncb} onChange={v=>set('ncb', v)}/>
+            <LabeledInput label="DIS (%)" hint="discount" value={form.discount} onChange={v=>set('discount', v)}/>
+            <LabeledInput label="Net Addon" hint="net addon" value={form.ref} onChange={v=>set('ref', v)}/>
+          </div>
+  
+          {/* Premiums */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+            <LabeledInput label="Net OD (₹)" hint="Own Damage" value={form.netOd} onChange={v=>set('netOd', v)}/>
+            <LabeledInput label="Total OD (₹)" value={form.totalOd} onChange={v=>set('totalOd', v)}/>
+            <LabeledInput label="Net Premium (₹)" value={form.netPremium} onChange={v=>set('netPremium', v)}/>
+            <LabeledInput label="Total Premium (₹)" required value={form.totalPremium} onChange={onTotalChange}/>
+          </div>
+  
+          {/* Cashback & Payments */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
+            <LabeledInput label="Cashback %" hint="auto-calculates amount" value={form.cashbackPct} onChange={onPctChange}/>
+            <LabeledInput label="Cashback Amount (₹)" hint="fills when % given" value={form.cashbackAmt} onChange={onAmtChange}/>
+            <LabeledInput label="Customer Paid (₹)" value={form.customerPaid} onChange={v=>set('customerPaid', v)}/>
+            <LabeledInput label="Customer Cheque No" value={form.customerChequeNo} onChange={v=>set('customerChequeNo', v)}/>
+            <LabeledInput label="Our Cheque No" value={form.ourChequeNo} onChange={v=>set('ourChequeNo', v)}/>
+            <LabeledSelect 
+              label="Payment Method" 
+              value={form.paymentMethod}
+              onChange={(value) => {
+                set('paymentMethod', value);
+                if (value !== 'NICSAN') {
+                  set('paymentSubMethod', '');
+                }
+              }}
+              options={[
+                { value: "INSURER", label: "INSURER" },
+                { value: "NICSAN", label: "NICSAN" }
+              ]}
+              placeholder="Select Payment Method"
+            />
+            {form.paymentMethod === 'NICSAN' && (
+              <LabeledSelect 
+                label="Payment Sub-Method" 
+                value={form.paymentSubMethod}
+                onChange={(value) => set('paymentSubMethod', value)}
+                options={[
+                  { value: "DIRECT", label: "DIRECT" },
+                  { value: "EXECUTIVE", label: "EXECUTIVE" }
+                ]}
+                placeholder="Select Sub-Method"
+              />
+            )}
+          </div>
+  
+          {/* Brokerage & Additional */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+            <div style={{ display: 'none' }}>
+              <LabeledInput label="Brokerage (₹)" hint="commission amount" value={form.brokerage} onChange={v=>set('brokerage', v)}/>
+            </div>
+            <LabeledInput label="Cashback (₹)" hint="total cashback amount" value={form.cashback} onChange={v=>set('cashback', v)}/>
+          </div>
+  
+          {/* People & Notes - Reorganized to match production layout */}
+          <div className="space-y-3 mt-4">
+            {/* First row - Executive, Ops Executive, Caller Name */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <LabeledSelect 
+                label="Executive" 
+                value={form.executive} 
+                onChange={v=>set('executive', v)} 
+                options={[
+                  { value: "", label: "Select Executive" },
+                  { value: "Yashwanth", label: "Yashwanth" },
+                  { value: "Kavya", label: "Kavya" },
+                  { value: "Bhagya", label: "Bhagya" },
+                  { value: "Sandesh", label: "Sandesh" },
+                  { value: "Yallappa", label: "Yallappa" },
+                  { value: "Nethravathi", label: "Nethravathi" },
+                  { value: "Tejaswini", label: "Tejaswini" }
+                ]}
+                placeholder="Select Executive"
+              />
+              <LabeledSelect 
+                label="Ops Executive" 
+                value={form.opsExecutive} 
+                onChange={v=>set('opsExecutive', v)} 
+                options={[
+                  { value: "", label: "Select Ops Executive" },
+                  { value: "NA", label: "NA" },
+                  { value: "Ravi", label: "Ravi" },
+                  { value: "Pavan", label: "Pavan" },
+                  { value: "Manjunath", label: "Manjunath" }
+                ]}
+                placeholder="Select Ops Executive"
+              />
+              <LabeledAutocompleteInput 
+                label="Caller Name" 
+                value={form.callerName} 
+                onChange={(v: string)=>set('callerName', v)} 
+                getSuggestions={getFilteredCallerSuggestions} 
+                onAddNew={handleAddNewTelecaller} 
+                showAddNew={true}
+                placeholder="Enter caller name"
+              />
+          </div>
+  
+            {/* Second row - Mobile Number, Rollover/Renewal, Customer Email ID */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <LabeledInput 
+                label="Mobile Number" 
+                required 
+                placeholder="9xxxxxxxxx" 
+                value={form.mobile} 
+                onChange={v=>set('mobile', v)}
+              />
+              <LabeledSelect 
+                label="Rollover/Renewal" 
+                value={form.rollover} 
+                onChange={v=>set('rollover', v)} 
+                options={[
+                  { value: "", label: "Select Rollover/Renewal" },
+                  { value: "ROLLOVER", label: "ROLLOVER" },
+                  { value: "RENEWAL", label: "RENEWAL" }
+                ]}
+                placeholder="Select Rollover/Renewal"
+              />
+              <LabeledInput 
+                label="Customer Email ID" 
+                value={form.customerEmail} 
+                onChange={v=>set('customerEmail', v)}
+                placeholder="customer@example.com"
+              />
+            </div>
+
+            {/* Third row - Customer Name, Branch, Remark */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <LabeledInput 
+                label="Customer Name" 
+                value={form.customerName} 
+                onChange={v=>set('customerName', v)}
+                placeholder="Enter customer name"
+              />
+              <LabeledSelect 
+                label="Branch" 
+                required 
+                value={form.branch} 
+                onChange={v=>set('branch', v)} 
+                options={[
+                  { value: "", label: "Select Branch" },
+                  { value: "MYSORE", label: "MYSORE" },
+                  { value: "BANASHANKARI", label: "BANASHANKARI" },
+                  { value: "ADUGODI", label: "ADUGODI" }
+                ]}
+                placeholder="Select Branch"
+              />
+              <LabeledInput 
+                label="Remark" 
+                placeholder="Any note" 
+                value={form.remark} 
+                onChange={v=>set('remark', v)}
+              />
+            </div>
+          </div>
+  
+          {/* Assist panels - Enhanced to match production */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+            <div className="bg-amber-50 border border-amber-200 text-amber-800 rounded-xl p-4 text-sm">
+              <div className="font-semibold mb-2 flex items-center gap-2">
+                <span>⚠️</span>
+                Error tray
+              </div>
+              {errors.length > 0 ? (
+                <ul className="list-disc pl-5 space-y-1">
+                  {errors.map((e,i) => (
+                    <li key={i} className="text-amber-700">{e}</li>
+                  ))}
+                </ul>
+              ) : (
+                <div className="text-amber-600">No blocking errors.</div>
+              )}
+            </div>
+            <div className="bg-zinc-50 border border-zinc-200 rounded-xl p-4 text-sm">
+              <div className="font-semibold mb-2 flex items-center gap-2">
+                <span>⌨️</span>
+                Shortcuts
+              </div>
+              <div className="space-y-1 text-zinc-600">
+                <div><kbd className="px-1 py-0.5 bg-zinc-200 rounded text-xs">Ctrl+S</kbd> save</div>
+                <div><kbd className="px-1 py-0.5 bg-zinc-200 rounded text-xs">Ctrl+Enter</kbd> save & new</div>
+                <div><kbd className="px-1 py-0.5 bg-zinc-200 rounded text-xs">Alt+E</kbd> first error</div>
+              </div>
+            </div>
+            <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl p-4 text-sm">
+              <div className="font-semibold mb-2 flex items-center gap-2">
+                <span>🤖</span>
+                Smart autofill
+              </div>
+              <div className="text-emerald-700">Typing a vehicle no. offers last-year data to copy.</div>
+            </div>
+          </div>
+  
+          <div className="sticky bottom-4 mt-4 flex gap-3 justify-end bg-white/60 backdrop-blur supports-[backdrop-filter]:bg-white/60 p-2 rounded-xl">
+            <button className="px-4 py-2 rounded-xl bg-white border">Save Draft</button>
+            <button 
+              onClick={handleSave} 
+              disabled={errors.length > 0 || isSubmitting}
+              className="px-4 py-2 rounded-xl bg-zinc-900 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSubmitting ? 'Saving...' : 'Save'}
+            </button>
+            <button 
+              onClick={handleSaveAndNew} 
+              disabled={errors.length > 0 || isSubmitting}
+              className="px-4 py-2 rounded-xl bg-indigo-600 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSubmitting ? 'Saving...' : 'Save & New'}
+            </button>
+          </div>
+        </Card>
+      </>
+    )
+  }
+
+export default PageManualForm;

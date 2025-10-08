@@ -924,6 +924,7 @@ export class NicsanCRMService {
           brokerage: 39000,
           cashback: 10000,
           net_revenue: 29000,
+          total_od: 450000,
           conversion_rate: 0.183,
           cac: 82
         },
@@ -936,6 +937,7 @@ export class NicsanCRMService {
           brokerage: 31500,
           cashback: 9000,
           net_revenue: 22500,
+          total_od: 380000,
           conversion_rate: 0.164,
           cac: 100
         }
