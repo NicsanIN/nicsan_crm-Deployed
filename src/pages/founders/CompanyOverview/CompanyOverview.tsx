@@ -45,7 +45,6 @@ function TotalODBreakdown() {
   const [breakdownType, setBreakdownType] = useState<'daily' | 'monthly' | 'financial-year'>('daily');
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [dataSource, setDataSource] = useState<string>('');
 
   useEffect(() => {
     loadBreakdownData();
@@ -65,7 +64,6 @@ function TotalODBreakdown() {
       
       if (response.success) {
         setData(response.data);
-        setDataSource(response.source);
       }
     } catch (error) {
       console.error('Failed to load Total OD breakdown:', error);
@@ -101,7 +99,7 @@ function TotalODBreakdown() {
   };
 
   return (
-    <Card title="Total OD Breakdown" desc={`${breakdownType} analysis (Data Source: ${dataSource || 'Loading...'})`}>
+    <Card title="Total OD Breakdown" desc={`${breakdownType} analysis`}>
       <div className="mb-4">
         <div className="flex gap-2">
           <button 
@@ -192,7 +190,6 @@ function TotalODBreakdown() {
 function PageOverview() {
     const [metrics, setMetrics] = useState<any>(null);
     const [trendData, setTrendData] = useState<any[]>([]);
-    const [dataSource, setDataSource] = useState<string>('');
     const [showTotalODBreakdown, setShowTotalODBreakdown] = useState(false);
   
     useEffect(() => {
@@ -203,7 +200,6 @@ function PageOverview() {
           
           if (metricsResponse.success) {
             setMetrics(metricsResponse.data);
-            setDataSource(metricsResponse.source);
             
             
             // Use real trend data from backend instead of demo data
@@ -263,7 +259,7 @@ function PageOverview() {
             onClick={() => setShowTotalODBreakdown(!showTotalODBreakdown)}
           />
         </div>
-        <Card title="14-day Trend" desc={`GWP & Net (Data Source: ${dataSource || 'Loading...'})`}>
+        <Card title="14-day Trend">
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={trendData}>
