@@ -45,7 +45,6 @@ function Tile({ label, value, sub, info, onClick }: { label: string; value: stri
 
 function PagePayments() {
     const [payments, setPayments] = useState<any[]>([]);
-    const [dataSource, setDataSource] = useState<string>('');
     const [isLoading, setIsLoading] = useState(true);
     const [viewMode, setViewMode] = useState<'summary' | 'detail'>('summary');
     const [selectedExecutive, setSelectedExecutive] = useState<string>('');
@@ -62,12 +61,10 @@ function PagePayments() {
         
         if (response.success) {
           setPayments(Array.isArray(response.data) ? response.data : []);
-          setDataSource(response.source);
         }
       } catch (error) {
         console.error('Failed to load executive payments:', error);
         setPayments([]);
-        setDataSource('MOCK_DATA');
       } finally {
         setIsLoading(false);
       }
