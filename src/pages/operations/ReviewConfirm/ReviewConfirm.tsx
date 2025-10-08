@@ -35,6 +35,267 @@ function LabeledInput({ label, value, onChange, type = "text", placeholder, hint
   );
 }
 
+// LabeledSelect component
+function LabeledSelect({ label, value, onChange, options, placeholder, required = false }: {
+  label: string;
+  value: any;
+  onChange: (value: any) => void;
+  options: string[];
+  placeholder?: string;
+  required?: boolean;
+}) {
+  return (
+    <div className="space-y-1">
+      <label className="text-sm text-zinc-700 flex items-center gap-1">
+        {label}
+        {required && <span className="text-red-500">*</span>}
+      </label>
+      <select
+        value={value || ''}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full px-3 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+      >
+        <option value="">{placeholder || `Select ${label}`}</option>
+        {options.map((option) => (
+          <option key={option} value={option}>
+            {option}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+// LabeledDateInput component - Custom date picker with calendar
+function LabeledDateInput({ 
+  label, 
+  value, 
+  onChange, 
+  placeholder = "dd-mm-yyyy", 
+  required = false 
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  required?: boolean;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date | null>(
+    value ? new Date(value) : null
+  );
+
+  const formatDate = (date: Date) => {
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}-${month}-${year}`;
+  };
+
+  const handleDateSelect = (date: Date) => {
+    setSelectedDate(date);
+    onChange(formatDate(date));
+    setIsOpen(false);
+  };
+
+  const handleClear = () => {
+    setSelectedDate(null);
+    onChange('');
+    setIsOpen(false);
+  };
+
+  const handleToday = () => {
+    const today = new Date();
+    setSelectedDate(today);
+    onChange(formatDate(today));
+    setIsOpen(false);
+  };
+
+  const getDaysInMonth = (date: Date) => {
+    return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+  };
+
+  const getFirstDayOfMonth = (date: Date) => {
+    return new Date(date.getFullYear(), date.getMonth(), 1).getDay();
+  };
+
+  const getDaysArray = (date: Date) => {
+    const daysInMonth = getDaysInMonth(date);
+    const firstDay = getFirstDayOfMonth(date);
+    const days = [];
+
+    // Previous month's trailing days
+    const prevMonth = new Date(date.getFullYear(), date.getMonth() - 1, 0);
+    const prevMonthDays = prevMonth.getDate();
+    for (let i = firstDay - 1; i >= 0; i--) {
+      days.push({
+        day: prevMonthDays - i,
+        isCurrentMonth: false,
+        date: new Date(date.getFullYear(), date.getMonth() - 1, prevMonthDays - i)
+      });
+    }
+
+    // Current month's days
+    for (let i = 1; i <= daysInMonth; i++) {
+      days.push({
+        day: i,
+        isCurrentMonth: true,
+        date: new Date(date.getFullYear(), date.getMonth(), i)
+      });
+    }
+
+    // Next month's leading days
+    const remainingDays = 42 - days.length; // 6 weeks * 7 days
+    for (let i = 1; i <= remainingDays; i++) {
+      days.push({
+        day: i,
+        isCurrentMonth: false,
+        date: new Date(date.getFullYear(), date.getMonth() + 1, i)
+      });
+    }
+
+    return days;
+  };
+
+  const monthNames = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+
+  const navigateMonth = (direction: 'prev' | 'next') => {
+    const newDate = new Date(currentDate);
+    if (direction === 'prev') {
+      newDate.setMonth(newDate.getMonth() - 1);
+    } else {
+      newDate.setMonth(newDate.getMonth() + 1);
+    }
+    setCurrentDate(newDate);
+  };
+
+  const isToday = (date: Date) => {
+    const today = new Date();
+    return date.toDateString() === today.toDateString();
+  };
+
+  const isSelected = (date: Date) => {
+    return selectedDate && date.toDateString() === selectedDate.toDateString();
+  };
+
+  return (
+    <div className="space-y-1 relative">
+      <label className="text-sm text-zinc-700 flex items-center gap-1">
+        {label}
+        {required && <span className="text-red-500">*</span>}
+      </label>
+      <div className="relative">
+        <input
+          type="text"
+          value={value || ''}
+          onChange={(e) => onChange(e.target.value)}
+          onFocus={() => setIsOpen(true)}
+          placeholder={placeholder}
+          className="w-full px-3 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        />
+        
+        {/* Calendar Icon */}
+        <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
+          <svg className="w-4 h-4 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+        </div>
+
+        {/* Calendar Popup */}
+        {isOpen && (
+          <div className="absolute z-50 w-full mt-1 bg-white border border-zinc-200 rounded-lg shadow-lg">
+            {/* Calendar Header */}
+            <div className="flex items-center justify-between p-3 border-b border-zinc-200">
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-zinc-900">
+                  {monthNames[currentDate.getMonth()]}, {currentDate.getFullYear()}
+                </span>
+                <svg className="w-4 h-4 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => navigateMonth('prev')}
+                  className="p-1 hover:bg-zinc-100 rounded transition-colors"
+                >
+                  <svg className="w-4 h-4 text-zinc-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                  </svg>
+                </button>
+                <button
+                  onClick={() => navigateMonth('next')}
+                  className="p-1 hover:bg-zinc-100 rounded transition-colors"
+                >
+                  <svg className="w-4 h-4 text-zinc-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Calendar Grid */}
+            <div className="p-3">
+              {/* Days of week header */}
+              <div className="grid grid-cols-7 gap-1 mb-2">
+                {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((day) => (
+                  <div key={day} className="text-xs font-medium text-zinc-500 text-center py-1">
+                    {day}
+                  </div>
+                ))}
+              </div>
+
+              {/* Calendar days */}
+              <div className="grid grid-cols-7 gap-1">
+                {getDaysArray(currentDate).map((dayObj, index) => (
+                  <button
+                    key={index}
+                    onClick={() => dayObj.isCurrentMonth && handleDateSelect(dayObj.date)}
+                    className={`
+                      w-8 h-8 text-sm rounded transition-colors flex items-center justify-center
+                      ${!dayObj.isCurrentMonth 
+                        ? 'text-zinc-300 cursor-not-allowed' 
+                        : isSelected(dayObj.date)
+                        ? 'bg-zinc-800 text-white'
+                        : isToday(dayObj.date)
+                        ? 'bg-indigo-100 text-indigo-700 font-medium'
+                        : 'text-zinc-700 hover:bg-zinc-100'
+                      }
+                    `}
+                    disabled={!dayObj.isCurrentMonth}
+                  >
+                    {dayObj.day}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Calendar Footer */}
+            <div className="flex items-center justify-between p-3 border-t border-zinc-200">
+              <button
+                onClick={handleClear}
+                className="text-sm text-blue-600 hover:text-blue-700 transition-colors"
+              >
+                Clear
+              </button>
+              <button
+                onClick={handleToday}
+                className="text-sm text-blue-600 hover:text-blue-700 transition-colors"
+              >
+                Today
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 
 function PageReview() {
     const [reviewData, setReviewData] = useState<any>(null);
@@ -749,7 +1010,7 @@ function PageReview() {
                 value={editableData.pdfData.manufacturing_year || pdfData.manufacturing_year}
                 onChange={(value) => updatePdfData('manufacturing_year', value)}
               />
-              <LabeledInput 
+              <LabeledDateInput 
                 label="Issue Date" 
                 value={editableData.pdfData.issue_date || pdfData.issue_date}
                 onChange={(value) => updatePdfData('issue_date', value)}
@@ -808,15 +1069,19 @@ function PageReview() {
               ✏️ Manual Input:
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <LabeledInput 
+              <LabeledSelect 
                 label="Executive" 
                 value={editableData.manualExtras.executive || manualExtras.executive}
                 onChange={(value) => updateManualExtras('executive', value)}
+                options={["Yashwanth", "Kavya", "Bhagya", "Sandesh", "Yallappa", "Nethravathi", "Tejaswini"]}
+                placeholder="Select Executive"
               />
-              <LabeledInput 
+              <LabeledSelect 
                 label="Ops Executive" 
                 value={editableData.manualExtras.opsExecutive || manualExtras.opsExecutive}
                 onChange={(value) => updateManualExtras('opsExecutive', value)}
+                options={["NA", "Ravi", "Pavan", "Manjunath"]}
+                placeholder="Select Ops Executive"
               />
               <AutocompleteInput 
                 label="Caller Name" 
@@ -836,15 +1101,19 @@ function PageReview() {
                 value={editableData.manualExtras.mobile || manualExtras.mobile}
                 onChange={(value) => updateManualExtras('mobile', value)}
               />
-              <LabeledInput 
+              <LabeledSelect 
                 label="Rollover/Renewal" 
                 value={editableData.manualExtras.rollover || manualExtras.rollover}
                 onChange={(value) => updateManualExtras('rollover', value)}
+                options={["ROLLOVER", "RENEWAL"]}
+                placeholder="Select Rollover/Renewal"
               />
-              <LabeledInput 
+              <LabeledSelect 
                 label="Branch" 
                 value={editableData.manualExtras.branch || manualExtras.branch}
                 onChange={(value) => updateManualExtras('branch', value)}
+                options={["MYSORE", "BANASHANKARI", "ADUGODI"]}
+                placeholder="Select Branch"
                 required
               />
               <div>

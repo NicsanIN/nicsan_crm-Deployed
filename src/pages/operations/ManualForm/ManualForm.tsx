@@ -1470,9 +1470,7 @@ function PageManualForm() {
                   { value: "", label: "Select Branch" },
                   { value: "MYSORE", label: "MYSORE" },
                   { value: "BANASHANKARI", label: "BANASHANKARI" },
-                  { value: "ADUGODI", label: "ADUGODI" },
-                  { value: "JAYANAGAR", label: "JAYANAGAR" },
-                  { value: "KORAMANGALA", label: "KORAMANGALA" }
+                  { value: "ADUGODI", label: "ADUGODI" }
                 ]}
                 placeholder="Select Branch"
               />

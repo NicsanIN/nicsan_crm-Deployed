@@ -683,8 +683,6 @@ function PageUpload() {
                   <option value="MYSORE">MYSORE</option>
                   <option value="BANASHANKARI">BANASHANKARI</option>
                   <option value="ADUGODI">ADUGODI</option>
-                  <option value="JAYANAGAR">JAYANAGAR</option>
-                  <option value="KORAMANGALA">KORAMANGALA</option>
                 </select>
               </div>
               <div>
