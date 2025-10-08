@@ -13,7 +13,7 @@ function Tile({ label, value, sub, info, onClick }: { label: string; value: stri
     >
       <div className="text-sm text-zinc-500 mb-1">{label}</div>
       <div className="text-2xl font-semibold text-zinc-900">{value}</div>
-      {sub && <div className="text-sm text-zinc-600 mt-1">{sub}</div>}
+      {sub && <div className="text-sm text-green-600 mt-1">{sub}</div>}
       {info && <div className="text-xs text-zinc-400 mt-1">{info}</div>}
     </div>
   );
