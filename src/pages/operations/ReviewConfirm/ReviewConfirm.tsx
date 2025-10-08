@@ -211,11 +211,52 @@ function LabeledDateInput({
   placeholder?: string;
   required?: boolean;
 }) {
+  const parseDateFromString = (dateString: string): Date | null => {
+    try {
+      // Handle dd-mm-yyyy format
+      const parts = dateString.split('-');
+      if (parts.length === 3) {
+        // Check if it's dd-mm-yyyy format (day is 1-31, month is 1-12)
+        const firstPart = parseInt(parts[0], 10);
+        const secondPart = parseInt(parts[1], 10);
+        const thirdPart = parseInt(parts[2], 10);
+        
+        if (firstPart >= 1 && firstPart <= 31 && secondPart >= 1 && secondPart <= 12) {
+          // dd-mm-yyyy format
+          const day = firstPart;
+          const month = secondPart - 1; // JavaScript months are 0-indexed
+          const year = thirdPart;
+          return new Date(year, month, day);
+        } else if (thirdPart >= 1 && thirdPart <= 31 && secondPart >= 1 && secondPart <= 12) {
+          // yyyy-mm-dd format
+          const year = firstPart;
+          const month = secondPart - 1; // JavaScript months are 0-indexed
+          const day = thirdPart;
+          return new Date(year, month, day);
+        }
+      }
+      // Fallback to standard Date parsing
+      return new Date(dateString);
+    } catch (error) {
+      return null;
+    }
+  };
+
   const [isOpen, setIsOpen] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(
-    value ? new Date(value) : null
+    value ? parseDateFromString(value) : null
   );
+
+  // Update selectedDate when value prop changes
+  useEffect(() => {
+    if (value) {
+      const parsedDate = parseDateFromString(value);
+      setSelectedDate(parsedDate);
+    } else {
+      setSelectedDate(null);
+    }
+  }, [value]);
 
   const formatDate = (date: Date) => {
     const day = date.getDate().toString().padStart(2, '0');
@@ -350,9 +391,24 @@ function LabeledDateInput({
                 </svg>
               </div>
               <div className="flex items-center gap-1">
+                {/* Year Navigation */}
+                <button
+                  onClick={() => {
+                    const newDate = new Date(currentDate);
+                    newDate.setFullYear(newDate.getFullYear() - 1);
+                    setCurrentDate(newDate);
+                  }}
+                  className="p-1 hover:bg-zinc-100 rounded transition-colors"
+                  title="Previous Year"
+                >
+                  <svg className="w-4 h-4 text-zinc-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+                  </svg>
+                </button>
                 <button
                   onClick={() => navigateMonth('prev')}
                   className="p-1 hover:bg-zinc-100 rounded transition-colors"
+                  title="Previous Month"
                 >
                   <svg className="w-4 h-4 text-zinc-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
@@ -361,9 +417,23 @@ function LabeledDateInput({
                 <button
                   onClick={() => navigateMonth('next')}
                   className="p-1 hover:bg-zinc-100 rounded transition-colors"
+                  title="Next Month"
                 >
                   <svg className="w-4 h-4 text-zinc-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                <button
+                  onClick={() => {
+                    const newDate = new Date(currentDate);
+                    newDate.setFullYear(newDate.getFullYear() + 1);
+                    setCurrentDate(newDate);
+                  }}
+                  className="p-1 hover:bg-zinc-100 rounded transition-colors"
+                  title="Next Year"
+                >
+                  <svg className="w-4 h-4 text-zinc-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
                   </svg>
                 </button>
               </div>
@@ -1146,7 +1216,7 @@ function PageReview() {
                 value={editableData.pdfData.issue_date || pdfData.issue_date}
                 onChange={(value) => updatePdfData('issue_date', value)}
               />
-              <LabeledInput 
+              <LabeledDateInput 
                 label="Expiry Date" 
                 value={editableData.pdfData.expiry_date || pdfData.expiry_date}
                 onChange={(value) => updatePdfData('expiry_date', value)}
