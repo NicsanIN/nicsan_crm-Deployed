@@ -1137,7 +1137,8 @@ function PageManualGrid() {
                       <input 
                         value={r.executive} 
                         onChange={(e) => updateRow(i, 'executive', e.target.value)}
-                        className="w-full border-none outline-none bg-transparent text-sm"
+                        disabled={true}
+                        className="w-full border-none outline-none bg-transparent text-sm bg-gray-100 cursor-not-allowed"
                       />
                     </td>
                     <td className="px-1">

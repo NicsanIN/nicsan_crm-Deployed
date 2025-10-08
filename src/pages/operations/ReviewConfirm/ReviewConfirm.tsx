@@ -910,7 +910,8 @@ function PageReview() {
                 label="Executive" 
                 value={editableData.manualExtras.executive || manualExtras.executive}
                 onChange={(value) => updateManualExtras('executive', value)}
-                hint="sales rep name"
+                disabled={true}
+                hint="Auto-filled from current user"
               />
               <LabeledInput 
                 label="Ops Executive" 
