@@ -1,7 +1,8 @@
 ﻿import React, { useMemo, useState, useEffect } from "react";
-import { Upload, FileText, CheckCircle2, Table2, Settings, LayoutDashboard, Users, BarChart3, Lock, LogOut, SlidersHorizontal, TrendingUp, RefreshCw, CreditCard } from "lucide-react";
+import { Upload, FileText, CheckCircle2, Table2, Settings, LayoutDashboard, Users, BarChart3, LogOut, SlidersHorizontal, TrendingUp, RefreshCw, CreditCard } from "lucide-react";
 import { authUtils } from './services/api';
 import DualStorageService from './services/dualStorageService';
+import HorizontalLogo from './assets/images/HorizontalLogo.svg';
 import CrossDeviceSyncDemo from './components/CrossDeviceSyncDemo';
 import PageExplorer from './pages/founders/SalesExplorer/PageExplorer';
 import PageLeaderboard from './pages/founders/RepLeaderboard/PageLeaderboard';
@@ -18,7 +19,6 @@ import PageManualForm from './pages/operations/ManualForm/ManualForm';
 import PageUpload from './pages/operations/PDFUpload/PDFUpload';
 import PageOperationsSettings from './pages/operations/Settings/Settings';
 import { SettingsProvider } from './contexts/SettingsContext';
-import HorizontalLogo from './assets/images/HorizontalLogo.svg';
 
 // Extend jsPDF type to include autoTable
 declare module 'jspdf' {
@@ -96,7 +96,14 @@ function LoginPage({ onLogin }: { onLogin: (user: { name: string; email: string;
   return (
     <div className="min-h-screen grid place-items-center bg-zinc-50 p-6">
       <div className="w-full max-w-md bg-white rounded-2xl border border-zinc-100 shadow-sm p-6">
-        <div className="flex items-center gap-2 text-lg font-semibold mb-1"><Lock className="w-5 h-5"/> Nicsan CRM v1</div>
+         <div className="flex items-center gap-3 mb-6">
+           <img 
+             src={HorizontalLogo} 
+             alt="Nicsan CRM" 
+             className="h-[20.3843px] w-auto"
+           />
+           <span className="text-[28px] font-clash font-bold text-zinc-900 leading-[20.3843px] mt-0.5">CRM</span>
+         </div>
         
         
         {error && (
@@ -106,23 +113,23 @@ function LoginPage({ onLogin }: { onLogin: (user: { name: string; email: string;
         )}
         
         <label className="block mb-3">
-          <div className="text-xs text-zinc-600 mb-1">Email</div>
+           <div className="text-xs text-zinc-600 mb-1 font-clash font-normal">Email</div>
           <input 
             value={email} 
             onChange={e=>setEmail(e.target.value)} 
-            className="w-full rounded-xl border border-zinc-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200" 
+            className="w-full rounded-xl border border-zinc-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200 font-clash font-normal" 
             placeholder="Enter your email"
             disabled={isLoading}
           />
         </label>
         <label className="block mb-4">
-          <div className="text-xs text-zinc-600 mb-1">Password</div>
+          <div className="text-xs text-zinc-600 mb-1 font-clash font-normal">Password</div>
           <input 
             type="password" 
             value={password} 
             onChange={e=>setPassword(e.target.value)} 
-            className="w-full rounded-xl border border-zinc-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200" 
-            placeholder="ΓÇóΓÇóΓÇóΓÇóΓÇóΓÇóΓÇóΓÇó"
+            className="w-full rounded-xl border border-zinc-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200 font-clash font-normal" 
+            placeholder="••••••••"
             disabled={isLoading}
           />
         </label>
@@ -130,7 +137,7 @@ function LoginPage({ onLogin }: { onLogin: (user: { name: string; email: string;
         <button 
           onClick={handleLogin} 
           disabled={isLoading}
-          className="w-full px-4 py-2 rounded-xl bg-zinc-900 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+           className="w-full px-4 py-2 rounded-xl bg-zinc-900 text-white disabled:opacity-50 disabled:cursor-not-allowed font-clash"
         >
           {isLoading ? 'Signing in...' : 'Sign in'}
         </button>
