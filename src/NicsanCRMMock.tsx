@@ -381,7 +381,6 @@ function FounderSidebar({ page, setPage }: { page: string; setPage: (p: string) 
           <Icon className="w-4 h-4"/> {label}
         </button>
       ))}
-      <div className="px-3 pt-2 text-[11px] text-zinc-500">Definitions in (brackets). Example: GWP = Gross Written Premium.</div>
     </div>
   )
 }

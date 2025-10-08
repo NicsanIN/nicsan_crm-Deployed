@@ -15,7 +15,6 @@ const BusinessSettings: React.FC = () => {
   const [success, setSuccess] = useState<string | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
   const [validationErrors, setValidationErrors] = useState<any>({});
-  const [dataSource, setDataSource] = useState<string>('');
 
   // Load settings on component mount
   useEffect(() => {
@@ -34,7 +33,6 @@ const BusinessSettings: React.FC = () => {
       if (response.success) {
         setSettings(response.data);
         setHasChanges(false);
-        setDataSource(response.source || 'Unknown');
       } else {
         setError(response.error || 'Failed to load settings');
       }
@@ -166,7 +164,6 @@ const BusinessSettings: React.FC = () => {
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-base font-semibold text-gray-900">Business Settings</h3>
-          <p className="text-xs text-gray-500">Data Source: {dataSource || 'Loading...'}</p>
         </div>
       </div>
 
