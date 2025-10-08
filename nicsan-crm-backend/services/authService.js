@@ -293,7 +293,11 @@ class AuthService {
         throw new Error('User not found');
       }
 
-      // Delete user
+      // Delete related records first (in correct order to avoid foreign key violations)
+      // 1. Delete password change logs that reference this user
+      await query('DELETE FROM password_change_logs WHERE changed_by = $1 OR target_user = $1', [id]);
+      
+      // 2. Now delete the user
       const queryText = 'DELETE FROM users WHERE id = $1';
       await query(queryText, [id]);
 
