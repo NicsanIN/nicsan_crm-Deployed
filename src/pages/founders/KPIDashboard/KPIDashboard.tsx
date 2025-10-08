@@ -37,7 +37,6 @@ function Tile({ label, value, sub, info, onClick }: { label: string; value: stri
 function PageKPIs() {
     const { settings } = useSettings();
     const [kpiData, setKpiData] = useState<any>(null);
-    const [dataSource, setDataSource] = useState<string>('');
   
     useEffect(() => {
       const loadKPIData = async () => {
@@ -47,14 +46,12 @@ function PageKPIs() {
           
           if (response.success) {
             setKpiData(response.data);
-            setDataSource(response.source);
             
             if (ENABLE_DEBUG) {
             }
           }
         } catch (error) {
           console.error('Failed to load KPI data:', error);
-          setDataSource('MOCK_DATA');
         }
       };
       
