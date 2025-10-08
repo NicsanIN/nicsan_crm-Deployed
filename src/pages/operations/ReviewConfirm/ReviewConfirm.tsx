@@ -3,6 +3,7 @@ import { Card } from '../../../components/common/Card';
 import { CheckCircle2, AlertTriangle } from 'lucide-react';
 import DualStorageService from '../../../services/dualStorageService';
 import { AutocompleteInput } from '../../../NicsanCRMMock';
+import { useAuth } from '../../../contexts/AuthContext';
 
 // Environment variables
 const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
@@ -37,6 +38,8 @@ function LabeledInput({ label, value, onChange, type = "text", placeholder, hint
 
 
 function PageReview() {
+    const { user } = useAuth();
+    const [lastUserId, setLastUserId] = useState<string | null>(null);
     const [reviewData, setReviewData] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [_saveMessage, setSaveMessage] = useState<{type: 'success' | 'error', message: string} | null>(null);
@@ -48,6 +51,21 @@ function PageReview() {
       manualExtras: {}
     });
     const [_callerNames, setCallerNames] = useState<string[]>([]);
+    
+    // Reset editableData when user changes
+    useEffect(() => {
+      if (user && user.id !== lastUserId) {
+        setEditableData(prevData => ({
+          ...prevData,
+          manualExtras: {
+            ...prevData.manualExtras,
+            executive: user.name || "",
+            opsExecutive: "",
+          }
+        }));
+        setLastUserId(user.id);
+      }
+    }, [user, lastUserId]);
     
     // Verification popup state
     const [showVerificationModal, setShowVerificationModal] = useState(false);
@@ -249,10 +267,13 @@ function PageReview() {
           const upload = response.data;
           setReviewData(upload);
           
-          // Initialize editable data with current values
+          // Initialize editable data with current values and auto-fill executive
           setEditableData({
             pdfData: { ...upload.extracted_data.extracted_data },
-            manualExtras: { ...upload.extracted_data.manual_extras }
+            manualExtras: { 
+              ...upload.extracted_data.manual_extras,
+              executive: upload.extracted_data.manual_extras.executive || user?.name || ''
+            }
           });
           
           setSubmitMessage({ 
@@ -266,7 +287,10 @@ function PageReview() {
             setReviewData(upload);
             setEditableData({
               pdfData: { ...upload.extracted_data.extracted_data },
-              manualExtras: { ...upload.extracted_data.manual_extras }
+              manualExtras: { 
+                ...upload.extracted_data.manual_extras,
+                executive: upload.extracted_data.manual_extras.executive || user?.name || ''
+              }
             });
             setSubmitMessage({ 
               type: 'success', 

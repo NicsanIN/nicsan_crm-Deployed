@@ -3,6 +3,7 @@ import { Card } from '../../../components/common/Card';
 import { Save, RefreshCw, CheckCircle2, AlertTriangle, User, Car, Building, Phone, Mail, MapPin, Calendar, DollarSign, FileText, Shield, Clock, Eye, Edit3, Trash2, Plus, Search, Download } from 'lucide-react';
 import DualStorageService from '../../../services/dualStorageService';
 import { AutocompleteInput } from '../../../NicsanCRMMock';
+import { useAuth } from '../../../contexts/AuthContext';
 
 // Environment variables
 const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
@@ -70,6 +71,7 @@ function LabeledSelect({ label, value, onChange, options, placeholder, hint, req
 
 
 function PageManualForm() {
+    const { user } = useAuth();
     const [form, setForm] = useState<any>({
       insurer: "",
       productType: "",
@@ -95,7 +97,7 @@ function PageManualForm() {
       customerPaid: "",
       customerChequeNo: "",
       ourChequeNo: "",
-      executive: "",
+      executive: user?.name || "",
       opsExecutive: "",
       callerName: "",
       mobile: "",
@@ -109,6 +111,7 @@ function PageManualForm() {
               paymentMethod: "INSURER",
               paymentSubMethod: ""
     });
+    const [lastUserId, setLastUserId] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [submitMessage, setSubmitMessage] = useState<{type: 'success' | 'error', message: string} | null>(null);
     const [_validationHistory, setValidationHistory] = useState<any[]>([]);
@@ -118,6 +121,18 @@ function PageManualForm() {
     const [validationMode, setValidationMode] = useState<'progressive' | 'strict'>('progressive');
     const [_callerNames, setCallerNames] = useState<string[]>([]);
     
+    // Reset form when user changes
+    useEffect(() => {
+      if (user && user.id !== lastUserId) {
+        setForm(prevForm => ({
+          ...prevForm,
+          executive: user.name || "",
+          opsExecutive: "",
+        }));
+        setLastUserId(user.id);
+      }
+    }, [user, lastUserId]);
+
     const set = (k:string,v:any)=> {
       setForm((f:any)=>({ ...f, [k]: v }));
       // Mark field as touched for progressive validation

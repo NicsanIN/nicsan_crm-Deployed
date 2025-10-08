@@ -3,12 +3,14 @@ import { Card } from '../../../components/common/Card';
 import { Upload, FileText, CheckCircle2, AlertTriangle, RefreshCw, Download, Eye, Trash2, User, Phone, Mail, Building, DollarSign, Calendar, Clock, Shield, Car, MapPin } from 'lucide-react';
 import DualStorageService from '../../../services/dualStorageService';
 import { AutocompleteInput } from '../../../NicsanCRMMock';
+import { useAuth } from '../../../contexts/AuthContext';
 
 // Environment variables
 const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
 
 
 function PageUpload() {
+    const { user } = useAuth();
     const [uploadStatus, setUploadStatus] = useState<string>('');
     const [uploadedFiles, setUploadedFiles] = useState<any[]>([]);
     const [selectedInsurer, setSelectedInsurer] = useState<string>('TATA_AIG');
@@ -25,7 +27,7 @@ function PageUpload() {
       { value: 'HDFC_ERGO', label: 'HDFC ERGO General Insurance' }
     ];
     const [manualExtras, setManualExtras] = useState({
-      executive: '',
+      executive: user?.name || '',
       opsExecutive: '',
       callerName: '',
       mobile: '',
@@ -41,9 +43,22 @@ function PageUpload() {
       paymentMethod: 'INSURER',
       paymentSubMethod: ''
     });
+    const [lastUserId, setLastUserId] = useState<string | null>(null);
     const [manualExtrasSaved, setManualExtrasSaved] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [_callerNames, setCallerNames] = useState<string[]>([]);
+    
+    // Reset manualExtras when user changes
+    useEffect(() => {
+      if (user && user.id !== lastUserId) {
+        setManualExtras(prevExtras => ({
+          ...prevExtras,
+          executive: user.name || '',
+          opsExecutive: '',
+        }));
+        setLastUserId(user.id);
+      }
+    }, [user, lastUserId]);
   
     const handleFiles = async (files: FileList) => {
       const file = files[0];

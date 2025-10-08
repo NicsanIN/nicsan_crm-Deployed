@@ -2,17 +2,34 @@ import { useState, useEffect } from 'react';
 import { Card } from '../../../components/common/Card';
 import { Plus, Save, Trash2, RefreshCw, CheckCircle2, AlertTriangle, Clock, Eye, Edit3 } from 'lucide-react';
 import DualStorageService from '../../../services/dualStorageService';
+import { useAuth } from '../../../contexts/AuthContext';
 
 // Environment variables
 const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
 
 function PageManualGrid() {
+    const { user } = useAuth();
     const [rows, setRows] = useState<any[]>([]);
     const [isSaving, setIsSaving] = useState(false);
     const [saveMessage, setSaveMessage] = useState<{type: 'success' | 'error' | 'info', message: string} | null>(null);
     const [rowStatuses, setRowStatuses] = useState<{[key: number]: 'pending' | 'saving' | 'saved' | 'error'}>({});
     const [isLoading, setIsLoading] = useState(true);
     const [savedPolicies, setSavedPolicies] = useState<any[]>([]);
+    const [lastUserId, setLastUserId] = useState<string | null>(null);
+    
+    // Reset rows when user changes
+    useEffect(() => {
+      if (user && user.id !== lastUserId) {
+        setRows(prevRows => 
+          prevRows.map(row => ({
+            ...row,
+            executive: user.name || "",
+            opsExecutive: "",
+          }))
+        );
+        setLastUserId(user.id);
+      }
+    }, [user, lastUserId]);
   
     // Load grid data on component mount
     useEffect(() => {
@@ -96,7 +113,7 @@ function PageManualGrid() {
         brokerage: "0",
         
         // Contact Info
-        executive: "",
+        executive: user?.name || "",
         opsExecutive: "",
         callerName: "",
         mobile: "",

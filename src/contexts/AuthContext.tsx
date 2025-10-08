@@ -91,9 +91,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const logout = () => {
-    setUser(null);
-    authUtils.logout();
+  const logout = async () => {
+    try {
+      // Call backend logout endpoint
+      await authAPI.logout();
+    } catch (error) {
+      console.error('Backend logout failed:', error);
+    } finally {
+      // Clear user state first
+      setUser(null);
+      
+      // Clear all localStorage data
+      authUtils.logout();
+    }
   };
 
   const refreshUser = async () => {

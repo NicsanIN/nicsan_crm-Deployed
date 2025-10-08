@@ -176,6 +176,12 @@ export const authAPI = {
       body: JSON.stringify(passwordData),
     });
   },
+
+  logout: async (): Promise<ApiResponse<any>> => {
+    return apiCall('/auth/logout', {
+      method: 'POST',
+    });
+  },
 };
 
 // Policies API
@@ -527,8 +533,17 @@ export const authUtils = {
   },
 
   logout: (): void => {
+    // Clear all authentication and user data
     localStorage.removeItem('authToken');
     localStorage.removeItem('user');
+    localStorage.removeItem('deviceId');
+    localStorage.removeItem('nicsan_settings');
+    localStorage.removeItem('nicsan_crm_uploads');
+    
+    // Clear any other user-related data
+    localStorage.removeItem('nicsan_crm_policies');
+    localStorage.removeItem('nicsan_crm_dashboard');
+    
     window.location.href = '/';
   },
 };
