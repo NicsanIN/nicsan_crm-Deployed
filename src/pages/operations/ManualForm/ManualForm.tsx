@@ -1283,7 +1283,7 @@ function PageManualForm() {
   
     return (
       <>
-        <Card title="Manual Entry - Enterprise validation mode" desc="Comprehensive validation with business rules, progressive feedback, and data quality assurance">
+        <Card title="Manual Entry - Enterprise validation mode">
           {/* Success/Error Messages */}
           {submitMessage && (
             <div className={`mb-4 p-3 rounded-xl text-sm ${

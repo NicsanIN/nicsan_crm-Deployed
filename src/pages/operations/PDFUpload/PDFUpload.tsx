@@ -510,7 +510,7 @@ function PageUpload() {
   
     return (
       <>
-        <Card title="Drag & Drop PDF" desc="(S3 = cloud folder; Textract = PDF reader bot). Tata AIG & Digit only in v1.">
+        <Card title="Drag & Drop PDF">
           {/* Insurer Selection */}
           <div className="mb-4">
             <div className="text-sm font-medium mb-2">Select Insurer</div>

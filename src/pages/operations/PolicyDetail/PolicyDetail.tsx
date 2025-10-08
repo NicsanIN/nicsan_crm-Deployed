@@ -8,7 +8,6 @@ const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
 
 function PagePolicyDetail() {
     const [policyData, setPolicyData] = useState<any>(null);
-    const [dataSource, setDataSource] = useState<string>('');
     const [isLoading, setIsLoading] = useState(true);
     const [policyId, setPolicyId] = useState<string>('1');
     const [availablePolicies, setAvailablePolicies] = useState<any[]>([]);
@@ -54,7 +53,6 @@ function PagePolicyDetail() {
         
         if (response.success) {
           setPolicyData(response.data);
-          setDataSource(response.source);
           
           
           if (ENABLE_DEBUG) {
@@ -62,7 +60,6 @@ function PagePolicyDetail() {
         }
       } catch (error) {
         console.error('Failed to load policy detail:', error);
-        setDataSource('MOCK_DATA');
       } finally {
         setIsLoading(false);
       }
@@ -191,7 +188,7 @@ function PagePolicyDetail() {
     return (
       <>
         {/* Policy Selection */}
-        <Card title="Policy Detail" desc={`View comprehensive policy information (Data Source: ${dataSource || 'Loading...'})`}>
+        <Card title="Policy Detail">
           <div className="mb-4">
             <div className="space-y-4">
               <div className="flex items-center gap-3">

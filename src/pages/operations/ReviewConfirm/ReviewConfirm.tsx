@@ -1003,7 +1003,7 @@ function PageReview() {
     // For demo purposes, show mock data
     if (!reviewData && availableUploads.length === 0) {
       return (
-        <Card title="Review & Confirm" desc="Review PDF data + manual extras before saving">
+        <Card title="Review & Confirm">
           <div className="text-center py-8 text-zinc-500">
             <div className="text-6xl mb-4">📄</div>
             <div className="text-lg font-medium mb-2">No PDF data to review</div>
@@ -1077,7 +1077,7 @@ function PageReview() {
     // Show upload selection if no specific upload is loaded
     if (!reviewData && availableUploads.length > 0) {
       return (
-        <Card title="Review & Confirm" desc="Select an upload to review">
+        <Card title="Review & Confirm">
           <div className="mb-6 p-4 bg-zinc-50 rounded-xl">
             <div className="flex items-center justify-between mb-3">
               <div className="text-sm font-medium">📄 Select Upload to Review</div>
@@ -1133,7 +1133,7 @@ function PageReview() {
     // Safety check - if no data, show error
     if (!data || !data.extracted_data) {
       return (
-        <Card title="Review & Confirm" desc="Review PDF data + manual extras before saving">
+        <Card title="Review & Confirm">
           <div className="text-center py-8 text-red-500">
             <div className="text-6xl mb-4">⚠️</div>
             <div className="text-lg font-medium mb-2">Data Error</div>
@@ -1151,7 +1151,7 @@ function PageReview() {
   
     return (
       <>
-        <Card title="Review & Confirm" desc="Review PDF data + manual extras before saving">
+        <Card title="Review & Confirm">
           {/* Success/Error Messages */}
           {submitMessage && (
             <div className={`mb-4 p-3 rounded-xl text-sm ${
