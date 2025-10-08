@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { Card } from '../../../components/common/Card';
 import { CheckCircle2, AlertTriangle } from 'lucide-react';
 import DualStorageService from '../../../services/dualStorageService';
@@ -86,65 +86,41 @@ function LabeledAutocompleteInput({
   required?: boolean;
 }) {
   const [suggestions, setSuggestions] = useState<string[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
-  const [showAddNewOption, setShowAddNewOption] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const debouncedGetSuggestions = useMemo(
-    () => {
-      let timeoutId: NodeJS.Timeout;
-      return (input: string) => {
-        clearTimeout(timeoutId);
-        timeoutId = setTimeout(async () => {
-          if (input.length >= 2) {
-            setIsLoading(true);
-            try {
-              const results = await getSuggestions(input);
-              setSuggestions(results);
-              setShowAddNewOption(showAddNew && results.length === 0 && input.trim().length > 0);
-            } catch (error) {
-              console.error('Error fetching suggestions:', error);
-              setSuggestions([]);
-            } finally {
-              setIsLoading(false);
-            }
-          } else {
-            setSuggestions([]);
-            setShowAddNewOption(false);
-          }
-        }, 300);
-      };
-    },
-    [getSuggestions, showAddNew]
-  );
-
-  const handleInputChange = (inputValue: string) => {
+  const handleInputChange = async (inputValue: string) => {
     onChange(inputValue);
-    debouncedGetSuggestions(inputValue);
+    
+    if (inputValue.length >= 2) {
+      setIsLoading(true);
+      try {
+        const newSuggestions = await getSuggestions(inputValue);
+        setSuggestions(newSuggestions);
+        // Open dropdown only if we have suggestions OR if we want to show "Add new" option (but not both empty)
+        setIsOpen(newSuggestions.length > 0 || (showAddNew && inputValue.trim().length > 0 && newSuggestions.length === 0));
+      } catch (error) {
+        setSuggestions([]);
+        setIsOpen(false);
+      } finally {
+        setIsLoading(false);
+      }
+    } else {
+      setSuggestions([]);
+      setIsOpen(false);
+    }
   };
 
   const handleSuggestionClick = (suggestion: string) => {
     onChange(suggestion);
     setIsOpen(false);
-    setShowAddNewOption(false);
   };
 
   const handleAddNew = () => {
-    if (onAddNew) {
-      onAddNew(value);
+    if (onAddNew && value.trim()) {
+      onAddNew(value.trim());
+      setIsOpen(false);
     }
-    setIsOpen(false);
-    setShowAddNewOption(false);
-  };
-
-  const handleInputFocus = () => {
-    if (value && value.length >= 2) {
-      setIsOpen(suggestions.length > 0 || showAddNewOption);
-    }
-  };
-
-  const handleInputBlur = () => {
-    setTimeout(() => setIsOpen(false), 200);
   };
 
   return (
@@ -156,41 +132,63 @@ function LabeledAutocompleteInput({
       <div className="relative">
         <input
           type="text"
-          value={value}
+          value={value || ''}
           onChange={(e) => handleInputChange(e.target.value)}
-          onFocus={handleInputFocus}
-          onBlur={handleInputBlur}
+          onFocus={async () => {
+            if (value.length >= 2) {
+              try {
+                const newSuggestions = await getSuggestions(value);
+                setSuggestions(newSuggestions);
+                // Open dropdown only if we have suggestions OR if we want to show "Add new" option (but not both empty)
+                setIsOpen(newSuggestions.length > 0 || (showAddNew && value.trim().length > 0 && newSuggestions.length === 0));
+              } catch (error) {
+                // Silent error handling
+              }
+            }
+          }}
+          onBlur={() => {
+            // Delay to allow clicking on suggestions
+            setTimeout(() => setIsOpen(false), 150);
+          }}
           placeholder={placeholder}
           className="w-full px-3 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         />
         
-        {isLoading && (
-          <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
-          </div>
-        )}
+        {/* Dropdown Arrow */}
+        <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
+          <svg className="w-4 h-4 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </div>
 
-        {/* Dropdown with suggestions */}
-        {isOpen && (suggestions.length > 0 || showAddNewOption) && (
-          <div className="absolute z-10 mt-1 w-full bg-white border border-zinc-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
-            {suggestions.map((suggestion, index) => (
-              <div
-                key={index}
-                className="px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-zinc-100 last:border-b-0"
-                onClick={() => handleSuggestionClick(suggestion)}
-              >
-                {suggestion}
+        {/* Suggestions Dropdown */}
+        {isOpen && (
+          <div className="absolute z-50 w-full mt-1 bg-white border border-zinc-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+            {isLoading ? (
+              <div className="px-3 py-2 text-sm text-blue-500 flex items-center gap-2">
+                <div className="w-4 h-4 border-2 border-blue-300 border-t-blue-600 rounded-full animate-spin"></div>
+                Loading suggestions...
               </div>
-            ))}
-            
-            {/* Add New Telecaller Option */}
-            {showAddNewOption && (
-              <div
-                className="px-3 py-2 hover:bg-green-50 cursor-pointer text-sm border-t border-zinc-200 bg-green-50 text-green-700 font-medium"
-                onClick={handleAddNew}
-              >
-                + Add '{value}' as new Telecaller
-              </div>
+            ) : (
+              <>
+                {suggestions.map((suggestion, index) => (
+                  <button
+                    key={index}
+                    onClick={() => handleSuggestionClick(suggestion)}
+                    className="w-full px-3 py-2 text-left text-sm text-zinc-700 hover:bg-blue-50 transition-colors first:rounded-t-lg last:rounded-b-lg"
+                  >
+                    {suggestion}
+                  </button>
+                ))}
+                {showAddNew && value.trim() && !suggestions.includes(value.trim()) && (
+                  <button
+                    onClick={handleAddNew}
+                    className="w-full px-3 py-2 text-left text-sm text-blue-600 hover:bg-blue-50 transition-colors border-t border-zinc-200 rounded-b-lg"
+                  >
+                    + Add "{value.trim()}" as new telecaller
+                  </button>
+                )}
+              </>
             )}
           </div>
         )}
