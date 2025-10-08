@@ -841,20 +841,18 @@ function PageReview() {
           {/* Manual Extras Section */}
           <div className="mb-6">
             <div className="text-sm font-medium mb-3 text-blue-700 bg-blue-50 px-3 py-2 rounded-lg">
-              ✏️ Manual Extras (from Sales Rep)
+              ✏️ Manual Input:
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <LabeledInput 
                 label="Executive" 
                 value={editableData.manualExtras.executive || manualExtras.executive}
                 onChange={(value) => updateManualExtras('executive', value)}
-                hint="sales rep name"
               />
               <LabeledInput 
                 label="Ops Executive" 
                 value={editableData.manualExtras.opsExecutive || manualExtras.opsExecutive}
                 onChange={(value) => updateManualExtras('opsExecutive', value)}
-                hint="ops executive name"
               />
               <AutocompleteInput 
                 label="Caller Name" 
@@ -878,7 +876,6 @@ function PageReview() {
                 label="Rollover/Renewal" 
                 value={editableData.manualExtras.rollover || manualExtras.rollover}
                 onChange={(value) => updateManualExtras('rollover', value)}
-                hint="internal code"
               />
               <LabeledInput 
                 label="Branch" 
@@ -928,7 +925,6 @@ function PageReview() {
                 label="Cashback (₹)" 
                 value={editableData.manualExtras.cashback || manualExtras.cashback}
                 onChange={(value) => updateManualExtras('cashback', value)}
-                hint="total cashback"
               />
               <LabeledInput 
                 label="Customer Paid (₹)" 
