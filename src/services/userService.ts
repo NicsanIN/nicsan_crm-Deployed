@@ -28,13 +28,13 @@ export interface UpdateUserRequest {
 export const userService = {
   // Get all users (founders only)
   getAllUsers: async (): Promise<User[]> => {
-    const response = await apiCall<User[]>('/users');
+    const response = await apiCall<User[]>('/auth/users');
     return response.data || [];
   },
 
   // Create new user (founders only)
   createUser: async (userData: CreateUserRequest) => {
-    return apiCall('/users', {
+    return apiCall('/auth/users', {
       method: 'POST',
       body: JSON.stringify(userData)
     });
@@ -42,7 +42,7 @@ export const userService = {
 
   // Update user (founders only)
   updateUser: async (id: number, userData: UpdateUserRequest) => {
-    return apiCall(`/users/${id}`, {
+    return apiCall(`/auth/users/${id}`, {
       method: 'PUT',
       body: JSON.stringify(userData)
     });
@@ -50,14 +50,14 @@ export const userService = {
 
   // Delete user (founders only)
   deleteUser: async (id: number) => {
-    return apiCall(`/users/${id}`, {
+    return apiCall(`/auth/users/${id}`, {
       method: 'DELETE'
     });
   },
 
   // Toggle user status (founders only)
   toggleUserStatus: async (id: number, is_active: boolean) => {
-    return apiCall(`/users/${id}/status`, {
+    return apiCall(`/auth/users/${id}/status`, {
       method: 'PATCH',
       body: JSON.stringify({ is_active })
     });
@@ -65,7 +65,7 @@ export const userService = {
 
   // Update user password (founders only)
   updateUserPassword: async (id: number, password: string) => {
-    return apiCall(`/users/${id}/password`, {
+    return apiCall(`/auth/users/${id}/password`, {
       method: 'PATCH',
       body: JSON.stringify({ password })
     });

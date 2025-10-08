@@ -140,5 +140,46 @@ router.delete('/users/:id', authenticateToken, async (req, res) => {
   }
 });
 
+// Toggle user status
+router.patch('/users/:id/status', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { is_active } = req.body;
+    const result = await authService.updateUser(id, { is_active });
+    res.json(result);
+  } catch (error) {
+    console.error('Toggle user status error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to toggle user status'
+    });
+  }
+});
+
+// Update user password
+router.patch('/users/:id/password', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { password } = req.body;
+    
+    if (!password) {
+      return res.status(400).json({
+        success: false,
+        error: 'Password is required'
+      });
+    }
+
+    const passwordHash = await authService.hashPassword(password);
+    const result = await authService.updateUser(id, { password_hash: passwordHash });
+    res.json(result);
+  } catch (error) {
+    console.error('Update user password error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to update user password'
+    });
+  }
+});
+
 module.exports = router;
 
