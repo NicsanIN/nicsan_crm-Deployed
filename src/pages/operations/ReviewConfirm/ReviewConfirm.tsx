@@ -1,8 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Card } from '../../../components/common/Card';
 import { CheckCircle2, AlertTriangle } from 'lucide-react';
 import DualStorageService from '../../../services/dualStorageService';
-import { AutocompleteInput } from '../../../NicsanCRMMock';
 
 // Environment variables
 // const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
@@ -62,6 +61,140 @@ function LabeledSelect({ label, value, onChange, options, placeholder, required 
           </option>
         ))}
       </select>
+    </div>
+  );
+}
+
+// LabeledAutocompleteInput component - Custom autocomplete with Review & Confirm styling
+function LabeledAutocompleteInput({ 
+  label, 
+  value, 
+  onChange, 
+  getSuggestions, 
+  onAddNew, 
+  showAddNew = false, 
+  placeholder = "", 
+  required = false 
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  getSuggestions: (input: string) => Promise<string[]>;
+  onAddNew?: (value: string) => void;
+  showAddNew?: boolean;
+  placeholder?: string;
+  required?: boolean;
+}) {
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
+  const [showAddNewOption, setShowAddNewOption] = useState(false);
+
+  const debouncedGetSuggestions = useMemo(
+    () => {
+      let timeoutId: NodeJS.Timeout;
+      return (input: string) => {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(async () => {
+          if (input.length >= 2) {
+            setIsLoading(true);
+            try {
+              const results = await getSuggestions(input);
+              setSuggestions(results);
+              setShowAddNewOption(showAddNew && results.length === 0 && input.trim().length > 0);
+            } catch (error) {
+              console.error('Error fetching suggestions:', error);
+              setSuggestions([]);
+            } finally {
+              setIsLoading(false);
+            }
+          } else {
+            setSuggestions([]);
+            setShowAddNewOption(false);
+          }
+        }, 300);
+      };
+    },
+    [getSuggestions, showAddNew]
+  );
+
+  const handleInputChange = (inputValue: string) => {
+    onChange(inputValue);
+    debouncedGetSuggestions(inputValue);
+  };
+
+  const handleSuggestionClick = (suggestion: string) => {
+    onChange(suggestion);
+    setIsOpen(false);
+    setShowAddNewOption(false);
+  };
+
+  const handleAddNew = () => {
+    if (onAddNew) {
+      onAddNew(value);
+    }
+    setIsOpen(false);
+    setShowAddNewOption(false);
+  };
+
+  const handleInputFocus = () => {
+    if (value && value.length >= 2) {
+      setIsOpen(suggestions.length > 0 || showAddNewOption);
+    }
+  };
+
+  const handleInputBlur = () => {
+    setTimeout(() => setIsOpen(false), 200);
+  };
+
+  return (
+    <div className="space-y-1 relative">
+      <label className="text-sm text-zinc-700 flex items-center gap-1">
+        {label}
+        {required && <span className="text-red-500">*</span>}
+      </label>
+      <div className="relative">
+        <input
+          type="text"
+          value={value}
+          onChange={(e) => handleInputChange(e.target.value)}
+          onFocus={handleInputFocus}
+          onBlur={handleInputBlur}
+          placeholder={placeholder}
+          className="w-full px-3 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        />
+        
+        {isLoading && (
+          <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
+          </div>
+        )}
+
+        {/* Dropdown with suggestions */}
+        {isOpen && (suggestions.length > 0 || showAddNewOption) && (
+          <div className="absolute z-10 mt-1 w-full bg-white border border-zinc-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+            {suggestions.map((suggestion, index) => (
+              <div
+                key={index}
+                className="px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-zinc-100 last:border-b-0"
+                onClick={() => handleSuggestionClick(suggestion)}
+              >
+                {suggestion}
+              </div>
+            ))}
+            
+            {/* Add New Telecaller Option */}
+            {showAddNewOption && (
+              <div
+                className="px-3 py-2 hover:bg-green-50 cursor-pointer text-sm border-t border-zinc-200 bg-green-50 text-green-700 font-medium"
+                onClick={handleAddNew}
+              >
+                + Add '{value}' as new Telecaller
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -1083,13 +1216,14 @@ function PageReview() {
                 options={["NA", "Ravi", "Pavan", "Manjunath"]}
                 placeholder="Select Ops Executive"
               />
-              <AutocompleteInput 
+              <LabeledAutocompleteInput 
                 label="Caller Name" 
                 value={editableData.manualExtras.callerName || manualExtras.callerName}
                 onChange={(value: string) => updateManualExtras('callerName', value)}
                 getSuggestions={getFilteredCallerSuggestions}
                 onAddNew={handleAddNewTelecaller}
                 showAddNew={true}
+                placeholder="Telecaller name"
               />
               <LabeledInput 
                 label="Customer Email ID" 
