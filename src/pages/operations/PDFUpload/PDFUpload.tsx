@@ -157,7 +157,6 @@ function PageUpload() {
       executive: '',
       opsExecutive: '',
       callerName: '',
-      customerName: '',
       mobile: '',
       customerEmail: '',
       rollover: '',
@@ -291,7 +290,6 @@ function PageUpload() {
             executive: '',
             opsExecutive: '',
             callerName: '',
-            customerName: '',
             mobile: '',
             customerEmail: '',
             rollover: '',
@@ -577,16 +575,6 @@ function PageUpload() {
                   getSuggestions={getFilteredCallerSuggestions}
                   onAddNew={handleAddNewTelecaller}
                   showAddNew={true}
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-blue-700 mb-1">Customer Name</label>
-                <input 
-                  type="text" 
-                  placeholder="Enter customer name"
-                  value={manualExtras.customerName}
-                  onChange={(e) => handleManualExtrasChange('customerName', e.target.value)}
-                  className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
                 />
               </div>
               <div>

@@ -225,7 +225,7 @@ function PagePayments() {
     return (
       <>
         {/* Summary Tiles */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
           <Tile 
             label="Total Payments" 
             info="(All executive payments)"
@@ -243,12 +243,6 @@ function PagePayments() {
             info="(Awaiting processing)"
             value={formatCurrency(pendingAmount)} 
             sub={`${filteredPayments.length - filteredPayments.filter(p => receivedPayments.has(`${p.policy_number}_${p.customer_name}`) || p.payment_received === true).length} pending`}
-          />
-          <Tile 
-            label="Data Source" 
-            info="(Payment data origin)"
-            value={dataSource || 'Loading...'} 
-            sub="Backend or Mock"
           />
         </div>
   

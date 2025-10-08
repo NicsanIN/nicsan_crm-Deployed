@@ -241,28 +241,23 @@ function PageOverview() {
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
           <Tile 
             label="GWP" 
-            info="(Gross Written Premium)" 
             value={metrics ? formatCurrency(metrics.basicMetrics?.totalGWP) : "₹10.7L"} 
             sub="▲ 8% vs last 14d"
           />
           <Tile 
             label="Brokerage" 
-            info="(% of GWP)" 
             value={metrics ? formatCurrency(metrics.basicMetrics?.totalBrokerage) : "₹1.60L"}
           />
           <Tile 
             label="Cashback" 
-            info="(Cash we give back)" 
             value={metrics ? formatCurrency(metrics.basicMetrics?.totalCashback) : "₹0.34L"}
           />
           <Tile 
             label="Net" 
-            info="(Brokerage − Cashback)" 
             value={metrics ? formatCurrency(metrics.basicMetrics?.netRevenue) : "₹1.26L"}
           />
           <Tile 
             label="Total OD" 
-            info="(Outstanding Debt)" 
             value={metrics ? formatCurrency(metrics.basicMetrics?.totalOutstandingDebt) : "₹0.00L"}
             sub="Total outstanding amount"
             onClick={() => setShowTotalODBreakdown(!showTotalODBreakdown)}
