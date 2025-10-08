@@ -170,6 +170,101 @@ class AuthService {
       console.error('❌ Default users initialization error:', error);
     }
   }
+
+  // Get all users
+  async getAllUsers() {
+    try {
+      const queryText = `
+        SELECT id, email, name, role, is_active, created_at, updated_at, last_login, phone, department
+        FROM users 
+        ORDER BY created_at DESC
+      `;
+      const result = await query(queryText);
+      
+      return {
+        success: true,
+        data: result.rows
+      };
+    } catch (error) {
+      console.error('❌ Get all users error:', error);
+      throw error;
+    }
+  }
+
+  // Get user by ID
+  async getUserById(id) {
+    try {
+      const queryText = `
+        SELECT id, email, name, role, is_active, created_at, updated_at, last_login, phone, department
+        FROM users 
+        WHERE id = $1
+      `;
+      const result = await query(queryText, [id]);
+      
+      if (result.rows.length === 0) {
+        throw new Error('User not found');
+      }
+
+      return {
+        success: true,
+        data: result.rows[0]
+      };
+    } catch (error) {
+      console.error('❌ Get user by ID error:', error);
+      throw error;
+    }
+  }
+
+  // Update user
+  async updateUser(id, updateData) {
+    try {
+      const { email, name, role, is_active, phone, department } = updateData;
+      
+      const queryText = `
+        UPDATE users 
+        SET email = $1, name = $2, role = $3, is_active = $4, phone = $5, department = $6, updated_at = CURRENT_TIMESTAMP
+        WHERE id = $7
+        RETURNING id, email, name, role, is_active, created_at, updated_at, phone, department
+      `;
+      
+      const result = await query(queryText, [email, name, role, is_active, phone, department, id]);
+      
+      if (result.rows.length === 0) {
+        throw new Error('User not found');
+      }
+
+      return {
+        success: true,
+        data: result.rows[0]
+      };
+    } catch (error) {
+      console.error('❌ Update user error:', error);
+      throw error;
+    }
+  }
+
+  // Delete user
+  async deleteUser(id) {
+    try {
+      // First check if user exists
+      const userCheck = await query('SELECT id FROM users WHERE id = $1', [id]);
+      if (userCheck.rows.length === 0) {
+        throw new Error('User not found');
+      }
+
+      // Delete user
+      const queryText = 'DELETE FROM users WHERE id = $1';
+      await query(queryText, [id]);
+
+      return {
+        success: true,
+        message: 'User deleted successfully'
+      };
+    } catch (error) {
+      console.error('❌ Delete user error:', error);
+      throw error;
+    }
+  }
 }
 
 module.exports = new AuthService();

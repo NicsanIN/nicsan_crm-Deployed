@@ -80,5 +80,65 @@ router.post('/init-users', async (req, res) => {
   }
 });
 
+// Get all users (admin only)
+router.get('/users', authenticateToken, async (req, res) => {
+  try {
+    const result = await authService.getAllUsers();
+    res.json(result);
+  } catch (error) {
+    console.error('Get users error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to get users'
+    });
+  }
+});
+
+// Get user by ID
+router.get('/users/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await authService.getUserById(id);
+    res.json(result);
+  } catch (error) {
+    console.error('Get user error:', error);
+    res.status(404).json({
+      success: false,
+      error: error.message || 'User not found'
+    });
+  }
+});
+
+// Update user
+router.put('/users/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updateData = req.body;
+    const result = await authService.updateUser(id, updateData);
+    res.json(result);
+  } catch (error) {
+    console.error('Update user error:', error);
+    res.status(400).json({
+      success: false,
+      error: error.message || 'Failed to update user'
+    });
+  }
+});
+
+// Delete user
+router.delete('/users/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await authService.deleteUser(id);
+    res.json(result);
+  } catch (error) {
+    console.error('Delete user error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to delete user'
+    });
+  }
+});
+
 module.exports = router;
 
