@@ -116,7 +116,6 @@ const BusinessSettings: React.FC = () => {
         setSuccess(`Settings saved successfully! (${response.source || 'Saved'})`);
         setHasChanges(false);
         setValidationErrors({});
-        setDataSource(response.source || 'Unknown');
         
         // Clear success message after 3 seconds
         setTimeout(() => setSuccess(null), 3000);
@@ -144,7 +143,6 @@ const BusinessSettings: React.FC = () => {
         setHasChanges(false);
         setValidationErrors({});
         setSuccess(`Settings reset to defaults! (${response.source || 'Reset'})`);
-        setDataSource(response.source || 'Unknown');
         
         // Clear success message after 3 seconds
         setTimeout(() => setSuccess(null), 3000);
