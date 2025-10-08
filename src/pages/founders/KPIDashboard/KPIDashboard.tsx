@@ -114,7 +114,7 @@ function PageKPIs() {
       <>
         <div className="grid grid-cols-1 gap-6">
           {/* Acquisition */}
-          <Card title="Acquisition" desc={`Real metrics from backend data (Data Source: ${dataSource || 'Loading...'})`}>
+          <Card title="Acquisition" desc="Real metrics from backend data">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
               <Tile label="Conversion Rate" value={pct(conversionRate)} sub={`${totalConverted}/${totalLeads} deals`}/>
               <Tile label="Cost per Lead" value={fmtINR(costPerLead)} sub="No marketing data available"/>

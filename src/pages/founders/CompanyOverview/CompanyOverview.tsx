@@ -29,7 +29,7 @@ const demoTrend = [
 function Tile({ label, value, sub, info, onClick }: { label: string; value: string; sub?: string; info?: string; onClick?: () => void }) {
   return (
     <div 
-      className={`bg-white rounded-2xl shadow-sm border border-zinc-100 p-4 ${onClick ? 'cursor-pointer hover:shadow-md transition-shadow' : ''}`}
+      className={`bg-white rounded-2xl shadow-sm border border-zinc-100 p-4 ${onClick ? 'cursor-pointer hover:shadow-md hover:border-blue-200 transition-all' : ''}`}
       onClick={onClick}
     >
       <div className="text-sm text-zinc-500 mb-1">{label}</div>
@@ -259,7 +259,7 @@ function PageOverview() {
           <Tile 
             label="Total OD" 
             value={metrics ? formatCurrency(metrics.basicMetrics?.totalOutstandingDebt) : "₹0.00L"}
-            sub="Total outstanding amount"
+            sub="Total outstanding amount • Click to expand"
             onClick={() => setShowTotalODBreakdown(!showTotalODBreakdown)}
           />
         </div>

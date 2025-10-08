@@ -179,7 +179,7 @@ function PageLeaderboard() {
   }, []);
 
   return (
-    <Card title="Rep Leaderboard" desc={`Lead→Sale % = Converted / Leads Assigned; CAC/policy = daily rep cost / converted (Data Source: ${dataSource || 'Loading...'})`}>
+    <Card title="Rep Leaderboard" desc="Lead→Sale % = Converted / Leads Assigned; CAC/policy = daily rep cost / converted">
       <div className="flex items-center gap-2 mb-3">
         <div className="flex items-center gap-2 rounded-xl bg-zinc-100 p-1">
           <button className="px-3 py-1 rounded-lg bg-white shadow text-sm">Last 14d</button>
