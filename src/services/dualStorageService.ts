@@ -72,13 +72,12 @@ class DualStorageService {
           success: false,
           data: null,
           source: 'ERROR',
-          error: backendError.message || 'Backend operation failed'
+          error: backendError instanceof Error ? backendError.message : 'Backend operation failed'
         };
       }
 
       // Step 2: Fallback to Mock Data (only for read operations)
       if (ENABLE_DEBUG) {
-        console.log('Falling back to mock data for operation:', _operationName);
       }
       
       return {
@@ -349,14 +348,12 @@ class DualStorageService {
   async markPaymentAsReceived(policyNumber: string, receivedBy: string): Promise<DualStorageResult> {
     try {
       if (ENABLE_DEBUG) {
-        console.log('🔄 DualStorageService: Marking payment as received...', policyNumber);
       }
 
       // Try backend API first
       const response = await this.backendApiService.markPaymentAsReceived(policyNumber, receivedBy);
       
       if (ENABLE_DEBUG) {
-        console.log('✅ DualStorageService: Payment marked as received via backend');
       }
 
       return {
@@ -759,6 +756,23 @@ class DualStorageService {
     );
   }
 
+  // Save health insurance with dual storage
+  async saveHealthInsurance(healthData: any): Promise<DualStorageResult> {
+    const mockData = {
+      id: Date.now().toString(),
+      ...healthData,
+      source: 'HEALTH_INSURANCE',
+      created_at: new Date().toISOString(),
+      message: 'Health insurance saved successfully (mock)'
+    };
+
+    return this.executeDualStoragePattern(
+      () => this.backendApiService.saveHealthInsurance(healthData),
+      mockData,
+      'Save Health Insurance'
+    );
+  }
+
   // Save grid entries with dual storage
   async saveGridEntries(entries: any[]): Promise<DualStorageResult> {
     const mockData = {
@@ -865,6 +879,222 @@ class DualStorageService {
       () => this.backendApiService.getTotalODFinancialYear(years),
       mockData,
       'Total OD Financial Year Breakdown'
+    );
+  }
+
+  // Health Insurance Methods
+  async getAllHealthInsurance(limit: number = 50, offset: number = 0): Promise<DualStorageResult> {
+    const mockData = {
+      policies: [
+        {
+          id: 'health-1',
+          policy_number: 'HI-2024-001',
+          insurer: 'HDFC ERGO General Insurance',
+          premium_amount: 15000,
+          sum_insured: 500000,
+          issue_date: '2024-01-15',
+          expiry_date: '2025-01-14',
+          customer_name: 'Rajesh Kumar',
+          executive: 'Priya Singh',
+          source: 'HEALTH_INSURANCE',
+          created_at: new Date().toISOString()
+        },
+        {
+          id: 'health-2',
+          policy_number: 'STAR-2024-002',
+          insurer: 'Star Health Insurance',
+          premium_amount: 25000,
+          sum_insured: 750000,
+          issue_date: '2024-02-01',
+          expiry_date: '2025-01-31',
+          customer_name: 'Priya Sharma',
+          executive: 'Health Executive',
+          source: 'HEALTH_INSURANCE',
+          created_at: new Date().toISOString()
+        },
+        {
+          id: 'health-3',
+          policy_number: 'BAJAJ-2024-003',
+          insurer: 'Bajaj Allianz General Insurance',
+          premium_amount: 30000,
+          sum_insured: 1000000,
+          issue_date: '2024-03-01',
+          expiry_date: '2025-02-28',
+          customer_name: 'Amit Patel',
+          executive: 'Health Executive',
+          source: 'HEALTH_INSURANCE',
+          created_at: new Date().toISOString()
+        }
+      ],
+      pagination: {
+        limit,
+        offset,
+        total: 3
+      }
+    };
+
+    return this.executeDualStoragePattern(
+      () => this.backendApiService.getAllHealthInsurance(limit, offset),
+      mockData,
+      'Get All Health Insurance'
+    );
+  }
+
+  async getHealthInsuranceDetail(policyNumber: string): Promise<DualStorageResult> {
+    // Create dynamic mock data based on policy number
+    let mockData;
+    
+    if (policyNumber === 'HI-2024-001') {
+      mockData = {
+        id: 'health-1',
+        policy_number: 'HI-2024-001',
+        insurer: 'HDFC ERGO General Insurance',
+        premium_amount: 15000,
+        sum_insured: 500000,
+        issue_date: '2024-01-15',
+        expiry_date: '2025-01-14',
+        customer_name: 'Rajesh Kumar',
+        customer_email: 'rajesh.kumar@email.com',
+        executive: 'Priya Singh',
+        caller_name: 'Health Caller',
+        mobile: '9876543210',
+        branch: 'Mumbai',
+        remark: 'Health insurance policy',
+        source: 'HEALTH_INSURANCE',
+        insuredPersons: [
+          {
+            name: 'Rajesh Kumar',
+            pan_card: 'ABCDE1234F',
+            aadhaar_card: '123456789012',
+            date_of_birth: '1985-03-15',
+            weight: 75.5,
+            height: 175.0,
+            pre_existing_disease: false,
+            disease_name: '',
+            disease_years: null,
+            tablet_details: '',
+            surgery: false,
+            surgery_name: '',
+            surgery_details: ''
+          }
+        ],
+        created_at: new Date().toISOString()
+      };
+    } else if (policyNumber === 'STAR-2024-002') {
+      mockData = {
+        id: 'health-2',
+        policy_number: 'STAR-2024-002',
+        insurer: 'Star Health Insurance',
+        premium_amount: 25000,
+        sum_insured: 750000,
+        issue_date: '2024-02-01',
+        expiry_date: '2025-01-31',
+        customer_name: 'Priya Sharma',
+        customer_email: 'priya.sharma@email.com',
+        executive: 'Health Executive',
+        caller_name: 'Health Caller',
+        mobile: '9876543211',
+        branch: 'Delhi',
+        remark: 'Star Health insurance policy',
+        source: 'HEALTH_INSURANCE',
+        insuredPersons: [
+          {
+            name: 'Priya Sharma',
+            pan_card: 'FGHIJ5678K',
+            aadhaar_card: '234567890123',
+            date_of_birth: '1990-07-20',
+            weight: 65.0,
+            height: 160.0,
+            pre_existing_disease: true,
+            disease_name: 'Diabetes',
+            disease_years: 3,
+            tablet_details: 'Metformin 500mg daily',
+            surgery: false,
+            surgery_name: '',
+            surgery_details: ''
+          }
+        ],
+        created_at: new Date().toISOString()
+      };
+    } else if (policyNumber === 'BAJAJ-2024-003') {
+      mockData = {
+        id: 'health-3',
+        policy_number: 'BAJAJ-2024-003',
+        insurer: 'Bajaj Allianz General Insurance',
+        premium_amount: 30000,
+        sum_insured: 1000000,
+        issue_date: '2024-03-01',
+        expiry_date: '2025-02-28',
+        customer_name: 'Amit Patel',
+        customer_email: 'amit.patel@email.com',
+        executive: 'Health Executive',
+        caller_name: 'Health Caller',
+        mobile: '9876543212',
+        branch: 'Bangalore',
+        remark: 'Bajaj Allianz health insurance policy',
+        source: 'HEALTH_INSURANCE',
+        insuredPersons: [
+          {
+            name: 'Amit Patel',
+            pan_card: 'KLMNO9012P',
+            aadhaar_card: '345678901234',
+            date_of_birth: '1988-11-10',
+            weight: 80.0,
+            height: 180.0,
+            pre_existing_disease: false,
+            disease_name: '',
+            disease_years: null,
+            tablet_details: '',
+            surgery: true,
+            surgery_name: 'Appendectomy',
+            surgery_details: 'Laparoscopic appendectomy in 2020'
+          }
+        ],
+        created_at: new Date().toISOString()
+      };
+    } else {
+      // Generic fallback for other policy numbers
+      mockData = {
+        id: `health-${policyNumber}`,
+        policy_number: policyNumber,
+        insurer: 'Generic Health Insurance',
+        premium_amount: 20000,
+        sum_insured: 600000,
+        issue_date: '2024-01-01',
+        expiry_date: '2025-12-31',
+        customer_name: `Customer ${policyNumber}`,
+        customer_email: `customer${policyNumber}@email.com`,
+        executive: 'Health Executive',
+        caller_name: 'Health Caller',
+        mobile: '9876543210',
+        branch: 'Health Branch',
+        remark: `Health insurance policy ${policyNumber}`,
+        source: 'HEALTH_INSURANCE',
+        insuredPersons: [
+          {
+            name: `Insured Person ${policyNumber}`,
+            pan_card: 'ABCDE1234F',
+            aadhaar_card: '123456789012',
+            date_of_birth: '1985-03-15',
+            weight: 75.5,
+            height: 175.0,
+            pre_existing_disease: false,
+            disease_name: '',
+            disease_years: null,
+            tablet_details: '',
+            surgery: false,
+            surgery_name: '',
+            surgery_details: ''
+          }
+        ],
+        created_at: new Date().toISOString()
+      };
+    }
+
+    return this.executeDualStoragePattern(
+      () => this.backendApiService.getHealthInsuranceDetail(policyNumber),
+      mockData,
+      'Get Health Insurance Detail'
     );
   }
 }

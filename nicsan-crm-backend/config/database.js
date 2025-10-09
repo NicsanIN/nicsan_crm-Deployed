@@ -139,6 +139,53 @@ const initializeDatabase = async () => {
       )
     `);
 
+    // Create health_insurance table
+    await query(`
+      CREATE TABLE IF NOT EXISTS health_insurance (
+        id SERIAL PRIMARY KEY,
+        policy_number VARCHAR(255) UNIQUE NOT NULL,
+        insurer VARCHAR(255) NOT NULL,
+        issue_date DATE,
+        expiry_date DATE,
+        sum_insured DECIMAL(15,2) DEFAULT 0,
+        premium_amount DECIMAL(15,2) NOT NULL,
+        executive VARCHAR(255),
+        caller_name VARCHAR(255),
+        mobile VARCHAR(20),
+        customer_name VARCHAR(255),
+        customer_email VARCHAR(255),
+        branch VARCHAR(255),
+        remark TEXT,
+        source VARCHAR(50) DEFAULT 'MANUAL_FORM',
+        s3_key VARCHAR(500),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Create health_insured_persons table
+    await query(`
+      CREATE TABLE IF NOT EXISTS health_insured_persons (
+        id SERIAL PRIMARY KEY,
+        health_insurance_id INTEGER REFERENCES health_insurance(id) ON DELETE CASCADE,
+        name VARCHAR(255) NOT NULL,
+        pan_card VARCHAR(20) NOT NULL,
+        aadhaar_card VARCHAR(20) NOT NULL,
+        date_of_birth DATE NOT NULL,
+        weight DECIMAL(5,2) NOT NULL,
+        height DECIMAL(5,2) NOT NULL,
+        pre_existing_disease BOOLEAN DEFAULT FALSE,
+        disease_name VARCHAR(255),
+        disease_years INTEGER,
+        tablet_details TEXT,
+        surgery BOOLEAN DEFAULT FALSE,
+        surgery_name VARCHAR(255),
+        surgery_details TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
     // Add missing columns if they don't exist (migration)
     await query(`
       ALTER TABLE policies 

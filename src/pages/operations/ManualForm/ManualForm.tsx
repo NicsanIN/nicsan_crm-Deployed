@@ -1,15 +1,14 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Card } from '../../../components/common/Card';
-import { Save, RefreshCw, CheckCircle2, AlertTriangle, User, Car, Building, Phone, Mail, MapPin, Calendar, DollarSign, FileText, Shield, Clock, Eye, Edit3, Trash2, Plus, Search, Download } from 'lucide-react';
+import { User, Car, Trash2, Plus } from 'lucide-react';
 import DualStorageService from '../../../services/dualStorageService';
 import { AutocompleteInput } from '../../../NicsanCRMMock';
 import { useAuth } from '../../../contexts/AuthContext';
 
 // Environment variables
-const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
 
 // LabeledInput component
-function LabeledInput({ label, value, onChange, type = "text", placeholder, hint, required = false }: {
+function LabeledInput({ label, value, onChange, type = "text", placeholder, hint, required = false, disabled = false }: {
   label: string;
   value: any;
   onChange: (value: any) => void;
@@ -17,6 +16,7 @@ function LabeledInput({ label, value, onChange, type = "text", placeholder, hint
   placeholder?: string;
   hint?: string;
   required?: boolean;
+  disabled?: boolean;
 }) {
   return (
     <div className="space-y-1">
@@ -29,7 +29,8 @@ function LabeledInput({ label, value, onChange, type = "text", placeholder, hint
         value={value || ''}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full px-3 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        disabled={disabled}
+        className="w-full px-3 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
       />
       {hint && <p className="text-xs text-zinc-500">{hint}</p>}
     </div>
@@ -69,6 +70,29 @@ function LabeledSelect({ label, value, onChange, options, placeholder, hint, req
   );
 }
 
+// LabeledCheckbox component
+function LabeledCheckbox({ label, value, onChange, hint }: {
+  label: string;
+  value: boolean;
+  onChange: (value: boolean) => void;
+  hint?: string;
+}) {
+  return (
+    <div className="space-y-1">
+      <label className="text-sm font-medium text-zinc-700 flex items-center gap-2">
+        <input
+          type="checkbox"
+          checked={value || false}
+          onChange={(e) => onChange(e.target.checked)}
+          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+        />
+        {label}
+      </label>
+      {hint && <p className="text-xs text-zinc-500">{hint}</p>}
+    </div>
+  );
+}
+
 
 function PageManualForm() {
     const { user } = useAuth();
@@ -101,8 +125,24 @@ function PageManualForm() {
       opsExecutive: "",
       callerName: "",
       mobile: "",
-              rollover: "",
-              remark: "",
+      rollover: "",
+      remark: "",
+      // Health Insurance specific fields
+      insuredPersons: [{
+        name: "",
+        panCard: "",
+        aadhaarCard: "",
+        dateOfBirth: "",
+        weight: "",
+        height: "",
+        preExistingDisease: false,
+        diseaseName: "",
+        diseaseYears: "",
+        tabletDetails: "",
+        surgery: false,
+        surgeryName: "",
+        surgeryDetails: ""
+      }],
               brokerage: "0",
               cashback: "",
               customerName: "",
@@ -124,7 +164,7 @@ function PageManualForm() {
     // Reset form when user changes
     useEffect(() => {
       if (user && user.id !== lastUserId) {
-        setForm(prevForm => ({
+        setForm((prevForm: any) => ({
           ...prevForm,
           executive: user.name || "",
           opsExecutive: "",
@@ -141,6 +181,44 @@ function PageManualForm() {
       setForm((f:any)=>({ ...f, [k]: v }));
       // Mark field as touched for progressive validation
       setFieldTouched(prev => ({ ...prev, [k]: true }));
+    };
+
+    // Health Insurance specific functions
+    const addInsuredPerson = () => {
+      setForm((prev: any) => ({
+        ...prev,
+        insuredPersons: [...prev.insuredPersons, {
+          name: "",
+          panCard: "",
+          aadhaarCard: "",
+          dateOfBirth: "",
+          weight: "",
+          height: "",
+          preExistingDisease: false,
+          diseaseName: "",
+          diseaseYears: "",
+          tabletDetails: "",
+          surgery: false,
+          surgeryName: "",
+          surgeryDetails: ""
+        }]
+      }));
+    };
+
+    const removeInsuredPerson = (index: number) => {
+      setForm((prev: any) => ({
+        ...prev,
+        insuredPersons: prev.insuredPersons.filter((_: any, i: number) => i !== index)
+      }));
+    };
+
+    const updateInsuredPerson = (index: number, field: string, value: string | boolean) => {
+      setForm((prev: any) => ({
+        ...prev,
+        insuredPersons: prev.insuredPersons.map((person: any, i: number) => 
+          i === index ? { ...person, [field]: value } : person
+        )
+      }));
     };
     const number = (v:any)=> (v===''||v===null)?0:parseFloat(v.toString().replace(/[^0-9.]/g,''))||0;
   
@@ -188,6 +266,76 @@ function PageManualForm() {
               if (!traditionalPattern.test(cleanValue) && !bhSeriesPattern.test(cleanValue)) {
                 errors.push('Vehicle Number must be in format: KA01AB1234, KA 51 MM 1214, or 23 BH 7699 J');
               }
+            }
+            break;
+
+          // Health Insurance validation
+          case 'insuredPersons':
+            if (!value || !Array.isArray(value) || value.length === 0) {
+              errors.push('At least one insured person is required');
+            } else {
+              value.forEach((person: any, index: number) => {
+                if (!person.name || person.name.trim() === '') {
+                  errors.push(`Person ${index + 1}: Name is required`);
+                }
+                if (!person.panCard || person.panCard.trim() === '') {
+                  errors.push(`Person ${index + 1}: PAN Card is required`);
+                } else if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(person.panCard)) {
+                  errors.push(`Person ${index + 1}: PAN Card must be in format ABCDE1234F`);
+                }
+                if (!person.aadhaarCard || person.aadhaarCard.trim() === '') {
+                  errors.push(`Person ${index + 1}: Aadhaar Card is required`);
+                } else if (!/^[0-9]{4}\s?[0-9]{4}\s?[0-9]{4}$/.test(person.aadhaarCard.replace(/\s/g, ''))) {
+                  errors.push(`Person ${index + 1}: Aadhaar Card must be 12 digits`);
+                }
+                if (!person.dateOfBirth) {
+                  errors.push(`Person ${index + 1}: Date of Birth is required`);
+                } else {
+                  const dob = new Date(person.dateOfBirth);
+                  const today = new Date();
+                  if (isNaN(dob.getTime()) || dob >= today) {
+                    errors.push(`Person ${index + 1}: Date of Birth must be a valid past date`);
+                  }
+                }
+                if (!person.weight || person.weight.trim() === '') {
+                  errors.push(`Person ${index + 1}: Weight is required`);
+                } else {
+                  const weight = parseFloat(person.weight);
+                  if (isNaN(weight) || weight < 20 || weight > 300) {
+                    errors.push(`Person ${index + 1}: Weight must be between 20-300 kg`);
+                  }
+                }
+                if (!person.height || person.height.trim() === '') {
+                  errors.push(`Person ${index + 1}: Height is required`);
+                } else {
+                  const height = parseFloat(person.height);
+                  if (isNaN(height) || height < 50 || height > 250) {
+                    errors.push(`Person ${index + 1}: Height must be between 50-250 cm`);
+                  }
+                }
+                
+                // Pre-existing disease validation
+                if (person.preExistingDisease) {
+                  if (!person.diseaseName || person.diseaseName.trim() === '') {
+                    errors.push(`Person ${index + 1}: Disease name is required when pre-existing disease is checked`);
+                  }
+                  if (!person.diseaseYears || person.diseaseYears.trim() === '') {
+                    errors.push(`Person ${index + 1}: Years with disease is required when pre-existing disease is checked`);
+                  } else {
+                    const years = parseFloat(person.diseaseYears);
+                    if (isNaN(years) || years < 0 || years > 100) {
+                      errors.push(`Person ${index + 1}: Years with disease must be between 0-100 years`);
+                    }
+                  }
+                }
+                
+                // Surgery validation
+                if (person.surgery) {
+                  if (!person.surgeryName || person.surgeryName.trim() === '') {
+                    errors.push(`Person ${index + 1}: Surgery name is required when surgery is checked`);
+                  }
+                }
+              });
             }
             break;
           
@@ -698,16 +846,31 @@ function PageManualForm() {
           source: 'MANUAL_FORM'
         };
   
-        // Debug: Log the policy data being sent
-        console.log('🔍 Manual Form - Policy data being sent:', policyData);
-  
-        // Submit to API
-        const response = await DualStorageService.saveManualForm(policyData);
-        
-        // Debug: Log the response
-        console.log('🔍 Manual Form - API Response:', response);
-        console.log('🔍 Manual Form - Response success:', response?.success);
-        console.log('🔍 Manual Form - Response data:', response?.data);
+        // Submit to API - Use health insurance API for health insurance, manual form API for others
+        let response;
+        if (form.productType === "Health Insurance") {
+          // Transform data for Health Insurance API
+          const healthInsuranceData = {
+            policy_number: policyData.policy_number,
+            insurer: policyData.insurer,
+            issue_date: policyData.issue_date,
+            expiry_date: policyData.expiry_date,
+            sum_insured: parseFloat(policyData.idv) || 0,
+            premium_amount: parseFloat(policyData.total_premium) || 0,
+            executive: policyData.executive,
+            caller_name: policyData.caller_name,
+            mobile: policyData.mobile,
+            customer_name: policyData.customer_name,
+            customer_email: policyData.customer_email,
+            branch: policyData.branch,
+            remark: policyData.remark,
+            source: policyData.source,
+            insuredPersons: form.insuredPersons
+          };
+          response = await DualStorageService.saveHealthInsurance(healthInsuranceData);
+        } else {
+          response = await DualStorageService.saveManualForm(policyData);
+        }
         
         if (response && response.success) {
           setSubmitMessage({ 
@@ -906,9 +1069,16 @@ function PageManualForm() {
             </div>
           </div>
           
-          {/* Top row: Vehicle + QuickFill */}
+          {/* Top row: Product Type + QuickFill */}
           <div className="flex flex-col md:flex-row gap-3 mb-4">
-            <LabeledInput label="Vehicle Number" required placeholder="KA01AB1234 or KA 51 MM 1214" value={form.vehicleNumber} onChange={handleVehicleNumberChange}/>
+            <LabeledSelect label="Product Type" value={form.productType} onChange={v=>set('productType', v)} options={[
+              { value: "Life Insurance", label: "Life Insurance" },
+              { value: "Motor Insurance", label: "Motor Insurance" },
+              { value: "Health Insurance", label: "Health Insurance" },
+              { value: "Travel Insurance", label: "Travel Insurance" },
+              { value: "Home Insurance", label: "Home Insurance" },
+              { value: "Cyber Insurance", label: "Cyber Insurance" }
+            ]}/>
             <button onClick={quickFill} className="px-4 py-2 rounded-xl bg-indigo-600 text-white h-[42px] mt-6">Prefill from last policy</button>
             <div className="ml-auto flex items-center gap-2 text-xs text-zinc-600"><Car className="w-4 h-4"/> Make/Model autofill in v1.1</div>
           </div>
@@ -944,95 +1114,268 @@ function PageManualForm() {
             </div>
           )}
   
-          {/* Policy & Vehicle */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <LabeledInput label="Policy Number" required value={form.policyNumber} onChange={v=>set('policyNumber', v)}/>
-            <LabeledInput label="Insurer (Company)" required placeholder="e.g., Tata AIG" value={form.insurer} onChange={v=>set('insurer', v)}/>
-            <LabeledSelect label="Product Type" value={form.productType} onChange={v=>set('productType', v)} options={[
-              { value: "Life Insurance", label: "Life Insurance" },
-              { value: "Motor Insurance", label: "Motor Insurance" },
-              { value: "Health Insurance", label: "Health Insurance" },
-              { value: "Travel Insurance", label: "Travel Insurance" },
-              { value: "Home Insurance", label: "Home Insurance" },
-              { value: "Cyber Insurance", label: "Cyber Insurance" }
-            ]}/>
-            <LabeledSelect label="Vehicle Type" value={form.vehicleType} onChange={v=>set('vehicleType', v)} options={[
-              { value: "Private Car", label: "Private Car" },
-              { value: "GCV", label: "GCV" },
-              { value: "LCV", label: "LCV" },
-              { value: "MCV", label: "MCV" },
-              { value: "HCV", label: "HCV" }
-            ]}/>
-            <LabeledInput label="Make" placeholder="Maruti / Hyundai / …" value={form.make} onChange={v=>set('make', v)}/>
-            <LabeledInput label="Model" placeholder="Swift / i20 / …" value={form.model} onChange={v=>set('model', v)}/>
-            <LabeledInput label="CC" hint="engine size" value={form.cc} onChange={v=>set('cc', v)}/>
-            <LabeledInput label="MFG Year" value={form.manufacturingYear} onChange={v=>set('manufacturingYear', v)}/>
-          </div>
-  
-          {/* Dates & Values */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-            <LabeledInput label="Issue Date" value={form.issueDate} onChange={v=>set('issueDate', v)}/>
-            <LabeledInput label="Expiry Date" value={form.expiryDate} onChange={v=>set('expiryDate', v)}/>
-            <LabeledInput label="IDV (₹)" value={form.idv} onChange={v=>set('idv', v)}/>
-            <LabeledInput label="NCB (%)" value={form.ncb} onChange={v=>set('ncb', v)}/>
-            <LabeledInput label="DIS (%)" hint="discount" value={form.discount} onChange={v=>set('discount', v)}/>
-            <LabeledInput label="Net Addon" hint="net addon" value={form.ref} onChange={v=>set('ref', v)}/>
-          </div>
-  
-          {/* Premiums */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-            <LabeledInput label="Net OD (₹)" hint="Own Damage" value={form.netOd} onChange={v=>set('netOd', v)}/>
-            <LabeledInput label="Total OD (₹)" value={form.totalOd} onChange={v=>set('totalOd', v)}/>
-            <LabeledInput label="Net Premium (₹)" value={form.netPremium} onChange={v=>set('netPremium', v)}/>
-            <LabeledInput label="Total Premium (₹)" required value={form.totalPremium} onChange={onTotalChange}/>
-          </div>
-  
-          {/* Cashback & Payments */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-            <LabeledInput label="Cashback %" hint="auto-calculates amount" value={form.cashbackPct} onChange={onPctChange}/>
-            <LabeledInput label="Cashback Amount (₹)" hint="fills when % given" value={form.cashbackAmt} onChange={onAmtChange}/>
-            <LabeledInput label="Customer Paid (₹)" value={form.customerPaid} onChange={v=>set('customerPaid', v)}/>
-            <LabeledInput label="Customer Cheque No" value={form.customerChequeNo} onChange={v=>set('customerChequeNo', v)}/>
-            <LabeledInput label="Our Cheque No" value={form.ourChequeNo} onChange={v=>set('ourChequeNo', v)}/>
-            <div>
-              <label className="block text-xs text-gray-600 mb-1">Payment Method</label>
-              <select 
-                value={form.paymentMethod}
-                onChange={(e) => {
-                  set('paymentMethod', e.target.value);
-                  if (e.target.value !== 'NICSAN') {
-                    set('paymentSubMethod', '');
-                  }
-                }}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
-              >
-                <option value="INSURER">INSURER</option>
-                <option value="NICSAN">NICSAN</option>
-              </select>
-            </div>
-            {form.paymentMethod === 'NICSAN' && (
-              <div>
-                <label className="block text-xs text-gray-600 mb-1">Payment Sub-Method</label>
-                <select 
-                  value={form.paymentSubMethod}
-                  onChange={(e) => set('paymentSubMethod', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
-                >
-                  <option value="">Select Sub-Method</option>
-                  <option value="DIRECT">DIRECT</option>
-                  <option value="EXECUTIVE">EXECUTIVE</option>
-                </select>
+          {/* Conditional Fields based on Product Type */}
+          {form.productType === "Health Insurance" ? (
+            <>
+              {/* Health Insurance Fields */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <LabeledInput label="Policy Number" required value={form.policyNumber} onChange={v=>set('policyNumber', v)}/>
+                <LabeledInput label="Insurer (Company)" required placeholder="e.g., Apollo Munich, Max Bupa" value={form.insurer} onChange={v=>set('insurer', v)}/>
               </div>
-            )}
-          </div>
+
+              {/* Insured Persons Section */}
+              <div className="mt-6">
+                <h3 className="text-lg font-semibold text-zinc-800 mb-4 flex items-center gap-2">
+                  <User className="w-5 h-5" />
+                  Insured Persons
+                </h3>
+                
+                {form.insuredPersons.map((person: any, index: number) => (
+                  <div key={index} className="bg-zinc-50 p-4 rounded-lg mb-4 border border-zinc-200">
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="font-medium text-zinc-700">Person {index + 1}</h4>
+                      {form.insuredPersons.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removeInsuredPerson(index)}
+                          className="text-red-500 hover:text-red-700 p-1"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <LabeledInput 
+                        label="Name" 
+                        required 
+                        value={person.name} 
+                        onChange={(value) => updateInsuredPerson(index, 'name', value)}
+                        placeholder="Full Name"
+                      />
+                      <LabeledInput 
+                        label="PAN Card Number" 
+                        required 
+                        value={person.panCard} 
+                        onChange={(value) => updateInsuredPerson(index, 'panCard', value)}
+                        placeholder="ABCDE1234F"
+                      />
+                      <LabeledInput 
+                        label="Aadhaar Card Number" 
+                        required 
+                        value={person.aadhaarCard} 
+                        onChange={(value) => updateInsuredPerson(index, 'aadhaarCard', value)}
+                        placeholder="1234 5678 9012"
+                      />
+                      <LabeledInput 
+                        label="Date of Birth" 
+                        required 
+                        type="date"
+                        value={person.dateOfBirth} 
+                        onChange={(value) => updateInsuredPerson(index, 'dateOfBirth', value)}
+                      />
+                      <LabeledInput 
+                        label="Weight (kg)" 
+                        required 
+                        value={person.weight} 
+                        onChange={(value) => updateInsuredPerson(index, 'weight', value)}
+                        placeholder="70"
+                      />
+                      <LabeledInput 
+                        label="Height (cm)" 
+                        required 
+                        value={person.height} 
+                        onChange={(value) => updateInsuredPerson(index, 'height', value)}
+                        placeholder="170"
+                      />
+                    </div>
+                    
+                    {/* Pre-existing Disease Section */}
+                    <div className="mt-4 pt-4 border-t border-zinc-300">
+                      <h5 className="text-sm font-medium text-zinc-700 mb-3">Pre-existing Disease Information</h5>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <LabeledCheckbox 
+                          label="Do you have any pre-existing disease?" 
+                          value={person.preExistingDisease} 
+                          onChange={(value) => updateInsuredPerson(index, 'preExistingDisease', value)}
+                          hint="Check if you have any medical conditions"
+                        />
+                        
+                        {person.preExistingDisease && (
+                          <>
+                            <LabeledInput 
+                              label="Disease Name" 
+                              required 
+                              value={person.diseaseName} 
+                              onChange={(value) => updateInsuredPerson(index, 'diseaseName', value)}
+                              placeholder="e.g., Diabetes, Hypertension, Heart Disease"
+                            />
+                            <LabeledInput 
+                              label="Years with Disease" 
+                              required 
+                              value={person.diseaseYears} 
+                              onChange={(value) => updateInsuredPerson(index, 'diseaseYears', value)}
+                              placeholder="e.g., 5 years"
+                            />
+                            <div className="md:col-span-2">
+                              <LabeledInput 
+                                label="Tablet/Medication Details" 
+                                value={person.tabletDetails} 
+                                onChange={(value) => updateInsuredPerson(index, 'tabletDetails', value)}
+                                placeholder="e.g., Metformin 500mg twice daily, Amlodipine 5mg once daily"
+                                hint="List all current medications and dosages"
+                              />
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {/* Surgery Information Section */}
+                    <div className="mt-4 pt-4 border-t border-zinc-300">
+                      <h5 className="text-sm font-medium text-zinc-700 mb-3">Surgery Information</h5>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <LabeledCheckbox 
+                          label="Have you undergone any surgery?" 
+                          value={person.surgery} 
+                          onChange={(value) => updateInsuredPerson(index, 'surgery', value)}
+                          hint="Check if you have had any surgical procedures"
+                        />
+                        
+                        {person.surgery && (
+                          <>
+                            <LabeledInput 
+                              label="Surgery Name" 
+                              required 
+                              value={person.surgeryName} 
+                              onChange={(value) => updateInsuredPerson(index, 'surgeryName', value)}
+                              placeholder="e.g., Appendectomy, Gallbladder removal, Heart surgery"
+                            />
+                            <div className="md:col-span-2">
+                              <LabeledInput 
+                                label="Surgery Details" 
+                                value={person.surgeryDetails} 
+                                onChange={(value) => updateInsuredPerson(index, 'surgeryDetails', value)}
+                                placeholder="e.g., Laparoscopic appendectomy performed in 2020, No complications, Full recovery"
+                                hint="Provide details about the surgery, date, complications, and recovery"
+                              />
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                
+                <button
+                  type="button"
+                  onClick={addInsuredPerson}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Another Person
+                </button>
+              </div>
+
+              {/* Health Insurance Premium Fields */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+                <LabeledInput label="Issue Date" value={form.issueDate} onChange={v=>set('issueDate', v)}/>
+                <LabeledInput label="Expiry Date" value={form.expiryDate} onChange={v=>set('expiryDate', v)}/>
+                <LabeledInput label="Sum Insured (₹)" value={form.idv} onChange={v=>set('idv', v)} placeholder="e.g., 500000"/>
+                <LabeledInput label="Premium Amount (₹)" required value={form.totalPremium} onChange={onTotalChange}/>
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Motor Insurance Fields */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <LabeledInput label="Policy Number" required value={form.policyNumber} onChange={v=>set('policyNumber', v)}/>
+                <LabeledInput label="Vehicle Number" required placeholder="KA01AB1234 or KA 51 MM 1214" value={form.vehicleNumber} onChange={handleVehicleNumberChange}/>
+                <LabeledInput label="Insurer (Company)" required placeholder="e.g., Tata AIG" value={form.insurer} onChange={v=>set('insurer', v)}/>
+                <LabeledSelect label="Vehicle Type" value={form.vehicleType} onChange={v=>set('vehicleType', v)} options={[
+                  { value: "Private Car", label: "Private Car" },
+                  { value: "GCV", label: "GCV" },
+                  { value: "LCV", label: "LCV" },
+                  { value: "MCV", label: "MCV" },
+                  { value: "HCV", label: "HCV" }
+                ]}/>
+                <LabeledInput label="Make" placeholder="Maruti / Hyundai / …" value={form.make} onChange={v=>set('make', v)}/>
+                <LabeledInput label="Model" placeholder="Swift / i20 / …" value={form.model} onChange={v=>set('model', v)}/>
+                <LabeledInput label="CC" hint="engine size" value={form.cc} onChange={v=>set('cc', v)}/>
+                <LabeledInput label="MFG Year" value={form.manufacturingYear} onChange={v=>set('manufacturingYear', v)}/>
+              </div>
+            </>
+          )}
   
-          {/* Brokerage & Additional */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-            <div style={{ display: 'none' }}>
-              <LabeledInput label="Brokerage (₹)" hint="commission amount" value={form.brokerage} onChange={v=>set('brokerage', v)}/>
-            </div>
-            <LabeledInput label="Cashback (₹)" hint="total cashback amount" value={form.cashback} onChange={v=>set('cashback', v)}/>
-          </div>
+          {/* Motor Insurance specific fields - only show for Motor Insurance */}
+          {form.productType !== "Health Insurance" && (
+            <>
+              {/* Dates & Values */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                <LabeledInput label="Issue Date" value={form.issueDate} onChange={v=>set('issueDate', v)}/>
+                <LabeledInput label="Expiry Date" value={form.expiryDate} onChange={v=>set('expiryDate', v)}/>
+                <LabeledInput label="IDV (₹)" value={form.idv} onChange={v=>set('idv', v)}/>
+                <LabeledInput label="NCB (%)" value={form.ncb} onChange={v=>set('ncb', v)}/>
+                <LabeledInput label="DIS (%)" hint="discount" value={form.discount} onChange={v=>set('discount', v)}/>
+                <LabeledInput label="Net Addon" hint="net addon" value={form.ref} onChange={v=>set('ref', v)}/>
+              </div>
+              
+              {/* Premiums */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                <LabeledInput label="Net OD (₹)" hint="Own Damage" value={form.netOd} onChange={v=>set('netOd', v)}/>
+                <LabeledInput label="Total OD (₹)" value={form.totalOd} onChange={v=>set('totalOd', v)}/>
+                <LabeledInput label="Net Premium (₹)" value={form.netPremium} onChange={v=>set('netPremium', v)}/>
+                <LabeledInput label="Total Premium (₹)" required value={form.totalPremium} onChange={onTotalChange}/>
+              </div>
+  
+              {/* Cashback & Payments */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                <LabeledInput label="Cashback %" hint="auto-calculates amount" value={form.cashbackPct} onChange={onPctChange}/>
+                <LabeledInput label="Cashback Amount (₹)" hint="fills when % given" value={form.cashbackAmt} onChange={onAmtChange}/>
+                <LabeledInput label="Customer Paid (₹)" value={form.customerPaid} onChange={v=>set('customerPaid', v)}/>
+                <LabeledInput label="Customer Cheque No" value={form.customerChequeNo} onChange={v=>set('customerChequeNo', v)}/>
+                <LabeledInput label="Our Cheque No" value={form.ourChequeNo} onChange={v=>set('ourChequeNo', v)}/>
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Payment Method</label>
+                  <select 
+                    value={form.paymentMethod}
+                    onChange={(e) => {
+                      set('paymentMethod', e.target.value);
+                      if (e.target.value !== 'NICSAN') {
+                        set('paymentSubMethod', '');
+                      }
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                  >
+                    <option value="INSURER">INSURER</option>
+                    <option value="NICSAN">NICSAN</option>
+                  </select>
+                </div>
+                {form.paymentMethod === 'NICSAN' && (
+                  <div>
+                    <label className="block text-xs text-gray-600 mb-1">Payment Sub-Method</label>
+                    <select 
+                      value={form.paymentSubMethod}
+                      onChange={(e) => set('paymentSubMethod', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                    >
+                      <option value="">Select Sub-Method</option>
+                      <option value="DIRECT">DIRECT</option>
+                      <option value="EXECUTIVE">EXECUTIVE</option>
+                    </select>
+                  </div>
+                )}
+              </div>
+  
+              {/* Brokerage & Additional */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                <div style={{ display: 'none' }}>
+                  <LabeledInput label="Brokerage (₹)" hint="commission amount" value={form.brokerage} onChange={v=>set('brokerage', v)}/>
+                </div>
+                <LabeledInput label="Cashback (₹)" hint="total cashback amount" value={form.cashback} onChange={v=>set('cashback', v)}/>
+              </div>
+            </>
+          )}
   
           {/* People & Notes */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">

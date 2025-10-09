@@ -1664,6 +1664,232 @@ async savePolicy(policyData) {
       throw error;
     }
   }
+
+  // ==================== HEALTH INSURANCE METHODS ====================
+
+  // Check if health insurance policy number already exists
+  async checkHealthPolicyNumberExists(policyNumber) {
+    try {
+      const result = await query(
+        'SELECT id FROM health_insurance WHERE policy_number = $1',
+        [policyNumber]
+      );
+      return result.rows.length > 0;
+    } catch (error) {
+      console.error('❌ Error checking health policy number existence:', error);
+      return false;
+    }
+  }
+
+  // Save Health Insurance Policy (Dual Storage)
+  async saveHealthInsurance(healthData) {
+    let s3Key = null;
+    let healthInsuranceId = null;
+    
+    try {
+      console.log('💾 Saving health insurance to dual storage...');
+      
+      // 1. Save to PostgreSQL (Secondary Storage)
+      const pgResult = await this.saveHealthInsuranceToPostgreSQL(healthData);
+      healthInsuranceId = pgResult.rows[0].id;
+      
+      // 2. Save to S3 (Primary Storage) - JSON data
+      s3Key = generatePolicyS3Key(healthInsuranceId, healthData.source || 'HEALTH_INSURANCE');
+      const s3Result = await uploadJSONToS3(healthData, s3Key);
+      
+      // 3. Update PostgreSQL with S3 key
+      await query(
+        'UPDATE health_insurance SET s3_key = $1 WHERE id = $2',
+        [s3Key, healthInsuranceId]
+      );
+      
+      // 4. Notify WebSocket clients
+      websocketService.broadcastToUser('health_insurance_saved', {
+        id: healthInsuranceId,
+        policyNumber: healthData.policy_number,
+        insurer: healthData.insurer,
+        premiumAmount: healthData.premium_amount,
+        s3Key: s3Key
+      });
+      
+      console.log('✅ Health insurance saved successfully:', { healthInsuranceId, s3Key });
+      return { id: healthInsuranceId, s3Key };
+    } catch (error) {
+      console.error('❌ Health insurance save error:', error);
+      throw error;
+    }
+  }
+
+  // Save Health Insurance to PostgreSQL
+  async saveHealthInsuranceToPostgreSQL(healthData) {
+    try {
+      const result = await query(`
+        INSERT INTO health_insurance (
+          policy_number, insurer, issue_date, expiry_date, sum_insured, premium_amount,
+          executive, caller_name, mobile, customer_name, customer_email, branch, remark, source
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+        RETURNING id
+      `, [
+        healthData.policy_number,
+        healthData.insurer,
+        healthData.issue_date,
+        healthData.expiry_date,
+        healthData.sum_insured || healthData.idv, // Use idv as sum_insured for health
+        healthData.premium_amount || healthData.total_premium,
+        healthData.executive,
+        healthData.caller_name,
+        healthData.mobile,
+        healthData.customer_name,
+        healthData.customer_email,
+        healthData.branch,
+        healthData.remark,
+        healthData.source || 'MANUAL_FORM'
+      ]);
+      
+      // Save insured persons
+      if (healthData.insuredPersons && healthData.insuredPersons.length > 0) {
+        const healthInsuranceId = result.rows[0].id;
+        await this.saveInsuredPersons(healthInsuranceId, healthData.insuredPersons);
+      }
+      
+      console.log('✅ Health insurance saved to PostgreSQL');
+      return result;
+    } catch (error) {
+      console.error('❌ PostgreSQL health insurance save error:', error);
+      throw error;
+    }
+  }
+
+  // Save Insured Persons
+  async saveInsuredPersons(healthInsuranceId, insuredPersons) {
+    try {
+      for (const person of insuredPersons) {
+        await query(`
+          INSERT INTO health_insured_persons (
+            health_insurance_id, name, pan_card, aadhaar_card, date_of_birth, weight, height,
+            pre_existing_disease, disease_name, disease_years, tablet_details,
+            surgery, surgery_name, surgery_details
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+        `, [
+          healthInsuranceId,
+          person.name,
+          person.panCard,
+          person.aadhaarCard,
+          person.dateOfBirth,
+          person.weight,
+          person.height,
+          person.preExistingDisease || false,
+          person.diseaseName || null,
+          person.diseaseYears || null,
+          person.tabletDetails || null,
+          person.surgery || false,
+          person.surgeryName || null,
+          person.surgeryDetails || null
+        ]);
+      }
+      console.log('✅ Insured persons saved to PostgreSQL');
+    } catch (error) {
+      console.error('❌ Insured persons save error:', error);
+      throw error;
+    }
+  }
+
+  // Get Health Insurance Policy
+  async getHealthInsurance(policyNumber) {
+    try {
+      const result = await query(`
+        SELECT 
+          hi.*,
+          json_agg(
+            json_build_object(
+              'id', hip.id,
+              'name', hip.name,
+              'panCard', hip.pan_card,
+              'aadhaarCard', hip.aadhaar_card,
+              'dateOfBirth', hip.date_of_birth,
+              'weight', hip.weight,
+              'height', hip.height,
+              'preExistingDisease', hip.pre_existing_disease,
+              'diseaseName', hip.disease_name,
+              'diseaseYears', hip.disease_years,
+              'tabletDetails', hip.tablet_details,
+              'surgery', hip.surgery,
+              'surgeryName', hip.surgery_name,
+              'surgeryDetails', hip.surgery_details
+            )
+          ) as insured_persons
+        FROM health_insurance hi
+        LEFT JOIN health_insured_persons hip ON hi.id = hip.health_insurance_id
+        WHERE hi.policy_number = $1
+        GROUP BY hi.id
+      `, [policyNumber]);
+      
+      if (result.rows.length === 0) {
+        return null;
+      }
+      
+      const healthInsurance = result.rows[0];
+      healthInsurance.insuredPersons = healthInsurance.insured_persons.filter(p => p.id !== null);
+      
+      console.log('✅ Health insurance retrieved from PostgreSQL');
+      return healthInsurance;
+    } catch (error) {
+      console.error('❌ Health insurance retrieval error:', error);
+      throw error;
+    }
+  }
+
+  // Get All Health Insurance Policies
+  async getAllHealthInsurance(limit = 50, offset = 0) {
+    try {
+      const result = await query(`
+        SELECT 
+          hi.*,
+          COUNT(hip.id) as person_count
+        FROM health_insurance hi
+        LEFT JOIN health_insured_persons hip ON hi.id = hip.health_insurance_id
+        GROUP BY hi.id
+        ORDER BY hi.created_at DESC
+        LIMIT $1 OFFSET $2
+      `, [limit, offset]);
+      
+      console.log('✅ All health insurance policies retrieved from PostgreSQL');
+      return result.rows;
+    } catch (error) {
+      console.error('❌ Health insurance list retrieval error:', error);
+      throw error;
+    }
+  }
+
+  // Delete Health Insurance Policy
+  async deleteHealthInsurance(policyNumber) {
+    try {
+      const result = await query(
+        'DELETE FROM health_insurance WHERE policy_number = $1 RETURNING s3_key',
+        [policyNumber]
+      );
+      
+      if (result.rows.length > 0) {
+        const s3Key = result.rows[0].s3_key;
+        if (s3Key) {
+          await deleteFromS3(s3Key);
+        }
+        
+        // Notify WebSocket clients
+        websocketService.broadcastToUser('health_insurance_deleted', {
+          policyNumber: policyNumber
+        });
+        
+        console.log('✅ Health insurance deleted successfully');
+        return true;
+      }
+      
+      return false;
+    } catch (error) {
+      console.error('❌ Health insurance deletion error:', error);
+      throw error;
+    }
+  }
 }
 
 module.exports = new StorageService();

@@ -806,6 +806,36 @@ class BackendApiService {
     }
   }
 
+  // Save health insurance from backend
+  async saveHealthInsurance(healthData: any): Promise<BackendApiResult> {
+    try {
+
+      const response = await fetch('http://localhost:3001/api/health-insurance/save', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(healthData),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      
+
+      return {
+        success: true,
+        data: result.data,
+        source: 'BACKEND_API'
+      };
+    } catch (error) {
+      throw error;
+    }
+  }
+
   // Save grid entries from backend
   async saveGridEntries(entries: any[]): Promise<BackendApiResult> {
     try {
@@ -1061,6 +1091,81 @@ class BackendApiService {
     } catch (error) {
       if (ENABLE_DEBUG) {
         console.error('❌ BackendApiService: Total OD financial year breakdown failed:', error);
+      }
+      throw error;
+    }
+  }
+
+  // Health Insurance API Methods
+  async getAllHealthInsurance(limit: number = 50, offset: number = 0): Promise<BackendApiResult> {
+    try {
+      if (ENABLE_DEBUG) {
+        console.log('🔄 BackendApiService: Getting all health insurance policies...');
+      }
+
+      const response = await fetch(`http://localhost:3001/api/health-insurance?limit=${limit}&offset=${offset}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+
+      if (ENABLE_DEBUG) {
+        console.log('✅ BackendApiService: Health insurance policies retrieved successfully');
+      }
+
+      return {
+        success: true,
+        data: result.data,
+        source: 'BACKEND_API'
+      };
+    } catch (error) {
+      if (ENABLE_DEBUG) {
+        console.error('❌ BackendApiService: Get all health insurance failed:', error);
+      }
+      throw error;
+    }
+  }
+
+  async getHealthInsuranceDetail(policyNumber: string): Promise<BackendApiResult> {
+    try {
+      if (ENABLE_DEBUG) {
+        console.log('🔄 BackendApiService: Getting health insurance detail...');
+      }
+
+      const response = await fetch(`http://localhost:3001/api/health-insurance/${policyNumber}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+
+      if (ENABLE_DEBUG) {
+        console.log('✅ BackendApiService: Health insurance detail retrieved successfully');
+      }
+
+      return {
+        success: true,
+        data: result.data,
+        source: 'BACKEND_API'
+      };
+    } catch (error) {
+      if (ENABLE_DEBUG) {
+        console.error('❌ BackendApiService: Get health insurance detail failed:', error);
       }
       throw error;
     }

@@ -37,6 +37,7 @@ app.get('/health', (req, res) => {
 // API Routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/policies', require('./routes/policies'));
+app.use('/api/health-insurance', require('./routes/healthInsurance'));
 app.use('/api/upload', require('./routes/upload'));
 app.use('/api/dashboard', require('./routes/dashboard'));
 app.use('/api/settings', require('./routes/settings'));
