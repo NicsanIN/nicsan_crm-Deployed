@@ -28,7 +28,7 @@ function Tile({ label, value, sub, info, onClick }: { label: string; value: stri
     >
       <div className="text-sm text-zinc-500 mb-1">{label}</div>
       <div className="text-2xl font-semibold text-zinc-900">{value}</div>
-      {sub && <div className="text-sm text-zinc-600 mt-1">{sub}</div>}
+      {sub && <div className="text-sm text-green-600 mt-1">{sub}</div>}
       {info && <div className="text-xs text-zinc-400 mt-1">{info}</div>}
     </div>
   );
@@ -37,7 +37,6 @@ function Tile({ label, value, sub, info, onClick }: { label: string; value: stri
 function PageKPIs() {
     const { settings } = useSettings();
     const [kpiData, setKpiData] = useState<any>(null);
-    const [dataSource, setDataSource] = useState<string>('');
   
     useEffect(() => {
       const loadKPIData = async () => {
@@ -47,14 +46,12 @@ function PageKPIs() {
           
           if (response.success) {
             setKpiData(response.data);
-            setDataSource(response.source);
             
             if (ENABLE_DEBUG) {
             }
           }
         } catch (error) {
           console.error('Failed to load KPI data:', error);
-          setDataSource('MOCK_DATA');
         }
       };
       
@@ -114,51 +111,51 @@ function PageKPIs() {
       <>
         <div className="grid grid-cols-1 gap-6">
           {/* Acquisition */}
-          <Card title="Acquisition" desc={`Real metrics from backend data (Data Source: ${dataSource || 'Loading...'})`}>
+          <Card title="Acquisition">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-              <Tile label="Conversion Rate" info="(% leads → sales)" value={pct(conversionRate)} sub={`${totalConverted}/${totalLeads} deals`}/>
-              <Tile label="Cost per Lead" info="(₹ spend ÷ leads)" value={fmtINR(costPerLead)} sub="No marketing data available"/>
-              <Tile label="CAC" info="(Cost to acquire 1 sale)" value={fmtINR(CAC)} sub="No cost data available"/>
-              <Tile label="Revenue Growth" info="(% vs start of period)" value={pct(revenueGrowthRate)} sub="Based on trend data"/>
+              <Tile label="Conversion Rate" value={pct(conversionRate)} sub={`${totalConverted}/${totalLeads} deals`}/>
+              <Tile label="Cost per Lead" value={fmtINR(costPerLead)} sub="No marketing data available"/>
+              <Tile label="CAC" value={fmtINR(CAC)} sub="No cost data available"/>
+              <Tile label="Revenue Growth" value={pct(revenueGrowthRate)} sub="Based on trend data"/>
             </div>
           </Card>
   
           {/* Value & Retention */}
-          <Card title="Value & Retention" desc="Real metrics from backend data">
+          <Card title="Value & Retention">
             <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
-              <Tile label="ARPA" info="(avg revenue per account)" value={fmtINR(ARPA)} sub="Based on net revenue"/>
-              <Tile label="Retention" info="(% customers kept)" value={pct(retentionRate)} sub="No retention data available"/>
-              <Tile label="Churn" info="(100 − retention)" value={pct(churnRate)} sub="No churn data available"/>
-              <Tile label="CLV (approx)" info="(ARPA × lifetime months)" value={fmtINR(CLV)} sub={`${lifetimeMonths} mo industry standard`} />
-              <Tile label="LTV/CAC" info= "(value per customer ÷ cost)" value={typeof LTVtoCAC === 'string' ? LTVtoCAC : `${LTVtoCAC.toFixed(2)}×`} sub="No cost data available"/>
+              <Tile label="ARPA" value={fmtINR(ARPA)} sub="Based on net revenue"/>
+              <Tile label="Retention" value={pct(retentionRate)} sub="No retention data available"/>
+              <Tile label="Churn" value={pct(churnRate)} sub="No churn data available"/>
+              <Tile label="CLV (approx)" value={fmtINR(CLV)} sub={`${lifetimeMonths} mo industry standard`} />
+              <Tile label="LTV/CAC" value={typeof LTVtoCAC === 'string' ? LTVtoCAC : `${LTVtoCAC.toFixed(2)}×`} sub="No cost data available"/>
             </div>
           </Card>
   
           {/* Insurance Health */}
-          <Card title="Insurance Health" desc="Real ratios from backend data">
+          <Card title="Insurance Health">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <Tile label="Loss Ratio" info="(cashback ÷ premium)" value={pct(lossRatio)} sub={`Cashback ${fmtINR(totalCashback)}`}/>
-              <Tile label="Expense Ratio" info="(brokerage - cashback) ÷ premium" value={pct(expenseRatio)} sub={`Net brokerage ${fmtINR(totalBrokerage - totalCashback)}`}/>
-              <Tile label="Combined Ratio" info="(loss + expense)" value={pct(combinedRatio)} sub="Sum of above ratios"/>
+              <Tile label="Loss Ratio" value={pct(lossRatio)} sub={`Cashback ${fmtINR(totalCashback)}`}/>
+              <Tile label="Expense Ratio" value={pct(expenseRatio)} sub={`Net brokerage ${fmtINR(totalBrokerage - totalCashback)}`}/>
+              <Tile label="Combined Ratio" value={pct(combinedRatio)} sub="Sum of above ratios"/>
             </div>
           </Card>
   
           {/* Sales Quality */}
-          <Card title="Sales Quality" desc="Metrics requiring additional data sources">
+          <Card title="Sales Quality">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <Tile label="Upsell/Cross-sell" info="(% with extra cover)" value={pct(upsellRate)} sub="No upsell data available"/>
-              <Tile label="NPS" info="(promoters − detractors)" value={pct(NPS)} sub="No survey data available"/>
-              <Tile label="Marketing ROI" info="((Rev−Spend) ÷ Spend)" value={pct(marketingROI)} sub="No marketing spend data available"/>
+              <Tile label="Upsell/Cross-sell" value={pct(upsellRate)} sub="No upsell data available"/>
+              <Tile label="NPS" value={pct(NPS)} sub="No survey data available"/>
+              <Tile label="Marketing ROI" value={pct(marketingROI)} sub="No marketing spend data available"/>
             </div>
           </Card>
   
           {/* Settings-Based Calculations */}
-          <Card title="Business Projections" desc="Calculations based on current settings">
+          <Card title="Business Projections">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-              <Tile label="Expected Brokerage" info={`(${settings.brokeragePercent}% of GWP)`} value={fmtINR(calculatedBrokerage)} sub={`${settings.brokeragePercent}% of ${fmtINR(sumGWP)}`}/>
-              <Tile label="Backlog Value" info={`(${settings.expectedConversion}% conversion)`} value={fmtINR(expectedBacklogValue)} sub={`${totalLeads - totalConverted} pending leads`}/>
-              <Tile label="3-Year LTV" info={`(${settings.premiumGrowth}% growth)`} value={fmtINR(projectedLTV)} sub="Projected customer value"/>
-              <Tile label="Daily Rep Cost" info="(per representative)" value={fmtINR(repDailyCost)} sub="From settings"/>
+              <Tile label="Expected Brokerage" value={fmtINR(calculatedBrokerage)} sub={`${settings.brokeragePercent}% of ${fmtINR(sumGWP)}`}/>
+              <Tile label="Backlog Value" value={fmtINR(expectedBacklogValue)} sub={`${totalLeads - totalConverted} pending leads`}/>
+              <Tile label="3-Year LTV" value={fmtINR(projectedLTV)} sub="Projected customer value"/>
+              <Tile label="Daily Rep Cost" value={fmtINR(repDailyCost)} sub="From settings"/>
             </div>
           </Card>
         </div>

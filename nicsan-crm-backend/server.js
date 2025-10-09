@@ -4,6 +4,14 @@ const http = require('http');
 require('dotenv').config();
 
 // Initialize Express app
+// Load environment variables
+require('dotenv').config();
+
+// Debug environment variables
+console.log('🔍 Environment check:');
+console.log('JWT_SECRET:', process.env.JWT_SECRET ? 'SET' : 'NOT SET');
+console.log('DB_HOST:', process.env.DB_HOST || 'NOT SET');
+console.log('PORT:', process.env.PORT || 'NOT SET');
 const app = express();
 const server = http.createServer(app);
 
@@ -67,13 +75,14 @@ app.use('/api/dashboard', require('./routes/dashboard'));
 app.use('/api/settings', require('./routes/settings'));
 app.use('/api/telecallers', require('./routes/telecallers'));
 app.use('/api/debug', require('./routes/debug'));
+app.use('/api/password', require('./routes/password'));
+app.use('/api/users', require('./routes/users'));
 
 // Initialize WebSocket Service (handles Socket.IO internally)
 const wsService = require('./services/websocketService');
 wsService.initialize(server);
 
 // Middleware already configured above
-
 
 // Error handling middleware
 app.use((err, req, res, next) => {

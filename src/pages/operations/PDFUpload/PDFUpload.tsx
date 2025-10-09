@@ -2,7 +2,136 @@ import { useState, useEffect, useRef } from 'react';
 import { Card } from '../../../components/common/Card';
 // import { Upload, FileText, CheckCircle2, AlertTriangle, RefreshCw, Download, Eye, Trash2, User, Phone, Mail, Building, DollarSign, Calendar, Clock, Shield, Car, MapPin } from 'lucide-react';
 import DualStorageService from '../../../services/dualStorageService';
-import { AutocompleteInput } from '../../../NicsanCRMMock';
+// Custom AutocompleteInput for PDF Upload with blue styling
+function LabeledAutocompleteInput({ 
+  label, 
+  value, 
+  onChange, 
+  getSuggestions, 
+  onAddNew, 
+  showAddNew = false, 
+  placeholder, 
+  required = false 
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  getSuggestions: (input: string) => Promise<string[]>;
+  onAddNew?: (value: string) => void;
+  showAddNew?: boolean;
+  placeholder?: string;
+  required?: boolean;
+}) {
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [isOpen, setIsOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleInputChange = async (inputValue: string) => {
+    onChange(inputValue);
+    
+    if (inputValue.length >= 2) {
+      setIsLoading(true);
+      try {
+        const newSuggestions = await getSuggestions(inputValue);
+        setSuggestions(newSuggestions);
+        // Open dropdown only if we have suggestions OR if we want to show "Add new" option (but not both empty)
+        setIsOpen(newSuggestions.length > 0 || (showAddNew && inputValue.trim().length > 0 && newSuggestions.length === 0));
+      } catch (error) {
+        setSuggestions([]);
+        setIsOpen(false);
+      } finally {
+        setIsLoading(false);
+      }
+    } else {
+      setSuggestions([]);
+      setIsOpen(false);
+    }
+  };
+
+  const handleSuggestionClick = (suggestion: string) => {
+    onChange(suggestion);
+    setIsOpen(false);
+  };
+
+  const handleAddNew = () => {
+    if (onAddNew && value.trim()) {
+      onAddNew(value.trim());
+      setIsOpen(false);
+    }
+  };
+
+  return (
+    <div className="space-y-1 relative">
+      <label className="block text-xs text-blue-700 mb-1">
+        {label} {required && <span className="text-red-500">*</span>}
+      </label>
+      <div className="relative">
+        <input
+          type="text"
+          value={value || ''}
+          onChange={(e) => handleInputChange(e.target.value)}
+          onFocus={async () => {
+            if (value.length >= 2) {
+              try {
+                const newSuggestions = await getSuggestions(value);
+                setSuggestions(newSuggestions);
+                // Open dropdown only if we have suggestions OR if we want to show "Add new" option (but not both empty)
+                setIsOpen(newSuggestions.length > 0 || (showAddNew && value.trim().length > 0 && newSuggestions.length === 0));
+              } catch (error) {
+                // Silent error handling
+              }
+            }
+          }}
+          onBlur={() => {
+            // Delay to allow clicking on suggestions
+            setTimeout(() => setIsOpen(false), 150);
+          }}
+          placeholder={placeholder}
+          className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+        />
+        
+        {/* Dropdown Arrow */}
+        <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
+          <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </div>
+
+        {/* Suggestions Dropdown */}
+        {isOpen && (
+          <div className="absolute z-50 w-full mt-1 bg-white border border-blue-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+            {isLoading ? (
+              <div className="px-3 py-2 text-sm text-blue-500 flex items-center gap-2">
+                <div className="w-4 h-4 border-2 border-blue-300 border-t-blue-600 rounded-full animate-spin"></div>
+                Loading suggestions...
+              </div>
+            ) : (
+              <>
+                {suggestions.map((suggestion, index) => (
+                  <button
+                    key={index}
+                    onClick={() => handleSuggestionClick(suggestion)}
+                    className="w-full px-3 py-2 text-left text-sm text-blue-700 hover:bg-blue-50 transition-colors first:rounded-t-lg last:rounded-b-lg"
+                  >
+                    {suggestion}
+                  </button>
+                ))}
+                {showAddNew && value.trim() && !suggestions.includes(value.trim()) && (
+                  <button
+                    onClick={handleAddNew}
+                    className="w-full px-3 py-2 text-left text-sm text-blue-600 hover:bg-blue-50 transition-colors border-t border-blue-200 rounded-b-lg"
+                  >
+                    + Add "{value.trim()}" as new telecaller
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 // Environment variables
 // const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
@@ -43,7 +172,26 @@ function PageUpload() {
     });
     const [manualExtrasSaved, setManualExtrasSaved] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const [_callerNames, setCallerNames] = useState<string[]>([]);
+    const [callerNames, setCallerNames] = useState<string[]>([]);
+
+    // Load telecallers on component mount
+    useEffect(() => {
+      const loadTelecallers = async () => {
+        try {
+          const response = await DualStorageService.getTelecallers();
+          
+          if (response.success && Array.isArray(response.data)) {
+            const names = response.data
+              .map((telecaller: any) => telecaller.name)
+              .filter((name: string) => name && name !== 'Unknown');
+            setCallerNames(names);
+          }
+        } catch (error) {
+          console.error('Failed to load telecallers:', error);
+        }
+      };
+      loadTelecallers();
+    }, []);
   
     const handleFiles = async (files: FileList) => {
       const file = files[0];
@@ -306,28 +454,21 @@ function PageUpload() {
     const getFilteredCallerSuggestions = async (input: string): Promise<string[]> => {
       if (input.length < 2) return [];
       
-      try {
-        const response = await DualStorageService.getTelecallers();
-        if (response.success && response.data) {
-          const filteredNames = response.data
-            .map((telecaller: any) => telecaller.name)
-            .filter((name: string) => 
-              name && 
-              name !== 'Unknown' && 
-              name.toLowerCase().includes(input.toLowerCase())
-            )
-            .slice(0, 5); // Limit to 5 suggestions
-          return filteredNames;
-        }
-      } catch (error) {
-        console.warn('Failed to get caller suggestions:', error);
-      }
-      
-      // Fallback to mock data with filtering
-      const mockCallers = ['Priya Singh', 'Rahul Kumar', 'Anjali Sharma'];
-      return mockCallers.filter(name => 
+      // Use the callerNames state that was loaded on component mount
+      const filteredNames = callerNames.filter(name => 
         name.toLowerCase().includes(input.toLowerCase())
       );
+      
+      // If no suggestions from state, use mock data as fallback
+      if (filteredNames.length === 0) {
+        const mockCallers = ['Priya Singh', 'Rahul Kumar', 'Anjali Sharma'];
+        const filtered = mockCallers.filter(name => 
+          name.toLowerCase().includes(input.toLowerCase())
+        );
+        return filtered.slice(0, 5);
+      }
+
+      return filteredNames.slice(0, 5); // Limit to 5 suggestions
     };
   
     // Handle adding new telecaller
@@ -369,7 +510,7 @@ function PageUpload() {
   
     return (
       <>
-        <Card title="Drag & Drop PDF" desc="(S3 = cloud folder; Textract = PDF reader bot). Tata AIG & Digit only in v1.">
+        <Card title="Drag & Drop PDF">
           {/* Insurer Selection */}
           <div className="mb-4">
             <div className="text-sm font-medium mb-2">Select Insurer</div>
@@ -396,43 +537,44 @@ function PageUpload() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs text-blue-700 mb-1">Executive</label>
-                <input 
-                  type="text" 
-                  placeholder="Sales rep name"
+                <select 
                   value={manualExtras.executive}
                   onChange={(e) => handleManualExtrasChange('executive', e.target.value)}
                   className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
-                />
+                >
+                  <option value="">Select Executive</option>
+                  <option value="Yashwanth">Yashwanth</option>
+                  <option value="Kavya">Kavya</option>
+                  <option value="Bhagya">Bhagya</option>
+                  <option value="Sandesh">Sandesh</option>
+                  <option value="Yallappa">Yallappa</option>
+                  <option value="Nethravathi">Nethravathi</option>
+                  <option value="Tejaswini">Tejaswini</option>
+                </select>
               </div>
               <div>
                 <label className="block text-xs text-blue-700 mb-1">Ops Executive</label>
-                <input 
-                  type="text" 
-                  placeholder="Ops executive name"
+                <select 
                   value={manualExtras.opsExecutive}
                   onChange={(e) => handleManualExtrasChange('opsExecutive', e.target.value)}
                   className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
-                />
+                >
+                  <option value="">Select Ops Executive</option>
+                  <option value="NA">NA</option>
+                  <option value="Ravi">Ravi</option>
+                  <option value="Pavan">Pavan</option>
+                  <option value="Manjunath">Manjunath</option>
+                </select>
               </div>
               <div>
-                <AutocompleteInput 
+                <LabeledAutocompleteInput 
                   label="Caller Name" 
                   placeholder="Telecaller name"
                   value={manualExtras.callerName}
-                  onChange={(value) => handleManualExtrasChange('callerName', value)}
+                  onChange={(value: string) => handleManualExtrasChange('callerName', value)}
                   getSuggestions={getFilteredCallerSuggestions}
                   onAddNew={handleAddNewTelecaller}
                   showAddNew={true}
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-blue-700 mb-1">Customer Email ID</label>
-                <input 
-                  type="text" 
-                  placeholder="name@example.com"
-                  value={manualExtras.customerEmail}
-                  onChange={(e) => handleManualExtrasChange('customerEmail', e.target.value)}
-                  className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
                 />
               </div>
               <div>
@@ -447,11 +589,23 @@ function PageUpload() {
               </div>
               <div>
                 <label className="block text-xs text-blue-700 mb-1">Rollover/Renewal</label>
-                <input 
-                  type="text" 
-                  placeholder="Internal code"
+                <select 
                   value={manualExtras.rollover}
                   onChange={(e) => handleManualExtrasChange('rollover', e.target.value)}
+                  className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                >
+                  <option value="">Select Rollover/Renewal</option>
+                  <option value="ROLLOVER">ROLLOVER</option>
+                  <option value="RENEWAL">RENEWAL</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs text-blue-700 mb-1">Customer Email ID</label>
+                <input 
+                  type="text" 
+                  placeholder="name@example.com"
+                  value={manualExtras.customerEmail}
+                  onChange={(e) => handleManualExtrasChange('customerEmail', e.target.value)}
                   className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
                 />
               </div>
@@ -507,14 +661,17 @@ function PageUpload() {
               </div>
               <div>
                 <label className="block text-xs text-blue-700 mb-1">Branch <span className="text-red-500">*</span></label>
-                <input 
-                  type="text"
-                  placeholder="Enter branch name"
+                <select 
                   value={manualExtras.branch}
                   onChange={(e) => handleManualExtrasChange('branch', e.target.value)}
                   className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
                   required
-                />
+                >
+                  <option value="">Select Branch</option>
+                  <option value="MYSORE">MYSORE</option>
+                  <option value="BANASHANKARI">BANASHANKARI</option>
+                  <option value="ADUGODI">ADUGODI</option>
+                </select>
               </div>
               <div>
                 <label className="block text-xs text-blue-700 mb-1">Payment Method</label>

@@ -29,12 +29,12 @@ const demoTrend = [
 function Tile({ label, value, sub, info, onClick }: { label: string; value: string; sub?: string; info?: string; onClick?: () => void }) {
   return (
     <div 
-      className={`bg-white rounded-2xl shadow-sm border border-zinc-100 p-4 ${onClick ? 'cursor-pointer hover:shadow-md transition-shadow' : ''}`}
+      className={`bg-white rounded-2xl shadow-sm border border-zinc-100 p-4 ${onClick ? 'cursor-pointer hover:shadow-md hover:border-blue-200 transition-all' : ''}`}
       onClick={onClick}
     >
       <div className="text-sm text-zinc-500 mb-1">{label}</div>
       <div className="text-2xl font-semibold text-zinc-900">{value}</div>
-      {sub && <div className="text-sm text-zinc-600 mt-1">{sub}</div>}
+      {sub && <div className="text-sm text-green-600 mt-1">{sub}</div>}
       {info && <div className="text-xs text-zinc-400 mt-1">{info}</div>}
     </div>
   );
@@ -45,7 +45,6 @@ function TotalODBreakdown() {
   const [breakdownType, setBreakdownType] = useState<'daily' | 'monthly' | 'financial-year'>('daily');
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [dataSource, setDataSource] = useState<string>('');
 
   useEffect(() => {
     loadBreakdownData();
@@ -65,7 +64,6 @@ function TotalODBreakdown() {
       
       if (response.success) {
         setData(response.data);
-        setDataSource(response.source);
       }
     } catch (error) {
       console.error('Failed to load Total OD breakdown:', error);
@@ -101,7 +99,7 @@ function TotalODBreakdown() {
   };
 
   return (
-    <Card title="Total OD Breakdown" desc={`${breakdownType} analysis (Data Source: ${dataSource || 'Loading...'})`}>
+    <Card title="Total OD Breakdown">
       <div className="mb-4">
         <div className="flex gap-2">
           <button 
@@ -192,7 +190,6 @@ function TotalODBreakdown() {
 function PageOverview() {
     const [metrics, setMetrics] = useState<any>(null);
     const [trendData, setTrendData] = useState<any[]>([]);
-    const [dataSource, setDataSource] = useState<string>('');
     const [showTotalODBreakdown, setShowTotalODBreakdown] = useState(false);
   
     useEffect(() => {
@@ -203,7 +200,6 @@ function PageOverview() {
           
           if (metricsResponse.success) {
             setMetrics(metricsResponse.data);
-            setDataSource(metricsResponse.source);
             
             
             // Use real trend data from backend instead of demo data
@@ -241,34 +237,29 @@ function PageOverview() {
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
           <Tile 
             label="GWP" 
-            info="(Gross Written Premium)" 
             value={metrics ? formatCurrency(metrics.basicMetrics?.totalGWP) : "₹10.7L"} 
             sub="▲ 8% vs last 14d"
           />
           <Tile 
             label="Brokerage" 
-            info="(% of GWP)" 
             value={metrics ? formatCurrency(metrics.basicMetrics?.totalBrokerage) : "₹1.60L"}
           />
           <Tile 
             label="Cashback" 
-            info="(Cash we give back)" 
             value={metrics ? formatCurrency(metrics.basicMetrics?.totalCashback) : "₹0.34L"}
           />
           <Tile 
             label="Net" 
-            info="(Brokerage − Cashback)" 
             value={metrics ? formatCurrency(metrics.basicMetrics?.netRevenue) : "₹1.26L"}
           />
           <Tile 
             label="Total OD" 
-            info="(Outstanding Debt)" 
             value={metrics ? formatCurrency(metrics.basicMetrics?.totalOutstandingDebt) : "₹0.00L"}
-            sub="Total outstanding amount"
+            sub="Click to expand"
             onClick={() => setShowTotalODBreakdown(!showTotalODBreakdown)}
           />
         </div>
-        <Card title="14-day Trend" desc={`GWP & Net (Data Source: ${dataSource || 'Loading...'})`}>
+        <Card title="14-day Trend">
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={trendData}>

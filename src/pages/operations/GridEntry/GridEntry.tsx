@@ -808,7 +808,7 @@ function PageManualGrid() {
   
     return (
       <>
-        <Card title="Grid Entry (Excel-like)" desc="Paste multiple rows; fix inline errors. Dedupe on Policy No. + Vehicle No.">
+        <Card title="Grid Entry (Excel-like)">
           <div className="mb-3 text-xs text-zinc-600">Tip: Copy from Excel and <b>Ctrl+V</b> directly here. Use <b>Ctrl+S</b> to save all.</div>
           
           {/* Show saved policies info */}
