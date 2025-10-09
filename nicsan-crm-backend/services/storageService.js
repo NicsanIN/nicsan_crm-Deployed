@@ -1726,8 +1726,9 @@ async savePolicy(policyData) {
       const result = await query(`
         INSERT INTO health_insurance (
           policy_number, insurer, issue_date, expiry_date, sum_insured, premium_amount,
-          executive, caller_name, mobile, customer_name, customer_email, branch, remark, source
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+          executive, caller_name, mobile, customer_name, customer_email, branch, remark, source,
+          ops_executive, payment_method, payment_sub_method, payment_received, received_date, received_by
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
         RETURNING id
       `, [
         healthData.policy_number,
@@ -1743,7 +1744,13 @@ async savePolicy(policyData) {
         healthData.customer_email,
         healthData.branch,
         healthData.remark,
-        healthData.source || 'MANUAL_FORM'
+        healthData.source || 'MANUAL_FORM',
+        healthData.ops_executive,
+        healthData.payment_method || 'INSURER',
+        healthData.payment_sub_method,
+        healthData.payment_received || false,
+        healthData.received_date,
+        healthData.received_by
       ]);
       
       // Save insured persons

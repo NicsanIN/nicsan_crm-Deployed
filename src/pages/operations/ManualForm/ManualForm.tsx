@@ -865,6 +865,12 @@ function PageManualForm() {
             branch: policyData.branch,
             remark: policyData.remark,
             source: policyData.source,
+            ops_executive: form.opsExecutive,
+            payment_method: form.paymentMethod || 'INSURER',
+            payment_sub_method: form.paymentSubMethod || '',
+            payment_received: form.paymentReceived || false,
+            received_date: form.receivedDate || null,
+            received_by: form.receivedBy || '',
             insuredPersons: form.insuredPersons
           };
           response = await DualStorageService.saveHealthInsurance(healthInsuranceData);

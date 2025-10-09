@@ -1,10 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Card } from '../../../components/common/Card';
-import { Search, RefreshCw, FileText, Calendar, DollarSign, User, Car, Building, Phone, Mail, MapPin, Clock, CheckCircle2, AlertTriangle, Eye, Download } from 'lucide-react';
+import { User } from 'lucide-react';
 import DualStorageService from '../../../services/dualStorageService';
 
-// Environment variables
-const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
 
 function PagePolicyDetail() {
     const [policyData, setPolicyData] = useState<any>(null);
@@ -18,47 +16,81 @@ function PagePolicyDetail() {
     const [searchQuery, setSearchQuery] = useState("");
     const [searchResults, setSearchResults] = useState<any[]>([]);
     const [isSearching, setIsSearching] = useState(false);
-    const [searchType, setSearchType] = useState<'vehicle' | 'policy' | 'both'>('both');
+    const [searchType, setSearchType] = useState<'vehicle' | 'policy' | 'health' | 'both'>('both');
     const [showResults, setShowResults] = useState(false);
   
     const loadAvailablePolicies = async () => {
       try {
         setIsLoadingPolicies(true);
-        // Use dual storage pattern to get all policies
-        const response = await DualStorageService.getAllPolicies();
+        // Load both motor and health insurance policies
+        const [motorResponse, healthResponse] = await Promise.all([
+          DualStorageService.getAllPolicies(),
+          DualStorageService.getAllHealthInsurance()
+        ]);
         
-        if (response.success) {
-          setAvailablePolicies(response.data || []);
-          
-          if (ENABLE_DEBUG) {
-          }
-        }
+        const allPolicies = [
+          ...(motorResponse.success ? (motorResponse.data || []).map((p: any) => ({ ...p, type: 'MOTOR' })) : []),
+          ...(healthResponse.success ? (healthResponse.data || []).map((p: any) => ({ ...p, type: 'HEALTH' })) : [])
+        ];
+        
+        setAvailablePolicies(allPolicies);
+        
       } catch (error) {
         console.error('Failed to load available policies:', error);
         // Set mock policies as fallback
         setAvailablePolicies([
-          { id: '1', policy_number: 'TA-9921', vehicle_number: 'KA 51 MM 1214', insurer: 'Tata AIG' },
-          { id: '2', policy_number: 'TA-9922', vehicle_number: 'KA01AB5678', insurer: 'Tata AIG' },
-          { id: '3', policy_number: 'TA-9923', vehicle_number: 'KA01AB9012', insurer: 'Tata AIG' }
+          { id: '1', policy_number: 'TA-9921', vehicle_number: 'KA 51 MM 1214', insurer: 'Tata AIG', type: 'MOTOR' },
+          { id: '2', policy_number: 'TA-9922', vehicle_number: 'KA01AB5678', insurer: 'Tata AIG', type: 'MOTOR' },
+          { id: '3', policy_number: 'TA-9923', vehicle_number: 'KA01AB9012', insurer: 'Tata AIG', type: 'MOTOR' },
+          { id: 'health-1', policy_number: 'HI-2024-001', insurer: 'HDFC ERGO', customer_name: 'Rajesh Kumar', type: 'HEALTH' },
+          { id: 'health-2', policy_number: 'STAR-2024-002', insurer: 'Star Health', customer_name: 'Priya Sharma', type: 'HEALTH' }
         ]);
       } finally {
         setIsLoadingPolicies(false);
       }
     };
   
-    const loadPolicyDetail = async (id: string) => {
+    const loadPolicyDetail = async (id: string | number) => {
       try {
         setIsLoading(true);
-        // Use dual storage pattern: S3 → Database → Mock Data
-        const response = await DualStorageService.getPolicyDetail(id);
+        
+        // Convert id to string and determine if this is a health insurance policy
+        const idString = String(id);
+        
+        // Enhanced health policy detection - check if it's a health policy by looking at available policies
+        const isHealthPolicy = idString.startsWith('health-') || 
+                              idString.includes('health') || 
+                              idString.startsWith('HI-') || 
+                              idString.startsWith('STAR-') || 
+                              idString.startsWith('BAJAJ-') ||
+                              // Check if this ID corresponds to a health policy in availablePolicies
+                              (availablePolicies.length > 0 && availablePolicies.some(policy => 
+                                policy.type === 'HEALTH' && 
+                                (policy.id === idString || policy.policy_number === idString)
+                              )) ||
+                              // Fallback: if availablePolicies is not loaded yet, try to detect by common patterns
+                              (availablePolicies.length === 0 && (
+                                idString.startsWith('health-') || 
+                                idString.includes('health') || 
+                                idString.startsWith('HI-') || 
+                                idString.startsWith('STAR-') || 
+                                idString.startsWith('BAJAJ-')
+                              ));
+        
+        
+        let response;
+        if (isHealthPolicy) {
+          // Load health insurance policy using policy number
+          response = await DualStorageService.getHealthInsuranceDetail(idString);
+        } else {
+          // Load motor insurance policy using id
+          response = await DualStorageService.getPolicyDetail(idString);
+        }
         
         if (response.success) {
           setPolicyData(response.data);
           setDataSource(response.source);
           
-          
-          if (ENABLE_DEBUG) {
-          }
         }
       } catch (error) {
         console.error('Failed to load policy detail:', error);
@@ -74,10 +106,13 @@ function PagePolicyDetail() {
     }, []);
   
     useEffect(() => {
-      if (policyId) {
-        loadPolicyDetail(policyId);
+      if (policyId && policyId !== '') {
+        // Wait for availablePolicies to be loaded before loading policy detail
+        if (availablePolicies.length > 0) {
+          loadPolicyDetail(policyId);
+        }
       }
-    }, [policyId]);
+    }, [policyId, availablePolicies]);
   
     // Search functionality
     const handleSearch = async (query: string) => {
@@ -92,19 +127,32 @@ function PagePolicyDetail() {
         let searchResults: any[] = [];
         
         if (searchType === 'vehicle' || searchType === 'both') {
-          // Search by vehicle number
+          // Search by vehicle number (motor insurance only)
           const vehicleResults = availablePolicies.filter(policy => 
+            policy.type === 'MOTOR' && 
+            policy.vehicle_number && 
             policy.vehicle_number.toLowerCase().includes(query.toLowerCase())
           );
           searchResults = [...searchResults, ...vehicleResults];
         }
         
         if (searchType === 'policy' || searchType === 'both') {
-          // Search by policy number
+          // Search by policy number (both motor and health)
           const policyResults = availablePolicies.filter(policy => 
+            policy.policy_number && 
             policy.policy_number.toLowerCase().includes(query.toLowerCase())
           );
           searchResults = [...searchResults, ...policyResults];
+        }
+        
+        // Search by customer name (health insurance)
+        if (searchType === 'health' || searchType === 'both') {
+          const customerResults = availablePolicies.filter(policy => 
+            policy.type === 'HEALTH' && 
+            policy.customer_name && 
+            policy.customer_name.toLowerCase().includes(query.toLowerCase())
+          );
+          searchResults = [...searchResults, ...customerResults];
         }
         
         // Remove duplicates and sort
@@ -142,8 +190,13 @@ function PagePolicyDetail() {
     }, [searchQuery, debouncedSearch]);
   
     const handlePolicySelect = (policy: any) => {
-      setPolicyId(policy.id);
-      setSearchQuery(`${policy.policy_number} - ${policy.vehicle_number}`);
+      // For health insurance, use policy_number; for motor insurance, use id
+      const selectedId = policy.type === 'HEALTH' ? policy.policy_number : policy.id;
+      setPolicyId(String(selectedId));
+      const displayText = policy.type === 'HEALTH' 
+        ? `${policy.policy_number} - ${policy.customer_name || 'Health Insurance'}`
+        : `${policy.policy_number} - ${policy.vehicle_number || 'Motor Insurance'}`;
+      setSearchQuery(displayText);
       setShowResults(false);
     };
   
@@ -172,6 +225,13 @@ function PagePolicyDetail() {
       );
     }
   
+    // Determine if this is a health insurance policy
+    const isHealthInsurance = policyData?.source === 'HEALTH_INSURANCE' || 
+                             policyData?.product_type === 'Health Insurance' ||
+                             policyData?.insuredPersons?.length > 0 ||
+                             policyData?.sum_insured !== undefined ||
+                             policyData?.premium_amount !== undefined;
+
     const policy = policyData || {
       policy_number: 'TA-9921',
       vehicle_number: 'KA 51 MM 1214',
@@ -207,7 +267,7 @@ function PagePolicyDetail() {
                           type="radio"
                           value="both"
                           checked={searchType === 'both'}
-                          onChange={(e) => setSearchType(e.target.value as 'vehicle' | 'policy' | 'both')}
+                          onChange={(e) => setSearchType(e.target.value as 'vehicle' | 'policy' | 'health' | 'both')}
                           className="mr-2"
                         />
                         <span className="text-sm">Both</span>
@@ -217,7 +277,7 @@ function PagePolicyDetail() {
                           type="radio"
                           value="vehicle"
                           checked={searchType === 'vehicle'}
-                          onChange={(e) => setSearchType(e.target.value as 'vehicle' | 'policy' | 'both')}
+                          onChange={(e) => setSearchType(e.target.value as 'vehicle' | 'policy' | 'health' | 'both')}
                           className="mr-2"
                         />
                         <span className="text-sm">Vehicle</span>
@@ -227,10 +287,20 @@ function PagePolicyDetail() {
                           type="radio"
                           value="policy"
                           checked={searchType === 'policy'}
-                          onChange={(e) => setSearchType(e.target.value as 'vehicle' | 'policy' | 'both')}
+                          onChange={(e) => setSearchType(e.target.value as 'vehicle' | 'policy' | 'health' | 'both')}
                           className="mr-2"
                         />
                         <span className="text-sm">Policy</span>
+                      </label>
+                      <label className="flex items-center">
+                        <input
+                          type="radio"
+                          value="health"
+                          checked={searchType === 'health'}
+                          onChange={(e) => setSearchType(e.target.value as 'vehicle' | 'policy' | 'health' | 'both')}
+                          className="mr-2"
+                        />
+                        <span className="text-sm">Health</span>
                       </label>
                     </div>
                     
@@ -241,7 +311,7 @@ function PagePolicyDetail() {
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         onFocus={() => setShowResults(true)}
-                        placeholder={`Search by ${searchType === 'both' ? 'vehicle number or policy number' : searchType === 'vehicle' ? 'vehicle number' : 'policy number'}...`}
+                        placeholder={`Search by ${searchType === 'both' ? 'vehicle number, policy number, or customer name' : searchType === 'vehicle' ? 'vehicle number' : searchType === 'health' ? 'customer name' : 'policy number'}...`}
                         className="block w-full px-3 py-2 pr-10 border border-zinc-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       />
                       <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
@@ -268,7 +338,13 @@ function PagePolicyDetail() {
                                   {policy.policy_number}
                                 </p>
                                 <p className="text-sm text-zinc-500">
-                                  {policy.vehicle_number} - {policy.insurer}
+                                  {policy.type === 'HEALTH' 
+                                    ? `${policy.customer_name || 'Health Insurance'} - ${policy.insurer}`
+                                    : `${policy.vehicle_number || 'Motor Insurance'} - ${policy.insurer}`
+                                  }
+                                </p>
+                                <p className="text-xs text-zinc-400">
+                                  {policy.type === 'HEALTH' ? 'Health Insurance' : 'Motor Insurance'}
                                 </p>
                               </div>
                             </div>
@@ -303,7 +379,7 @@ function PagePolicyDetail() {
         </Card>
   
         {/* Policy Information */}
-        <Card title={`Policy: ${policy.policy_number || 'TA-9921'} — ${policy.vehicle_number || 'KA 51 MM 1214'}`} desc="Comprehensive policy details">
+        <Card title={`Policy: ${policy.policy_number || 'TA-9921'} — ${isHealthInsurance ? (policy.customer_name || 'Health Insurance') : (policy.vehicle_number || 'KA 51 MM 1214')}`} desc="Comprehensive policy details">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Basic Information */}
           <div className="bg-zinc-50 rounded-xl p-4">
@@ -313,17 +389,19 @@ function PagePolicyDetail() {
                   <span>Policy Number:</span>
                   <span className="font-medium">{policy.policy_number || 'TA-9921'}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span>Vehicle Number:</span>
-                  <span className="font-medium">{policy.vehicle_number || 'KA 51 MM 1214'}</span>
-                </div>
+                {!isHealthInsurance && (
+                  <div className="flex justify-between">
+                    <span>Vehicle Number:</span>
+                    <span className="font-medium">{policy.vehicle_number || 'KA 51 MM 1214'}</span>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span>Insurer:</span>
                   <span className="font-medium">{policy.insurer || 'Tata AIG'}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Product Type:</span>
-                  <span className="font-medium">{policy.product_type || 'Private Car'}</span>
+                  <span className="font-medium">{isHealthInsurance ? 'Health Insurance' : (policy.product_type || 'Private Car')}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Issue Date:</span>
@@ -340,36 +418,56 @@ function PagePolicyDetail() {
               </div>
             </div>
   
-            {/* Vehicle Information */}
-            <div className="bg-zinc-50 rounded-xl p-4">
-              <div className="text-sm font-medium mb-3 text-zinc-700">Vehicle Information</div>
-              <div className="grid grid-cols-1 gap-2 text-sm">
-                <div className="flex justify-between">
-                  <span>Make:</span>
-                  <span className="font-medium">{policy.make || 'Maruti'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Model:</span>
-                  <span className="font-medium">{policy.model || 'Swift'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>CC:</span>
-                  <span className="font-medium">{policy.cc || '1197'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Manufacturing Year:</span>
-                  <span className="font-medium">{policy.manufacturing_year || '2021'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Vehicle Type:</span>
-                  <span className="font-medium">{policy.vehicle_type || 'Private Car'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>IDV:</span>
-                  <span className="font-medium">₹{(policy.idv || 495000).toLocaleString()}</span>
+            {/* Vehicle Information (Motor) or Health Insurance Information */}
+            {isHealthInsurance ? (
+              <div className="bg-zinc-50 rounded-xl p-4">
+                <div className="text-sm font-medium mb-3 text-zinc-700">Health Insurance Information</div>
+                <div className="grid grid-cols-1 gap-2 text-sm">
+                  <div className="flex justify-between">
+                    <span>Sum Insured:</span>
+                    <span className="font-medium">₹{(policy.sum_insured || 0).toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Premium Amount:</span>
+                    <span className="font-medium">₹{(policy.premium_amount || 0).toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Customer Email:</span>
+                    <span className="font-medium">{policy.customer_email || 'N/A'}</span>
+                  </div>
                 </div>
               </div>
-            </div>
+            ) : (
+              <div className="bg-zinc-50 rounded-xl p-4">
+                <div className="text-sm font-medium mb-3 text-zinc-700">Vehicle Information</div>
+                <div className="grid grid-cols-1 gap-2 text-sm">
+                  <div className="flex justify-between">
+                    <span>Make:</span>
+                    <span className="font-medium">{policy.make || 'Maruti'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Model:</span>
+                    <span className="font-medium">{policy.model || 'Swift'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>CC:</span>
+                    <span className="font-medium">{policy.cc || '1197'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Manufacturing Year:</span>
+                    <span className="font-medium">{policy.manufacturing_year || '2021'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Vehicle Type:</span>
+                    <span className="font-medium">{policy.vehicle_type || 'Private Car'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>IDV:</span>
+                    <span className="font-medium">₹{(policy.idv || 495000).toLocaleString()}</span>
+                  </div>
+                </div>
+              </div>
+            )}
   
             {/* Customer Information */}
             <div className="bg-zinc-50 rounded-xl p-4">
@@ -428,76 +526,169 @@ function PagePolicyDetail() {
                 </div>
               </div>
             </div>
+
+            {/* Insured Persons Section (Health Insurance only) */}
+            {isHealthInsurance && policy.insuredPersons && policy.insuredPersons.length > 0 && (
+              <div className="bg-zinc-50 rounded-xl p-4">
+                <div className="text-sm font-medium mb-3 text-zinc-700 flex items-center gap-2">
+                  <User className="w-4 h-4" />
+                  Insured Persons
+                </div>
+                <div className="space-y-4">
+                  {policy.insuredPersons.map((person: any, index: number) => (
+                    <div key={index} className="bg-white p-4 rounded-lg border border-zinc-200">
+                      <div className="text-sm font-medium text-zinc-800 mb-3">Person {index + 1}</div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                        <div className="flex justify-between">
+                          <span>Name:</span>
+                          <span className="font-medium">{person.name || 'N/A'}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>PAN Card:</span>
+                          <span className="font-medium">{person.panCard || person.pan_card || 'N/A'}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Aadhaar Card:</span>
+                          <span className="font-medium">{person.aadhaarCard || person.aadhaar_card || 'N/A'}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Date of Birth:</span>
+                          <span className="font-medium">{person.dateOfBirth || person.date_of_birth || 'N/A'}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Weight:</span>
+                          <span className="font-medium">{person.weight ? `${person.weight} kg` : 'N/A'}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Height:</span>
+                          <span className="font-medium">{person.height ? `${person.height} cm` : 'N/A'}</span>
+                        </div>
+                        {(person.preExistingDisease || person.pre_existing_disease) && (
+                          <div className="flex justify-between">
+                            <span>Pre-existing Disease:</span>
+                            <span className="font-medium text-red-600">
+                              {person.diseaseName || person.disease_name || 'N/A'} 
+                              ({(person.diseaseYears || person.disease_years || 0)} years)
+                            </span>
+                          </div>
+                        )}
+                        {person.surgery && (
+                          <div className="flex justify-between">
+                            <span>Surgery:</span>
+                            <span className="font-medium text-orange-600">
+                              {person.surgeryName || person.surgery_name || 'N/A'}
+                            </span>
+                          </div>
+                        )}
+                        {(person.tabletDetails || person.tablet_details) && (
+                          <div className="flex justify-between">
+                            <span>Tablet Details:</span>
+                            <span className="font-medium text-blue-600">
+                              {person.tabletDetails || person.tablet_details || 'N/A'}
+                            </span>
+                          </div>
+                        )}
+                        {(person.surgeryDetails || person.surgery_details) && (
+                          <div className="flex justify-between">
+                            <span>Surgery Details:</span>
+                            <span className="font-medium text-purple-600">
+                              {person.surgeryDetails || person.surgery_details || 'N/A'}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
   
             {/* Financial Information */}
             <div className="bg-zinc-50 rounded-xl p-4">
               <div className="text-sm font-medium mb-3 text-zinc-700">Financial Information</div>
               <div className="grid grid-cols-1 gap-2 text-sm">
-                <div className="flex justify-between">
-                  <span>Total Premium:</span>
-                  <span className="font-medium">₹{(policy.total_premium || 12150).toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Net Premium:</span>
-                  <span className="font-medium">₹{(policy.net_premium || 10800).toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Total OD:</span>
-                  <span className="font-medium">₹{(policy.total_od || 7200).toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Net OD:</span>
-                  <span className="font-medium">₹{(policy.net_od || 5400).toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Brokerage:</span>
-                  <span className="font-medium">₹{(policy.brokerage || 1822).toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Cashback:</span>
-                  <span className="font-medium">₹{(policy.cashback || 600).toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Customer Paid:</span>
-                  <span className="font-medium">₹{(policy.customer_paid || 12150).toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Customer Cheque No:</span>
-                  <span className="font-medium">{policy.customer_cheque_no || "N/A"}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Our Cheque No:</span>
-                  <span className="font-medium">{policy.our_cheque_no || "N/A"}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Cashback Percentage:</span>
-                  <span className="font-medium">{(parseFloat(policy.cashback_percentage) || 4.9).toFixed(1)}%</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Cashback Amount:</span>
-                  <span className="font-medium">₹{(policy.cashback_amount || 600).toLocaleString()}</span>
-                </div>
+                {isHealthInsurance ? (
+                  <>
+                    <div className="flex justify-between">
+                      <span>Premium Amount:</span>
+                      <span className="font-medium">₹{(policy.premium_amount || 0).toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Sum Insured:</span>
+                      <span className="font-medium">₹{(policy.sum_insured || 0).toLocaleString()}</span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex justify-between">
+                      <span>Total Premium:</span>
+                      <span className="font-medium">₹{(policy.total_premium || 12150).toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Net Premium:</span>
+                      <span className="font-medium">₹{(policy.net_premium || 10800).toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Total OD:</span>
+                      <span className="font-medium">₹{(policy.total_od || 7200).toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Net OD:</span>
+                      <span className="font-medium">₹{(policy.net_od || 5400).toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Brokerage:</span>
+                      <span className="font-medium">₹{(policy.brokerage || 1822).toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Cashback:</span>
+                      <span className="font-medium">₹{(policy.cashback || 600).toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Customer Paid:</span>
+                      <span className="font-medium">₹{(policy.customer_paid || 12150).toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Customer Cheque No:</span>
+                      <span className="font-medium">{policy.customer_cheque_no || "N/A"}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Our Cheque No:</span>
+                      <span className="font-medium">{policy.our_cheque_no || "N/A"}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Cashback Percentage:</span>
+                      <span className="font-medium">{(parseFloat(policy.cashback_percentage) || 4.9).toFixed(1)}%</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Cashback Amount:</span>
+                      <span className="font-medium">₹{(policy.cashback_amount || 600).toLocaleString()}</span>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
   
-            {/* Discounts & Benefits */}
-            <div className="bg-zinc-50 rounded-xl p-4">
-              <div className="text-sm font-medium mb-3 text-zinc-700">Discounts & Benefits</div>
-              <div className="grid grid-cols-1 gap-2 text-sm">
-                <div className="flex justify-between">
-                  <span>NCB:</span>
-                  <span className="font-medium">{policy.ncb || 20}%</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Discount:</span>
-                  <span className="font-medium">%{(policy.discount || 0).toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Net Addon:</span>
-                  <span className="font-medium">{policy.ref || 'N/A'}</span>
+            {/* Discounts & Benefits (Motor Insurance only) */}
+            {!isHealthInsurance && (
+              <div className="bg-zinc-50 rounded-xl p-4">
+                <div className="text-sm font-medium mb-3 text-zinc-700">Discounts & Benefits</div>
+                <div className="grid grid-cols-1 gap-2 text-sm">
+                  <div className="flex justify-between">
+                    <span>NCB:</span>
+                    <span className="font-medium">{policy.ncb || 20}%</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Discount:</span>
+                    <span className="font-medium">%{(policy.discount || 0).toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Net Addon:</span>
+                    <span className="font-medium">{policy.ref || 'N/A'}</span>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
   
           {/* System Information */}

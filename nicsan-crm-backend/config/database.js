@@ -202,6 +202,17 @@ const initializeDatabase = async () => {
       ADD COLUMN IF NOT EXISTS received_by VARCHAR(255)
     `);
 
+    // Add missing columns to health_insurance table
+    await query(`
+      ALTER TABLE health_insurance 
+      ADD COLUMN IF NOT EXISTS ops_executive VARCHAR(255),
+      ADD COLUMN IF NOT EXISTS payment_method VARCHAR(50) DEFAULT 'INSURER',
+      ADD COLUMN IF NOT EXISTS payment_sub_method VARCHAR(50),
+      ADD COLUMN IF NOT EXISTS payment_received BOOLEAN DEFAULT FALSE,
+      ADD COLUMN IF NOT EXISTS received_date TIMESTAMP,
+      ADD COLUMN IF NOT EXISTS received_by VARCHAR(255)
+    `);
+
     // Insert default telecallers
     await query(`
       INSERT INTO telecallers (name, email, phone, branch, is_active) VALUES
