@@ -169,9 +169,25 @@ class DualStorageService {
       console.log('🔄 DualStorageService: Adding telecaller...', telecallerData);
     }
     
+    // Mock fallback for adding telecaller
+    const mockFallback = () => {
+      if (ENABLE_DEBUG) {
+        console.log('📝 DualStorageService: Using mock fallback for add telecaller');
+      }
+      return Promise.resolve({
+        success: true,
+        data: {
+          id: Date.now().toString(),
+          ...telecallerData,
+          created_at: new Date().toISOString()
+        },
+        source: 'MOCK_DATA'
+      });
+    };
+    
     return this.executeDualStoragePattern(
       () => this.backendApiService.addTelecaller(telecallerData),
-      null,
+      mockFallback,
       'Add Telecaller'
     );
   }

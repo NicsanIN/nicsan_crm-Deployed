@@ -94,6 +94,29 @@ router.get('/users', authenticateToken, async (req, res) => {
   }
 });
 
+// Create new user (admin only)
+router.post('/users', authenticateToken, async (req, res) => {
+  try {
+    const { email, password, name, role } = req.body;
+    
+    if (!email || !password || !name) {
+      return res.status(400).json({
+        success: false,
+        error: 'Email, password, and name are required'
+      });
+    }
+
+    const result = await authService.register({ email, password, name, role });
+    res.status(201).json(result);
+  } catch (error) {
+    console.error('Create user error:', error);
+    res.status(400).json({
+      success: false,
+      error: error.message || 'Failed to create user'
+    });
+  }
+});
+
 // Get user by ID
 router.get('/users/:id', authenticateToken, async (req, res) => {
   try {
