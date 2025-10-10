@@ -1,14 +1,26 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Settings, Users, Lock, BarChart3, UserPlus } from 'lucide-react';
 import BusinessSettings from '../../../components/Settings/BusinessSettings';
 import TelecallerManagement from '../../../components/Settings/TelecallerManagement';
 import FoundersPasswordManagement from '../../../components/PasswordChange/FoundersPasswordManagement';
 import UserManagement from '../../../components/Settings/UserManagement';
+import { useAuth } from '../../../contexts/AuthContext';
+import { useUserChange } from '../../../hooks/useUserChange';
 
 type SettingsTab = 'business' | 'telecallers' | 'passwords' | 'users';
 
 const PageFounderSettings: React.FC = () => {
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { userChanged } = useUserChange();
   const [activeTab, setActiveTab] = useState<SettingsTab>('business');
+
+  // Handle user changes - reset settings when user changes
+  useEffect(() => {
+    if (userChanged && user) {
+      // Reset to business tab when user changes
+      setActiveTab('business');
+    }
+  }, [userChanged, user]);
 
   const tabs = [
     {

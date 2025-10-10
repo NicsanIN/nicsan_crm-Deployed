@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Card } from '../../../components/common/Card';
 import DualStorageService from '../../../services/dualStorageService';
+import { useAuth } from '../../../contexts/AuthContext';
+import { useUserChange } from '../../../hooks/useUserChange';
 
 // Environment variables
 const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
@@ -46,6 +48,8 @@ const demoPolicies = [
 ];
 
 function PageExplorer() {
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { userChanged } = useUserChange();
   const [make, setMake] = useState("All");
   const [model, setModel] = useState("All");
   const [insurer, setInsurer] = useState("All");
@@ -171,6 +175,21 @@ function PageExplorer() {
     };
     return stateNames[prefix] || "Unknown State";
   };
+
+  // Handle user changes - reset sales explorer data when user changes
+  useEffect(() => {
+    if (userChanged && user) {
+      setPolicies([]);
+      setDataSource('');
+      setMakes(["All"]);
+      setModels(["All"]);
+      setInsurers(["All"]);
+      setBranches(["All"]);
+      setRollovers(["All"]);
+      setReps(["All"]);
+      setVehiclePrefixes(["All"]);
+    }
+  }, [userChanged, user]);
 
   useEffect(() => {
     const loadSalesExplorer = async () => {

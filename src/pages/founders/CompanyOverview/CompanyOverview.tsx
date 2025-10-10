@@ -3,6 +3,8 @@ import { Card } from '../../../components/common/Card';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, BarChart, Bar } from 'recharts';
 import { RefreshCw } from 'lucide-react';
 import DualStorageService from '../../../services/dualStorageService';
+import { useAuth } from '../../../contexts/AuthContext';
+import { useUserChange } from '../../../hooks/useUserChange';
 
 // Environment variables
 const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
@@ -190,11 +192,23 @@ function TotalODBreakdown() {
 }
 
 function PageOverview() {
+    const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+    const { userChanged } = useUserChange();
     const [metrics, setMetrics] = useState<any>(null);
     const [trendData, setTrendData] = useState<any[]>([]);
     const [dataSource, setDataSource] = useState<string>('');
     const [showTotalODBreakdown, setShowTotalODBreakdown] = useState(false);
   
+    // Handle user changes - reset dashboard data when user changes
+    useEffect(() => {
+      if (userChanged && user) {
+        setMetrics(null);
+        setTrendData([]);
+        setDataSource('');
+        setShowTotalODBreakdown(false);
+      }
+    }, [userChanged, user]);
+
     useEffect(() => {
       const loadDashboardData = async () => {
         try {

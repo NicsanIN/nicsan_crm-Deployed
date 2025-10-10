@@ -3,6 +3,8 @@ import { useState, useEffect } from 'react';
 import { Card } from '../../../components/common/Card';
 import { Download, Filter, CheckCircle2, Clock, AlertTriangle, Eye, EyeOff, RefreshCw } from 'lucide-react';
 import DualStorageService from '../../../services/dualStorageService';
+import { useAuth } from '../../../contexts/AuthContext';
+import { useUserChange } from '../../../hooks/useUserChange';
 
 // Environment variables
 const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
@@ -47,6 +49,8 @@ const demoPayments = [
 ];
 
 function PagePayments() {
+    const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+    const { userChanged } = useUserChange();
     const [payments, setPayments] = useState<any[]>([]);
     const [dataSource, setDataSource] = useState<string>('');
     const [isLoading, setIsLoading] = useState(true);
@@ -76,6 +80,18 @@ function PagePayments() {
       }
     };
   
+    // Handle user changes - reset payments data when user changes
+    useEffect(() => {
+      if (userChanged && user) {
+        setPayments([]);
+        setDataSource('');
+        setSelectedExecutive('');
+        setViewMode('summary');
+        setReceivedPayments(new Set());
+        setIsUpdating({});
+      }
+    }, [userChanged, user]);
+
     useEffect(() => {
       loadExecutivePayments();
     }, []);

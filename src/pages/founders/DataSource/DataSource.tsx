@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { Card } from '../../../components/common/Card';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 import DualStorageService from '../../../services/dualStorageService';
+import { useAuth } from '../../../contexts/AuthContext';
+import { useUserChange } from '../../../hooks/useUserChange';
 
 // Environment variables
 const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
@@ -14,8 +16,18 @@ const demoSources = [
 ];
 
 function PageSources() {
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { userChanged } = useUserChange();
   const [dataSources, setDataSources] = useState<any[]>([]);
   const [dataSource, setDataSource] = useState<string>('');
+
+  // Handle user changes - reset data sources when user changes
+  useEffect(() => {
+    if (userChanged && user) {
+      setDataSources([]);
+      setDataSource('');
+    }
+  }, [userChanged, user]);
 
   useEffect(() => {
     const loadDataSources = async () => {

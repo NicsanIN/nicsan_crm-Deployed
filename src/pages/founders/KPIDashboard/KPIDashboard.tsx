@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { Card } from '../../../components/common/Card';
 import { useSettings } from '../../../contexts/SettingsContext';
 import DualStorageService from '../../../services/dualStorageService';
+import { useAuth } from '../../../contexts/AuthContext';
+import { useUserChange } from '../../../hooks/useUserChange';
 
 // Environment variables
 const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
@@ -35,10 +37,20 @@ function Tile({ label, value, sub, info, onClick }: { label: string; value: stri
 }
 
 function PageKPIs() {
+    const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+    const { userChanged } = useUserChange();
     const { settings } = useSettings();
     const [kpiData, setKpiData] = useState<any>(null);
     const [dataSource, setDataSource] = useState<string>('');
   
+    // Handle user changes - reset KPI data when user changes
+    useEffect(() => {
+      if (userChanged && user) {
+        setKpiData(null);
+        setDataSource('');
+      }
+    }, [userChanged, user]);
+
     useEffect(() => {
       const loadKPIData = async () => {
         try {
