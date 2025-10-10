@@ -213,12 +213,25 @@ function PageManualForm() {
     };
 
     const updateInsuredPerson = (index: number, field: string, value: string | boolean) => {
-      setForm((prev: any) => ({
-        ...prev,
-        insuredPersons: prev.insuredPersons.map((person: any, i: number) => 
+      setForm((prev: any) => {
+        const updatedPersons = prev.insuredPersons.map((person: any, i: number) => 
           i === index ? { ...person, [field]: value } : person
-        )
-      }));
+        );
+        
+        // Auto-sync customer name from Person 1 name
+        if (index === 0 && field === 'name' && value && value.toString().trim() !== '') {
+          return {
+            ...prev,
+            insuredPersons: updatedPersons,
+            customerName: value.toString()
+          };
+        }
+        
+        return {
+          ...prev,
+          insuredPersons: updatedPersons
+        };
+      });
     };
     const number = (v:any)=> (v===''||v===null)?0:parseFloat(v.toString().replace(/[^0-9.]/g,''))||0;
   
@@ -1158,6 +1171,7 @@ function PageManualForm() {
                         value={person.name} 
                         onChange={(value) => updateInsuredPerson(index, 'name', value)}
                         placeholder="Full Name"
+                        hint={index === 0 ? "Will auto-fill Customer Name" : ""}
                       />
                       <LabeledInput 
                         label="PAN Card Number" 
