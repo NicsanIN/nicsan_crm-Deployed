@@ -621,71 +621,58 @@ function PagePolicyDetail() {
               </div>
             )}
   
-            {/* Financial Information */}
-            <div className="bg-zinc-50 rounded-xl p-4">
-              <div className="text-sm font-medium mb-3 text-zinc-700">Financial Information</div>
-              <div className="grid grid-cols-1 gap-2 text-sm">
-                {isHealthInsurance ? (
-                  <>
-                    <div className="flex justify-between">
-                      <span>Premium Amount:</span>
-                      <span className="font-medium">₹{(policy.premium_amount || 0).toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Sum Insured:</span>
-                      <span className="font-medium">₹{(policy.sum_insured || 0).toLocaleString()}</span>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div className="flex justify-between">
-                      <span>Total Premium:</span>
-                      <span className="font-medium">₹{(policy.total_premium || 12150).toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Net Premium:</span>
-                      <span className="font-medium">₹{(policy.net_premium || 10800).toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Total OD:</span>
-                      <span className="font-medium">₹{(policy.total_od || 7200).toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Net OD:</span>
-                      <span className="font-medium">₹{(policy.net_od || 5400).toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Brokerage:</span>
-                      <span className="font-medium">₹{(policy.brokerage || 1822).toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Cashback:</span>
-                      <span className="font-medium">₹{(policy.cashback || 600).toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Customer Paid:</span>
-                      <span className="font-medium">₹{(policy.customer_paid || 12150).toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Customer Cheque No:</span>
-                      <span className="font-medium">{policy.customer_cheque_no || "N/A"}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Our Cheque No:</span>
-                      <span className="font-medium">{policy.our_cheque_no || "N/A"}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Cashback Percentage:</span>
-                      <span className="font-medium">{(parseFloat(policy.cashback_percentage) || 4.9).toFixed(1)}%</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Cashback Amount:</span>
-                      <span className="font-medium">₹{(policy.cashback_amount || 600).toLocaleString()}</span>
-                    </div>
-                  </>
-                )}
+            {/* Financial Information - Motor Insurance only */}
+            {!isHealthInsurance && (
+              <div className="bg-zinc-50 rounded-xl p-4">
+                <div className="text-sm font-medium mb-3 text-zinc-700">Financial Information</div>
+                <div className="grid grid-cols-1 gap-2 text-sm">
+                  <div className="flex justify-between">
+                    <span>Total Premium:</span>
+                    <span className="font-medium">₹{(policy.total_premium || 12150).toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Net Premium:</span>
+                    <span className="font-medium">₹{(policy.net_premium || 10800).toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Total OD:</span>
+                    <span className="font-medium">₹{(policy.total_od || 7200).toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Net OD:</span>
+                    <span className="font-medium">₹{(policy.net_od || 5400).toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Brokerage:</span>
+                    <span className="font-medium">₹{(policy.brokerage || 1822).toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Cashback:</span>
+                    <span className="font-medium">₹{(policy.cashback || 600).toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Customer Paid:</span>
+                    <span className="font-medium">₹{(policy.customer_paid || 12150).toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Customer Cheque No:</span>
+                    <span className="font-medium">{policy.customer_cheque_no || "N/A"}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Our Cheque No:</span>
+                    <span className="font-medium">{policy.our_cheque_no || "N/A"}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Cashback Percentage:</span>
+                    <span className="font-medium">{(parseFloat(policy.cashback_percentage) || 4.9).toFixed(1)}%</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Cashback Amount:</span>
+                    <span className="font-medium">₹{(policy.cashback_amount || 600).toLocaleString()}</span>
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
   
             {/* Discounts & Benefits (Motor Insurance only) */}
             {!isHealthInsurance && (
