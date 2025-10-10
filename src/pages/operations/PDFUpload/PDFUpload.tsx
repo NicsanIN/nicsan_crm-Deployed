@@ -4,6 +4,7 @@ import { Upload, FileText, CheckCircle2, AlertTriangle, RefreshCw, Download, Eye
 import DualStorageService from '../../../services/dualStorageService';
 import { AutocompleteInput } from '../../../NicsanCRMMock';
 import { useAuth } from '../../../contexts/AuthContext';
+import { useUserChange } from '../../../hooks/useUserChange';
 
 // Environment variables
 const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
@@ -44,6 +45,7 @@ function LabeledSelect({ label, value, onChange, options, placeholder, hint, req
 
 function PageUpload() {
     const { user } = useAuth();
+    const { userChanged } = useUserChange();
     const [uploadStatus, setUploadStatus] = useState<string>('');
     const [uploadedFiles, setUploadedFiles] = useState<any[]>([]);
     const [selectedInsurer, setSelectedInsurer] = useState<string>('TATA_AIG');
@@ -97,13 +99,12 @@ function PageUpload() {
       product_type: 'Private Car',
       vehicle_type: 'Private Car'
     });
-    const [lastUserId, setLastUserId] = useState<string | null>(null);
     const [manualExtrasSaved, setManualExtrasSaved] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     
-    // Reset manualExtras when user changes
+    // Reset manualExtras when user changes - Unified user change detection
     useEffect(() => {
-      if (user && user.id !== lastUserId) {
+      if (userChanged && user) {
         setManualExtras(prevExtras => ({
           ...prevExtras,
           executive: user.name || "",
@@ -113,9 +114,8 @@ function PageUpload() {
         setUploadStatus('');
         setUploadedFiles([]);
         setManualExtrasSaved(false);
-        setLastUserId(user.id);
       }
-    }, [user, lastUserId]);
+    }, [userChanged, user]);
     const [_callerNames, setCallerNames] = useState<string[]>([]);
   
     const handleFiles = async (files: FileList) => {

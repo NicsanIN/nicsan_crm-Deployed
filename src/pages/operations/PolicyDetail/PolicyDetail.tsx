@@ -2,9 +2,13 @@ import { useState, useEffect, useMemo } from 'react';
 import { Card } from '../../../components/common/Card';
 import { User } from 'lucide-react';
 import DualStorageService from '../../../services/dualStorageService';
+import { useAuth } from '../../../contexts/AuthContext';
+import { useUserChange } from '../../../hooks/useUserChange';
 
 
 function PagePolicyDetail() {
+    const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+    const { userChanged } = useUserChange();
     const [policyData, setPolicyData] = useState<any>(null);
     const [dataSource, setDataSource] = useState<string>('');
     const [isLoading, setIsLoading] = useState(true);
@@ -100,6 +104,20 @@ function PagePolicyDetail() {
       }
     };
   
+    // Handle user changes - reset policy data when user changes
+    useEffect(() => {
+      if (userChanged && user) {
+        setPolicyData(null);
+        setAvailablePolicies([]);
+        setPolicyId('1');
+        setSearchQuery('');
+        setSearchResults([]);
+        setShowResults(false);
+        loadAvailablePolicies();
+        loadPolicyDetail('1');
+      }
+    }, [userChanged, user]);
+
     useEffect(() => {
       loadAvailablePolicies();
       loadPolicyDetail(policyId);

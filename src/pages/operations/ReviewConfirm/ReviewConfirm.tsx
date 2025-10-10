@@ -4,6 +4,7 @@ import { CheckCircle2, AlertTriangle } from 'lucide-react';
 import DualStorageService from '../../../services/dualStorageService';
 import { AutocompleteInput } from '../../../NicsanCRMMock';
 import { useAuth } from '../../../contexts/AuthContext';
+import { useUserChange } from '../../../hooks/useUserChange';
 
 // Environment variables
 const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
@@ -39,7 +40,7 @@ function LabeledInput({ label, value, onChange, type = "text", placeholder, hint
 
 function PageReview() {
     const { user } = useAuth();
-    const [lastUserId, setLastUserId] = useState<string | null>(null);
+    const { userChanged } = useUserChange();
     const [reviewData, setReviewData] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [_saveMessage, setSaveMessage] = useState<{type: 'success' | 'error', message: string} | null>(null);
@@ -52,9 +53,9 @@ function PageReview() {
     });
     const [_callerNames, setCallerNames] = useState<string[]>([]);
     
-    // Reset editableData when user changes
+    // Reset editableData when user changes - Unified user change detection
     useEffect(() => {
-      if (user && user.id !== lastUserId) {
+      if (userChanged && user) {
         setEditableData(prevData => ({
           ...prevData,
           manualExtras: {
@@ -68,9 +69,8 @@ function PageReview() {
         setSubmitMessage(null);
         setShowVerificationModal(false);
         setPendingSaveData(null);
-        setLastUserId(user.id);
       }
-    }, [user, lastUserId]);
+    }, [userChanged, user]);
     
     // Verification popup state
     const [showVerificationModal, setShowVerificationModal] = useState(false);

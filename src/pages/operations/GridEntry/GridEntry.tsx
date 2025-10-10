@@ -3,23 +3,24 @@ import { Card } from '../../../components/common/Card';
 import { Plus, Save, Trash2, RefreshCw, CheckCircle2, AlertTriangle, Clock, Eye, Edit3 } from 'lucide-react';
 import DualStorageService from '../../../services/dualStorageService';
 import { useAuth } from '../../../contexts/AuthContext';
+import { useUserChange } from '../../../hooks/useUserChange';
 
 // Environment variables
 const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
 
 function PageManualGrid() {
     const { user } = useAuth();
+    const { userChanged } = useUserChange();
     const [rows, setRows] = useState<any[]>([]);
     const [isSaving, setIsSaving] = useState(false);
     const [saveMessage, setSaveMessage] = useState<{type: 'success' | 'error' | 'info', message: string} | null>(null);
     const [rowStatuses, setRowStatuses] = useState<{[key: number]: 'pending' | 'saving' | 'saved' | 'error'}>({});
     const [isLoading, setIsLoading] = useState(true);
     const [savedPolicies, setSavedPolicies] = useState<any[]>([]);
-    const [lastUserId, setLastUserId] = useState<string | null>(null);
     
-    // Reset rows when user changes
+    // Reset rows when user changes - Unified user change detection
     useEffect(() => {
-      if (user && user.id !== lastUserId) {
+      if (userChanged && user) {
         setRows(prevRows => 
           prevRows.map(row => ({
             ...row,
@@ -30,9 +31,8 @@ function PageManualGrid() {
         // Clear row statuses and save messages
         setRowStatuses({});
         setSaveMessage(null);
-        setLastUserId(user.id);
       }
-    }, [user, lastUserId]);
+    }, [userChanged, user]);
   
     // Load grid data on component mount
     useEffect(() => {

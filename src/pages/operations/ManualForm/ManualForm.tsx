@@ -4,6 +4,7 @@ import { User, Car, Trash2, Plus } from 'lucide-react';
 import DualStorageService from '../../../services/dualStorageService';
 import { AutocompleteInput } from '../../../NicsanCRMMock';
 import { useAuth } from '../../../contexts/AuthContext';
+import { useUserChange } from '../../../hooks/useUserChange';
 
 // Environment variables
 
@@ -96,6 +97,7 @@ function LabeledCheckbox({ label, value, onChange, hint }: {
 
 function PageManualForm() {
     const { user } = useAuth();
+    const { userChanged } = useUserChange();
     const [form, setForm] = useState<any>({
       insurer: "",
       productType: "",
@@ -151,7 +153,6 @@ function PageManualForm() {
               paymentMethod: "INSURER",
               paymentSubMethod: ""
     });
-    const [lastUserId, setLastUserId] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [submitMessage, setSubmitMessage] = useState<{type: 'success' | 'error', message: string} | null>(null);
     const [_validationHistory, setValidationHistory] = useState<any[]>([]);
@@ -161,9 +162,9 @@ function PageManualForm() {
     const [validationMode, setValidationMode] = useState<'progressive' | 'strict'>('progressive');
     const [_callerNames, setCallerNames] = useState<string[]>([]);
     
-    // Reset form when user changes
+    // Reset form when user changes - Unified user change detection
     useEffect(() => {
-      if (user && user.id !== lastUserId) {
+      if (userChanged && user) {
         setForm((prevForm: any) => ({
           ...prevForm,
           executive: user.name || "",
@@ -173,9 +174,8 @@ function PageManualForm() {
         setFieldTouched({});
         setValidationHistory([]);
         setSubmitMessage(null);
-        setLastUserId(user.id);
       }
-    }, [user, lastUserId]);
+    }, [userChanged, user]);
 
     const set = (k:string,v:any)=> {
       setForm((f:any)=>({ ...f, [k]: v }));
