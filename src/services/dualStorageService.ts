@@ -810,16 +810,17 @@ class DualStorageService {
     );
   }
 
-  // Login with dual storage
+  // Login with dual storage - Enhanced for unified authentication
   async login(credentials: { email: string; password: string }): Promise<DualStorageResult> {
+    // Enhanced mock data with proper user information
     const mockData = {
       success: true,
       data: {
         user: {
-          id: '1',
+          id: credentials.email.includes('founder') ? '1' : '2',
           email: credentials.email,
-          name: 'Mock User',
-          role: 'founder'
+          name: credentials.email.split('@')[0] || 'User',
+          role: credentials.email.includes('founder') ? 'founder' : 'ops'
         },
         token: 'mock-token-' + Date.now()
       }
