@@ -856,7 +856,7 @@ function PageManualForm() {
           cashback: (parseFloat(form.cashback) || 0).toString(),
           payment_method: form.paymentMethod || 'INSURER',
           payment_sub_method: form.paymentSubMethod || '',
-          source: 'MANUAL_FORM'
+          source: form.productType === "Health Insurance" ? 'HEALTH_MANUAL_FORM' : 'MOTOR_MANUAL_FORM'
         };
   
         // Submit to API - Use health insurance API for health insurance, manual form API for others

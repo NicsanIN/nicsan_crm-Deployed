@@ -110,12 +110,18 @@ const generatePolicyS3Key = (policyId, source = 'PDF_UPLOAD') => {
   const envPrefix = process.env.ENVIRONMENT === 'staging' ? 'local-staging/' : '';
   
   switch (source) {
-    case 'PDF_UPLOAD':
-      return `${envPrefix}data/policies/confirmed/POL${policyId}_${timestamp}_${randomId}.json`;
-    case 'MANUAL_FORM':
-      return `${envPrefix}data/policies/manual/POL${policyId}_${timestamp}_${randomId}.json`;
-    case 'MANUAL_GRID':
-      return `${envPrefix}data/policies/bulk/BATCH${policyId}_${timestamp}_${randomId}.json`;
+    case 'MOTOR_MANUAL_FORM':
+      return `${envPrefix}data/policies/motor/manual/POL${policyId}_${timestamp}_${randomId}.json`;
+    case 'HEALTH_MANUAL_FORM':
+      return `${envPrefix}data/policies/health/manual/POL${policyId}_${timestamp}_${randomId}.json`;
+    case 'MOTOR_MANUAL_GRID':
+      return `${envPrefix}data/policies/motor/bulk/BATCH${policyId}_${timestamp}_${randomId}.json`;
+    case 'HEALTH_MANUAL_GRID':
+      return `${envPrefix}data/policies/health/bulk/BATCH${policyId}_${timestamp}_${randomId}.json`;
+    case 'MOTOR_PDF_UPLOAD':
+      return `${envPrefix}data/policies/motor/confirmed/POL${policyId}_${timestamp}_${randomId}.json`;
+    case 'HEALTH_PDF_UPLOAD':
+      return `${envPrefix}data/policies/health/confirmed/POL${policyId}_${timestamp}_${randomId}.json`;
     default:
       return `${envPrefix}data/policies/other/POL${policyId}_${timestamp}_${randomId}.json`;
   }

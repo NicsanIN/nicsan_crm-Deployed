@@ -1759,7 +1759,7 @@ async savePolicy(policyData) {
       healthInsuranceId = pgResult.rows[0].id;
       
       // 2. Save to S3 (Primary Storage) - JSON data
-      s3Key = generatePolicyS3Key(healthInsuranceId, healthData.source || 'HEALTH_INSURANCE');
+      s3Key = generatePolicyS3Key(healthInsuranceId, healthData.source || 'HEALTH_MANUAL_FORM');
       const s3Result = await uploadJSONToS3(healthData, s3Key);
       
       // 3. Update PostgreSQL with S3 key

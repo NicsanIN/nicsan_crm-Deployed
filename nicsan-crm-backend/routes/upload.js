@@ -229,7 +229,7 @@ router.post('/:uploadId/confirm', authenticateToken, requireOps, async (req, res
         brokerage: parseFloat(editedData.manualExtras?.brokerage) || 0,
         
         // customer_name now comes from PDF extracted data (editedData.pdfData.customer_name)
-        source: 'PDF_UPLOAD',
+        source: 'MOTOR_PDF_UPLOAD',
         s3_key: upload.s3_key,
         confidence_score: upload.extracted_data?.extracted_data?.confidence_score || 0.8
       };
@@ -257,7 +257,7 @@ router.post('/:uploadId/confirm', authenticateToken, requireOps, async (req, res
         brokerage: parseFloat(upload.extracted_data.manual_extras?.brokerage) || 0,
         
         // customer_name now comes from PDF extracted data (upload.extracted_data.extracted_data.customer_name)
-        source: 'PDF_UPLOAD',
+        source: 'MOTOR_PDF_UPLOAD',
         s3_key: upload.s3_key
       };
       

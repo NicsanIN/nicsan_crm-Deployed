@@ -687,7 +687,7 @@ function PageManualGrid() {
           payment_sub_method: row.paymentSubMethod || '',
           remark: row.remark || '',
           cashback: (parseFloat(row.cashback) || 0).toString(),
-          source: 'MANUAL_GRID'
+          source: row.productType === "Health Insurance" ? 'HEALTH_MANUAL_GRID' : 'MOTOR_MANUAL_GRID'
         }));
         
         const saveResult = await DualStorageService.saveGridEntries(policyDataArray);
