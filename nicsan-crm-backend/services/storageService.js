@@ -1665,6 +1665,71 @@ async savePolicy(policyData) {
     }
   }
 
+  // Calculate Health Insurance Metrics - Premium Only
+  async calculateHealthInsuranceMetrics(period = '14d') {
+    const now = new Date();
+    let startDate;
+    
+    switch (period) {
+      case '7d':
+        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case '30d':
+        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        break;
+      case '90d':
+        startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+        break;
+      default:
+        startDate = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+    }
+
+    // Get basic metrics from health insurance - Premium Only
+    const basicMetrics = await query(`
+      SELECT 
+        COUNT(*) as total_policies,
+        SUM(premium_amount) as total_premium,
+        AVG(premium_amount) as avg_premium,
+        MIN(premium_amount) as min_premium,
+        MAX(premium_amount) as max_premium
+      FROM health_insurance 
+      WHERE created_at >= $1
+    `, [startDate]);
+
+    // Get daily premium trend
+    const dailyTrend = await query(`
+      SELECT 
+        DATE(created_at) as date,
+        COUNT(*) as policies,
+        SUM(premium_amount) as premium
+      FROM health_insurance 
+      WHERE created_at >= $1
+      GROUP BY DATE(created_at)
+      ORDER BY date DESC
+      LIMIT 30
+    `, [startDate]);
+
+    // Calculate metrics
+    const metrics = basicMetrics.rows[0];
+    const totalPolicies = parseInt(metrics.total_policies) || 0;
+    const totalPremium = parseFloat(metrics.total_premium) || 0;
+    const avgPremium = parseFloat(metrics.avg_premium) || 0;
+    const minPremium = parseFloat(metrics.min_premium) || 0;
+    const maxPremium = parseFloat(metrics.max_premium) || 0;
+
+    return {
+      period,
+      basicMetrics: {
+        totalPolicies,
+        totalPremium,      // Only premium amount
+        avgPremium,        // Average premium
+        minPremium,        // Minimum premium
+        maxPremium         // Maximum premium
+      },
+      dailyTrend: dailyTrend.rows.reverse()
+    };
+  }
+
   // ==================== HEALTH INSURANCE METHODS ====================
 
   // Check if health insurance policy number already exists

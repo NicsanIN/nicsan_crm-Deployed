@@ -194,6 +194,7 @@ function TotalODBreakdown() {
 function PageOverview() {
     const { user, isAuthenticated, isLoading: authLoading } = useAuth();
     const { userChanged } = useUserChange();
+    const [policyType, setPolicyType] = useState<'motor' | 'health'>('motor'); // Default: motor
     const [metrics, setMetrics] = useState<any>(null);
     const [trendData, setTrendData] = useState<any[]>([]);
     const [dataSource, setDataSource] = useState<string>('');
@@ -206,29 +207,44 @@ function PageOverview() {
         setTrendData([]);
         setDataSource('');
         setShowTotalODBreakdown(false);
+        setPolicyType('motor'); // Reset to motor default
       }
     }, [userChanged, user]);
 
     useEffect(() => {
       const loadDashboardData = async () => {
         try {
-          // Use dual storage pattern: S3 → Database → Mock Data
-          const metricsResponse = await DualStorageService.getDashboardMetrics();
+          let metricsResponse;
+          
+          if (policyType === 'motor') {
+            // Load motor policy data (existing logic)
+            metricsResponse = await DualStorageService.getDashboardMetrics();
+          } else {
+            // Load health insurance data (premium only)
+            metricsResponse = await DualStorageService.getHealthInsuranceMetrics();
+          }
           
           if (metricsResponse.success) {
             setMetrics(metricsResponse.data);
             setDataSource(metricsResponse.source);
             
-            
-            // Use real trend data from backend instead of demo data
+            // Transform trend data based on policy type
             let transformedTrend = demoTrend;
             if (metricsResponse.data.dailyTrend && Array.isArray(metricsResponse.data.dailyTrend)) {
-              // Transform backend data to match chart expectations
-              transformedTrend = metricsResponse.data.dailyTrend.map((item: any, index: number) => ({
-                day: `D-${index + 1}`, // Convert date to day format for chart
-                gwp: item.gwp || 0,
-                net: item.net || 0
-              }));
+              if (policyType === 'motor') {
+                // Motor policy trend data
+                transformedTrend = metricsResponse.data.dailyTrend.map((item: any, index: number) => ({
+                  day: `D-${index + 1}`,
+                  gwp: item.gwp || 0,
+                  net: item.net || 0
+                }));
+              } else {
+                // Health insurance trend data (premium only)
+                transformedTrend = metricsResponse.data.dailyTrend.map((item: any, index: number) => ({
+                  day: `D-${index + 1}`,
+                  premium: item.premium || 0
+                }));
+              }
             }
             setTrendData(transformedTrend);
             
@@ -241,7 +257,7 @@ function PageOverview() {
       };
       
       loadDashboardData();
-    }, []);
+    }, [policyType]); // Re-load when policy type changes
   
     const formatCurrency = (amount: number) => {
       if (amount === null || amount === undefined || isNaN(amount)) {
@@ -252,63 +268,152 @@ function PageOverview() {
   
     return (
       <>
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-          <Tile 
-            label="GWP" 
-            info="(Gross Written Premium)" 
-            value={metrics ? formatCurrency(metrics.basicMetrics?.totalGWP) : "₹10.7L"} 
-            sub="▲ 8% vs last 14d"
-          />
-          <Tile 
-            label="Brokerage" 
-            info="(% of GWP)" 
-            value={metrics ? formatCurrency(metrics.basicMetrics?.totalBrokerage) : "₹1.60L"}
-          />
-          <Tile 
-            label="Cashback" 
-            info="(Cash we give back)" 
-            value={metrics ? formatCurrency(metrics.basicMetrics?.totalCashback) : "₹0.34L"}
-          />
-          <Tile 
-            label="Net" 
-            info="(Brokerage − Cashback)" 
-            value={metrics ? formatCurrency(metrics.basicMetrics?.netRevenue) : "₹1.26L"}
-          />
-          <Tile 
-            label="Total OD" 
-            info="(Outstanding Debt)" 
-            value={metrics ? formatCurrency(metrics.basicMetrics?.totalOutstandingDebt) : "₹0.00L"}
-            sub="Total outstanding amount"
-            onClick={() => setShowTotalODBreakdown(!showTotalODBreakdown)}
-          />
-        </div>
-        <Card title="14-day Trend" desc={`GWP & Net (Data Source: ${dataSource || 'Loading...'})`}>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={trendData}>
-                <defs>
-                  <linearGradient id="g1" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
-                  </linearGradient>
-                  <linearGradient id="g2" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#eee"/>
-                <XAxis dataKey="day"/>
-                <YAxis/>
-                <Tooltip/>
-                <Area type="monotone" dataKey="gwp" stroke="#6366f1" fill="url(#g1)" name="GWP"/>
-                <Area type="monotone" dataKey="net" stroke="#10b981" fill="url(#g2)" name="Net"/>
-              </AreaChart>
-            </ResponsiveContainer>
+        {/* Policy Type Toggle */}
+        <div className="flex items-center gap-2 mb-6">
+          <span className="text-sm font-medium text-zinc-700">Policy Type:</span>
+          <div className="flex bg-zinc-100 rounded-lg p-1">
+            <button
+              onClick={() => setPolicyType('motor')}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                policyType === 'motor' 
+                  ? 'bg-white text-zinc-900 shadow-sm' 
+                  : 'text-zinc-600 hover:text-zinc-900'
+              }`}
+            >
+              Motor Policies
+            </button>
+            <button
+              onClick={() => setPolicyType('health')}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                policyType === 'health' 
+                  ? 'bg-white text-zinc-900 shadow-sm' 
+                  : 'text-zinc-600 hover:text-zinc-900'
+              }`}
+            >
+              Health Policies
+            </button>
           </div>
-        </Card>
+        </div>
+
+        {/* Motor Policy Metrics */}
+        {policyType === 'motor' && (
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            <Tile 
+              label="GWP" 
+              info="(Gross Written Premium)" 
+              value={metrics ? formatCurrency(metrics.basicMetrics?.totalGWP) : "₹10.7L"} 
+              sub="▲ 8% vs last 14d"
+            />
+            <Tile 
+              label="Brokerage" 
+              info="(% of GWP)" 
+              value={metrics ? formatCurrency(metrics.basicMetrics?.totalBrokerage) : "₹1.60L"}
+            />
+            <Tile 
+              label="Cashback" 
+              info="(Cash we give back)" 
+              value={metrics ? formatCurrency(metrics.basicMetrics?.totalCashback) : "₹0.34L"}
+            />
+            <Tile 
+              label="Net" 
+              info="(Brokerage − Cashback)" 
+              value={metrics ? formatCurrency(metrics.basicMetrics?.netRevenue) : "₹1.26L"}
+            />
+            <Tile 
+              label="Total OD" 
+              info="(Outstanding Debt)" 
+              value={metrics ? formatCurrency(metrics.basicMetrics?.totalOutstandingDebt) : "₹0.00L"}
+              sub="Total outstanding amount"
+              onClick={() => setShowTotalODBreakdown(!showTotalODBreakdown)}
+            />
+          </div>
+        )}
+
+        {/* Health Insurance Metrics - Premium Only */}
+        {policyType === 'health' && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <Tile 
+              label="Total Premium" 
+              info="(Health Insurance)" 
+              value={metrics ? formatCurrency(metrics.basicMetrics?.totalPremium) : "₹7.5L"} 
+              sub="▲ 12% vs last 14d"
+            />
+            <Tile 
+              label="Avg Premium" 
+              info="(Per Policy)" 
+              value={metrics ? formatCurrency(metrics.basicMetrics?.avgPremium) : "₹15.0L"}
+            />
+            <Tile 
+              label="Min Premium" 
+              info="(Lowest Policy)" 
+              value={metrics ? formatCurrency(metrics.basicMetrics?.minPremium) : "₹5.0L"}
+            />
+            <Tile 
+              label="Max Premium" 
+              info="(Highest Policy)" 
+              value={metrics ? formatCurrency(metrics.basicMetrics?.maxPremium) : "₹25.0L"}
+            />
+          </div>
+        )}
+        {/* Motor Policy Trend Chart */}
+        {policyType === 'motor' && (
+          <Card title="14-day Trend" desc={`GWP & Net (Data Source: ${dataSource || 'Loading...'})`}>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={trendData}>
+                  <defs>
+                    <linearGradient id="g1" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                    </linearGradient>
+                    <linearGradient id="g2" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#eee"/>
+                  <XAxis dataKey="day"/>
+                  <YAxis/>
+                  <Tooltip/>
+                  <Area type="monotone" dataKey="gwp" stroke="#6366f1" fill="url(#g1)" name="GWP"/>
+                  <Area type="monotone" dataKey="net" stroke="#10b981" fill="url(#g2)" name="Net"/>
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+        )}
+
+        {/* Health Insurance Premium Trend Chart */}
+        {policyType === 'health' && (
+          <Card title="14-day Premium Trend" desc={`Health Insurance Premium (Data Source: ${dataSource || 'Loading...'})`}>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={trendData}>
+                  <defs>
+                    <linearGradient id="healthGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#eee"/>
+                  <XAxis dataKey="day"/>
+                  <YAxis/>
+                  <Tooltip/>
+                  <Area 
+                    type="monotone" 
+                    dataKey="premium" 
+                    stroke="#10b981" 
+                    fill="url(#healthGradient)" 
+                    name="Premium"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+        )}
         
-        {/* Total OD Breakdown Section */}
-        {showTotalODBreakdown && <TotalODBreakdown />}
+        {/* Total OD Breakdown Section - Only for Motor Policies */}
+        {policyType === 'motor' && showTotalODBreakdown && <TotalODBreakdown />}
       </>
     )
   }

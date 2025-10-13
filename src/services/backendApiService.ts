@@ -1170,6 +1170,44 @@ class BackendApiService {
       throw error;
     }
   }
+
+  // Health Insurance Metrics from backend
+  async getHealthInsuranceMetrics(): Promise<BackendApiResult> {
+    try {
+      if (ENABLE_DEBUG) {
+        console.log('🔄 BackendApiService: Getting health insurance metrics...');
+      }
+
+      const response = await fetch('http://localhost:3001/api/dashboard/health-metrics', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+
+      if (ENABLE_DEBUG) {
+        console.log('✅ BackendApiService: Health insurance metrics retrieved successfully');
+      }
+
+      return {
+        success: true,
+        data: result.data,
+        source: 'BACKEND_API'
+      };
+    } catch (error) {
+      if (ENABLE_DEBUG) {
+        console.error('❌ BackendApiService: Get health insurance metrics failed:', error);
+      }
+      throw error;
+    }
+  }
 }
 
 export default BackendApiService;

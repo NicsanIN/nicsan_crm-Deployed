@@ -1098,6 +1098,41 @@ class DualStorageService {
       'Get Health Insurance Detail'
     );
   }
+
+  // Health Insurance Metrics - Premium Only
+  async getHealthInsuranceMetrics(): Promise<DualStorageResult> {
+    const mockData = {
+      basicMetrics: {
+        totalPolicies: 5,
+        totalPremium: 75000,    // Only premium amount
+        avgPremium: 15000,      // Average premium
+        minPremium: 8000,       // Minimum premium
+        maxPremium: 25000       // Maximum premium
+      },
+      dailyTrend: [
+        { day: 'D-1', premium: 15000 },
+        { day: 'D-2', premium: 18000 },
+        { day: 'D-3', premium: 12000 },
+        { day: 'D-4', premium: 22000 },
+        { day: 'D-5', premium: 16000 },
+        { day: 'D-6', premium: 14000 },
+        { day: 'D-7', premium: 19000 },
+        { day: 'D-8', premium: 17000 },
+        { day: 'D-9', premium: 21000 },
+        { day: 'D-10', premium: 18000 },
+        { day: 'D-11', premium: 16000 },
+        { day: 'D-12', premium: 20000 },
+        { day: 'D-13', premium: 17000 },
+        { day: 'D-14', premium: 23000 }
+      ]
+    };
+
+    return this.executeDualStoragePattern(
+      () => this.backendApiService.getHealthInsuranceMetrics(),
+      mockData,
+      'Health Insurance Metrics'
+    );
+  }
 }
 
 export default DualStorageService.getInstance();
