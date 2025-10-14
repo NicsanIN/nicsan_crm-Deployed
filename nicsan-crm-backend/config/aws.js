@@ -54,8 +54,20 @@ const deleteFromS3 = async (key) => {
   }
 };
 
-const getS3Url = (key) => {
-  return `https://${process.env.AWS_S3_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
+const getS3Url = async (key) => {
+  try {
+    const params = {
+      Bucket: process.env.AWS_S3_BUCKET,
+      Key: key,
+      Expires: 3600 // URL expires in 1 hour
+    };
+    
+    const url = await s3.getSignedUrl('getObject', params);
+    return url;
+  } catch (error) {
+    console.error('❌ S3 signed URL generation error:', error);
+    throw error;
+  }
 };
 
 // OpenAI Helper Functions (replaces Textract)

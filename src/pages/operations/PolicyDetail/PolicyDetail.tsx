@@ -22,6 +22,10 @@ function PagePolicyDetail() {
     const [isSearching, setIsSearching] = useState(false);
     const [searchType, setSearchType] = useState<'vehicle' | 'policy' | 'health' | 'both'>('both');
     const [showResults, setShowResults] = useState(false);
+    
+    // Document functionality state
+    const [documents, setDocuments] = useState<any>(null);
+    const [isLoadingDocuments, setIsLoadingDocuments] = useState(false);
   
     const loadAvailablePolicies = async () => {
       try {
@@ -95,12 +99,61 @@ function PagePolicyDetail() {
           setPolicyData(response.data);
           setDataSource(response.source);
           
+          // Load documents for this policy
+          const policyNumber = response.data.policy_number;
+          if (policyNumber) {
+            loadDocuments(policyNumber);
+          }
         }
       } catch (error) {
         console.error('Failed to load policy detail:', error);
         setDataSource('MOCK_DATA');
       } finally {
         setIsLoading(false);
+      }
+    };
+
+    // Load documents for the current policy
+    const loadDocuments = async (policyNumber: string) => {
+      try {
+        setIsLoadingDocuments(true);
+        const response = await DualStorageService.getPolicyDocuments(policyNumber);
+        
+        if (response.success) {
+          setDocuments(response.data);
+        } else {
+          setDocuments(null);
+        }
+      } catch (error) {
+        console.error('Failed to load documents:', error);
+        setDocuments(null);
+      } finally {
+        setIsLoadingDocuments(false);
+      }
+    };
+
+    // Download document function
+    const downloadDocument = async (s3Key: string, filename: string) => {
+      try {
+        const response = await fetch(`http://localhost:3001/api/upload/s3-url/${encodeURIComponent(s3Key)}`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          },
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.url) {
+            window.open(data.url, '_blank');
+          } else {
+            alert('Failed to get document URL');
+          }
+        } else {
+          alert('Failed to download document');
+        }
+      } catch (error) {
+        console.error('Download error:', error);
+        alert('Failed to download document');
       }
     };
   
@@ -766,6 +819,109 @@ function PagePolicyDetail() {
                   </div>
                 </>
               )}
+          </div>
+
+          {/* Policy Documents Section */}
+          <div className="mt-6 bg-zinc-50 rounded-xl p-4">
+            <div className="text-sm font-medium mb-3 text-zinc-700">📄 Policy Documents</div>
+            {isLoadingDocuments ? (
+              <div className="text-sm text-zinc-500">Loading documents...</div>
+            ) : documents ? (
+              <div className="space-y-4">
+                {/* Policy PDF */}
+                {documents.policyPDF && (
+                  <div className="bg-white p-4 rounded-lg border border-zinc-200">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <span className="text-lg">📄</span>
+                        <div>
+                          <div className="text-sm font-medium text-zinc-900">Policy PDF</div>
+                          <div className="text-xs text-zinc-500">{documents.policyPDF.filename}</div>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => downloadDocument(documents.policyPDF.s3Key, documents.policyPDF.filename)}
+                        className="px-3 py-1 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700"
+                      >
+                        Download
+                      </button>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Aadhaar Card */}
+                {documents.aadhaar && (
+                  <div className="bg-white p-4 rounded-lg border border-zinc-200">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <span className="text-lg">🆔</span>
+                        <div>
+                          <div className="text-sm font-medium text-zinc-900">Aadhaar Card</div>
+                          <div className="text-xs text-zinc-500">{documents.aadhaar.filename}</div>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => downloadDocument(documents.aadhaar.s3Key, documents.aadhaar.filename)}
+                        className="px-3 py-1 bg-green-600 text-white rounded-md text-sm hover:bg-green-700"
+                      >
+                        Download
+                      </button>
+                    </div>
+                  </div>
+                )}
+                
+                {/* PAN Card */}
+                {documents.pancard && (
+                  <div className="bg-white p-4 rounded-lg border border-zinc-200">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <span className="text-lg">📋</span>
+                        <div>
+                          <div className="text-sm font-medium text-zinc-900">PAN Card</div>
+                          <div className="text-xs text-zinc-500">{documents.pancard.filename}</div>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => downloadDocument(documents.pancard.s3Key, documents.pancard.filename)}
+                        className="px-3 py-1 bg-yellow-600 text-white rounded-md text-sm hover:bg-yellow-700"
+                      >
+                        Download
+                      </button>
+                    </div>
+                  </div>
+                )}
+                
+                {/* RC Document */}
+                {documents.rc && (
+                  <div className="bg-white p-4 rounded-lg border border-zinc-200">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <span className="text-lg">🚗</span>
+                        <div>
+                          <div className="text-sm font-medium text-zinc-900">RC Document</div>
+                          <div className="text-xs text-zinc-500">{documents.rc.filename}</div>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => downloadDocument(documents.rc.s3Key, documents.rc.filename)}
+                        className="px-3 py-1 bg-purple-600 text-white rounded-md text-sm hover:bg-purple-700"
+                      >
+                        Download
+                      </button>
+                    </div>
+                  </div>
+                )}
+                
+                {/* No documents message */}
+                {!documents.policyPDF && !documents.aadhaar && !documents.pancard && !documents.rc && (
+                  <div className="text-sm text-zinc-500 text-center py-4">
+                    No documents found for this policy.
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="text-sm text-zinc-500">No documents available</div>
+            )}
           </div>
         </div>
       </Card>
