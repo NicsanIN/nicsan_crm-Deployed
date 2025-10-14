@@ -14,10 +14,17 @@ const upload = multer({
     fileSize: parseInt(process.env.MAX_FILE_SIZE) || 10 * 1024 * 1024, // 10MB
   },
   fileFilter: (req, file, cb) => {
-    if (file.mimetype === 'application/pdf') {
+    const allowedTypes = [
+      'application/pdf',
+      'image/jpeg',
+      'image/jpg', 
+      'image/png'
+    ];
+    
+    if (allowedTypes.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error('Only PDF files are allowed'), false);
+      cb(new Error('Only PDF and image files are allowed'), false);
     }
   }
 });
@@ -444,6 +451,95 @@ router.get('/:uploadId/review', authenticateToken, requireOps, async (req, res) 
     res.status(500).json({
       success: false,
       error: error.message || 'Failed to get upload for review'
+    });
+  }
+});
+
+// Upload individual document (Aadhaar, PAN, RC)
+router.post('/document', authenticateToken, requireOps, upload.single('document'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        error: 'Document file is required'
+      });
+    }
+
+    const { documentType, insurer, policyNumber } = req.body;
+    if (!documentType) {
+      return res.status(400).json({
+        success: false,
+        error: 'Document type is required'
+      });
+    }
+
+    if (!insurer) {
+      return res.status(400).json({
+        success: false,
+        error: 'Insurer is required'
+      });
+    }
+
+    const uploadData = {
+      file: req.file,
+      insurer,
+      documentType,
+      policyNumber: policyNumber || 'pending'
+    };
+
+    const result = await storageService.saveAdditionalDocument(uploadData);
+    
+    res.status(201).json(result);
+  } catch (error) {
+    console.error('Document upload error:', error);
+    res.status(400).json({
+      success: false,
+      error: error.message || 'Failed to upload document'
+    });
+  }
+});
+
+// Get documents by policy number
+router.get('/documents/:policyNumber', authenticateToken, requireOps, async (req, res) => {
+  try {
+    const { policyNumber } = req.params;
+    
+    const result = await storageService.getPolicyDocuments(policyNumber);
+    
+    res.json(result);
+  } catch (error) {
+    console.error('Get policy documents error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to get policy documents'
+    });
+  }
+});
+
+// Get S3 URL for document download
+router.get('/s3-url/:s3Key', authenticateToken, requireOps, async (req, res) => {
+  try {
+    const { s3Key } = req.params;
+    
+    if (!s3Key) {
+      return res.status(400).json({
+        success: false,
+        error: 'S3 key is required'
+      });
+    }
+    
+    const { getS3Url } = require('../config/aws');
+    const url = await getS3Url(s3Key);
+    
+    res.json({
+      success: true,
+      url: url
+    });
+  } catch (error) {
+    console.error('Get S3 URL error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to get S3 URL'
     });
   }
 });

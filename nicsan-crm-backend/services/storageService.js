@@ -1962,6 +1962,144 @@ async savePolicy(policyData) {
       throw error;
     }
   }
+
+  // Save additional document (Aadhaar, PAN, RC) to both storages
+  async saveAdditionalDocument(uploadData) {
+    try {
+      console.log('📄 Saving additional document to dual storage...');
+      
+      const { file, insurer, documentType, policyNumber } = uploadData;
+      
+      // 1. Upload to S3 (Primary Storage) with document type folder
+      const s3Key = await generateS3Key(file.originalname, insurer, file.buffer, documentType);
+      const s3Result = await uploadToS3(file, s3Key);
+      
+      // 2. Save metadata to PostgreSQL (Secondary Storage)
+      const documentId = `doc_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+      
+      const pgQuery = `
+        INSERT INTO document_uploads (document_id, filename, s3_key, insurer, document_type, policy_number, status)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        RETURNING *
+      `;
+      
+      const pgResult = await query(pgQuery, [
+        documentId,
+        file.originalname,
+        s3Key,
+        insurer,
+        documentType,
+        policyNumber,
+        'UPLOADED'
+      ]);
+      
+      console.log('✅ Additional document saved to both storages');
+      
+      return {
+        success: true,
+        data: {
+          documentId,
+          s3Key,
+          filename: file.originalname,
+          documentType,
+          status: 'UPLOADED'
+        }
+      };
+    } catch (error) {
+      console.error('❌ Additional document save error:', error);
+      throw error;
+    }
+  }
+
+  // Get documents by policy number
+  async getPolicyDocuments(policyNumber) {
+    try {
+      console.log(`📄 Getting documents for policy: ${policyNumber}`);
+      
+      // Get policy PDF
+      const policyQuery = `
+        SELECT * FROM pdf_uploads 
+        WHERE manual_extras->>'policy_number' = $1
+        ORDER BY created_at DESC LIMIT 1
+      `;
+      
+      const policyResult = await query(policyQuery, [policyNumber]);
+      
+      // Get additional documents
+      const documentsQuery = `
+        SELECT * FROM document_uploads 
+        WHERE policy_number = $1
+        ORDER BY created_at DESC
+      `;
+      
+      const documentsResult = await query(documentsQuery, [policyNumber]);
+      
+      // Organize documents by type
+      const documents = {
+        policyPDF: policyResult.rows[0] ? {
+          s3Key: policyResult.rows[0].s3_key,
+          filename: policyResult.rows[0].filename,
+          size: 0, // Will be calculated from S3
+          policyNumber: policyNumber
+        } : null,
+        aadhaar: null,
+        pancard: null,
+        rc: null
+      };
+      
+      // Map additional documents
+      documentsResult.rows.forEach(doc => {
+        const docInfo = {
+          s3Key: doc.s3_key,
+          filename: doc.filename,
+          size: 0, // Will be calculated from S3
+          policyNumber: policyNumber
+        };
+        
+        switch (doc.document_type) {
+          case 'aadhaar':
+            documents.aadhaar = docInfo;
+            break;
+          case 'pancard':
+            documents.pancard = docInfo;
+            break;
+          case 'rc':
+            documents.rc = docInfo;
+            break;
+        }
+      });
+      
+      console.log('✅ Policy documents retrieved successfully');
+      
+      return {
+        success: true,
+        data: documents
+      };
+    } catch (error) {
+      console.error('❌ Get policy documents error:', error);
+      throw error;
+    }
+  }
+
+  // Get signed S3 URL for document download
+  async getSignedS3Url(s3Key) {
+    try {
+      console.log(`🔗 Generating signed S3 URL for: ${s3Key}`);
+      
+      const { getS3Url } = require('../config/aws');
+      const url = await getS3Url(s3Key);
+      
+      console.log('✅ Signed S3 URL generated successfully');
+      
+      return {
+        success: true,
+        url: url
+      };
+    } catch (error) {
+      console.error('❌ Get signed S3 URL error:', error);
+      throw error;
+    }
+  }
 }
 
 module.exports = new StorageService();
