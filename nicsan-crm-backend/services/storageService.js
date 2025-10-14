@@ -806,6 +806,12 @@ async savePolicy(policyData) {
         ['SAVED', uploadId]
       );
       
+      // Link PDF upload to extracted policy number
+      await query(
+        'UPDATE pdf_uploads SET manual_extras = manual_extras || $1 WHERE upload_id = $2',
+        [JSON.stringify({ policy_number: policyData.policy_number }), uploadId]
+      );
+      
       console.log('✅ Upload confirmed as policy with dual storage');
       
       return {
