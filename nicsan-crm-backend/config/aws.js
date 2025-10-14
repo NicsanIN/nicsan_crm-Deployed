@@ -72,32 +72,61 @@ const extractTextFromPDF = async (s3Key, insurer = 'TATA_AIG') => {
 };
 
 // Generate unique S3 key with insurer detection
-const generateS3Key = async (filename, selectedInsurer, fileBuffer) => {
+const generateS3Key = async (filename, selectedInsurer, fileBuffer, documentType = 'policy') => {
   try {
-    // Detect insurer from PDF content
-    const insurerDetectionService = require('../services/insurerDetectionService');
-    const detectedInsurer = await insurerDetectionService.detectInsurerFromPDF(fileBuffer);
+    let insurer = selectedInsurer;
     
-    // Use detected insurer if available, otherwise use selected insurer
-    const insurer = detectedInsurer !== 'UNKNOWN' ? detectedInsurer : selectedInsurer;
+    // Only detect insurer for policy documents
+    if (documentType === 'policy') {
+      try {
+        const insurerDetectionService = require('../services/insurerDetectionService');
+        const detectedInsurer = await insurerDetectionService.detectInsurerFromPDF(fileBuffer);
+        
+        // Use detected insurer if available, otherwise use selected insurer
+        insurer = detectedInsurer !== 'UNKNOWN' ? detectedInsurer : selectedInsurer;
+        
+        console.log(`📁 S3 Key: Using ${insurer} for policy file ${filename} (detected: ${detectedInsurer}, selected: ${selectedInsurer})`);
+      } catch (detectionError) {
+        console.log(`📁 S3 Key: Insurer detection failed for ${filename}, using selected insurer: ${selectedInsurer}`);
+      }
+    } else {
+      console.log(`📁 S3 Key: Using ${insurer} for ${documentType} file ${filename}`);
+    }
     
     const timestamp = Date.now();
     const randomId = Math.random().toString(36).substring(2, 15);
     const extension = filename.split('.').pop();
     
-    console.log(`📁 S3 Key: Using ${insurer} for file ${filename} (detected: ${detectedInsurer}, selected: ${selectedInsurer})`);
+    // Document type folder mapping
+    const folderMapping = {
+      'policy': 'policy_documents',
+      'aadhaar': 'aadhaar_cards',
+      'pancard': 'pan_cards',
+      'rc': 'rc_documents'
+    };
+    
+    const folder = folderMapping[documentType] || 'documents';
     
     // Add environment prefix for staging
     const envPrefix = process.env.ENVIRONMENT === 'staging' ? 'local-staging/' : '';
-    return `${envPrefix}uploads/${insurer}/${timestamp}_${randomId}.${extension}`;
+    return `${envPrefix}uploads/${insurer}/${folder}/${timestamp}_${randomId}.${extension}`;
   } catch (error) {
-    console.error('❌ Insurer detection failed, using selected insurer:', error);
+    console.error('❌ S3 key generation failed, using fallback:', error);
     // Fallback to selected insurer if detection fails
     const timestamp = Date.now();
     const randomId = Math.random().toString(36).substring(2, 15);
     const extension = filename.split('.').pop();
     const envPrefix = process.env.ENVIRONMENT === 'staging' ? 'local-staging/' : '';
-    return `${envPrefix}uploads/${selectedInsurer}/${timestamp}_${randomId}.${extension}`;
+    
+    const folderMapping = {
+      'policy': 'policy_documents',
+      'aadhaar': 'aadhaar_cards',
+      'pancard': 'pan_cards',
+      'rc': 'rc_documents'
+    };
+    
+    const folder = folderMapping[documentType] || 'documents';
+    return `${envPrefix}uploads/${selectedInsurer}/${folder}/${timestamp}_${randomId}.${extension}`;
   }
 };
 

@@ -139,6 +139,22 @@ const initializeDatabase = async () => {
       )
     `);
 
+    // Create document_uploads table for additional documents
+    await query(`
+      CREATE TABLE IF NOT EXISTS document_uploads (
+        id SERIAL PRIMARY KEY,
+        document_id VARCHAR(255) UNIQUE NOT NULL,
+        filename VARCHAR(255) NOT NULL,
+        s3_key VARCHAR(255) NOT NULL,
+        insurer VARCHAR(100) NOT NULL,
+        document_type VARCHAR(50) NOT NULL,
+        policy_number VARCHAR(255),
+        status VARCHAR(50) DEFAULT 'UPLOADED',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
     // Create health_insurance table
     await query(`
       CREATE TABLE IF NOT EXISTS health_insurance (

@@ -601,6 +601,81 @@ class BackendApiService {
     }
   }
 
+  // Upload individual document from backend
+  async uploadDocument(formData: FormData): Promise<BackendApiResult> {
+    try {
+      if (ENABLE_DEBUG) {
+        console.log('🔄 BackendApiService: Uploading document...');
+      }
+
+      const response = await fetch('http://localhost:3001/api/upload/document', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      
+      if (ENABLE_DEBUG) {
+        console.log('✅ BackendApiService: Document uploaded successfully');
+      }
+
+      return {
+        success: true,
+        data: result.data,
+        source: 'BACKEND_API'
+      };
+    } catch (error) {
+      if (ENABLE_DEBUG) {
+        console.error('❌ BackendApiService: Document upload failed:', error);
+      }
+      throw error;
+    }
+  }
+
+  // Get documents by policy number from backend
+  async getPolicyDocuments(policyNumber: string): Promise<BackendApiResult> {
+    try {
+      if (ENABLE_DEBUG) {
+        console.log('🔄 BackendApiService: Getting policy documents...');
+      }
+
+      const response = await fetch(`http://localhost:3001/api/upload/documents/${policyNumber}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      
+      if (ENABLE_DEBUG) {
+        console.log('✅ BackendApiService: Policy documents retrieved successfully');
+      }
+
+      return {
+        success: true,
+        data: result.data,
+        source: 'BACKEND_API'
+      };
+    } catch (error) {
+      if (ENABLE_DEBUG) {
+        console.error('❌ BackendApiService: Failed to get policy documents:', error);
+      }
+      throw error;
+    }
+  }
+
   // Get uploads from backend
   async getUploads(page: number = 1, limit: number = 20): Promise<BackendApiResult> {
     try {

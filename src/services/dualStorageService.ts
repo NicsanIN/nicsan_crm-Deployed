@@ -597,6 +597,58 @@ class DualStorageService {
     );
   }
 
+  // Upload individual document with dual storage
+  async uploadDocument(formData: FormData): Promise<DualStorageResult> {
+    const mockData = {
+      documentId: `doc_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`,
+      s3Key: `uploads/documents/${Date.now()}_document.pdf`,
+      status: 'UPLOADED',
+      message: 'Document uploaded successfully (mock)'
+    };
+
+    return this.executeDualStoragePattern(
+      () => this.backendApiService.uploadDocument(formData),
+      mockData,
+      'Upload Document'
+    );
+  }
+
+  // Get documents by policy number
+  async getPolicyDocuments(policyNumber: string): Promise<DualStorageResult> {
+    const mockData = {
+      policyPDF: {
+        s3Key: `uploads/TATA_AIG/policy_documents/${policyNumber}_policy.pdf`,
+        filename: `${policyNumber}_policy.pdf`,
+        size: 1024000,
+        policyNumber: policyNumber
+      },
+      aadhaar: {
+        s3Key: `uploads/TATA_AIG/aadhaar_cards/${policyNumber}_aadhaar.jpg`,
+        filename: `${policyNumber}_aadhaar.jpg`,
+        size: 512000,
+        policyNumber: policyNumber
+      },
+      pancard: {
+        s3Key: `uploads/TATA_AIG/pan_cards/${policyNumber}_pan.jpg`,
+        filename: `${policyNumber}_pan.jpg`,
+        size: 256000,
+        policyNumber: policyNumber
+      },
+      rc: {
+        s3Key: `uploads/TATA_AIG/rc_documents/${policyNumber}_rc.pdf`,
+        filename: `${policyNumber}_rc.pdf`,
+        size: 768000,
+        policyNumber: policyNumber
+      }
+    };
+
+    return this.executeDualStoragePattern(
+      () => this.backendApiService.getPolicyDocuments(policyNumber),
+      mockData,
+      'Get Policy Documents'
+    );
+  }
+
   // Get uploads with dual storage
   async getUploads(page: number = 1, limit: number = 20): Promise<DualStorageResult> {
     const mockData = [
