@@ -78,7 +78,6 @@ function PagePayments() {
     useEffect(() => {
       if (userChanged && user) {
         setPayments([]);
-        setDataSource('');
         setSelectedExecutive('');
         setViewMode('summary');
         setReceivedPayments(new Set());

@@ -165,7 +165,6 @@ function PageLeaderboard() {
   useEffect(() => {
     if (userChanged && user) {
       setReps([]);
-      setDataSource('');
       setSortField('');
       setSortDirection('asc');
     }
