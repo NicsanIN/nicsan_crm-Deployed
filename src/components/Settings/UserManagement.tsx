@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Plus, Search, Edit, Trash2, ToggleLeft, ToggleRight, UserPlus, Save, X } from 'lucide-react';
+import { Users, Search, Edit, Trash2, ToggleLeft, ToggleRight, UserPlus, Save, X } from 'lucide-react';
 import { userService } from '../../services/userService';
 import type { User, CreateUserRequest, UpdateUserRequest } from '../../services/userService';
 import LabeledInput from '../common/LabeledInput';

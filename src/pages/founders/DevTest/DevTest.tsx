@@ -22,7 +22,7 @@ function PageTests() {
     });
     const allPass = results.every(r => r.pass);
     return (
-      <Card title="Dev/Test" desc="Lightweight checks for cashback math">
+      <Card title="Dev/Test">
         <div className="text-sm mb-2">Overall: {allPass ? <span className="text-emerald-700">✅ PASS</span> : <span className="text-rose-700">❌ FAIL</span>}</div>
         <div className="overflow-auto">
           <table className="w-full text-sm">

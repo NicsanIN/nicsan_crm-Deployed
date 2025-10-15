@@ -3,7 +3,10 @@
 
 // import { authAPI, policiesAPI } from './api';
 
-const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
+const API_BASE_URL: string = import.meta.env.VITE_API_BASE_URL!;
+const BACKEND_URL: string = import.meta.env.VITE_BACKEND_URL!;
+const ENABLE_DEBUG: boolean = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
+
 
 interface BackendApiResult {
   success: boolean;
@@ -17,6 +20,7 @@ class BackendApiService {
 
   private constructor() {
     if (ENABLE_DEBUG) {
+      console.log('BackendApiService initialized');
     }
   }
 
@@ -38,7 +42,7 @@ class BackendApiService {
   async getDashboardMetrics(): Promise<BackendApiResult> {
     try {
 
-      const response = await fetch('http://localhost:3001/api/dashboard/metrics', {
+      const response = await fetch(`${API_BASE_URL}/dashboard/metrics`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
@@ -81,7 +85,7 @@ class BackendApiService {
   // Telecallers from backend
   async getTelecallers(): Promise<BackendApiResult> {
     try {
-      const response = await fetch('http://localhost:3001/api/telecallers', {
+      const response = await fetch(`${API_BASE_URL}/telecallers`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
@@ -117,12 +121,19 @@ class BackendApiService {
     try {
       if (ENABLE_DEBUG) {
         console.log('🔄 BackendApiService: Adding new telecaller...');
+        console.log('🔍 Auth token:', localStorage.getItem('authToken') ? 'Present' : 'Missing');
+        console.log('🔍 Telecaller data:', telecallerData);
       }
 
-      const response = await fetch('http://localhost:3001/api/telecallers', {
+      const authToken = localStorage.getItem('authToken');
+      if (!authToken) {
+        throw new Error('No authentication token found. Please log in again.');
+      }
+
+      const response = await fetch(`${API_BASE_URL}/telecallers`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          'Authorization': `Bearer ${authToken}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(telecallerData),
@@ -151,11 +162,58 @@ class BackendApiService {
     }
   }
 
+  // Update telecaller status
+  async updateTelecallerStatus(id: number, name: string, isActive: boolean): Promise<BackendApiResult> {
+    try {
+      if (ENABLE_DEBUG) {
+        console.log('🔄 BackendApiService: Updating telecaller status...', { id, name, isActive });
+      }
+
+      const authToken = localStorage.getItem('authToken');
+      if (!authToken) {
+        throw new Error('No authentication token found. Please log in again.');
+      }
+
+      const response = await fetch(`${API_BASE_URL}/telecallers/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          name: name,
+          is_active: isActive 
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      
+      if (ENABLE_DEBUG) {
+        console.log('✅ BackendApiService: Telecaller status updated successfully');
+      }
+
+      return {
+        success: true,
+        data: result.data,
+        source: 'BACKEND_API'
+      };
+    } catch (error) {
+      if (ENABLE_DEBUG) {
+        console.error('❌ BackendApiService: Update telecaller status failed:', error);
+      }
+      throw error;
+    }
+  }
+
   // Sales Reps from backend
   async getSalesReps(): Promise<BackendApiResult> {
     try {
 
-      const response = await fetch('http://localhost:3001/api/dashboard/sales-reps', {
+      const response = await fetch(`${API_BASE_URL}/dashboard/sales-reps`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
@@ -196,6 +254,7 @@ class BackendApiService {
     }
   }
 
+
   // Sales Explorer from backend
   async getSalesExplorer(filters: any = {}): Promise<BackendApiResult> {
     try {
@@ -218,7 +277,7 @@ class BackendApiService {
       if (filters.expiryFromDate) queryParams.append('expiryFromDate', filters.expiryFromDate);
       if (filters.expiryToDate) queryParams.append('expiryToDate', filters.expiryToDate);
 
-      const url = `http://localhost:3001/api/dashboard/explorer${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+      const url = `${API_BASE_URL}/dashboard/explorer${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
       
       if (ENABLE_DEBUG) {
         console.log('🔍 BackendApiService: Calling URL:', url);
@@ -257,7 +316,7 @@ class BackendApiService {
   async getPolicyDetail(policyId: string): Promise<BackendApiResult> {
     try {
 
-      const response = await fetch(`http://localhost:3001/api/policies/${policyId}`, {
+      const response = await fetch(`${API_BASE_URL}/policies/${policyId}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
@@ -289,7 +348,7 @@ class BackendApiService {
   async getDataSources(): Promise<BackendApiResult> {
     try {
 
-      const response = await fetch('http://localhost:3001/api/dashboard/metrics', {
+      const response = await fetch(`${API_BASE_URL}/dashboard/metrics`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
@@ -331,13 +390,13 @@ class BackendApiService {
   async getAllPolicies(): Promise<BackendApiResult> {
     try {
 
-      const response = await fetch('http://localhost:3001/api/policies?limit=1000&offset=0', {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-          'Content-Type': 'application/json',
-        },
-      });
+const response = await fetch(`${API_BASE_URL}/policies`, {
+  method: 'GET',
+  headers: {
+    'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+    'Content-Type': 'application/json'
+  }
+});
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -366,7 +425,7 @@ class BackendApiService {
         console.log('🔄 BackendApiService: Getting executive payments...');
       }
 
-      const response = await fetch('http://localhost:3001/api/dashboard/payments/executive', {
+      const response = await fetch(`${BACKEND_URL}/api/dashboard/payments/executive`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
@@ -404,7 +463,7 @@ class BackendApiService {
         console.log('🔄 BackendApiService: Marking payment as received...', policyNumber);
       }
 
-      const response = await fetch(`http://localhost:3001/api/dashboard/payments/received/${policyNumber}`, {
+      const response = await fetch(`${BACKEND_URL}/api/dashboard/payments/received/${policyNumber}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
@@ -445,7 +504,7 @@ class BackendApiService {
         console.log('🔄 BackendApiService: Getting settings...');
       }
 
-      const response = await fetch('http://localhost:3001/api/settings', {
+      const response = await fetch(`${API_BASE_URL}/settings`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
@@ -482,7 +541,7 @@ class BackendApiService {
         console.log('🔄 BackendApiService: Saving settings...');
       }
 
-      const response = await fetch('http://localhost:3001/api/settings', {
+      const response = await fetch(`${API_BASE_URL}/settings`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
@@ -520,7 +579,7 @@ class BackendApiService {
         console.log('🔄 BackendApiService: Resetting settings...');
       }
 
-      const response = await fetch('http://localhost:3001/api/settings/reset', {
+      const response = await fetch(`${API_BASE_URL}/settings/reset`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
@@ -570,7 +629,7 @@ class BackendApiService {
         });
       }
 
-      const response = await fetch('http://localhost:3001/api/upload/pdf', {
+      const response = await fetch(`${API_BASE_URL}/upload/pdf`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
@@ -579,7 +638,13 @@ class BackendApiService {
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        const errorText = await response.text();
+        console.error('❌ Backend upload failed:', {
+          status: response.status,
+          statusText: response.statusText,
+          body: errorText
+        });
+        throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
       }
 
       const result = await response.json();
@@ -689,7 +754,7 @@ class BackendApiService {
         offset: offset.toString(),
       });
 
-      const response = await fetch(`http://localhost:3001/api/upload?${params}`, {
+      const response = await fetch(`${API_BASE_URL}/upload?${params}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
@@ -727,7 +792,7 @@ class BackendApiService {
         console.log('🔄 BackendApiService: Getting upload by ID...');
       }
 
-      const response = await fetch(`http://localhost:3001/api/upload/${uploadId}`, {
+      const response = await fetch(`${API_BASE_URL}/upload/${uploadId}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
@@ -765,7 +830,7 @@ class BackendApiService {
         console.log('🔄 BackendApiService: Getting upload for review...');
       }
 
-      const response = await fetch(`http://localhost:3001/api/upload/${uploadId}/review`, {
+      const response = await fetch(`${API_BASE_URL}/upload/${uploadId}/review`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
@@ -810,7 +875,7 @@ class BackendApiService {
         }
       } : {};
 
-      const response = await fetch(`http://localhost:3001/api/upload/${uploadId}/confirm`, {
+      const response = await fetch(`${API_BASE_URL}/upload/${uploadId}/confirm`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
@@ -849,7 +914,7 @@ class BackendApiService {
         console.log('🔄 BackendApiService: Saving manual form...');
       }
 
-      const response = await fetch('http://localhost:3001/api/policies/manual', {
+      const response = await fetch(`${API_BASE_URL}/policies/manual`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
@@ -918,7 +983,7 @@ class BackendApiService {
         console.log('🔄 BackendApiService: Saving grid entries...');
       }
 
-      const response = await fetch('http://localhost:3001/api/policies/grid', {
+      const response = await fetch(`${API_BASE_URL}/policies/grid`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
@@ -954,7 +1019,7 @@ class BackendApiService {
         console.log('🔄 BackendApiService: Creating policy...');
       }
 
-      const response = await fetch('http://localhost:3001/api/policies', {
+      const response = await fetch(`${API_BASE_URL}/policies`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
@@ -993,7 +1058,7 @@ class BackendApiService {
         console.log('🔄 BackendApiService: Logging in...');
       }
 
-      const response = await fetch('http://localhost:3001/api/auth/login', {
+      const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1030,7 +1095,7 @@ class BackendApiService {
       success: true,
       data: {
         backendAvailable: this.isAvailable(),
-        healthUrl: 'http://localhost:3001/health',
+        healthUrl: `${BACKEND_URL}/api/health`,
         checkInterval: 30000,
         enableDebug: ENABLE_DEBUG,
         enableMockData: import.meta.env.VITE_ENABLE_MOCK_DATA === 'true'
@@ -1046,7 +1111,7 @@ class BackendApiService {
         console.log('🔍 BackendApiService: getTotalODDaily called with period:', period);
       }
 
-      const url = `http://localhost:3001/api/dashboard/total-od/daily?period=${period}`;
+      const url = `${API_BASE_URL}/dashboard/total-od/daily?period=${period}`;
       
       if (ENABLE_DEBUG) {
         console.log('🔍 BackendApiService: Calling URL:', url);
@@ -1090,7 +1155,7 @@ class BackendApiService {
         console.log('🔍 BackendApiService: getTotalODMonthly called with period:', period);
       }
 
-      const url = `http://localhost:3001/api/dashboard/total-od/monthly?period=${period}`;
+      const url = `${API_BASE_URL}/dashboard/total-od/monthly?period=${period}`;
       
       if (ENABLE_DEBUG) {
         console.log('🔍 BackendApiService: Calling URL:', url);
@@ -1134,7 +1199,7 @@ class BackendApiService {
         console.log('🔍 BackendApiService: getTotalODFinancialYear called with years:', years);
       }
 
-      const url = `http://localhost:3001/api/dashboard/total-od/financial-year?years=${years}`;
+      const url = `${API_BASE_URL}/dashboard/total-od/financial-year?years=${years}`;
       
       if (ENABLE_DEBUG) {
         console.log('🔍 BackendApiService: Calling URL:', url);

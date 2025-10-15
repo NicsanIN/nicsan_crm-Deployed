@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Card } from '../../../components/common/Card';
-import { Plus, Save, Trash2, RefreshCw, CheckCircle2, AlertTriangle, Clock, Eye, Edit3 } from 'lucide-react';
+// import { Plus, Save, Trash2, RefreshCw, CheckCircle2, AlertTriangle, Clock, Eye, Edit3 } from 'lucide-react';
 import DualStorageService from '../../../services/dualStorageService';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useUserChange } from '../../../hooks/useUserChange';
 
 // Environment variables
-const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
+// const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
 
 function PageManualGrid() {
     const { user } = useAuth();
@@ -828,7 +828,7 @@ function PageManualGrid() {
   
     return (
       <>
-        <Card title="Grid Entry (Excel-like)" desc="Paste multiple rows; fix inline errors. Dedupe on Policy No. + Vehicle No.">
+        <Card title="Grid Entry (Excel-like)">
           <div className="mb-3 text-xs text-zinc-600">Tip: Copy from Excel and <b>Ctrl+V</b> directly here. Use <b>Ctrl+S</b> to save all.</div>
           
           {/* Show saved policies info */}

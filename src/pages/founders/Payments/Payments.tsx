@@ -1,13 +1,10 @@
 
 import { useState, useEffect } from 'react';
 import { Card } from '../../../components/common/Card';
-import { Download, Filter, CheckCircle2, Clock, AlertTriangle, Eye, EyeOff, RefreshCw } from 'lucide-react';
+// import { Download, Filter, CheckCircle2, Clock, AlertTriangle, Eye, EyeOff, RefreshCw } from 'lucide-react';
 import DualStorageService from '../../../services/dualStorageService';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useUserChange } from '../../../hooks/useUserChange';
-
-// Environment variables
-const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
 
 // Tile component for displaying metrics
 function Tile({ label, value, sub, info, onClick }: { label: string; value: string; sub?: string; info?: string; onClick?: () => void }) {
@@ -18,41 +15,40 @@ function Tile({ label, value, sub, info, onClick }: { label: string; value: stri
     >
       <div className="text-sm text-zinc-500 mb-1">{label}</div>
       <div className="text-2xl font-semibold text-zinc-900">{value}</div>
-      {sub && <div className="text-sm text-zinc-600 mt-1">{sub}</div>}
+      {sub && <div className="text-sm text-green-600 mt-1">{sub}</div>}
       {info && <div className="text-xs text-zinc-400 mt-1">{info}</div>}
     </div>
   );
 }
 
 // Mock data for demo purposes
-const demoPayments = [
-  {
-    id: '1',
-    executive: 'John Doe',
-    month: '01',
-    year: '2024',
-    totalAmount: 150000,
-    received: false,
-    receivedDate: null,
-    notes: 'Monthly commission payment'
-  },
-  {
-    id: '2', 
-    executive: 'Jane Smith',
-    month: '01',
-    year: '2024',
-    totalAmount: 120000,
-    received: true,
-    receivedDate: '2024-01-15',
-    notes: 'Monthly commission payment'
-  }
-];
+// const demoPayments = [
+//   {
+//     id: '1',
+//     executive: 'John Doe',
+//     month: '01',
+//     year: '2024',
+//     totalAmount: 150000,
+//     received: false,
+//     receivedDate: null,
+//     notes: 'Monthly commission payment'
+//   },
+//   {
+//     id: '2', 
+//     executive: 'Jane Smith',
+//     month: '01',
+//     year: '2024',
+//     totalAmount: 120000,
+//     received: true,
+//     receivedDate: '2024-01-15',
+//     notes: 'Monthly commission payment'
+//   }
+// ];
 
 function PagePayments() {
     const { user, isAuthenticated, isLoading: authLoading } = useAuth();
     const { userChanged } = useUserChange();
     const [payments, setPayments] = useState<any[]>([]);
-    const [dataSource, setDataSource] = useState<string>('');
     const [isLoading, setIsLoading] = useState(true);
     const [viewMode, setViewMode] = useState<'summary' | 'detail'>('summary');
     const [selectedExecutive, setSelectedExecutive] = useState<string>('');
@@ -69,12 +65,10 @@ function PagePayments() {
         
         if (response.success) {
           setPayments(Array.isArray(response.data) ? response.data : []);
-          setDataSource(response.source);
         }
       } catch (error) {
         console.error('Failed to load executive payments:', error);
         setPayments([]);
-        setDataSource('MOCK_DATA');
       } finally {
         setIsLoading(false);
       }
@@ -244,7 +238,7 @@ function PagePayments() {
     return (
       <>
         {/* Summary Tiles */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
           <Tile 
             label="Total Payments" 
             info="(All executive payments)"
@@ -262,12 +256,6 @@ function PagePayments() {
             info="(Awaiting processing)"
             value={formatCurrency(pendingAmount)} 
             sub={`${filteredPayments.length - filteredPayments.filter(p => receivedPayments.has(`${p.policy_number}_${p.customer_name}`) || p.payment_received === true).length} pending`}
-          />
-          <Tile 
-            label="Data Source" 
-            info="(Payment data origin)"
-            value={dataSource || 'Loading...'} 
-            sub="Backend or Mock"
           />
         </div>
   
@@ -336,7 +324,7 @@ function PagePayments() {
   
         {/* Conditional Content */}
         {viewMode === 'summary' ? (
-          <Card title="Executive Summary" desc={`Click on executive to view individual payment records (Data Source: ${dataSource || 'Loading...'})`}>
+          <Card title="Executive Summary">
             {isLoading ? (
               <div className="text-center py-8">
                 <div className="text-sm text-zinc-600">Loading executive payments...</div>
@@ -382,19 +370,6 @@ function PagePayments() {
               </div>
             )}
             
-            {executiveSummary.length > 0 && (
-              <div className="text-center text-sm mt-4">
-                {dataSource === 'BACKEND_API' ? (
-                  <span className="text-green-600 font-medium">
-                    ✅ Showing {executiveSummary.length} executives from backend
-                  </span>
-                ) : (
-                  <span className="text-blue-500">
-                    📊 Showing demo data (fallback)
-                  </span>
-                )}
-              </div>
-            )}
           </Card>
         ) : (
           <Card title={`${selectedExecutive} - Payment Details`} desc="Individual payment records for selected executive">
@@ -475,13 +450,6 @@ function PagePayments() {
               </div>
             )}
             
-            {filteredPayments.length > 0 && (
-              <div className="text-center text-sm mt-4">
-                <span className="text-blue-600 font-medium">
-                  📊 Showing {filteredPayments.length} payment records for {selectedExecutive}
-                </span>
-              </div>
-            )}
           </Card>
         )}
       </>

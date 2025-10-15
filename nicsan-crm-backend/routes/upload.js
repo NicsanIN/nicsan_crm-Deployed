@@ -56,6 +56,10 @@ router.post('/pdf', authenticateToken, requireOps, upload.single('pdf'), async (
       }
     });
 
+    // Debug: Log manual extras received
+    console.log('🔍 PDF Upload - Manual extras received:', manualExtras);
+    console.log('🔍 PDF Upload - Customer name in manual extras:', manualExtras.customerName);
+
     const uploadData = {
       file: req.file,
       insurer,
@@ -222,6 +226,7 @@ router.post('/:uploadId/confirm', authenticateToken, requireOps, async (req, res
         caller_name: editedData.manualExtras.caller_name || editedData.manualExtras.callerName || '', // Map callerName to caller_name
         customer_email: editedData.manualExtras.customerEmail || editedData.manualExtras.customer_email || '',
         ops_executive: editedData.manualExtras.opsExecutive || editedData.manualExtras.ops_executive || '',
+        customer_name: editedData.manualExtras.customer_name || editedData.manualExtras.customerName || editedData.pdfData.customer_name || '', // Map customer_name from manual extras or PDF data
         payment_method: editedData.manualExtras.paymentMethod || editedData.manualExtras.payment_method || 'INSURER', // Map paymentMethod to payment_method
         payment_sub_method: editedData.manualExtras.paymentSubMethod || editedData.manualExtras.payment_sub_method || '', // Map paymentSubMethod to payment_sub_method
         customer_cheque_no: editedData.manualExtras.customerChequeNo || editedData.manualExtras.customer_cheque_no || '', // Map customerChequeNo to customer_cheque_no
@@ -255,6 +260,7 @@ router.post('/:uploadId/confirm', authenticateToken, requireOps, async (req, res
         ...upload.extracted_data.extracted_data,
         ...upload.extracted_data.manual_extras,
         caller_name: upload.extracted_data.manual_extras?.caller_name || upload.extracted_data.manual_extras?.callerName || '', // Map callerName to caller_name
+        customer_name: upload.extracted_data.manual_extras?.customer_name || upload.extracted_data.manual_extras?.customerName || upload.extracted_data.extracted_data?.customer_name || '', // Map customer_name from manual extras or PDF data
         total_od: upload.extracted_data.manual_extras?.totalOd || upload.extracted_data.manual_extras?.total_od || upload.extracted_data.extracted_data?.total_od || 0, // Map totalOd to total_od
         
         // ✅ ADD: Cashback calculations for fallback case
@@ -282,7 +288,8 @@ router.post('/:uploadId/confirm', authenticateToken, requireOps, async (req, res
     console.log('🔍 Policy data validation:', {
       policy_number: policyData.policy_number,
       vehicle_number: policyData.vehicle_number,
-      caller_name: policyData.caller_name
+      caller_name: policyData.caller_name,
+      customer_name: policyData.customer_name
     });
     
     if (!policyData.policy_number || !policyData.vehicle_number) {

@@ -1,7 +1,8 @@
-import React, { useMemo, useState, useEffect } from "react";
-import { Upload, FileText, CheckCircle2, Table2, Settings, LayoutDashboard, Users, BarChart3, Lock, LogOut, SlidersHorizontal, TrendingUp, RefreshCw, CreditCard } from "lucide-react";
+﻿import React, { useMemo, useState, useEffect } from "react";
+import { Upload, FileText, CheckCircle2, Table2, Settings, LayoutDashboard, Users, BarChart3, LogOut, SlidersHorizontal, TrendingUp, RefreshCw, CreditCard } from "lucide-react";
 import { authUtils } from './services/api';
 import DualStorageService from './services/dualStorageService';
+import HorizontalLogo from './assets/images/HorizontalLogo.svg';
 import CrossDeviceSyncDemo from './components/CrossDeviceSyncDemo';
 import PageExplorer from './pages/founders/SalesExplorer/PageExplorer';
 import PageLeaderboard from './pages/founders/RepLeaderboard/PageLeaderboard';
@@ -66,14 +67,14 @@ function LoginPage({ onLogin }: { onLogin: (user: { name: string; email: string;
           // Try authUtils first
           authUtils.setToken(token);
         } catch (error) {
-          console.error('🔍 authUtils.setToken failed:', error);
+          console.error('≡ƒöì authUtils.setToken failed:', error);
         }
         
         try {
           // Also store directly to verify
           localStorage.setItem('authToken', token);
         } catch (error) {
-          console.error('🔍 Direct localStorage storage failed:', error);
+          console.error('≡ƒöì Direct localStorage storage failed:', error);
         }
         
         // Call onLogin with real user data
@@ -95,7 +96,14 @@ function LoginPage({ onLogin }: { onLogin: (user: { name: string; email: string;
   return (
     <div className="min-h-screen grid place-items-center bg-zinc-50 p-6">
       <div className="w-full max-w-md bg-white rounded-2xl border border-zinc-100 shadow-sm p-6">
-        <div className="flex items-center gap-2 text-lg font-semibold mb-1"><Lock className="w-5 h-5"/> Nicsan CRM v1</div>
+         <div className="flex items-center gap-3 mb-6">
+           <img 
+             src={HorizontalLogo} 
+             alt="Nicsan CRM" 
+             className="h-[20.3843px] w-auto"
+           />
+           <span className="text-[28px] font-clash font-bold text-zinc-900 leading-[20.3843px] mt-0.5">CRM</span>
+         </div>
         
         
         {error && (
@@ -105,22 +113,22 @@ function LoginPage({ onLogin }: { onLogin: (user: { name: string; email: string;
         )}
         
         <label className="block mb-3">
-          <div className="text-xs text-zinc-600 mb-1">Email</div>
+           <div className="text-xs text-zinc-600 mb-1 font-clash font-normal">Email</div>
           <input 
             value={email} 
             onChange={e=>setEmail(e.target.value)} 
-            className="w-full rounded-xl border border-zinc-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200" 
+            className="w-full rounded-xl border border-zinc-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200 font-clash font-normal" 
             placeholder="Enter your email"
             disabled={isLoading}
           />
         </label>
         <label className="block mb-4">
-          <div className="text-xs text-zinc-600 mb-1">Password</div>
+          <div className="text-xs text-zinc-600 mb-1 font-clash font-normal">Password</div>
           <input 
             type="password" 
             value={password} 
             onChange={e=>setPassword(e.target.value)} 
-            className="w-full rounded-xl border border-zinc-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200" 
+            className="w-full rounded-xl border border-zinc-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200 font-clash font-normal" 
             placeholder="••••••••"
             disabled={isLoading}
           />
@@ -129,7 +137,7 @@ function LoginPage({ onLogin }: { onLogin: (user: { name: string; email: string;
         <button 
           onClick={handleLogin} 
           disabled={isLoading}
-          className="w-full px-4 py-2 rounded-xl bg-zinc-900 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+           className="w-full px-4 py-2 rounded-xl bg-zinc-900 text-white disabled:opacity-50 disabled:cursor-not-allowed font-clash"
         >
           {isLoading ? 'Signing in...' : 'Sign in'}
         </button>
@@ -142,18 +150,31 @@ function LoginPage({ onLogin }: { onLogin: (user: { name: string; email: string;
 
 // ---------- LAYOUT ----------
 function TopTabs({ tab, setTab, user, onLogout }: { tab: "ops" | "founder"; setTab: (t: "ops" | "founder") => void; user: {name:string; role:"ops"|"founder"}; onLogout: ()=>void }) {
-  const founderDisabled = user.role !== 'founder';
   return (
     <div className="w-full border-b border-zinc-200 bg-white sticky top-0 z-40">
       <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-3">
-        <div className="text-xl font-semibold">Nicsan CRM v1</div>
-        <div className="ml-auto flex items-center gap-2">
-          <div className="rounded-xl bg-zinc-100 p-1 flex gap-2">
-            <button onClick={() => setTab("ops")} className={`px-4 py-2 rounded-lg text-sm ${tab === "ops" ? "bg-white shadow" : "text-zinc-600"}`}>Operations</button>
-            <button onClick={() => !founderDisabled && setTab("founder")} className={`px-4 py-2 rounded-lg text-sm ${tab === "founder" ? "bg-white shadow" : founderDisabled?"text-zinc-300 cursor-not-allowed":"text-zinc-600"}`}>Founder</button>
-          </div>
-          <div className="text-sm text-zinc-600 px-2 py-1 rounded-lg bg-zinc-100">{user.name} · {user.role.toUpperCase()}</div>
-          <button onClick={onLogout} className="px-3 py-2 rounded-lg border flex items-center gap-2"><LogOut className="w-4 h-4"/> Logout</button>
+        <div className="flex items-center gap-3">
+          <img 
+            src={HorizontalLogo} 
+            alt="Nicsan CRM" 
+            className="h-[20.3843px] w-auto"
+          />
+          <span className="text-[28px] font-clash font-bold text-zinc-900 leading-[20.3843px] mt-0.5">CRM</span>
+        </div>
+        <div className="ml-auto flex items-center gap-3">
+          {user.role === 'founder' ? (
+            <div className="rounded-xl bg-zinc-100 p-1 flex gap-2">
+              <button onClick={() => setTab("ops")} className={`px-4 py-2 rounded-lg text-sm transition-colors ${tab === "ops" ? "bg-white shadow-sm text-zinc-900" : "text-zinc-600 hover:text-zinc-900"}`}>Operations</button>
+              <button onClick={() => setTab("founder")} className={`px-4 py-2 rounded-lg text-sm transition-colors ${tab === "founder" ? "bg-white shadow-sm text-zinc-900" : "text-zinc-600 hover:text-zinc-900"}`}>Founder</button>
+            </div>
+          ) : (
+            <div className="rounded-xl bg-zinc-100 p-1">
+              <div className="px-4 py-2 rounded-lg text-sm bg-white shadow-sm text-zinc-900">Operations</div>
+            </div>
+          )}
+          <button onClick={onLogout} className="px-3 py-2 rounded-lg border border-zinc-300 hover:bg-zinc-50 transition-colors flex items-center gap-2 text-zinc-700">
+            <LogOut className="w-4 h-4"/> Logout
+          </button>
         </div>
       </div>
     </div>
@@ -188,9 +209,6 @@ function OpsSidebar({ page, setPage }: { page: string; setPage: (p: string) => v
           <Icon className="w-4 h-4"/> {label}
         </button>
       ))}
-      <div className="px-3 pt-2 text-[11px] text-zinc-500">
-        Tip: <kbd>Tab</kbd>/<kbd>Shift+Tab</kbd> move · <kbd>Ctrl+S</kbd> save · <kbd>Ctrl+Enter</kbd> save & next
-      </div>
     </div>
   )
 }
@@ -206,8 +224,8 @@ export function AutocompleteInput({
   value, 
   onChange, 
   error, 
-  getSuggestions,
-  onAddNew,
+  getSuggestions, 
+  onAddNew, 
   showAddNew = false
 }: { 
   label: string; 
@@ -297,14 +315,14 @@ export function AutocompleteInput({
           {label} {required && <span className="text-rose-600">*</span>} {hint && <span className="text-[10px] text-zinc-400">({hint})</span>}
         </div>
         <input 
-          value={value} 
+          value={value}
           onChange={e => handleInputChange(e.target.value)}
           onFocus={handleInputFocus}
           onBlur={handleInputBlur}
           className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 ${
             error ? 'border-red-300 bg-red-50' : 'border-blue-300'
-          }`} 
-          placeholder={placeholder} 
+          }`}
+          placeholder={placeholder}
         />
         {isLoading && (
           <div className="absolute right-3 top-8 text-blue-500">
@@ -315,7 +333,7 @@ export function AutocompleteInput({
           <div className="text-xs text-red-600 mt-1">{error}</div>
         )}
       </label>
-      
+
       {/* Enhanced dropdown with Add New option */}
       {showSuggestions && (suggestions.length > 0 || showAddNewOption) && (
         <div className="absolute z-10 mt-1 w-full bg-white border border-zinc-300 rounded-lg shadow-lg max-h-48 overflow-y-auto">
@@ -335,7 +353,7 @@ export function AutocompleteInput({
               className="px-3 py-2 hover:bg-green-50 cursor-pointer text-sm border-t border-zinc-200 bg-green-50 text-green-700 font-medium"
               onClick={handleAddNew}
             >
-              ➕ Add '{value}' as new Telecaller
+              Γ₧ò Add '{value}' as new Telecaller
             </div>
           )}
         </div>
@@ -365,7 +383,6 @@ function FounderSidebar({ page, setPage }: { page: string; setPage: (p: string) 
           <Icon className="w-4 h-4"/> {label}
         </button>
       ))}
-      <div className="px-3 pt-2 text-[11px] text-zinc-500">Definitions in (brackets). Example: GWP = Gross Written Premium.</div>
     </div>
   )
 }
@@ -398,18 +415,6 @@ function NicsanCRMMock() {
 
   return (
     <div className="min-h-screen bg-zinc-50">
-      {/* Backend Status Indicator */}
-      {ENABLE_DEBUG && backendStatus && (
-        <div className={`px-4 py-2 text-xs font-medium ${
-          backendStatus.backendAvailable 
-            ? 'bg-green-100 text-green-800' 
-            : 'bg-red-100 text-red-800'
-        }`}>
-          🔗 Backend: {backendStatus.backendAvailable ? 'Connected' : 'Disconnected'} 
-          | Mock: {ENABLE_MOCK_DATA ? 'Enabled' : 'Disabled'}
-          | Debug: {ENABLE_DEBUG ? 'On' : 'Off'}
-        </div>
-      )}
       
       <TopTabs tab={tab} setTab={setTab} user={user} onLogout={()=>setUser(null)} />
       {tab === "ops" ? (

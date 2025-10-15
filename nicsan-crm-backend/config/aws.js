@@ -1,24 +1,28 @@
-const AWS = require('aws-sdk');
+const { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand, ListObjectsV2Command } = require('@aws-sdk/client-s3');
+const { TextractClient, DetectDocumentTextCommand, AnalyzeDocumentCommand } = require('@aws-sdk/client-textract');
+const { withPrefix } = require('../utils/s3Prefix');
 
-// AWS Configuration (Primary Storage)
-const s3 = new AWS.S3({
-  accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-  region: process.env.AWS_REGION || 'us-east-1',
-  signatureVersion: 'v4'
+// AWS Configuration (Primary Storage) - Using IAM Role with SDK v3
+const s3Client = new S3Client({
+  region: process.env.AWS_REGION || 'us-east-1'
+  // No credentials needed - using IAM Task Role
 });
 
-// Textract Configuration
-const textract = new AWS.Textract({
-  accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-  region: process.env.AWS_REGION || 'us-east-1' // Use same region as S3
+// Textract Configuration - Using IAM Role with SDK v3
+const textractClient = new TextractClient({
+  region: process.env.AWS_REGION || 'us-east-1'
+  // No credentials needed - using IAM Task Role
 });
 
-// S3 Helper Functions
+// S3 Configuration Logging (for startup sanity checks)
+console.log('[S3] bucket:', process.env.AWS_S3_BUCKET);
+console.log('[S3] prefix:', process.env.S3_PREFIX || '(none)');
+console.log('[S3] region:', process.env.AWS_REGION || 'us-east-1');
+
+// S3 Helper Functions - SDK v3
 const uploadToS3 = async (file, key) => {
   try {
-    const params = {
+    const command = new PutObjectCommand({
       Bucket: process.env.AWS_S3_BUCKET,
       Key: key,
       Body: file.buffer,
@@ -27,11 +31,12 @@ const uploadToS3 = async (file, key) => {
         originalName: file.originalname,
         uploadedAt: new Date().toISOString()
       }
-    };
+    });
 
-    const result = await s3.upload(params).promise();
-    console.log('✅ File uploaded to S3:', result.Location);
-    return result;
+    const result = await s3Client.send(command);
+    const location = `https://${process.env.AWS_S3_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
+    console.log('✅ File uploaded to S3:', location);
+    return { Location: location, ...result };
   } catch (error) {
     console.error('❌ S3 upload error:', error);
     throw error;
@@ -40,12 +45,12 @@ const uploadToS3 = async (file, key) => {
 
 const deleteFromS3 = async (key) => {
   try {
-    const params = {
+    const command = new DeleteObjectCommand({
       Bucket: process.env.AWS_S3_BUCKET,
       Key: key
-    };
+    });
 
-    await s3.deleteObject(params).promise();
+    await s3Client.send(command);
     console.log('✅ File deleted from S3:', key);
     return true;
   } catch (error) {
@@ -147,7 +152,6 @@ const generatePolicyS3Key = (policyId, source = 'PDF_UPLOAD') => {
   const timestamp = Date.now();
   const randomId = Math.random().toString(36).substring(2, 15);
   
-  // Add environment prefix for staging
   const envPrefix = process.env.ENVIRONMENT === 'staging' ? 'local-staging/' : '';
   
   switch (source) {
@@ -163,15 +167,21 @@ const generatePolicyS3Key = (policyId, source = 'PDF_UPLOAD') => {
       return `${envPrefix}data/policies/motor/confirmed/POL${policyId}_${timestamp}_${randomId}.json`;
     case 'HEALTH_PDF_UPLOAD':
       return `${envPrefix}data/policies/health/confirmed/POL${policyId}_${timestamp}_${randomId}.json`;
+    case 'PDF_UPLOAD':
+      return withPrefix(`data/policies/confirmed/${timestamp}_${randomId}_${policyId}.json`);
+    case 'MANUAL_FORM':
+      return withPrefix(`data/policies/manual/${timestamp}_${randomId}_${policyId}.json`);
+    case 'BULK_ENTRY':
+      return withPrefix(`data/policies/bulk/${timestamp}_${randomId}_${policyId}.json`);
     default:
-      return `${envPrefix}data/policies/other/POL${policyId}_${timestamp}_${randomId}.json`;
+      return withPrefix(`data/policies/other/${timestamp}_${randomId}_${policyId}.json`);
   }
 };
 
-// Upload JSON data to S3
+// Upload JSON data to S3 - SDK v3
 const uploadJSONToS3 = async (data, key) => {
   try {
-    const params = {
+    const command = new PutObjectCommand({
       Bucket: process.env.AWS_S3_BUCKET,
       Key: key,
       Body: JSON.stringify(data, null, 2),
@@ -180,27 +190,28 @@ const uploadJSONToS3 = async (data, key) => {
         uploadedAt: new Date().toISOString(),
         dataType: 'policy'
       }
-    };
+    });
 
-    const result = await s3.upload(params).promise();
-    console.log('✅ JSON data uploaded to S3:', result.Location);
-    return result;
+    const result = await s3Client.send(command);
+    const location = `https://${process.env.AWS_S3_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
+    console.log('✅ JSON data uploaded to S3:', location);
+    return { Location: location, ...result };
   } catch (error) {
     console.error('❌ S3 JSON upload error:', error);
     throw error;
   }
 };
 
-// Get JSON data from S3
+// Get JSON data from S3 - SDK v3
 const getJSONFromS3 = async (key) => {
   try {
-    const params = {
+    const command = new GetObjectCommand({
       Bucket: process.env.AWS_S3_BUCKET,
       Key: key
-    };
+    });
 
-    const result = await s3.getObject(params).promise();
-    const data = JSON.parse(result.Body.toString());
+    const result = await s3Client.send(command);
+    const data = JSON.parse(await result.Body.transformToString());
     console.log('✅ JSON data retrieved from S3:', key);
     return data;
   } catch (error) {
@@ -210,8 +221,8 @@ const getJSONFromS3 = async (key) => {
 };
 
 module.exports = {
-  s3,
-  textract,
+  s3Client,
+  textractClient,
   uploadToS3,
   deleteFromS3,
   getS3Url,

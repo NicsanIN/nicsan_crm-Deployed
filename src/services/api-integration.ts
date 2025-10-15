@@ -74,9 +74,13 @@ export class NicsanCRMService {
       
       if (ENABLE_DEBUG) {
         if (this.isBackendAvailable && !wasAvailable) {
+          console.log('Backend became available');
         } else if (!this.isBackendAvailable && wasAvailable) {
+          console.log('Backend became unavailable');
         } else if (this.isBackendAvailable) {
+          console.log('Backend is available');
         } else {
+          console.log('Backend is unavailable');
         }
       }
     } catch (error) {
@@ -84,6 +88,7 @@ export class NicsanCRMService {
       this.isBackendAvailable = false;
       
       if (ENABLE_DEBUG && wasAvailable) {
+        console.log('Backend connection lost:', error);
       }
     }
   }
@@ -101,8 +106,8 @@ export class NicsanCRMService {
           localStorage.setItem('user', JSON.stringify(response.data.user));
         }
         return response;
-      } catch (error) {
-        if (ENABLE_DEBUG) console.error('Login failed, falling back to mock:', error);
+    } catch (_error) {
+      if (ENABLE_DEBUG) console.error('Login failed, falling back to mock:', _error);
       }
     }
     
@@ -149,8 +154,8 @@ export class NicsanCRMService {
     if (this.isBackendAvailable) {
       try {
         return await authAPI.getProfile();
-      } catch (error) {
-        if (ENABLE_DEBUG) console.error('Profile fetch failed:', error);
+    } catch (_error) {
+      if (ENABLE_DEBUG) console.error('Profile fetch failed:', _error);
       }
     }
     
@@ -948,6 +953,7 @@ export class NicsanCRMService {
   async refreshBackendStatus(): Promise<void> {
     await this.checkBackendAvailability();
     if (ENABLE_DEBUG) {
+      console.log('Backend status refreshed');
     }
   }
 

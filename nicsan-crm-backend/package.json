@@ -9,7 +9,20 @@
     "init-db": "node -e \"require('./config/database').initializeDatabase().then(() => process.exit(0)).catch(() => process.exit(1))\"",
     "init-users": "node -e \"require('./services/authService').initializeDefaultUsers().then(() => process.exit(0)).catch(() => process.exit(1))\"",
     "test": "node test-cloud-storage.js",
-    "test:cloud": "node test-cloud-storage.js"
+    "test:cloud": "node test-cloud-storage.js",
+    "migrate:latest": "knex migrate:latest",
+    "migrate:rollback": "knex migrate:rollback",
+    "migrate:rollback:all": "knex migrate:rollback --all",
+    "migrate:status": "knex migrate:status",
+    "migrate:make": "knex migrate:make",
+    "migrate:staging": "NODE_ENV=staging knex migrate:latest",
+    "migrate:staging:rollback": "NODE_ENV=staging knex migrate:rollback",
+    "migrate:staging:rollback:all": "NODE_ENV=staging knex migrate:rollback --all",
+    "migrate:staging:status": "NODE_ENV=staging knex migrate:status",
+    "migrate:production": "NODE_ENV=production knex migrate:latest",
+    "migrate:production:rollback": "NODE_ENV=production knex migrate:rollback",
+    "migrate:production:rollback:all": "NODE_ENV=production knex migrate:rollback --all",
+    "migrate:production:status": "NODE_ENV=production knex migrate:status"
   },
   "keywords": [
     "crm",
@@ -21,6 +34,9 @@
   "author": "Nicsan CRM Team",
   "license": "MIT",
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.899.0",
+    "@aws-sdk/client-ssm": "^3.891.0",
+    "@aws-sdk/client-textract": "^3.899.0",
     "aws-sdk": "^2.1450.0",
     "axios": "^1.12.2",
     "bcryptjs": "^2.4.3",

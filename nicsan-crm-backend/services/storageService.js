@@ -1,5 +1,6 @@
 const { query } = require('../config/database');
 const { uploadToS3, deleteFromS3, extractTextFromPDF, generateS3Key, generatePolicyS3Key, uploadJSONToS3, getJSONFromS3 } = require('../config/aws');
+const { withPrefix } = require('../utils/s3Prefix');
 const websocketService = require('./websocketService');
 
 class StorageService {
@@ -23,6 +24,9 @@ async savePolicy(policyData) {
     let policyId = null;
     
     try {
+      // Import enhanced financial validation
+      const { validatePremium, validateIDV, validateCashback, validateBrokerage, validatePercentage } = require('../utils/financialValidation');
+      
       // Validate vehicle number format before saving
       if (policyData.vehicle_number) {
         const cleanVehicleNumber = policyData.vehicle_number.replace(/\s/g, '');
@@ -33,6 +37,39 @@ async savePolicy(policyData) {
           throw new Error(`Invalid vehicle number format: ${policyData.vehicle_number}. Expected format: KA01AB1234, KA 51 MM 1214, or 23 BH 7699 J`);
         }
       }
+      
+      // Enhanced financial validation before saving
+      const totalPremium = validatePremium(policyData.total_premium);
+      if (!totalPremium.isValid) {
+        throw new Error(`Premium validation failed: ${totalPremium.error}`);
+      }
+      
+      const idv = validateIDV(policyData.idv);
+      if (!idv.isValid) {
+        throw new Error(`IDV validation failed: ${idv.error}`);
+      }
+      
+      // Update policyData with validated values
+      policyData.total_premium = totalPremium.value;
+      policyData.idv = idv.value;
+      
+      // Validate cashback and brokerage if provided
+      if (policyData.cashback_amount || policyData.cashback) {
+        const cashback = validateCashback(policyData.cashback_amount || policyData.cashback, totalPremium.value);
+        if (!cashback.isValid) {
+          console.warn(`Cashback validation warning: ${cashback.error}`);
+        }
+        policyData.cashback_amount = cashback.value;
+        policyData.cashback = cashback.value;
+      }
+      
+      if (policyData.brokerage) {
+        const brokerage = validateBrokerage(policyData.brokerage, totalPremium.value);
+        if (!brokerage.isValid) {
+          console.warn(`Brokerage validation warning: ${brokerage.error}`);
+        }
+        policyData.brokerage = brokerage.value;
+      }
       console.log('💾 Saving policy to dual storage...');
       
       // 1. Save to PostgreSQL (Secondary Storage)
@@ -42,14 +79,21 @@ async savePolicy(policyData) {
       // 2. Save to S3 (Primary Storage) - JSON data
       s3Key = generatePolicyS3Key(policyId, policyData.source);
       const s3Result = await uploadJSONToS3(policyData, s3Key);
+
       
-      // 3. Update PostgreSQL with S3 key
-      await query(
-        'UPDATE policies SET s3_key = $1 WHERE id = $2',
-        [s3Key, policyId]
-      );
+      // 3. Update PostgreSQL with S3 key (if S3 upload succeeded)
+      if (s3Key) {
+        await query(
+          'UPDATE policies SET s3_key = $1 WHERE id = $2',
+          [s3Key, policyId]
+        );
+      }
       
-      console.log('✅ Policy saved to both storages successfully');
+      if (s3Key) {
+        console.log('✅ Policy saved to both database and S3 successfully');
+      } else {
+        console.log('✅ Policy saved to database successfully (S3 upload failed)');
+      }
       
       const savedPolicy = {
         id: policyId,
@@ -191,7 +235,7 @@ async savePolicy(policyData) {
   async saveToS3(policyData) {
     if (!policyData.file) return null;
     
-    const s3Key = generateS3Key(policyData.file.originalname, policyData.insurer);
+    const s3Key = generatePolicyS3Key(policyData.policyId || Date.now(), 'manual'); 
     return await uploadToS3(policyData.file, s3Key);
   }
 
@@ -241,12 +285,14 @@ async savePolicy(policyData) {
       
       const { file, insurer, manualExtras } = uploadData;
       
+      // Generate upload ID first
+      const uploadId = `upload_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+      
       // 1. Upload to S3 (Primary Storage) with insurer detection
-      const s3Key = await generateS3Key(file.originalname, insurer, file.buffer);
+      const s3Key = generatePolicyS3Key(uploadId, 'manual'); 
       const s3Result = await uploadToS3(file, s3Key);
       
       // 2. Save metadata to PostgreSQL (Secondary Storage)
-      const uploadId = `upload_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
       
       const pgQuery = `
         INSERT INTO pdf_uploads (upload_id, filename, s3_key, insurer, status, manual_extras)
@@ -714,13 +760,8 @@ async savePolicy(policyData) {
         }
       }
       
-      // Helper function to safely convert and validate numeric values
-      const safeNumeric = (value, maxValue = 99999999.99, defaultValue = 0) => {
-        if (value === null || value === undefined || value === '') return defaultValue;
-        const num = parseFloat(value);
-        if (isNaN(num)) return defaultValue;
-        return Math.min(Math.max(num, 0), maxValue); // Clamp between 0 and maxValue
-      };
+      // Import enhanced financial validation
+      const { validatePremium, validateIDV, validateCashback, validateBrokerage, validatePercentage, safeNumeric } = require('../utils/financialValidation');
 
       // Transform to policy format with null safety and numeric validation
       const policyData = {
@@ -736,14 +777,14 @@ async savePolicy(policyData) {
         manufacturing_year: extractedData?.manufacturing_year || '2021',
         issue_date: extractedData?.issue_date || new Date().toISOString().split('T')[0],
         expiry_date: extractedData?.expiry_date || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        idv: safeNumeric(extractedData?.idv, 9999999999999.99, 0),
-        ncb: safeNumeric(extractedData?.ncb, 99999999.99, 0),
-        discount: safeNumeric(extractedData?.discount, 99999999.99, 0),
+        idv: validateIDV(extractedData?.idv).value,
+        ncb: validatePercentage(extractedData?.ncb, 50).value, // NCB max 50%
+        discount: validatePercentage(extractedData?.discount, 100).value,
         net_od: safeNumeric(extractedData?.net_od, 9999999999999.99, 0),
         ref: extractedData?.ref || '',
         total_od: safeNumeric(extractedData?.total_od, 9999999999999.99, 0),
         net_premium: safeNumeric(extractedData?.net_premium, 9999999999999.99, 0),
-        total_premium: safeNumeric(extractedData?.total_premium, 9999999999999.99, 0),
+        total_premium: validatePremium(extractedData?.total_premium).value,
         confidence_score: safeNumeric(extractedData?.confidence_score, 1.0, 0),
         
         // Manual extras with null safety and numeric validation
@@ -752,8 +793,8 @@ async savePolicy(policyData) {
         mobile: manualExtras?.mobile || '',
         rollover: manualExtras?.rollover || '',
         remark: manualExtras?.remark || '',
-        brokerage: safeNumeric(manualExtras?.brokerage, 9999999999999.99, 0),
-        cashback: safeNumeric(manualExtras?.cashback, 9999999999999.99, 0),
+        brokerage: validateBrokerage(manualExtras?.brokerage, extractedData?.total_premium || 0).value,
+        cashback: validateCashback(manualExtras?.cashback, extractedData?.total_premium || 0).value,
         customer_paid: safeNumeric(manualExtras?.customerPaid, 9999999999999.99, 0),
         customer_cheque_no: manualExtras?.customerChequeNo || '',
         our_cheque_no: manualExtras?.ourChequeNo || '',
@@ -761,8 +802,8 @@ async savePolicy(policyData) {
         
         // Calculated fields with null safety and numeric validation
         cashback_percentage: (manualExtras?.cashback && extractedData?.total_premium) ? 
-          safeNumeric(((manualExtras.cashback / extractedData.total_premium) * 100), 99999999.99, 0) : 0,
-        cashback_amount: safeNumeric(manualExtras?.cashback, 9999999999999.99, 0),
+          validatePercentage(((manualExtras.cashback / extractedData.total_premium) * 100), 50).value : 0, // Max 50%
+        cashback_amount: validateCashback(manualExtras?.cashback, extractedData?.total_premium || 0).value,
         
         // Metadata
         source: 'PDF_UPLOAD',
@@ -1048,7 +1089,7 @@ async savePolicy(policyData) {
       console.log('✅ Retrieved dashboard metrics from PostgreSQL (Primary Storage)');
       
       // Save to S3 for future use (Secondary Storage)
-      const s3Key = `data/aggregated/dashboard-metrics-${period}-${Date.now()}.json`;
+      const s3Key = withPrefix(`data/aggregated/dashboard-metrics-${period}-${Date.now()}.json`);
       try {
         await uploadJSONToS3(metrics, s3Key);
         console.log('✅ Saved dashboard metrics to S3 (Secondary Storage)');
@@ -1071,7 +1112,7 @@ async savePolicy(policyData) {
       console.log('✅ Retrieved sales reps from PostgreSQL (Primary Storage)');
       
       // Save to S3 for future use (Secondary Storage)
-      const s3Key = `data/aggregated/sales-reps-${Date.now()}.json`;
+      const s3Key = withPrefix(`data/aggregated/sales-reps-${Date.now()}.json`);
       try {
         await uploadJSONToS3(reps, s3Key);
         console.log('✅ Saved sales reps to S3 (Secondary Storage)');
@@ -1095,7 +1136,7 @@ async savePolicy(policyData) {
       
       // Save to S3 for future use (Secondary Storage)
       const filterKey = Object.keys(filters).map(k => `${k}-${filters[k]}`).join('_');
-      const s3Key = `data/aggregated/vehicle-analysis-${filterKey}-${Date.now()}.json`;
+      const s3Key = withPrefix(`data/aggregated/vehicle-analysis-${filterKey}-${Date.now()}.json`);
       try {
         await uploadJSONToS3(analysis, s3Key);
         console.log('✅ Saved vehicle analysis to S3 (Secondary Storage)');
@@ -1119,7 +1160,7 @@ async savePolicy(policyData) {
       
       // Save to S3 for future use (Secondary Storage)
       const filterKey = Object.keys(filters).map(k => `${k}-${filters[k]}`).join('_');
-      const s3Key = `data/aggregated/sales-explorer-${filterKey}-${Date.now()}.json`;
+      const s3Key = withPrefix(`data/aggregated/sales-explorer-${filterKey}-${Date.now()}.json`);
       try {
         await uploadJSONToS3(explorer, s3Key);
         console.log('✅ Saved sales explorer to S3 (Secondary Storage)');
@@ -1524,7 +1565,7 @@ async savePolicy(policyData) {
       console.log('✅ Retrieved data sources from PostgreSQL (Primary Storage)');
       
       // Save to S3 for future use (Secondary Storage)
-      const s3Key = `data/aggregated/data-sources-${Date.now()}.json`;
+      const s3Key = withPrefix(`data/aggregated/data-sources-${Date.now()}.json`);
       try {
         await uploadJSONToS3(sources, s3Key);
         console.log('✅ Saved data sources to S3 (Secondary Storage)');

@@ -170,6 +170,146 @@ class AuthService {
       console.error('❌ Default users initialization error:', error);
     }
   }
+
+  // Get all users
+  async getAllUsers() {
+    try {
+      const queryText = `
+        SELECT id, email, name, role, is_active, created_at, updated_at, last_login, phone, department
+        FROM users 
+        ORDER BY created_at DESC
+      `;
+      const result = await query(queryText);
+      
+      return {
+        success: true,
+        data: result.rows
+      };
+    } catch (error) {
+      console.error('❌ Get all users error:', error);
+      throw error;
+    }
+  }
+
+  // Get user by ID
+  async getUserById(id) {
+    try {
+      const queryText = `
+        SELECT id, email, name, role, is_active, created_at, updated_at, last_login, phone, department
+        FROM users 
+        WHERE id = $1
+      `;
+      const result = await query(queryText, [id]);
+      
+      if (result.rows.length === 0) {
+        throw new Error('User not found');
+      }
+
+      return {
+        success: true,
+        data: result.rows[0]
+      };
+    } catch (error) {
+      console.error('❌ Get user by ID error:', error);
+      throw error;
+    }
+  }
+
+  // Update user
+  async updateUser(id, updateData) {
+    try {
+      const { email, name, role, is_active, phone, department, password_hash } = updateData;
+      
+      // Build dynamic query based on provided fields
+      const fields = [];
+      const values = [];
+      let paramCount = 1;
+
+      if (email !== undefined) {
+        fields.push(`email = $${paramCount++}`);
+        values.push(email);
+      }
+      if (name !== undefined) {
+        fields.push(`name = $${paramCount++}`);
+        values.push(name);
+      }
+      if (role !== undefined) {
+        fields.push(`role = $${paramCount++}`);
+        values.push(role);
+      }
+      if (is_active !== undefined) {
+        fields.push(`is_active = $${paramCount++}`);
+        values.push(is_active);
+      }
+      if (phone !== undefined) {
+        fields.push(`phone = $${paramCount++}`);
+        values.push(phone);
+      }
+      if (department !== undefined) {
+        fields.push(`department = $${paramCount++}`);
+        values.push(department);
+      }
+      if (password_hash !== undefined) {
+        fields.push(`password_hash = $${paramCount++}`);
+        values.push(password_hash);
+      }
+
+      if (fields.length === 0) {
+        throw new Error('No fields to update');
+      }
+
+      fields.push(`updated_at = CURRENT_TIMESTAMP`);
+      values.push(id);
+
+      const queryText = `
+        UPDATE users 
+        SET ${fields.join(', ')}
+        WHERE id = $${paramCount}
+        RETURNING id, email, name, role, is_active, created_at, updated_at, phone, department
+      `;
+      
+      const result = await query(queryText, values);
+      
+      if (result.rows.length === 0) {
+        throw new Error('User not found');
+      }
+
+      return {
+        success: true,
+        data: result.rows[0]
+      };
+    } catch (error) {
+      console.error('❌ Update user error:', error);
+      throw error;
+    }
+  }
+
+  // Delete user
+  async deleteUser(id) {
+    try {
+      // First check if user exists
+      const userCheck = await query('SELECT id FROM users WHERE id = $1', [id]);
+      if (userCheck.rows.length === 0) {
+        throw new Error('User not found');
+      }
+
+      // Delete related records first (in correct order to avoid foreign key violations)
+      // 1. Delete password change logs that reference this user
+      await query('DELETE FROM password_change_logs WHERE changed_by = $1 OR target_user = $1', [id]);
+      
+      // 2. Now delete the user
+      const queryText = 'DELETE FROM users WHERE id = $1';
+      await query(queryText, [id]);
+
+      return {
+        success: true,
+        message: 'User deleted successfully'
+      };
+    } catch (error) {
+      console.error('❌ Delete user error:', error);
+      throw error;
+    }
+  }
 }
 
 module.exports = new AuthService();
