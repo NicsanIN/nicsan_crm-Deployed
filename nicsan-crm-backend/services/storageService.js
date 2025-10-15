@@ -812,6 +812,12 @@ async savePolicy(policyData) {
         [JSON.stringify({ policy_number: policyData.policy_number }), uploadId]
       );
       
+      // Link additional documents to the policy number
+      await query(
+        'UPDATE document_uploads SET policy_number = $1 WHERE policy_number = $2 AND insurer = $3',
+        [policyData.policy_number, 'pending', policyData.insurer]
+      );
+      
       console.log('✅ Upload confirmed as policy with dual storage');
       
       return {
@@ -2025,16 +2031,20 @@ async savePolicy(policyData) {
       // Get policy PDF
       const policyQuery = `
         SELECT * FROM pdf_uploads 
-        WHERE manual_extras->>'policy_number' = $1
+        WHERE extracted_data->>'policy_number' = $1
         ORDER BY created_at DESC LIMIT 1
       `;
       
       const policyResult = await query(policyQuery, [policyNumber]);
       
-      // Get additional documents
+      // Get additional documents - also check for 'pending' documents from same insurer
       const documentsQuery = `
         SELECT * FROM document_uploads 
-        WHERE policy_number = $1
+        WHERE policy_number = $1 OR (policy_number = 'pending' AND insurer = (
+          SELECT insurer FROM pdf_uploads 
+          WHERE extracted_data->>'policy_number' = $1 
+          ORDER BY created_at DESC LIMIT 1
+        ))
         ORDER BY created_at DESC
       `;
       
