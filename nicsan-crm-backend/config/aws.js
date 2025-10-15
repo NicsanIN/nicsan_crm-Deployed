@@ -59,8 +59,20 @@ const deleteFromS3 = async (key) => {
   }
 };
 
-const getS3Url = (key) => {
-  return `https://${process.env.AWS_S3_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
+const getS3Url = async (key) => {
+  try {
+    const params = {
+      Bucket: process.env.AWS_S3_BUCKET,
+      Key: key,
+      Expires: 3600 // URL expires in 1 hour
+    };
+    
+    const url = await s3.getSignedUrl('getObject', params);
+    return url;
+  } catch (error) {
+    console.error('❌ S3 signed URL generation error:', error);
+    throw error;
+  }
 };
 
 // OpenAI Helper Functions (replaces Textract)
@@ -77,31 +89,61 @@ const extractTextFromPDF = async (s3Key, insurer = 'TATA_AIG') => {
 };
 
 // Generate unique S3 key with insurer detection
-const generateS3Key = async (filename, selectedInsurer, fileBuffer) => {
+const generateS3Key = async (filename, selectedInsurer, fileBuffer, documentType = 'policy') => {
   try {
-    // Detect insurer from PDF content
-    const insurerDetectionService = require('../services/insurerDetectionService');
-    const detectedInsurer = await insurerDetectionService.detectInsurerFromPDF(fileBuffer);
+    let insurer = selectedInsurer;
     
-    // Use detected insurer if available, otherwise use selected insurer
-    const insurer = detectedInsurer !== 'UNKNOWN' ? detectedInsurer : selectedInsurer;
+    // Only detect insurer for policy documents
+    if (documentType === 'policy') {
+      try {
+        const insurerDetectionService = require('../services/insurerDetectionService');
+        const detectedInsurer = await insurerDetectionService.detectInsurerFromPDF(fileBuffer);
+        
+        // Use detected insurer if available, otherwise use selected insurer
+        insurer = detectedInsurer !== 'UNKNOWN' ? detectedInsurer : selectedInsurer;
+        
+        console.log(`📁 S3 Key: Using ${insurer} for policy file ${filename} (detected: ${detectedInsurer}, selected: ${selectedInsurer})`);
+      } catch (detectionError) {
+        console.log(`📁 S3 Key: Insurer detection failed for ${filename}, using selected insurer: ${selectedInsurer}`);
+      }
+    } else {
+      console.log(`📁 S3 Key: Using ${insurer} for ${documentType} file ${filename}`);
+    }
     
     const timestamp = Date.now();
     const randomId = Math.random().toString(36).substring(2, 15);
     const extension = filename.split('.').pop();
     
-    console.log(`📁 S3 Key: Using ${insurer} for file ${filename} (detected: ${detectedInsurer}, selected: ${selectedInsurer})`);
+    // Document type folder mapping
+    const folderMapping = {
+      'policy': 'policy_documents',
+      'aadhaar': 'aadhaar_cards',
+      'pancard': 'pan_cards',
+      'rc': 'rc_documents'
+    };
     
-    return withPrefix(`uploads/${insurer}/${timestamp}_${randomId}.${extension}`);
+    const folder = folderMapping[documentType] || 'documents';
     
+    // Add environment prefix for staging
+    const envPrefix = process.env.ENVIRONMENT === 'staging' ? 'local-staging/' : '';
+    return `${envPrefix}uploads/${insurer}/${folder}/${timestamp}_${randomId}.${extension}`;
   } catch (error) {
-    console.error('❌ Insurer detection failed, using selected insurer:', error);
+    console.error('❌ S3 key generation failed, using fallback:', error);
     // Fallback to selected insurer if detection fails
     const timestamp = Date.now();
     const randomId = Math.random().toString(36).substring(2, 15);
     const extension = filename.split('.').pop();
+    const envPrefix = process.env.ENVIRONMENT === 'staging' ? 'local-staging/' : '';
     
-    return withPrefix(`uploads/${selectedInsurer}/${timestamp}_${randomId}.${extension}`);
+    const folderMapping = {
+      'policy': 'policy_documents',
+      'aadhaar': 'aadhaar_cards',
+      'pancard': 'pan_cards',
+      'rc': 'rc_documents'
+    };
+    
+    const folder = folderMapping[documentType] || 'documents';
+    return `${envPrefix}uploads/${selectedInsurer}/${folder}/${timestamp}_${randomId}.${extension}`;
   }
 };
 
@@ -110,7 +152,21 @@ const generatePolicyS3Key = (policyId, source = 'PDF_UPLOAD') => {
   const timestamp = Date.now();
   const randomId = Math.random().toString(36).substring(2, 15);
   
+  const envPrefix = process.env.ENVIRONMENT === 'staging' ? 'local-staging/' : '';
+  
   switch (source) {
+    case 'MOTOR_MANUAL_FORM':
+      return `${envPrefix}data/policies/motor/manual/POL${policyId}_${timestamp}_${randomId}.json`;
+    case 'HEALTH_MANUAL_FORM':
+      return `${envPrefix}data/policies/health/manual/POL${policyId}_${timestamp}_${randomId}.json`;
+    case 'MOTOR_MANUAL_GRID':
+      return `${envPrefix}data/policies/motor/bulk/BATCH${policyId}_${timestamp}_${randomId}.json`;
+    case 'HEALTH_MANUAL_GRID':
+      return `${envPrefix}data/policies/health/bulk/BATCH${policyId}_${timestamp}_${randomId}.json`;
+    case 'MOTOR_PDF_UPLOAD':
+      return `${envPrefix}data/policies/motor/confirmed/POL${policyId}_${timestamp}_${randomId}.json`;
+    case 'HEALTH_PDF_UPLOAD':
+      return `${envPrefix}data/policies/health/confirmed/POL${policyId}_${timestamp}_${randomId}.json`;
     case 'PDF_UPLOAD':
       return withPrefix(`data/policies/confirmed/${timestamp}_${randomId}_${policyId}.json`);
     case 'MANUAL_FORM':

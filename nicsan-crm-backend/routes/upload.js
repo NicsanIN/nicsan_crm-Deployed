@@ -14,10 +14,17 @@ const upload = multer({
     fileSize: parseInt(process.env.MAX_FILE_SIZE) || 10 * 1024 * 1024, // 10MB
   },
   fileFilter: (req, file, cb) => {
-    if (file.mimetype === 'application/pdf') {
+    const allowedTypes = [
+      'application/pdf',
+      'image/jpeg',
+      'image/jpg', 
+      'image/png'
+    ];
+    
+    if (allowedTypes.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error('Only PDF files are allowed'), false);
+      cb(new Error('Only PDF and image files are allowed'), false);
     }
   }
 });
@@ -232,7 +239,9 @@ router.post('/:uploadId/confirm', authenticateToken, requireOps, async (req, res
           ((parseFloat(editedData.manualExtras.cashback) / parseFloat(editedData.pdfData.total_premium)) * 100) : 0,
         cashback_amount: parseFloat(editedData.manualExtras?.cashback) || 0,
         brokerage: parseFloat(editedData.manualExtras?.brokerage) || 0,
-        source: 'PDF_UPLOAD',
+        
+        // customer_name now comes from PDF extracted data (editedData.pdfData.customer_name)
+        source: 'MOTOR_PDF_UPLOAD',
         s3_key: upload.s3_key,
         confidence_score: upload.extracted_data?.extracted_data?.confidence_score || 0.8
       };
@@ -259,7 +268,9 @@ router.post('/:uploadId/confirm', authenticateToken, requireOps, async (req, res
           ((parseFloat(upload.extracted_data.manual_extras.cashback) / parseFloat(upload.extracted_data.extracted_data.total_premium)) * 100) : 0,
         cashback_amount: parseFloat(upload.extracted_data.manual_extras?.cashback) || 0,
         brokerage: parseFloat(upload.extracted_data.manual_extras?.brokerage) || 0,
-        source: 'PDF_UPLOAD',
+        
+        // customer_name now comes from PDF extracted data (upload.extracted_data.extracted_data.customer_name)
+        source: 'MOTOR_PDF_UPLOAD',
         s3_key: upload.s3_key
       };
       
@@ -346,63 +357,61 @@ router.post('/:uploadId/confirm', authenticateToken, requireOps, async (req, res
       
       console.log('✅ Policy created successfully with data source:', editedData ? 'EDITED' : 'ORIGINAL');
       
-      // NEW: Send PDF via email to customer
-      try {
-        const customerEmail = policyData.customer_email || policyData.customerEmail;
-        if (customerEmail) {
-          console.log('📧 Sending policy PDF to customer:', customerEmail);
-          
-          const emailResult = await emailService.sendPolicyPDF(
-            customerEmail,
-            policyData,
-            upload.s3_key,  // Original PDF S3 key
-            upload.filename  // Original PDF filename
-          );
-          
-          if (emailResult.success) {
-            console.log('✅ PDF sent to customer successfully:', emailResult.messageId);
-          } else {
-            console.error('⚠️ Email sending failed:', emailResult.error);
-            // Don't fail policy creation if email fails
-          }
-        } else {
-          console.log('⚠️ No customer email found, skipping email sending');
-        }
-      } catch (emailError) {
-        console.error('⚠️ Email service error:', emailError.message);
-        // Don't fail policy creation if email fails
-      }
-
-      // NEW: Send PDF via WhatsApp to customer
-      try {
-        const customerPhone = policyData.customer_phone || policyData.customerPhone;
-        if (customerPhone) {
-          console.log('📱 Sending policy PDF via WhatsApp to customer:', customerPhone);
-          
-          const whatsappResult = await whatsappService.sendPolicyWhatsApp(
-            customerPhone,
-            policyData,
-            upload.s3_key,  // Original PDF S3 key
-            upload.filename  // Original PDF filename
-          );
-          
-          if (whatsappResult.success) {
-            console.log('✅ PDF sent via WhatsApp successfully:', whatsappResult.textMessageId, whatsappResult.documentMessageId);
-          } else {
-            console.error('⚠️ WhatsApp sending failed:', whatsappResult.error);
-            // Don't fail policy creation if WhatsApp fails
-          }
-        } else {
-          console.log('⚠️ No customer phone found, skipping WhatsApp sending');
-        }
-      } catch (whatsappError) {
-        console.error('⚠️ WhatsApp service error:', whatsappError.message);
-        // Don't fail policy creation if WhatsApp fails
-      }
-      
+      // Send immediate response
       res.json({
         success: true,
         data: result.data
+      });
+      
+      // Move notifications to background processing
+      setImmediate(async () => {
+        try {
+          // Email notification (runs in background)
+          const customerEmail = policyData.customer_email || policyData.customerEmail;
+          if (customerEmail) {
+            console.log('📧 Sending policy PDF to customer (background):', customerEmail);
+            
+            const emailResult = await emailService.sendPolicyPDF(
+              customerEmail,
+              policyData,
+              upload.s3_key,  // Original PDF S3 key
+              upload.filename  // Original PDF filename
+            );
+            
+            if (emailResult.success) {
+              console.log('✅ PDF sent to customer successfully (background):', emailResult.messageId);
+            } else {
+              console.error('⚠️ Email sending failed (background):', emailResult.error);
+            }
+          } else {
+            console.log('⚠️ No customer email found, skipping email sending');
+          }
+          
+          // WhatsApp notification (runs in background)
+          const customerPhone = policyData.customer_phone || policyData.customerPhone;
+          if (customerPhone) {
+            console.log('📱 Sending policy PDF via WhatsApp to customer (background):', customerPhone);
+            
+            const whatsappResult = await whatsappService.sendPolicyWhatsApp(
+              customerPhone,
+              policyData,
+              upload.s3_key,  // Original PDF S3 key
+              upload.filename  // Original PDF filename
+            );
+            
+            if (whatsappResult.success) {
+              console.log('✅ PDF sent via WhatsApp successfully (background):', whatsappResult.textMessageId, whatsappResult.documentMessageId);
+            } else {
+              console.error('⚠️ WhatsApp sending failed (background):', whatsappResult.error);
+            }
+          } else {
+            console.log('⚠️ No customer phone found, skipping WhatsApp sending');
+          }
+          
+          console.log('✅ Background notifications completed');
+        } catch (error) {
+          console.error('❌ Background notifications failed:', error);
+        }
       });
     } else {
       res.status(400).json({
@@ -447,6 +456,95 @@ router.get('/:uploadId/review', authenticateToken, requireOps, async (req, res) 
     res.status(500).json({
       success: false,
       error: error.message || 'Failed to get upload for review'
+    });
+  }
+});
+
+// Upload individual document (Aadhaar, PAN, RC)
+router.post('/document', authenticateToken, requireOps, upload.single('document'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        error: 'Document file is required'
+      });
+    }
+
+    const { documentType, insurer, policyNumber } = req.body;
+    if (!documentType) {
+      return res.status(400).json({
+        success: false,
+        error: 'Document type is required'
+      });
+    }
+
+    if (!insurer) {
+      return res.status(400).json({
+        success: false,
+        error: 'Insurer is required'
+      });
+    }
+
+    const uploadData = {
+      file: req.file,
+      insurer,
+      documentType,
+      policyNumber: policyNumber || 'pending'
+    };
+
+    const result = await storageService.saveAdditionalDocument(uploadData);
+    
+    res.status(201).json(result);
+  } catch (error) {
+    console.error('Document upload error:', error);
+    res.status(400).json({
+      success: false,
+      error: error.message || 'Failed to upload document'
+    });
+  }
+});
+
+// Get documents by policy number
+router.get('/documents/:policyNumber', authenticateToken, requireOps, async (req, res) => {
+  try {
+    const { policyNumber } = req.params;
+    
+    const result = await storageService.getPolicyDocuments(policyNumber);
+    
+    res.json(result);
+  } catch (error) {
+    console.error('Get policy documents error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to get policy documents'
+    });
+  }
+});
+
+// Get S3 URL for document download
+router.get('/s3-url/:s3Key', authenticateToken, requireOps, async (req, res) => {
+  try {
+    const { s3Key } = req.params;
+    
+    if (!s3Key) {
+      return res.status(400).json({
+        success: false,
+        error: 'S3 key is required'
+      });
+    }
+    
+    const { getS3Url } = require('../config/aws');
+    const url = await getS3Url(s3Key);
+    
+    res.json({
+      success: true,
+      url: url
+    });
+  } catch (error) {
+    console.error('Get S3 URL error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to get S3 URL'
     });
   }
 });

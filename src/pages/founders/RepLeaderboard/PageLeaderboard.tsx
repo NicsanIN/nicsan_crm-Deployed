@@ -4,6 +4,8 @@ import { Download, Filter } from 'lucide-react';
 import DualStorageService from '../../../services/dualStorageService';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { useAuth } from '../../../contexts/AuthContext';
+import { useUserChange } from '../../../hooks/useUserChange';
 
 // Extend jsPDF type to include autoTable
 declare module 'jspdf' {
@@ -39,6 +41,8 @@ const demoReps = [
 ];
 
 function PageLeaderboard() {
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { userChanged } = useUserChange();
   const [reps, setReps] = useState<any[]>([]);
   const [sortField, setSortField] = useState<string>('');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
@@ -156,6 +160,15 @@ function PageLeaderboard() {
       alert('Failed to generate PDF. Please check console for details.');
     }
   };
+
+  // Handle user changes - reset leaderboard data when user changes
+  useEffect(() => {
+    if (userChanged && user) {
+      setReps([]);
+      setSortField('');
+      setSortDirection('asc');
+    }
+  }, [userChanged, user]);
 
   useEffect(() => {
     const loadSalesReps = async () => {

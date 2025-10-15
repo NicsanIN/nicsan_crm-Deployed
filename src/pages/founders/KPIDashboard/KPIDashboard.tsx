@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { Card } from '../../../components/common/Card';
 import { useSettings } from '../../../contexts/SettingsContext';
 import DualStorageService from '../../../services/dualStorageService';
+import { useAuth } from '../../../contexts/AuthContext';
+import { useUserChange } from '../../../hooks/useUserChange';
 
 // Environment variables
 const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
@@ -14,7 +16,10 @@ const fmtINR = (amount: number | string) => {
 };
 
 const pct = (value: number | string) => {
-  if (typeof value === 'string') return value;
+  if (typeof value === 'string') {
+    // If it's already a string with %, return as is, otherwise add %
+    return value.includes('%') ? value : `${value}%`;
+  }
   if (value === null || value === undefined || isNaN(value)) return "0%";
   return `${value.toFixed(1)}%`;
 };
@@ -35,9 +40,18 @@ function Tile({ label, value, sub, info, onClick }: { label: string; value: stri
 }
 
 function PageKPIs() {
+    const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+    const { userChanged } = useUserChange();
     const { settings } = useSettings();
     const [kpiData, setKpiData] = useState<any>(null);
   
+    // Handle user changes - reset KPI data when user changes
+    useEffect(() => {
+      if (userChanged && user) {
+        setKpiData(null);
+      }
+    }, [userChanged, user]);
+
     useEffect(() => {
       const loadKPIData = async () => {
         try {
@@ -67,11 +81,11 @@ function PageKPIs() {
     const totalBrokerage = kpiData?.basicMetrics?.totalBrokerage || 0;
     const totalCashback = kpiData?.basicMetrics?.totalCashback || 0;
   
-    // Use settings for calculations
-    const brokeragePercent = parseFloat(settings.brokeragePercent) / 100;
-    const repDailyCost = parseFloat(settings.repDailyCost);
-    const expectedConversion = parseFloat(settings.expectedConversion) / 100;
-    const premiumGrowth = parseFloat(settings.premiumGrowth) / 100;
+    // Use settings for calculations with fallbacks
+    const brokeragePercent = parseFloat(settings?.brokeragePercent || '15') / 100;
+    const repDailyCost = parseFloat(settings?.repDailyCost || '2000');
+    const expectedConversion = parseFloat(settings?.expectedConversion || '25') / 100;
+    const premiumGrowth = parseFloat(settings?.premiumGrowth || '10') / 100;
   
     // Use backend KPI calculations if available, otherwise calculate from real data with settings
     const backendKPIs = kpiData?.kpis || {};
@@ -152,7 +166,7 @@ function PageKPIs() {
           {/* Settings-Based Calculations */}
           <Card title="Business Projections">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-              <Tile label="Expected Brokerage" value={fmtINR(calculatedBrokerage)} sub={`${settings.brokeragePercent}% of ${fmtINR(sumGWP)}`}/>
+              <Tile label="Expected Brokerage" value={fmtINR(calculatedBrokerage)} sub={`${settings?.brokeragePercent || '15'}% of ${fmtINR(sumGWP)}`}/>
               <Tile label="Backlog Value" value={fmtINR(expectedBacklogValue)} sub={`${totalLeads - totalConverted} pending leads`}/>
               <Tile label="3-Year LTV" value={fmtINR(projectedLTV)} sub="Projected customer value"/>
               <Tile label="Daily Rep Cost" value={fmtINR(repDailyCost)} sub="From settings"/>

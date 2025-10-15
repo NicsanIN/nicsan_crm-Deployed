@@ -15,6 +15,7 @@ interface SyncStatus {
 
 interface SyncData {
   policies: any[];
+  healthInsurance: any[];
   uploads: any[];
   dashboard: any;
   lastUpdated: number;
@@ -114,14 +115,16 @@ class CrossDeviceSyncService {
   private async fetchAllData(): Promise<SyncData | null> {
     try {
       
-      const [policiesResponse, uploadsResponse, dashboardResponse] = await Promise.all([
+      const [policiesResponse, healthInsuranceResponse, uploadsResponse, dashboardResponse] = await Promise.all([
         DualStorageService.getAllPolicies(),
+        DualStorageService.getAllHealthInsurance(),
         DualStorageService.getUploads(),
         DualStorageService.getDashboardMetrics()
       ]);
 
       const syncData: SyncData = {
         policies: Array.isArray(policiesResponse) ? policiesResponse : (policiesResponse?.data || []),
+        healthInsurance: Array.isArray(healthInsuranceResponse) ? healthInsuranceResponse : (healthInsuranceResponse?.data || []),
         uploads: uploadsResponse?.data || [],
         dashboard: dashboardResponse?.data || null,
         lastUpdated: Date.now()

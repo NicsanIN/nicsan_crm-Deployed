@@ -63,6 +63,24 @@ router.get('/profile', authenticateToken, async (req, res) => {
   }
 });
 
+// Logout endpoint
+router.post('/logout', authenticateToken, async (req, res) => {
+  try {
+    // Invalidate token on backend (if needed)
+    // For now, just return success - client will clear localStorage
+    res.json({
+      success: true,
+      message: 'Logged out successfully'
+    });
+  } catch (error) {
+    console.error('Logout error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Logout failed'
+    });
+  }
+});
+
 // Initialize default users (development only)
 router.post('/init-users', async (req, res) => {
   try {

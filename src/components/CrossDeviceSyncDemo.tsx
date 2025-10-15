@@ -35,16 +35,25 @@ const CrossDeviceSyncDemo: React.FC = () => {
   } = useCrossDeviceSync();
 
   const [demoPolicies, setDemoPolicies] = useState<any[]>([]);
+  const [demoHealthInsurance, setDemoHealthInsurance] = useState<any[]>([]);
   const [newPolicy, setNewPolicy] = useState({
     policy_number: '',
     vehicle_number: '',
     insurer: 'Tata AIG'
+  });
+  const [newHealthPolicy, setNewHealthPolicy] = useState({
+    policy_number: '',
+    insurer: 'HDFC ERGO',
+    customer_name: ''
   });
 
   useEffect(() => {
     // Load demo policies from sync data
     if (syncData?.policies) {
       setDemoPolicies(syncData.policies);
+    }
+    if (syncData?.healthInsurance) {
+      setDemoHealthInsurance(syncData.healthInsurance);
     }
   }, [syncData]);
 
@@ -71,6 +80,32 @@ const CrossDeviceSyncDemo: React.FC = () => {
       policy_number: '',
       vehicle_number: '',
       insurer: 'Tata AIG'
+    });
+  };
+
+  const addDemoHealthPolicy = () => {
+    if (!newHealthPolicy.policy_number || !newHealthPolicy.customer_name) return;
+
+    const healthPolicy = {
+      id: `health_demo_${Date.now()}`,
+      ...newHealthPolicy,
+      premium_amount: Math.floor(Math.random() * 50000) + 10000,
+      sum_insured: Math.floor(Math.random() * 1000000) + 500000,
+      status: 'SAVED',
+      source: 'DEMO',
+      created_at: new Date().toISOString()
+    };
+
+    setDemoHealthInsurance(prev => [...prev, healthPolicy]);
+    
+    // Notify other devices
+    notifyPolicyChange('created', healthPolicy);
+    
+    // Reset form
+    setNewHealthPolicy({
+      policy_number: '',
+      insurer: 'HDFC ERGO',
+      customer_name: ''
     });
   };
 
@@ -142,8 +177,18 @@ const CrossDeviceSyncDemo: React.FC = () => {
             
             <div className="space-y-3">
               <div className="flex justify-between">
-                <span className="text-sm text-gray-600">Total Policies:</span>
+                <span className="text-sm text-gray-600">Motor Policies:</span>
                 <span className="text-sm font-medium">{demoPolicies.length}</span>
+              </div>
+              
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-600">Health Policies:</span>
+                <span className="text-sm font-medium">{demoHealthInsurance.length}</span>
+              </div>
+              
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-600">Total Policies:</span>
+                <span className="text-sm font-medium">{demoPolicies.length + demoHealthInsurance.length}</span>
               </div>
               
               <div className="flex justify-between">
@@ -180,7 +225,7 @@ const CrossDeviceSyncDemo: React.FC = () => {
 
       {/* Demo Policy Creation */}
       <div className="bg-white rounded-lg shadow-lg p-6">
-        <h3 className="text-lg font-semibold text-gray-700 mb-4">Add Demo Policy</h3>
+        <h3 className="text-lg font-semibold text-gray-700 mb-4">Add Demo Motor Insurance Policy</h3>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
           <input
@@ -215,7 +260,48 @@ const CrossDeviceSyncDemo: React.FC = () => {
           onClick={addDemoPolicy}
           className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
         >
-          Add Policy (Sync to All Devices)
+          Add Motor Policy (Sync to All Devices)
+        </button>
+      </div>
+
+      {/* Demo Health Insurance Creation */}
+      <div className="bg-white rounded-lg shadow-lg p-6">
+        <h3 className="text-lg font-semibold text-gray-700 mb-4">Add Demo Health Insurance Policy</h3>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          <input
+            type="text"
+            placeholder="Policy Number"
+            value={newHealthPolicy.policy_number}
+            onChange={(e) => setNewHealthPolicy(prev => ({ ...prev, policy_number: e.target.value }))}
+            className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          
+          <input
+            type="text"
+            placeholder="Customer Name"
+            value={newHealthPolicy.customer_name}
+            onChange={(e) => setNewHealthPolicy(prev => ({ ...prev, customer_name: e.target.value }))}
+            className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          
+          <select
+            value={newHealthPolicy.insurer}
+            onChange={(e) => setNewHealthPolicy(prev => ({ ...prev, insurer: e.target.value }))}
+            className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="HDFC ERGO">HDFC ERGO</option>
+            <option value="Star Health">Star Health</option>
+            <option value="Bajaj Allianz">Bajaj Allianz</option>
+            <option value="ICICI Lombard">ICICI Lombard</option>
+          </select>
+        </div>
+        
+        <button
+          onClick={addDemoHealthPolicy}
+          className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+        >
+          Add Health Policy (Sync to All Devices)
         </button>
       </div>
 
@@ -223,25 +309,57 @@ const CrossDeviceSyncDemo: React.FC = () => {
       <div className="bg-white rounded-lg shadow-lg p-6">
         <h3 className="text-lg font-semibold text-gray-700 mb-4">Synchronized Policies</h3>
         
-        {demoPolicies.length === 0 ? (
+        {demoPolicies.length === 0 && demoHealthInsurance.length === 0 ? (
           <p className="text-gray-500 text-center py-8">No policies yet. Add one above to see cross-device sync!</p>
         ) : (
-          <div className="space-y-3">
-            {demoPolicies.map((policy, index) => (
-              <div key={policy.id || index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div className="flex items-center space-x-3">
-                  {getDeviceIcon(policy.deviceId || 'laptop')}
-                  <div>
-                    <div className="font-medium text-gray-800">{policy.policy_number}</div>
-                    <div className="text-sm text-gray-600">{policy.vehicle_number} • {policy.insurer}</div>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="font-medium text-gray-800">₹{policy.total_premium?.toLocaleString()}</div>
-                  <div className="text-sm text-green-600">₹{policy.cashback?.toLocaleString()} cashback</div>
+          <div className="space-y-4">
+            {/* Motor Insurance Policies */}
+            {demoPolicies.length > 0 && (
+              <div>
+                <h4 className="text-md font-medium text-gray-700 mb-2">Motor Insurance Policies</h4>
+                <div className="space-y-2">
+                  {demoPolicies.map((policy, index) => (
+                    <div key={policy.id || index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div className="flex items-center space-x-3">
+                        {getDeviceIcon(policy.deviceId || 'laptop')}
+                        <div>
+                          <div className="font-medium text-gray-800">{policy.policy_number}</div>
+                          <div className="text-sm text-gray-600">{policy.vehicle_number} • {policy.insurer}</div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-medium text-gray-800">₹{policy.total_premium?.toLocaleString()}</div>
+                        <div className="text-sm text-green-600">₹{policy.cashback?.toLocaleString()} cashback</div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
-            ))}
+            )}
+
+            {/* Health Insurance Policies */}
+            {demoHealthInsurance.length > 0 && (
+              <div>
+                <h4 className="text-md font-medium text-gray-700 mb-2">Health Insurance Policies</h4>
+                <div className="space-y-2">
+                  {demoHealthInsurance.map((policy, index) => (
+                    <div key={policy.id || index} className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+                      <div className="flex items-center space-x-3">
+                        {getDeviceIcon(policy.deviceId || 'laptop')}
+                        <div>
+                          <div className="font-medium text-gray-800">{policy.policy_number}</div>
+                          <div className="text-sm text-gray-600">{policy.customer_name} • {policy.insurer}</div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-medium text-gray-800">₹{policy.premium_amount?.toLocaleString()}</div>
+                        <div className="text-sm text-blue-600">₹{policy.sum_insured?.toLocaleString()} sum insured</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

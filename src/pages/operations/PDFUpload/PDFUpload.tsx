@@ -2,6 +2,9 @@ import { useState, useEffect, useRef } from 'react';
 import { Card } from '../../../components/common/Card';
 // import { Upload, FileText, CheckCircle2, AlertTriangle, RefreshCw, Download, Eye, Trash2, User, Phone, Mail, Building, DollarSign, Calendar, Clock, Shield, Car, MapPin } from 'lucide-react';
 import DualStorageService from '../../../services/dualStorageService';
+import { useAuth } from '../../../contexts/AuthContext';
+import { useUserChange } from '../../../hooks/useUserChange';
+
 // Custom AutocompleteInput for PDF Upload with blue styling
 function LabeledAutocompleteInput({ 
   label, 
@@ -136,11 +139,59 @@ function LabeledAutocompleteInput({
 // Environment variables
 // const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
 
+// LabeledSelect component
+function LabeledSelect({ label, value, onChange, options, placeholder, hint, required = false }: {
+  label: string;
+  value: any;
+  onChange: (value: any) => void;
+  options: { value: string; label: string }[];
+  placeholder?: string;
+  hint?: string;
+  required?: boolean;
+}) {
+  return (
+    <div>
+      <label className="block text-xs text-blue-700 mb-1">
+        {label}
+        {required && <span className="text-red-500">*</span>}
+      </label>
+      <select
+        value={value || ''}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+      >
+        <option value="">{placeholder || 'Select...'}</option>
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+      {hint && <p className="text-xs text-blue-500">{hint}</p>}
+    </div>
+  );
+}
+
 
 function PageUpload() {
+    const { user } = useAuth();
+    const { userChanged } = useUserChange();
     const [uploadStatus, setUploadStatus] = useState<string>('');
     const [uploadedFiles, setUploadedFiles] = useState<any[]>([]);
     const [selectedInsurer, setSelectedInsurer] = useState<string>('TATA_AIG');
+    
+    // Enhanced state for additional documents
+    const [uploadedDocuments, setUploadedDocuments] = useState({
+        aadhaar: null,
+        pancard: null,
+        rc: null
+    });
+    
+    const [documentUploadStatus, setDocumentUploadStatus] = useState({
+        aadhaar: '',
+        pancard: '',
+        rc: ''
+    });
     
     // Available insurers configuration
     const availableInsurers = [
@@ -153,8 +204,27 @@ function PageUpload() {
       { value: 'ZURICH_KOTAK', label: 'Zurich Kotak General Insurance' },
       { value: 'HDFC_ERGO', label: 'HDFC ERGO General Insurance' }
     ];
+    
+    // Dropdown options
+    const productTypeOptions = [
+      { value: "Life Insurance", label: "Life Insurance" },
+      { value: "Motor Insurance", label: "Motor Insurance" },
+      { value: "Health Insurance", label: "Health Insurance" },
+      { value: "Travel Insurance", label: "Travel Insurance" },
+      { value: "Home Insurance", label: "Home Insurance" },
+      { value: "Cyber Insurance", label: "Cyber Insurance" }
+    ];
+
+    const vehicleTypeOptions = [
+      { value: "Private Car", label: "Private Car" },
+      { value: "GCV", label: "GCV" },
+      { value: "LCV", label: "LCV" },
+      { value: "MCV", label: "MCV" },
+      { value: "HCV", label: "HCV" }
+    ];
+    
     const [manualExtras, setManualExtras] = useState({
-      executive: '',
+      executive: user?.name || '',
       opsExecutive: '',
       callerName: '',
       mobile: '',
@@ -168,10 +238,35 @@ function PageUpload() {
       ourChequeNo: '',
       branch: '',
       paymentMethod: 'INSURER',
-      paymentSubMethod: ''
+      paymentSubMethod: '',
+      product_type: 'Private Car',
+      vehicle_type: 'Private Car'
     });
     const [manualExtrasSaved, setManualExtrasSaved] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    
+    // File input refs for additional documents
+    const aadhaarInputRef = useRef<HTMLInputElement>(null);
+    const panInputRef = useRef<HTMLInputElement>(null);
+    const rcInputRef = useRef<HTMLInputElement>(null);
+    
+    // Reset manualExtras when user changes - Unified user change detection
+    useEffect(() => {
+      if (userChanged && user) {
+        setManualExtras(prevExtras => ({
+          ...prevExtras,
+          executive: user.name || "",
+          opsExecutive: "",
+        }));
+        // Clear upload state and messages
+        setUploadStatus('');
+        setUploadedFiles([]);
+        setManualExtrasSaved(false);
+        setUploadedDocuments({ aadhaar: null, pancard: null, rc: null });
+        setDocumentUploadStatus({ aadhaar: '', pancard: '', rc: '' });
+      }
+    }, [userChanged, user]);
+    
     const [callerNames, setCallerNames] = useState<string[]>([]);
 
     // Load telecallers on component mount
@@ -253,8 +348,6 @@ function PageUpload() {
                 policy_number: "TA-" + Math.floor(Math.random() * 10000),
                 vehicle_number: "KA01AB" + Math.floor(Math.random() * 1000),
                 insurer: availableInsurers.find(ins => ins.value === selectedInsurer)?.label || 'Unknown',
-                product_type: "Private Car",
-                vehicle_type: "Private Car",
                 make: "Maruti",
                 model: "Swift",
                 cc: "1197",
@@ -301,7 +394,9 @@ function PageUpload() {
             ourChequeNo: '',
             branch: '',
             paymentMethod: 'Cash',
-            paymentSubMethod: ''
+            paymentSubMethod: '',
+            product_type: 'Private Car',
+            vehicle_type: 'Private Car'
           });
           setManualExtrasSaved(false);
         } else {
@@ -507,6 +602,91 @@ function PageUpload() {
         setUploadStatus(`❌ Error adding telecaller: ${(error as Error).message}`);
       }
     };
+
+    // Enhanced document upload handler
+    const handleDocumentUpload = async (documentType: string, files: FileList | null) => {
+      if (!files || files.length === 0) return;
+      
+      const file = files[0];
+      
+      // Validate file type
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
+      if (!allowedTypes.includes(file.type)) {
+        setDocumentUploadStatus(prev => ({
+          ...prev,
+          [documentType]: '❌ Only JPG, PNG, and PDF files are allowed'
+        }));
+        return;
+      }
+      
+      // Validate file size (5MB max for images)
+      if (file.size > 5 * 1024 * 1024) {
+        setDocumentUploadStatus(prev => ({
+          ...prev,
+          [documentType]: '❌ File size must be less than 5MB'
+        }));
+        return;
+      }
+      
+      setDocumentUploadStatus(prev => ({
+        ...prev,
+        [documentType]: 'Uploading...'
+      }));
+      
+      try {
+        // Create FormData for individual document upload
+        const formData = new FormData();
+        formData.append('document', file);
+        formData.append('documentType', documentType);
+        formData.append('insurer', selectedInsurer);
+        formData.append('policyNumber', 'pending'); // Will be updated after policy creation
+        
+        // Upload individual document
+        const result = await DualStorageService.uploadDocument(formData);
+        
+        if (result.success) {
+          // Update local state
+          setUploadedDocuments(prev => ({
+            ...prev,
+            [documentType]: {
+              id: result.data.documentId,
+              filename: file.name,
+              size: (file.size / 1024 / 1024).toFixed(2) + ' MB',
+              s3Key: result.data.s3Key,
+              uploadTime: new Date().toLocaleTimeString()
+            }
+          }));
+          
+          setDocumentUploadStatus(prev => ({
+            ...prev,
+            [documentType]: '✅ Uploaded successfully'
+          }));
+          
+          // Show success message
+          setUploadStatus(`${documentType.toUpperCase()} uploaded successfully!`);
+          
+        } else {
+          setDocumentUploadStatus(prev => ({
+            ...prev,
+            [documentType]: `❌ Upload failed: ${result.error}`
+          }));
+        }
+      } catch (error) {
+        setDocumentUploadStatus(prev => ({
+          ...prev,
+          [documentType]: `❌ Upload error: ${error instanceof Error ? error.message : 'Unknown error'}`
+        }));
+      }
+    };
+
+    // View document handler
+    const viewDocument = (documentType: string) => {
+      const document = uploadedDocuments[documentType];
+      if (!document) return;
+      
+      // For demo purposes, show document info
+      alert(`Document: ${document.filename}\nSize: ${document.size}\nUploaded: ${document.uploadTime}`);
+    };
   
     return (
       <>
@@ -657,6 +837,24 @@ function PageUpload() {
                   value={manualExtras.ourChequeNo}
                   onChange={(e) => handleManualExtrasChange('ourChequeNo', e.target.value)}
                   className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                />
+              </div>
+              <div>
+                <LabeledSelect 
+                  label="Product Type" 
+                  value={manualExtras.product_type}
+                  onChange={(value) => handleManualExtrasChange('product_type', value)}
+                  options={productTypeOptions}
+                  placeholder="Select product type"
+                />
+              </div>
+              <div>
+                <LabeledSelect 
+                  label="Vehicle Type" 
+                  value={manualExtras.vehicle_type}
+                  onChange={(value) => handleManualExtrasChange('vehicle_type', value)}
+                  options={vehicleTypeOptions}
+                  placeholder="Select vehicle type"
                 />
               </div>
               <div>
@@ -831,6 +1029,132 @@ function PageUpload() {
               {uploadStatus}
             </div>
           )}
+
+          {/* Additional Documents Upload Section */}
+          <div className="mt-6 p-4 bg-white rounded-xl border border-gray-200">
+            <div className="text-sm font-medium mb-3 text-gray-800">📋 Additional Documents (Optional)</div>
+            
+            {/* Aadhaar Upload */}
+            <div className="mb-4">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-lg">🆔</span>
+                <span className="font-medium">Aadhaar Card</span>
+                {uploadedDocuments.aadhaar && (
+                  <span className="text-blue-600 text-sm">✓ Uploaded</span>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <input 
+                  ref={aadhaarInputRef}
+                  type="file" 
+                  accept=".jpg,.jpeg,.png,.pdf"
+                  onChange={(e) => handleDocumentUpload('aadhaar', e.target.files)}
+                  className="hidden"
+                />
+                <button 
+                  onClick={() => aadhaarInputRef.current?.click()}
+                  className="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm w-32"
+                >
+                  Upload Aadhaar
+                </button>
+                {uploadedDocuments.aadhaar && (
+                  <button 
+                    onClick={() => viewDocument('aadhaar')}
+                    className="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm w-16"
+                  >
+                    View
+                  </button>
+                )}
+              </div>
+              {documentUploadStatus.aadhaar && (
+                <div className="text-xs mt-1 text-gray-600">
+                  {documentUploadStatus.aadhaar}
+                </div>
+              )}
+            </div>
+            
+            {/* PAN Card Upload */}
+            <div className="mb-4">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-lg">📋</span>
+                <span className="font-medium">PAN Card</span>
+                {uploadedDocuments.pancard && (
+                  <span className="text-blue-600 text-sm">✓ Uploaded</span>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <input 
+                  ref={panInputRef}
+                  type="file" 
+                  accept=".jpg,.jpeg,.png,.pdf"
+                  onChange={(e) => handleDocumentUpload('pancard', e.target.files)}
+                  className="hidden"
+                />
+                <button 
+                  onClick={() => panInputRef.current?.click()}
+                  className="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm w-28"
+                >
+                  Upload PAN
+                </button>
+                {uploadedDocuments.pancard && (
+                  <button 
+                    onClick={() => viewDocument('pancard')}
+                    className="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm w-16"
+                  >
+                    View
+                  </button>
+                )}
+              </div>
+              {documentUploadStatus.pancard && (
+                <div className="text-xs mt-1 text-gray-600">
+                  {documentUploadStatus.pancard}
+                </div>
+              )}
+            </div>
+            
+            {/* RC Document Upload */}
+            <div className="mb-4">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-lg">🚗</span>
+                <span className="font-medium">RC Document</span>
+                {uploadedDocuments.rc && (
+                  <span className="text-blue-600 text-sm">✓ Uploaded</span>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <input 
+                  ref={rcInputRef}
+                  type="file" 
+                  accept=".jpg,.jpeg,.png,.pdf"
+                  onChange={(e) => handleDocumentUpload('rc', e.target.files)}
+                  className="hidden"
+                />
+                <button 
+                  onClick={() => rcInputRef.current?.click()}
+                  className="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm w-24"
+                >
+                  Upload RC
+                </button>
+                {uploadedDocuments.rc && (
+                  <button 
+                    onClick={() => viewDocument('rc')}
+                    className="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm w-16"
+                  >
+                    View
+                  </button>
+                )}
+              </div>
+              {documentUploadStatus.rc && (
+                <div className="text-xs mt-1 text-gray-600">
+                  {documentUploadStatus.rc}
+                </div>
+              )}
+            </div>
+            
+            <div className="text-xs text-green-600 mt-2">
+              💡 These documents are optional but recommended for complete policy processing.
+            </div>
+          </div>
   
           <div className="mt-6">
             <div className="text-sm font-medium mb-3">Upload History</div>
@@ -838,60 +1162,100 @@ function PageUpload() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-left text-zinc-500">
-                    <th className="py-2">Time</th><th>Filename</th><th>Insurer</th><th>Size</th><th>Status</th>
+                    <th className="py-2">Time</th><th>Document Type</th><th>Filename</th><th>Insurer</th><th>Size</th><th>Status</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {uploadedFiles.length === 0 ? (
-                    <tr>
-                      <td colSpan={5} className="py-4 text-center text-zinc-500">
-                        No uploads yet. Drag and drop a PDF to get started.
+                  {/* Policy PDF files */}
+                  {uploadedFiles.map((file) => (
+                    <tr key={file.id} className="border-t">
+                      <td className="py-2">{file.time}</td>
+                      <td className="py-2">
+                        <span className="px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-700">
+                          Policy PDF
+                        </span>
+                      </td>
+                      <td className="py-2">{file.filename}</td>
+                      <td className="py-2">
+                        <span className={`px-2 py-1 rounded-full text-xs ${
+                          file.insurer === 'TATA_AIG' 
+                            ? 'bg-blue-100 text-blue-700'
+                            : file.insurer === 'DIGIT'
+                            ? 'bg-green-100 text-green-700'
+                            : file.insurer === 'RELIANCE_GENERAL'
+                            ? 'bg-purple-100 text-purple-700'
+                            : file.insurer === 'LIBERTY_GENERAL'
+                            ? 'bg-yellow-100 text-yellow-700'
+                            : file.insurer === 'ICIC'
+                            ? 'bg-red-100 text-red-700'
+                            : 'bg-gray-100 text-gray-700'
+                        }`}>
+                          {availableInsurers.find(ins => ins.value === file.insurer)?.label || 'Unknown'}
+                        </span>
+                      </td>
+                      <td className="py-2">{file.size}</td>
+                      <td>
+                        <span className={`px-2 py-1 rounded-full text-xs ${
+                          file.status === 'UPLOADED'
+                            ? 'bg-blue-100 text-blue-700'
+                            : file.status === 'PROCESSING'
+                            ? 'bg-yellow-100 text-yellow-700'
+                            : file.status === 'REVIEW'
+                            ? 'bg-orange-100 text-orange-700'
+                            : file.status === 'COMPLETED'
+                            ? 'bg-green-100 text-green-700'
+                            : file.status === 'FAILED'
+                            ? 'bg-red-100 text-red-700'
+                            : file.status === 'INSURER_MISMATCH'
+                            ? 'bg-red-100 text-red-700'
+                            : 'bg-gray-100 text-gray-700'
+                        }`}>
+                          {file.status}
+                        </span>
                       </td>
                     </tr>
-                  ) : (
-                    uploadedFiles.map((file) => (
-                      <tr key={file.id} className="border-t">
-                        <td className="py-2">{file.time}</td>
-                        <td className="py-2">{file.filename}</td>
+                  ))}
+                  
+                  {/* Additional documents */}
+                  {Object.entries(uploadedDocuments).map(([type, document]) => {
+                    if (!document) return null;
+                    
+                    return (
+                      <tr key={document.id} className="border-t">
+                        <td className="py-2">{document.uploadTime}</td>
                         <td className="py-2">
                           <span className={`px-2 py-1 rounded-full text-xs ${
-                            file.insurer === 'TATA_AIG' 
-                              ? 'bg-blue-100 text-blue-700'
-                              : file.insurer === 'DIGIT'
-                              ? 'bg-green-100 text-green-700'
-                              : file.insurer === 'RELIANCE_GENERAL'
-                              ? 'bg-purple-100 text-purple-700'
-                              : file.insurer === 'LIBERTY_GENERAL'
-                              ? 'bg-yellow-100 text-yellow-700'
-                              : file.insurer === 'ICIC'
-                              ? 'bg-red-100 text-red-700'
-                              : 'bg-gray-100 text-gray-700'
+                            type === 'aadhaar' ? 'bg-green-100 text-green-700' :
+                            type === 'pancard' ? 'bg-yellow-100 text-yellow-700' :
+                            type === 'rc' ? 'bg-purple-100 text-purple-700' :
+                            'bg-gray-100 text-gray-700'
                           }`}>
-                            {availableInsurers.find(ins => ins.value === file.insurer)?.label || 'Unknown'}
+                            {type.toUpperCase()}
                           </span>
                         </td>
-                        <td className="py-2">{file.size}</td>
+                        <td className="py-2 font-medium">{document.filename}</td>
+                        <td className="py-2">
+                          <span className="px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-700">
+                            {availableInsurers.find(ins => ins.value === selectedInsurer)?.label || 'Unknown'}
+                          </span>
+                        </td>
+                        <td className="py-2">{document.size}</td>
                         <td>
-                          <span className={`px-2 py-1 rounded-full text-xs ${
-                            file.status === 'UPLOADED'
-                              ? 'bg-blue-100 text-blue-700'
-                              : file.status === 'PROCESSING'
-                              ? 'bg-yellow-100 text-yellow-700'
-                              : file.status === 'REVIEW'
-                              ? 'bg-orange-100 text-orange-700'
-                              : file.status === 'COMPLETED'
-                              ? 'bg-green-100 text-green-700'
-                              : file.status === 'FAILED'
-                              ? 'bg-red-100 text-red-700'
-                              : file.status === 'INSURER_MISMATCH'
-                              ? 'bg-red-100 text-red-700'
-                              : 'bg-gray-100 text-gray-700'
-                          }`}>
-                            {file.status}
+                          <span className="px-2 py-1 rounded-full text-xs bg-green-100 text-green-700">
+                            UPLOADED
                           </span>
                         </td>
                       </tr>
-                    ))
+                    );
+                  })}
+                  
+                  {/* No uploads message */}
+                  {uploadedFiles.length === 0 && Object.values(uploadedDocuments).every(doc => !doc) && (
+                    <tr>
+                      <td colSpan={6} className="py-4 text-center text-zinc-500">
+                        No uploads yet. Drag and drop a PDF to get started.
+                      </td>
+                    </tr>
                   )}
                 </tbody>
               </table>

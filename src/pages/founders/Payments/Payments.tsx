@@ -3,6 +3,8 @@ import { useState, useEffect } from 'react';
 import { Card } from '../../../components/common/Card';
 // import { Download, Filter, CheckCircle2, Clock, AlertTriangle, Eye, EyeOff, RefreshCw } from 'lucide-react';
 import DualStorageService from '../../../services/dualStorageService';
+import { useAuth } from '../../../contexts/AuthContext';
+import { useUserChange } from '../../../hooks/useUserChange';
 
 // Tile component for displaying metrics
 function Tile({ label, value, sub, info, onClick }: { label: string; value: string; sub?: string; info?: string; onClick?: () => void }) {
@@ -44,6 +46,8 @@ function Tile({ label, value, sub, info, onClick }: { label: string; value: stri
 // ];
 
 function PagePayments() {
+    const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+    const { userChanged } = useUserChange();
     const [payments, setPayments] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [viewMode, setViewMode] = useState<'summary' | 'detail'>('summary');
@@ -70,6 +74,17 @@ function PagePayments() {
       }
     };
   
+    // Handle user changes - reset payments data when user changes
+    useEffect(() => {
+      if (userChanged && user) {
+        setPayments([]);
+        setSelectedExecutive('');
+        setViewMode('summary');
+        setReceivedPayments(new Set());
+        setIsUpdating({});
+      }
+    }, [userChanged, user]);
+
     useEffect(() => {
       loadExecutivePayments();
     }, []);

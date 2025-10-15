@@ -2,9 +2,12 @@ import { useState, useEffect } from 'react';
 import { Card } from '../../../components/common/Card';
 import { CheckCircle2, AlertTriangle } from 'lucide-react';
 import DualStorageService from '../../../services/dualStorageService';
+import { AutocompleteInput } from '../../../NicsanCRMMock';
+import { useAuth } from '../../../contexts/AuthContext';
+import { useUserChange } from '../../../hooks/useUserChange';
 
 // Environment variables
-// const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
+const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
 
 // LabeledInput component
 function LabeledInput({ label, value, onChange, type = "text", placeholder, hint, required = false }: {
@@ -18,7 +21,7 @@ function LabeledInput({ label, value, onChange, type = "text", placeholder, hint
 }) {
   return (
     <div className="space-y-1">
-      <label className="text-sm text-zinc-700 flex items-center gap-1">
+      <label className="text-sm font-medium text-zinc-700 flex items-center gap-1">
         {label}
         {required && <span className="text-red-500">*</span>}
       </label>
@@ -34,471 +37,10 @@ function LabeledInput({ label, value, onChange, type = "text", placeholder, hint
   );
 }
 
-// LabeledSelect component
-function LabeledSelect({ label, value, onChange, options, placeholder, required = false }: {
-  label: string;
-  value: any;
-  onChange: (value: any) => void;
-  options: string[];
-  placeholder?: string;
-  required?: boolean;
-}) {
-  return (
-    <div className="space-y-1">
-      <label className="text-sm text-zinc-700 flex items-center gap-1">
-        {label}
-        {required && <span className="text-red-500">*</span>}
-      </label>
-      <select
-        value={value || ''}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full px-3 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-      >
-        <option value="">{placeholder || `Select ${label}`}</option>
-        {options.map((option) => (
-          <option key={option} value={option}>
-            {option}
-          </option>
-        ))}
-      </select>
-    </div>
-  );
-}
-
-// LabeledAutocompleteInput component - Custom autocomplete with Review & Confirm styling
-function LabeledAutocompleteInput({ 
-  label, 
-  value, 
-  onChange, 
-  getSuggestions, 
-  onAddNew, 
-  showAddNew = false, 
-  placeholder = "", 
-  required = false 
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  getSuggestions: (input: string) => Promise<string[]>;
-  onAddNew?: (value: string) => void;
-  showAddNew?: boolean;
-  placeholder?: string;
-  required?: boolean;
-}) {
-  const [suggestions, setSuggestions] = useState<string[]>([]);
-  const [isOpen, setIsOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-
-  const handleInputChange = async (inputValue: string) => {
-    onChange(inputValue);
-    
-    if (inputValue.length >= 2) {
-      setIsLoading(true);
-      try {
-        const newSuggestions = await getSuggestions(inputValue);
-        setSuggestions(newSuggestions);
-        // Open dropdown only if we have suggestions OR if we want to show "Add new" option (but not both empty)
-        setIsOpen(newSuggestions.length > 0 || (showAddNew && inputValue.trim().length > 0 && newSuggestions.length === 0));
-      } catch (error) {
-        setSuggestions([]);
-        setIsOpen(false);
-      } finally {
-        setIsLoading(false);
-      }
-    } else {
-      setSuggestions([]);
-      setIsOpen(false);
-    }
-  };
-
-  const handleSuggestionClick = (suggestion: string) => {
-    onChange(suggestion);
-    setIsOpen(false);
-  };
-
-  const handleAddNew = () => {
-    if (onAddNew && value.trim()) {
-      onAddNew(value.trim());
-      setIsOpen(false);
-    }
-  };
-
-  return (
-    <div className="space-y-1 relative">
-      <label className="text-sm text-zinc-700 flex items-center gap-1">
-        {label}
-        {required && <span className="text-red-500">*</span>}
-      </label>
-      <div className="relative">
-        <input
-          type="text"
-          value={value || ''}
-          onChange={(e) => handleInputChange(e.target.value)}
-          onFocus={async () => {
-            if (value.length >= 2) {
-              try {
-                const newSuggestions = await getSuggestions(value);
-                setSuggestions(newSuggestions);
-                // Open dropdown only if we have suggestions OR if we want to show "Add new" option (but not both empty)
-                setIsOpen(newSuggestions.length > 0 || (showAddNew && value.trim().length > 0 && newSuggestions.length === 0));
-              } catch (error) {
-                // Silent error handling
-              }
-            }
-          }}
-          onBlur={() => {
-            // Delay to allow clicking on suggestions
-            setTimeout(() => setIsOpen(false), 150);
-          }}
-          placeholder={placeholder}
-          className="w-full px-3 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-        />
-        
-        {/* Dropdown Arrow */}
-        <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
-          <svg className="w-4 h-4 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
-        </div>
-
-        {/* Suggestions Dropdown */}
-        {isOpen && (
-          <div className="absolute z-50 w-full mt-1 bg-white border border-zinc-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-            {isLoading ? (
-              <div className="px-3 py-2 text-sm text-blue-500 flex items-center gap-2">
-                <div className="w-4 h-4 border-2 border-blue-300 border-t-blue-600 rounded-full animate-spin"></div>
-                Loading suggestions...
-              </div>
-            ) : (
-              <>
-                {suggestions.map((suggestion, index) => (
-                  <button
-                    key={index}
-                    onClick={() => handleSuggestionClick(suggestion)}
-                    className="w-full px-3 py-2 text-left text-sm text-zinc-700 hover:bg-blue-50 transition-colors first:rounded-t-lg last:rounded-b-lg"
-                  >
-                    {suggestion}
-                  </button>
-                ))}
-                {showAddNew && value.trim() && !suggestions.includes(value.trim()) && (
-                  <button
-                    onClick={handleAddNew}
-                    className="w-full px-3 py-2 text-left text-sm text-blue-600 hover:bg-blue-50 transition-colors border-t border-zinc-200 rounded-b-lg"
-                  >
-                    + Add "{value.trim()}" as new telecaller
-                  </button>
-                )}
-              </>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// LabeledDateInput component - Custom date picker with calendar
-function LabeledDateInput({ 
-  label, 
-  value, 
-  onChange, 
-  placeholder = "dd-mm-yyyy", 
-  required = false 
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  placeholder?: string;
-  required?: boolean;
-}) {
-  const parseDateFromString = (dateString: string): Date | null => {
-    try {
-      // Handle dd-mm-yyyy format
-      const parts = dateString.split('-');
-      if (parts.length === 3) {
-        // Check if it's dd-mm-yyyy format (day is 1-31, month is 1-12)
-        const firstPart = parseInt(parts[0], 10);
-        const secondPart = parseInt(parts[1], 10);
-        const thirdPart = parseInt(parts[2], 10);
-        
-        if (firstPart >= 1 && firstPart <= 31 && secondPart >= 1 && secondPart <= 12) {
-          // dd-mm-yyyy format
-          const day = firstPart;
-          const month = secondPart - 1; // JavaScript months are 0-indexed
-          const year = thirdPart;
-          return new Date(year, month, day);
-        } else if (thirdPart >= 1 && thirdPart <= 31 && secondPart >= 1 && secondPart <= 12) {
-          // yyyy-mm-dd format
-          const year = firstPart;
-          const month = secondPart - 1; // JavaScript months are 0-indexed
-          const day = thirdPart;
-          return new Date(year, month, day);
-        }
-      }
-      // Fallback to standard Date parsing
-      return new Date(dateString);
-    } catch (error) {
-      return null;
-    }
-  };
-
-  const [isOpen, setIsOpen] = useState(false);
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [selectedDate, setSelectedDate] = useState<Date | null>(
-    value ? parseDateFromString(value) : null
-  );
-
-  // Update selectedDate when value prop changes
-  useEffect(() => {
-    if (value) {
-      const parsedDate = parseDateFromString(value);
-      setSelectedDate(parsedDate);
-    } else {
-      setSelectedDate(null);
-    }
-  }, [value]);
-
-  const formatDate = (date: Date) => {
-    const day = date.getDate().toString().padStart(2, '0');
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    const year = date.getFullYear();
-    return `${day}-${month}-${year}`;
-  };
-
-  const handleDateSelect = (date: Date) => {
-    setSelectedDate(date);
-    onChange(formatDate(date));
-    setIsOpen(false);
-  };
-
-  const handleClear = () => {
-    setSelectedDate(null);
-    onChange('');
-    setIsOpen(false);
-  };
-
-  const handleToday = () => {
-    const today = new Date();
-    setSelectedDate(today);
-    onChange(formatDate(today));
-    setIsOpen(false);
-  };
-
-  const getDaysInMonth = (date: Date) => {
-    return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
-  };
-
-  const getFirstDayOfMonth = (date: Date) => {
-    return new Date(date.getFullYear(), date.getMonth(), 1).getDay();
-  };
-
-  const getDaysArray = (date: Date) => {
-    const daysInMonth = getDaysInMonth(date);
-    const firstDay = getFirstDayOfMonth(date);
-    const days = [];
-
-    // Previous month's trailing days
-    const prevMonth = new Date(date.getFullYear(), date.getMonth() - 1, 0);
-    const prevMonthDays = prevMonth.getDate();
-    for (let i = firstDay - 1; i >= 0; i--) {
-      days.push({
-        day: prevMonthDays - i,
-        isCurrentMonth: false,
-        date: new Date(date.getFullYear(), date.getMonth() - 1, prevMonthDays - i)
-      });
-    }
-
-    // Current month's days
-    for (let i = 1; i <= daysInMonth; i++) {
-      days.push({
-        day: i,
-        isCurrentMonth: true,
-        date: new Date(date.getFullYear(), date.getMonth(), i)
-      });
-    }
-
-    // Next month's leading days
-    const remainingDays = 42 - days.length; // 6 weeks * 7 days
-    for (let i = 1; i <= remainingDays; i++) {
-      days.push({
-        day: i,
-        isCurrentMonth: false,
-        date: new Date(date.getFullYear(), date.getMonth() + 1, i)
-      });
-    }
-
-    return days;
-  };
-
-  const monthNames = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'
-  ];
-
-  const navigateMonth = (direction: 'prev' | 'next') => {
-    const newDate = new Date(currentDate);
-    if (direction === 'prev') {
-      newDate.setMonth(newDate.getMonth() - 1);
-    } else {
-      newDate.setMonth(newDate.getMonth() + 1);
-    }
-    setCurrentDate(newDate);
-  };
-
-  const isToday = (date: Date) => {
-    const today = new Date();
-    return date.toDateString() === today.toDateString();
-  };
-
-  const isSelected = (date: Date) => {
-    return selectedDate && date.toDateString() === selectedDate.toDateString();
-  };
-
-  return (
-    <div className="space-y-1 relative">
-      <label className="text-sm text-zinc-700 flex items-center gap-1">
-        {label}
-        {required && <span className="text-red-500">*</span>}
-      </label>
-      <div className="relative">
-        <input
-          type="text"
-          value={value || ''}
-          onChange={(e) => onChange(e.target.value)}
-          onFocus={() => setIsOpen(true)}
-          placeholder={placeholder}
-          className="w-full px-3 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-        />
-        
-        {/* Calendar Icon */}
-        <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
-          <svg className="w-4 h-4 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-          </svg>
-        </div>
-
-        {/* Calendar Popup */}
-        {isOpen && (
-          <div className="absolute z-50 w-full mt-1 bg-white border border-zinc-200 rounded-lg shadow-lg">
-            {/* Calendar Header */}
-            <div className="flex items-center justify-between p-3 border-b border-zinc-200">
-              <div className="flex items-center gap-2">
-                <span className="font-medium text-zinc-900">
-                  {monthNames[currentDate.getMonth()]}, {currentDate.getFullYear()}
-                </span>
-                <svg className="w-4 h-4 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </div>
-              <div className="flex items-center gap-1">
-                {/* Year Navigation */}
-                <button
-                  onClick={() => {
-                    const newDate = new Date(currentDate);
-                    newDate.setFullYear(newDate.getFullYear() - 1);
-                    setCurrentDate(newDate);
-                  }}
-                  className="p-1 hover:bg-zinc-100 rounded transition-colors"
-                  title="Previous Year"
-                >
-                  <svg className="w-4 h-4 text-zinc-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
-                  </svg>
-                </button>
-                <button
-                  onClick={() => navigateMonth('prev')}
-                  className="p-1 hover:bg-zinc-100 rounded transition-colors"
-                  title="Previous Month"
-                >
-                  <svg className="w-4 h-4 text-zinc-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-                  </svg>
-                </button>
-                <button
-                  onClick={() => navigateMonth('next')}
-                  className="p-1 hover:bg-zinc-100 rounded transition-colors"
-                  title="Next Month"
-                >
-                  <svg className="w-4 h-4 text-zinc-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
-                <button
-                  onClick={() => {
-                    const newDate = new Date(currentDate);
-                    newDate.setFullYear(newDate.getFullYear() + 1);
-                    setCurrentDate(newDate);
-                  }}
-                  className="p-1 hover:bg-zinc-100 rounded transition-colors"
-                  title="Next Year"
-                >
-                  <svg className="w-4 h-4 text-zinc-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-
-            {/* Calendar Grid */}
-            <div className="p-3">
-              {/* Days of week header */}
-              <div className="grid grid-cols-7 gap-1 mb-2">
-                {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((day) => (
-                  <div key={day} className="text-xs font-medium text-zinc-500 text-center py-1">
-                    {day}
-                  </div>
-                ))}
-              </div>
-
-              {/* Calendar days */}
-              <div className="grid grid-cols-7 gap-1">
-                {getDaysArray(currentDate).map((dayObj, index) => (
-                  <button
-                    key={index}
-                    onClick={() => dayObj.isCurrentMonth && handleDateSelect(dayObj.date)}
-                    className={`
-                      w-8 h-8 text-sm rounded transition-colors flex items-center justify-center
-                      ${!dayObj.isCurrentMonth 
-                        ? 'text-zinc-300 cursor-not-allowed' 
-                        : isSelected(dayObj.date)
-                        ? 'bg-zinc-800 text-white'
-                        : isToday(dayObj.date)
-                        ? 'bg-indigo-100 text-indigo-700 font-medium'
-                        : 'text-zinc-700 hover:bg-zinc-100'
-                      }
-                    `}
-                    disabled={!dayObj.isCurrentMonth}
-                  >
-                    {dayObj.day}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Calendar Footer */}
-            <div className="flex items-center justify-between p-3 border-t border-zinc-200">
-              <button
-                onClick={handleClear}
-                className="text-sm text-blue-600 hover:text-blue-700 transition-colors"
-              >
-                Clear
-              </button>
-              <button
-                onClick={handleToday}
-                className="text-sm text-blue-600 hover:text-blue-700 transition-colors"
-              >
-                Today
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
 
 function PageReview() {
+    const { user } = useAuth();
+    const { userChanged } = useUserChange();
     const [reviewData, setReviewData] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [_saveMessage, setSaveMessage] = useState<{type: 'success' | 'error', message: string} | null>(null);
@@ -510,6 +52,25 @@ function PageReview() {
       manualExtras: {}
     });
     const [_callerNames, setCallerNames] = useState<string[]>([]);
+    
+    // Reset editableData when user changes - Unified user change detection
+    useEffect(() => {
+      if (userChanged && user) {
+        setEditableData(prevData => ({
+          ...prevData,
+          manualExtras: {
+            ...prevData.manualExtras,
+            executive: user.name || "",
+            opsExecutive: "",
+          }
+        }));
+        // Clear save messages and verification state
+        setSaveMessage(null);
+        setSubmitMessage(null);
+        setShowVerificationModal(false);
+        setPendingSaveData(null);
+      }
+    }, [userChanged, user]);
     
     // Verification popup state
     const [showVerificationModal, setShowVerificationModal] = useState(false);
@@ -559,8 +120,6 @@ function PageReview() {
                     policy_number: "TA-9921",
                     vehicle_number: "KA 51 MM 1214",
                     insurer: "Tata AIG",
-                    product_type: "Private Car",
-                    vehicle_type: "Private Car",
                     make: "Maruti",
                     model: "Swift",
                     cc: "1197",
@@ -711,10 +270,13 @@ function PageReview() {
           const upload = response.data;
           setReviewData(upload);
           
-          // Initialize editable data with current values
+          // Initialize editable data with current values and auto-fill executive
           setEditableData({
             pdfData: { ...upload.extracted_data.extracted_data },
-            manualExtras: { ...upload.extracted_data.manual_extras }
+            manualExtras: { 
+              ...upload.extracted_data.manual_extras,
+              executive: upload.extracted_data.manual_extras.executive || user?.name || ''
+            }
           });
           
           setSubmitMessage({ 
@@ -728,7 +290,10 @@ function PageReview() {
             setReviewData(upload);
             setEditableData({
               pdfData: { ...upload.extracted_data.extracted_data },
-              manualExtras: { ...upload.extracted_data.manual_extras }
+              manualExtras: { 
+                ...upload.extracted_data.manual_extras,
+                executive: upload.extracted_data.manual_extras.executive || user?.name || ''
+              }
             });
             setSubmitMessage({ 
               type: 'success', 
@@ -1003,11 +568,23 @@ function PageReview() {
     // For demo purposes, show mock data
     if (!reviewData && availableUploads.length === 0) {
       return (
-        <Card title="Review & Confirm">
+        <Card title="Review & Confirm" desc="Review PDF data + manual extras before saving">
           <div className="text-center py-8 text-zinc-500">
             <div className="text-6xl mb-4">📄</div>
             <div className="text-lg font-medium mb-2">No PDF data to review</div>
             <div className="text-sm">Upload a PDF with manual extras first to see the review screen.</div>
+            <div className="mt-4 p-3 bg-blue-50 rounded-lg text-blue-700 text-sm">
+              💡 <strong>Workflow:</strong> Go to PDF Upload → Fill Manual Extras → Save → Drop PDF → Come back here to Review
+            </div>
+            
+            {/* Debug Info */}
+            <div className="mt-4 p-3 bg-yellow-50 rounded-lg text-yellow-700 text-sm">
+              🔍 <strong>Debug:</strong> availableUploads.length = {availableUploads.length}
+              <br />
+              🔍 <strong>Debug:</strong> reviewData = {reviewData ? 'exists' : 'null'}
+              <br />
+              🔍 <strong>Debug:</strong> Check browser console for detailed logs
+            </div>
             
             {/* Test Button */}
             <div className="mt-4">
@@ -1037,8 +614,6 @@ function PageReview() {
                         policy_number: "TA-TEST",
                         vehicle_number: "KA 51 MM 1214",
                         insurer: "Tata AIG",
-                        product_type: "Private Car",
-                        vehicle_type: "Private Car",
                         make: "Maruti",
                         model: "Swift",
                         cc: "1197",
@@ -1077,7 +652,28 @@ function PageReview() {
     // Show upload selection if no specific upload is loaded
     if (!reviewData && availableUploads.length > 0) {
       return (
-        <Card title="Review & Confirm">
+        <Card title="Review & Confirm" desc="Select an upload to review">
+          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="text-sm text-blue-800">
+              💡 <strong>Workflow:</strong> PDF Upload → Manual Extras → Textract Processing → Review & Confirm → Save to Database
+            </div>
+          </div>
+          
+          {/* Debug Info */}
+          <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <div className="text-sm text-yellow-800">
+              🔍 <strong>Debug:</strong> Found {availableUploads.length} upload(s) in localStorage
+              {availableUploads.length > 0 && (
+                <div className="mt-2 text-xs">
+                  {availableUploads.map(upload => (
+                    <div key={upload.id}>
+                      • {upload.filename} - Status: {upload.status} - Insurer: {upload.extracted_data?.insurer || 'N/A'}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
           <div className="mb-6 p-4 bg-zinc-50 rounded-xl">
             <div className="flex items-center justify-between mb-3">
               <div className="text-sm font-medium">📄 Select Upload to Review</div>
@@ -1133,7 +729,7 @@ function PageReview() {
     // Safety check - if no data, show error
     if (!data || !data.extracted_data) {
       return (
-        <Card title="Review & Confirm">
+        <Card title="Review & Confirm" desc="Review PDF data + manual extras before saving">
           <div className="text-center py-8 text-red-500">
             <div className="text-6xl mb-4">⚠️</div>
             <div className="text-lg font-medium mb-2">Data Error</div>
@@ -1151,7 +747,7 @@ function PageReview() {
   
     return (
       <>
-        <Card title="Review & Confirm">
+        <Card title="Review & Confirm" desc="Review PDF data + manual extras before saving">
           {/* Success/Error Messages */}
           {submitMessage && (
             <div className={`mb-4 p-3 rounded-xl text-sm ${
@@ -1163,7 +759,38 @@ function PageReview() {
             </div>
           )}
   
+          {/* File Info */}
+          <div className="mb-4 p-3 bg-zinc-50 rounded-lg">
+            <div className="flex items-center gap-4 text-sm">
+              <div><span className="font-medium">File:</span> {data.filename}</div>
+              <div><span className="font-medium">Status:</span> {data.status}</div>
+              <div><span className="font-medium">S3 Key:</span> {data.s3_key}</div>
+            </div>
+          </div>
   
+          {/* Confidence Score */}
+          <div className="mb-4 p-3 rounded-lg bg-zinc-50">
+            <div className="flex items-center gap-2">
+              <div className="text-sm font-medium">AI Confidence Score:</div>
+              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                pdfData.confidence_score >= 0.8 
+                  ? 'bg-green-100 text-green-700'
+                  : pdfData.confidence_score >= 0.6
+                  ? 'bg-yellow-100 text-yellow-700'
+                  : 'bg-red-100 text-red-700'
+              }`}>
+                {Math.round(pdfData.confidence_score * 100)}%
+              </span>
+            </div>
+            <div className="text-xs text-zinc-600 mt-1">
+              {pdfData.confidence_score >= 0.8 
+                ? 'High confidence - data looks good'
+                : pdfData.confidence_score >= 0.6
+                ? 'Medium confidence - please review carefully'
+                : 'Low confidence - manual review required'
+              }
+            </div>
+          </div>
   
           {/* PDF Extracted Data Section */}
           <div className="mb-6">
@@ -1175,21 +802,18 @@ function PageReview() {
                 label="Policy Number" 
                 value={editableData.pdfData.policy_number || pdfData.policy_number}
                 onChange={(value) => updatePdfData('policy_number', value)}
+                hint="auto-read from PDF (editable)"
               />
               <LabeledInput 
                 label="Vehicle Number" 
                 value={editableData.pdfData.vehicle_number || pdfData.vehicle_number}
                 onChange={(value) => updatePdfData('vehicle_number', value)}
+                hint="check format (editable)"
               />
               <LabeledInput 
                 label="Insurer" 
                 value={editableData.pdfData.insurer || pdfData.insurer}
                 onChange={(value) => updatePdfData('insurer', value)}
-              />
-              <LabeledInput 
-                label="Product Type" 
-                value={editableData.pdfData.product_type || pdfData.product_type}
-                onChange={(value) => updatePdfData('product_type', value)}
               />
               <LabeledInput 
                 label="Make" 
@@ -1205,18 +829,19 @@ function PageReview() {
                 label="CC" 
                 value={editableData.pdfData.cc || pdfData.cc}
                 onChange={(value) => updatePdfData('cc', value)}
+                hint="engine size"
               />
               <LabeledInput 
                 label="Manufacturing Year" 
                 value={editableData.pdfData.manufacturing_year || pdfData.manufacturing_year}
                 onChange={(value) => updatePdfData('manufacturing_year', value)}
               />
-              <LabeledDateInput 
+              <LabeledInput 
                 label="Issue Date" 
                 value={editableData.pdfData.issue_date || pdfData.issue_date}
                 onChange={(value) => updatePdfData('issue_date', value)}
               />
-              <LabeledDateInput 
+              <LabeledInput 
                 label="Expiry Date" 
                 value={editableData.pdfData.expiry_date || pdfData.expiry_date}
                 onChange={(value) => updatePdfData('expiry_date', value)}
@@ -1240,6 +865,7 @@ function PageReview() {
                 label="Net OD (₹)" 
                 value={editableData.pdfData.net_od || pdfData.net_od}
                 onChange={(value) => updatePdfData('net_od', value)}
+                hint="Own Damage"
               />
               <LabeledInput 
                 label="Total OD (₹)" 
@@ -1260,6 +886,7 @@ function PageReview() {
                 label="Customer Name" 
                 value={editableData.pdfData.customer_name || pdfData.customer_name}
                 onChange={(value) => updatePdfData('customer_name', value)}
+                hint="extracted from PDF"
               />
             </div>
           </div>
@@ -1267,31 +894,30 @@ function PageReview() {
           {/* Manual Extras Section */}
           <div className="mb-6">
             <div className="text-sm font-medium mb-3 text-blue-700 bg-blue-50 px-3 py-2 rounded-lg">
-              ✏️ Manual Input:
+              ✏️ Manual Extras (from Sales Rep)
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <LabeledSelect 
+              <LabeledInput 
                 label="Executive" 
                 value={editableData.manualExtras.executive || manualExtras.executive}
                 onChange={(value) => updateManualExtras('executive', value)}
-                options={["Yashwanth", "Kavya", "Bhagya", "Sandesh", "Yallappa", "Nethravathi", "Tejaswini"]}
-                placeholder="Select Executive"
+                disabled={true}
+                hint="Auto-filled from current user"
               />
-              <LabeledSelect 
+              <LabeledInput 
                 label="Ops Executive" 
                 value={editableData.manualExtras.opsExecutive || manualExtras.opsExecutive}
                 onChange={(value) => updateManualExtras('opsExecutive', value)}
-                options={["NA", "Ravi", "Pavan", "Manjunath"]}
-                placeholder="Select Ops Executive"
+                hint="ops executive name"
               />
-              <LabeledAutocompleteInput 
+              <AutocompleteInput 
                 label="Caller Name" 
                 value={editableData.manualExtras.callerName || manualExtras.callerName}
-                onChange={(value: string) => updateManualExtras('callerName', value)}
+                onChange={(value) => updateManualExtras('callerName', value)}
+                hint="telecaller name"
                 getSuggestions={getFilteredCallerSuggestions}
                 onAddNew={handleAddNewTelecaller}
                 showAddNew={true}
-                placeholder="Telecaller name"
               />
               <LabeledInput 
                 label="Customer Email ID" 
@@ -1303,53 +929,73 @@ function PageReview() {
                 value={editableData.manualExtras.mobile || manualExtras.mobile}
                 onChange={(value) => updateManualExtras('mobile', value)}
               />
-              <LabeledSelect 
+              <LabeledInput 
+                label="Product Type" 
+                value={editableData.manualExtras.product_type || manualExtras.product_type}
+                onChange={(value) => updateManualExtras('product_type', value)}
+                hint="from manual entry"
+              />
+              <LabeledInput 
+                label="Vehicle Type" 
+                value={editableData.manualExtras.vehicle_type || manualExtras.vehicle_type}
+                onChange={(value) => updateManualExtras('vehicle_type', value)}
+                hint="from manual entry"
+              />
+              <LabeledInput 
                 label="Rollover/Renewal" 
                 value={editableData.manualExtras.rollover || manualExtras.rollover}
                 onChange={(value) => updateManualExtras('rollover', value)}
-                options={["ROLLOVER", "RENEWAL"]}
-                placeholder="Select Rollover/Renewal"
+                hint="internal code"
               />
-              <LabeledSelect 
+              <LabeledInput 
                 label="Branch" 
                 value={editableData.manualExtras.branch || manualExtras.branch}
                 onChange={(value) => updateManualExtras('branch', value)}
-                options={["MYSORE", "BANASHANKARI", "ADUGODI"]}
-                placeholder="Select Branch"
                 required
               />
-              <LabeledSelect 
-                label="Payment Method" 
-                value={editableData.manualExtras.paymentMethod || manualExtras.paymentMethod || 'INSURER'}
-                onChange={(value) => {
-                  updateManualExtras('paymentMethod', value);
-                  if (value !== 'NICSAN') {
-                    updateManualExtras('paymentSubMethod', '');
-                  }
-                }}
-                options={["INSURER", "NICSAN"]}
-                placeholder="Select Payment Method"
-              />
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">Payment Method</label>
+                <select 
+                  value={editableData.manualExtras.paymentMethod || manualExtras.paymentMethod || 'INSURER'}
+                  onChange={(e) => {
+                    updateManualExtras('paymentMethod', e.target.value);
+                    if (e.target.value !== 'NICSAN') {
+                      updateManualExtras('paymentSubMethod', '');
+                    }
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                >
+                  <option value="INSURER">INSURER</option>
+                  <option value="NICSAN">NICSAN</option>
+                </select>
+              </div>
               {(editableData.manualExtras.paymentMethod || manualExtras.paymentMethod) === 'NICSAN' && (
-                <LabeledSelect 
-                  label="Payment Sub-Method" 
-                  value={editableData.manualExtras.paymentSubMethod || manualExtras.paymentSubMethod || ''}
-                  onChange={(value) => updateManualExtras('paymentSubMethod', value)}
-                  options={["DIRECT", "EXECUTIVE"]}
-                  placeholder="Select Sub-Method"
-                />
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Payment Sub-Method</label>
+                  <select 
+                    value={editableData.manualExtras.paymentSubMethod || manualExtras.paymentSubMethod || ''}
+                    onChange={(e) => updateManualExtras('paymentSubMethod', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                  >
+                    <option value="">Select Sub-Method</option>
+                    <option value="DIRECT">DIRECT</option>
+                    <option value="EXECUTIVE">EXECUTIVE</option>
+                  </select>
+                </div>
               )}
               <div style={{ display: 'none' }}>
                 <LabeledInput 
                   label="Brokerage (₹)" 
                   value={editableData.manualExtras.brokerage || manualExtras.brokerage}
                   onChange={(value) => updateManualExtras('brokerage', value)}
+                  hint="commission amount"
                 />
               </div>
               <LabeledInput 
                 label="Cashback (₹)" 
                 value={editableData.manualExtras.cashback || manualExtras.cashback}
                 onChange={(value) => updateManualExtras('cashback', value)}
+                hint="total cashback"
               />
               <LabeledInput 
                 label="Customer Paid (₹)" 
@@ -1371,6 +1017,7 @@ function PageReview() {
                   label="Remark" 
                   value={editableData.manualExtras.remark || manualExtras.remark}
                   onChange={(value) => updateManualExtras('remark', value)}
+                  hint="additional notes"
                 />
               </div>
             </div>

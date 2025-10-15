@@ -1,13 +1,15 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Card } from '../../../components/common/Card';
-import { Car } from 'lucide-react';
+import { User, Car, Trash2, Plus } from 'lucide-react';
 import DualStorageService from '../../../services/dualStorageService';
+import { AutocompleteInput } from '../../../NicsanCRMMock';
+import { useAuth } from '../../../contexts/AuthContext';
+import { useUserChange } from '../../../hooks/useUserChange';
 
 // Environment variables
-// const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
 
-// LabeledInput component - Enhanced with production styling
-function LabeledInput({ label, value, onChange, type = "text", placeholder, hint, required = false }: {
+// LabeledInput component
+function LabeledInput({ label, value, onChange, type = "text", placeholder, hint, required = false, disabled = false }: {
   label: string;
   value: any;
   onChange: (value: any) => void;
@@ -15,6 +17,7 @@ function LabeledInput({ label, value, onChange, type = "text", placeholder, hint
   placeholder?: string;
   hint?: string;
   required?: boolean;
+  disabled?: boolean;
 }) {
   return (
     <div className="space-y-1">
@@ -27,137 +30,15 @@ function LabeledInput({ label, value, onChange, type = "text", placeholder, hint
         value={value || ''}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full px-3 py-2.5 border border-zinc-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 transition-colors"
+        disabled={disabled}
+        className="w-full px-3 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
       />
-      {hint && <p className="text-xs text-zinc-500 mt-1">{hint}</p>}
+      {hint && <p className="text-xs text-zinc-500">{hint}</p>}
     </div>
   );
 }
 
-// LabeledAutocompleteInput component - Custom styled to match other fields
-function LabeledAutocompleteInput({ 
-  label, 
-  value, 
-  onChange, 
-  getSuggestions, 
-  onAddNew, 
-  showAddNew = false, 
-  placeholder, 
-  required = false 
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  getSuggestions: (input: string) => Promise<string[]>;
-  onAddNew?: (value: string) => void;
-  showAddNew?: boolean;
-  placeholder?: string;
-  required?: boolean;
-}) {
-  const [suggestions, setSuggestions] = useState<string[]>([]);
-  const [isOpen, setIsOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-
-  const handleInputChange = async (inputValue: string) => {
-    onChange(inputValue);
-    
-    if (inputValue.length >= 2) {
-      setIsLoading(true);
-      try {
-        const newSuggestions = await getSuggestions(inputValue);
-        setSuggestions(newSuggestions);
-        setIsOpen(newSuggestions.length > 0);
-      } catch (error) {
-        console.error('Error fetching suggestions:', error);
-        setSuggestions([]);
-        setIsOpen(false);
-      } finally {
-        setIsLoading(false);
-      }
-    } else {
-      setSuggestions([]);
-      setIsOpen(false);
-    }
-  };
-
-  const handleSuggestionClick = (suggestion: string) => {
-    onChange(suggestion);
-    setIsOpen(false);
-  };
-
-  const handleAddNew = () => {
-    if (onAddNew && value.trim()) {
-      onAddNew(value.trim());
-      setIsOpen(false);
-    }
-  };
-
-  return (
-    <div className="space-y-1 relative">
-      <label className="text-sm font-medium text-zinc-700 flex items-center gap-1">
-        {label}
-        {required && <span className="text-red-500">*</span>}
-      </label>
-      <div className="relative">
-        <input
-          type="text"
-          value={value || ''}
-          onChange={(e) => handleInputChange(e.target.value)}
-          onFocus={() => {
-            if (suggestions.length > 0) setIsOpen(true);
-          }}
-          onBlur={() => {
-            // Delay to allow clicking on suggestions
-            setTimeout(() => setIsOpen(false), 150);
-          }}
-          placeholder={placeholder}
-          className="w-full px-3 py-2.5 border border-zinc-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 transition-colors"
-        />
-        
-        {/* Dropdown Arrow */}
-        <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
-          <svg className="w-4 h-4 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
-        </div>
-
-        {/* Suggestions Dropdown */}
-        {isOpen && (
-          <div className="absolute z-50 w-full mt-1 bg-white border border-zinc-200 rounded-xl shadow-lg max-h-60 overflow-y-auto">
-            {isLoading ? (
-              <div className="px-3 py-2 text-sm text-zinc-500 flex items-center gap-2">
-                <div className="w-4 h-4 border-2 border-zinc-300 border-t-indigo-600 rounded-full animate-spin"></div>
-                Loading suggestions...
-              </div>
-            ) : (
-              <>
-                {suggestions.map((suggestion, index) => (
-                  <button
-                    key={index}
-                    onClick={() => handleSuggestionClick(suggestion)}
-                    className="w-full px-3 py-2 text-left text-sm text-blue-700 hover:bg-blue-50 transition-colors first:rounded-t-lg last:rounded-b-lg"
-                  >
-                    {suggestion}
-                  </button>
-                ))}
-                {showAddNew && value.trim() && !suggestions.includes(value.trim()) && (
-                  <button
-                    onClick={handleAddNew}
-                    className="w-full px-3 py-2 text-left text-sm text-blue-600 hover:bg-blue-50 transition-colors border-t border-blue-200 rounded-b-lg"
-                  >
-                    + Add "{value.trim()}" as new telecaller
-                  </button>
-                )}
-              </>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// LabeledSelect component - Enhanced with production styling
+// LabeledSelect component
 function LabeledSelect({ label, value, onChange, options, placeholder, hint, required = false }: {
   label: string;
   value: any;
@@ -176,7 +57,7 @@ function LabeledSelect({ label, value, onChange, options, placeholder, hint, req
       <select
         value={value || ''}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full px-3 py-2.5 border border-zinc-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 transition-colors"
+        className="w-full px-3 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
       >
         <option value="">{placeholder || 'Select...'}</option>
         {options.map((option) => (
@@ -185,313 +66,38 @@ function LabeledSelect({ label, value, onChange, options, placeholder, hint, req
           </option>
         ))}
       </select>
-      {hint && <p className="text-xs text-zinc-500 mt-1">{hint}</p>}
+      {hint && <p className="text-xs text-zinc-500">{hint}</p>}
     </div>
   );
 }
 
-// LabeledDateInput component - Custom date picker with calendar
-function LabeledDateInput({ 
-  label, 
-  value, 
-  onChange, 
-  placeholder = "dd-mm-yyyy", 
-  required = false 
-}: {
+// LabeledCheckbox component
+function LabeledCheckbox({ label, value, onChange, hint }: {
   label: string;
-  value: string;
-  onChange: (value: string) => void;
-  placeholder?: string;
-  required?: boolean;
+  value: boolean;
+  onChange: (value: boolean) => void;
+  hint?: string;
 }) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const parseDateFromString = (dateString: string): Date | null => {
-    try {
-      // Handle dd-mm-yyyy format
-      const parts = dateString.split('-');
-      if (parts.length === 3) {
-        // Check if it's dd-mm-yyyy format (day is 1-31, month is 1-12)
-        const firstPart = parseInt(parts[0], 10);
-        const secondPart = parseInt(parts[1], 10);
-        const thirdPart = parseInt(parts[2], 10);
-        
-        if (firstPart >= 1 && firstPart <= 31 && secondPart >= 1 && secondPart <= 12) {
-          // dd-mm-yyyy format
-          const day = firstPart;
-          const month = secondPart - 1; // JavaScript months are 0-indexed
-          const year = thirdPart;
-          return new Date(year, month, day);
-        } else if (thirdPart >= 1 && thirdPart <= 31 && secondPart >= 1 && secondPart <= 12) {
-          // yyyy-mm-dd format
-          const year = firstPart;
-          const month = secondPart - 1; // JavaScript months are 0-indexed
-          const day = thirdPart;
-          return new Date(year, month, day);
-        }
-      }
-      // Fallback to standard Date parsing
-      return new Date(dateString);
-    } catch (error) {
-      return null;
-    }
-  };
-
-  const [selectedDate, setSelectedDate] = useState<Date | null>(
-    value ? parseDateFromString(value) : null
-  );
-
-  // Update selectedDate when value prop changes
-  useEffect(() => {
-    if (value) {
-      const parsedDate = parseDateFromString(value);
-      setSelectedDate(parsedDate);
-    } else {
-      setSelectedDate(null);
-    }
-  }, [value]);
-
-  const formatDate = (date: Date) => {
-    const day = date.getDate().toString().padStart(2, '0');
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    const year = date.getFullYear();
-    return `${day}-${month}-${year}`;
-  };
-
-  const handleDateSelect = (date: Date) => {
-    setSelectedDate(date);
-    onChange(formatDate(date));
-    setIsOpen(false);
-  };
-
-  const handleClear = () => {
-    setSelectedDate(null);
-    onChange('');
-    setIsOpen(false);
-  };
-
-  const handleToday = () => {
-    const today = new Date();
-    setSelectedDate(today);
-    onChange(formatDate(today));
-    setIsOpen(false);
-  };
-
-  const getDaysInMonth = (date: Date) => {
-    return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
-  };
-
-  const getFirstDayOfMonth = (date: Date) => {
-    return new Date(date.getFullYear(), date.getMonth(), 1).getDay();
-  };
-
-  const getDaysArray = (date: Date) => {
-    const daysInMonth = getDaysInMonth(date);
-    const firstDay = getFirstDayOfMonth(date);
-    const days = [];
-
-    // Previous month's trailing days
-    const prevMonth = new Date(date.getFullYear(), date.getMonth() - 1, 0);
-    const prevMonthDays = prevMonth.getDate();
-    for (let i = firstDay - 1; i >= 0; i--) {
-      days.push({
-        day: prevMonthDays - i,
-        isCurrentMonth: false,
-        date: new Date(date.getFullYear(), date.getMonth() - 1, prevMonthDays - i)
-      });
-    }
-
-    // Current month's days
-    for (let i = 1; i <= daysInMonth; i++) {
-      days.push({
-        day: i,
-        isCurrentMonth: true,
-        date: new Date(date.getFullYear(), date.getMonth(), i)
-      });
-    }
-
-    // Next month's leading days
-    const remainingDays = 42 - days.length; // 6 weeks * 7 days
-    for (let i = 1; i <= remainingDays; i++) {
-      days.push({
-        day: i,
-        isCurrentMonth: false,
-        date: new Date(date.getFullYear(), date.getMonth() + 1, i)
-      });
-    }
-
-    return days;
-  };
-
-  const monthNames = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'
-  ];
-
-  const navigateMonth = (direction: 'prev' | 'next') => {
-    const newDate = new Date(currentDate);
-    if (direction === 'prev') {
-      newDate.setMonth(newDate.getMonth() - 1);
-    } else {
-      newDate.setMonth(newDate.getMonth() + 1);
-    }
-    setCurrentDate(newDate);
-  };
-
-  const isToday = (date: Date) => {
-    const today = new Date();
-    return date.toDateString() === today.toDateString();
-  };
-
-  const isSelected = (date: Date) => {
-    return selectedDate && date.toDateString() === selectedDate.toDateString();
-  };
-
   return (
-    <div className="space-y-1 relative">
-      <label className="text-sm font-medium text-zinc-700 flex items-center gap-1">
-        {label}
-        {required && <span className="text-red-500">*</span>}
-      </label>
-      <div className="relative">
+    <div className="space-y-1">
+      <label className="text-sm font-medium text-zinc-700 flex items-center gap-2">
         <input
-          type="text"
-          value={value || ''}
-          onChange={(e) => onChange(e.target.value)}
-          onFocus={() => setIsOpen(true)}
-          placeholder={placeholder}
-          className="w-full px-3 py-2.5 border border-zinc-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 transition-colors"
+          type="checkbox"
+          checked={value || false}
+          onChange={(e) => onChange(e.target.checked)}
+          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
         />
-        
-        {/* Calendar Icon */}
-        <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
-          <svg className="w-4 h-4 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-          </svg>
-        </div>
-
-        {/* Calendar Popup */}
-        {isOpen && (
-          <div className="absolute z-50 w-full mt-1 bg-white border border-zinc-200 rounded-xl shadow-lg">
-            {/* Calendar Header */}
-            <div className="flex items-center justify-between p-3 border-b border-zinc-200">
-              <div className="flex items-center gap-2">
-                <span className="font-medium text-zinc-900">
-                  {monthNames[currentDate.getMonth()]}, {currentDate.getFullYear()}
-                </span>
-                <svg className="w-4 h-4 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </div>
-              <div className="flex items-center gap-1">
-                {/* Year Navigation */}
-                <button
-                  onClick={() => {
-                    const newDate = new Date(currentDate);
-                    newDate.setFullYear(newDate.getFullYear() - 1);
-                    setCurrentDate(newDate);
-                  }}
-                  className="p-1 hover:bg-zinc-100 rounded transition-colors"
-                  title="Previous Year"
-                >
-                  <svg className="w-4 h-4 text-zinc-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
-                  </svg>
-                </button>
-                <button
-                  onClick={() => navigateMonth('prev')}
-                  className="p-1 hover:bg-zinc-100 rounded transition-colors"
-                  title="Previous Month"
-                >
-                  <svg className="w-4 h-4 text-zinc-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-                  </svg>
-                </button>
-                <button
-                  onClick={() => navigateMonth('next')}
-                  className="p-1 hover:bg-zinc-100 rounded transition-colors"
-                  title="Next Month"
-                >
-                  <svg className="w-4 h-4 text-zinc-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
-                <button
-                  onClick={() => {
-                    const newDate = new Date(currentDate);
-                    newDate.setFullYear(newDate.getFullYear() + 1);
-                    setCurrentDate(newDate);
-                  }}
-                  className="p-1 hover:bg-zinc-100 rounded transition-colors"
-                  title="Next Year"
-                >
-                  <svg className="w-4 h-4 text-zinc-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-
-            {/* Calendar Grid */}
-            <div className="p-3">
-              {/* Days of week header */}
-              <div className="grid grid-cols-7 gap-1 mb-2">
-                {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((day) => (
-                  <div key={day} className="text-xs font-medium text-zinc-500 text-center py-1">
-                    {day}
-                  </div>
-                ))}
-              </div>
-
-              {/* Calendar days */}
-              <div className="grid grid-cols-7 gap-1">
-                {getDaysArray(currentDate).map((dayObj, index) => (
-                  <button
-                    key={index}
-                    onClick={() => dayObj.isCurrentMonth && handleDateSelect(dayObj.date)}
-                    className={`
-                      w-8 h-8 text-sm rounded transition-colors flex items-center justify-center
-                      ${!dayObj.isCurrentMonth 
-                        ? 'text-zinc-300 cursor-not-allowed' 
-                        : isSelected(dayObj.date)
-                        ? 'bg-zinc-800 text-white'
-                        : isToday(dayObj.date)
-                        ? 'bg-indigo-100 text-indigo-700 font-medium'
-                        : 'text-zinc-700 hover:bg-zinc-100'
-                      }
-                    `}
-                    disabled={!dayObj.isCurrentMonth}
-                  >
-                    {dayObj.day}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Calendar Footer */}
-            <div className="flex items-center justify-between p-3 border-t border-zinc-200">
-              <button
-                onClick={handleClear}
-                className="text-sm text-blue-600 hover:text-blue-700 transition-colors"
-              >
-                Clear
-              </button>
-              <button
-                onClick={handleToday}
-                className="text-sm text-blue-600 hover:text-blue-700 transition-colors"
-              >
-                Today
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
+        {label}
+      </label>
+      {hint && <p className="text-xs text-zinc-500">{hint}</p>}
     </div>
   );
 }
 
 
 function PageManualForm() {
+    const { user } = useAuth();
+    const { userChanged } = useUserChange();
     const [form, setForm] = useState<any>({
       insurer: "",
       productType: "",
@@ -517,12 +123,28 @@ function PageManualForm() {
       customerPaid: "",
       customerChequeNo: "",
       ourChequeNo: "",
-      executive: "",
+      executive: user?.name || "",
       opsExecutive: "",
       callerName: "",
       mobile: "",
-              rollover: "",
-              remark: "",
+      rollover: "",
+      remark: "",
+      // Health Insurance specific fields
+      insuredPersons: [{
+        name: "",
+        panCard: "",
+        aadhaarCard: "",
+        dateOfBirth: "",
+        weight: "",
+        height: "",
+        preExistingDisease: false,
+        diseaseName: "",
+        diseaseYears: "",
+        tabletDetails: "",
+        surgery: false,
+        surgeryName: "",
+        surgeryDetails: ""
+      }],
               brokerage: "0",
               cashback: "",
               customerName: "",
@@ -540,10 +162,76 @@ function PageManualForm() {
     const [validationMode, setValidationMode] = useState<'progressive' | 'strict'>('progressive');
     const [_callerNames, setCallerNames] = useState<string[]>([]);
     
+    // Reset form when user changes - Unified user change detection
+    useEffect(() => {
+      if (userChanged && user) {
+        setForm((prevForm: any) => ({
+          ...prevForm,
+          executive: user.name || "",
+          opsExecutive: "",
+        }));
+        // Clear form validation state
+        setFieldTouched({});
+        setValidationHistory([]);
+        setSubmitMessage(null);
+      }
+    }, [userChanged, user]);
+
     const set = (k:string,v:any)=> {
       setForm((f:any)=>({ ...f, [k]: v }));
       // Mark field as touched for progressive validation
       setFieldTouched(prev => ({ ...prev, [k]: true }));
+    };
+
+    // Health Insurance specific functions
+    const addInsuredPerson = () => {
+      setForm((prev: any) => ({
+        ...prev,
+        insuredPersons: [...prev.insuredPersons, {
+          name: "",
+          panCard: "",
+          aadhaarCard: "",
+          dateOfBirth: "",
+          weight: "",
+          height: "",
+          preExistingDisease: false,
+          diseaseName: "",
+          diseaseYears: "",
+          tabletDetails: "",
+          surgery: false,
+          surgeryName: "",
+          surgeryDetails: ""
+        }]
+      }));
+    };
+
+    const removeInsuredPerson = (index: number) => {
+      setForm((prev: any) => ({
+        ...prev,
+        insuredPersons: prev.insuredPersons.filter((_: any, i: number) => i !== index)
+      }));
+    };
+
+    const updateInsuredPerson = (index: number, field: string, value: string | boolean) => {
+      setForm((prev: any) => {
+        const updatedPersons = prev.insuredPersons.map((person: any, i: number) => 
+          i === index ? { ...person, [field]: value } : person
+        );
+        
+        // Auto-sync customer name from Person 1 name
+        if (index === 0 && field === 'name' && value && value.toString().trim() !== '') {
+          return {
+            ...prev,
+            insuredPersons: updatedPersons,
+            customerName: value.toString()
+          };
+        }
+        
+        return {
+          ...prev,
+          insuredPersons: updatedPersons
+        };
+      });
     };
     const number = (v:any)=> (v===''||v===null)?0:parseFloat(v.toString().replace(/[^0-9.]/g,''))||0;
   
@@ -591,6 +279,76 @@ function PageManualForm() {
               if (!traditionalPattern.test(cleanValue) && !bhSeriesPattern.test(cleanValue)) {
                 errors.push('Vehicle Number must be in format: KA01AB1234, KA 51 MM 1214, or 23 BH 7699 J');
               }
+            }
+            break;
+
+          // Health Insurance validation
+          case 'insuredPersons':
+            if (!value || !Array.isArray(value) || value.length === 0) {
+              errors.push('At least one insured person is required');
+            } else {
+              value.forEach((person: any, index: number) => {
+                if (!person.name || person.name.trim() === '') {
+                  errors.push(`Person ${index + 1}: Name is required`);
+                }
+                if (!person.panCard || person.panCard.trim() === '') {
+                  errors.push(`Person ${index + 1}: PAN Card is required`);
+                } else if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(person.panCard)) {
+                  errors.push(`Person ${index + 1}: PAN Card must be in format ABCDE1234F`);
+                }
+                if (!person.aadhaarCard || person.aadhaarCard.trim() === '') {
+                  errors.push(`Person ${index + 1}: Aadhaar Card is required`);
+                } else if (!/^[0-9]{4}\s?[0-9]{4}\s?[0-9]{4}$/.test(person.aadhaarCard.replace(/\s/g, ''))) {
+                  errors.push(`Person ${index + 1}: Aadhaar Card must be 12 digits`);
+                }
+                if (!person.dateOfBirth) {
+                  errors.push(`Person ${index + 1}: Date of Birth is required`);
+                } else {
+                  const dob = new Date(person.dateOfBirth);
+                  const today = new Date();
+                  if (isNaN(dob.getTime()) || dob >= today) {
+                    errors.push(`Person ${index + 1}: Date of Birth must be a valid past date`);
+                  }
+                }
+                if (!person.weight || person.weight.trim() === '') {
+                  errors.push(`Person ${index + 1}: Weight is required`);
+                } else {
+                  const weight = parseFloat(person.weight);
+                  if (isNaN(weight) || weight < 20 || weight > 300) {
+                    errors.push(`Person ${index + 1}: Weight must be between 20-300 kg`);
+                  }
+                }
+                if (!person.height || person.height.trim() === '') {
+                  errors.push(`Person ${index + 1}: Height is required`);
+                } else {
+                  const height = parseFloat(person.height);
+                  if (isNaN(height) || height < 50 || height > 250) {
+                    errors.push(`Person ${index + 1}: Height must be between 50-250 cm`);
+                  }
+                }
+                
+                // Pre-existing disease validation
+                if (person.preExistingDisease) {
+                  if (!person.diseaseName || person.diseaseName.trim() === '') {
+                    errors.push(`Person ${index + 1}: Disease name is required when pre-existing disease is checked`);
+                  }
+                  if (!person.diseaseYears || person.diseaseYears.trim() === '') {
+                    errors.push(`Person ${index + 1}: Years with disease is required when pre-existing disease is checked`);
+                  } else {
+                    const years = parseFloat(person.diseaseYears);
+                    if (isNaN(years) || years < 0 || years > 100) {
+                      errors.push(`Person ${index + 1}: Years with disease must be between 0-100 years`);
+                    }
+                  }
+                }
+                
+                // Surgery validation
+                if (person.surgery) {
+                  if (!person.surgeryName || person.surgeryName.trim() === '') {
+                    errors.push(`Person ${index + 1}: Surgery name is required when surgery is checked`);
+                  }
+                }
+              });
             }
             break;
           
@@ -869,7 +627,6 @@ function PageManualForm() {
       return errors;
     };
   
-  
     
   
     // Filtered caller suggestions for autocomplete
@@ -1099,19 +856,40 @@ function PageManualForm() {
           cashback: (parseFloat(form.cashback) || 0).toString(),
           payment_method: form.paymentMethod || 'INSURER',
           payment_sub_method: form.paymentSubMethod || '',
-          source: 'MANUAL_FORM'
+          source: form.productType === "Health Insurance" ? 'HEALTH_MANUAL_FORM' : 'MOTOR_MANUAL_FORM'
         };
   
-        // Debug: Log the policy data being sent
-        console.log('🔍 Manual Form - Policy data being sent:', policyData);
-  
-        // Submit to API
-        const response = await DualStorageService.saveManualForm(policyData);
-        
-        // Debug: Log the response
-        console.log('🔍 Manual Form - API Response:', response);
-        console.log('🔍 Manual Form - Response success:', response?.success);
-        console.log('🔍 Manual Form - Response data:', response?.data);
+        // Submit to API - Use health insurance API for health insurance, manual form API for others
+        let response;
+        if (form.productType === "Health Insurance") {
+          // Transform data for Health Insurance API
+          const healthInsuranceData = {
+            policy_number: policyData.policy_number,
+            insurer: policyData.insurer,
+            issue_date: policyData.issue_date,
+            expiry_date: policyData.expiry_date,
+            sum_insured: parseFloat(policyData.idv) || 0,
+            premium_amount: parseFloat(policyData.total_premium) || 0,
+            executive: policyData.executive,
+            caller_name: policyData.caller_name,
+            mobile: policyData.mobile,
+            customer_name: policyData.customer_name,
+            customer_email: policyData.customer_email,
+            branch: policyData.branch,
+            remark: policyData.remark,
+            source: policyData.source,
+            ops_executive: form.opsExecutive,
+            payment_method: form.paymentMethod || 'INSURER',
+            payment_sub_method: form.paymentSubMethod || '',
+            payment_received: form.paymentReceived || false,
+            received_date: form.receivedDate || null,
+            received_by: form.receivedBy || '',
+            insuredPersons: form.insuredPersons
+          };
+          response = await DualStorageService.saveHealthInsurance(healthInsuranceData);
+        } else {
+          response = await DualStorageService.saveManualForm(policyData);
+        }
         
         if (response && response.success) {
           setSubmitMessage({ 
@@ -1283,7 +1061,7 @@ function PageManualForm() {
   
     return (
       <>
-        <Card title="Manual Entry - Enterprise validation mode">
+        <Card title="Manual Entry — Enterprise Validation Mode" desc="Comprehensive validation with business rules, progressive feedback, and data quality assurance">
           {/* Success/Error Messages */}
           {submitMessage && (
             <div className={`mb-4 p-3 rounded-xl text-sm ${
@@ -1296,38 +1074,32 @@ function PageManualForm() {
           )}
           
           {/* Validation Mode Toggle */}
-          <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+          <div className="mb-4 p-3 bg-blue-50 rounded-lg">
             <div className="flex items-center justify-between">
-              <div className="text-sm font-medium text-blue-800 flex items-center gap-2">
-                <span>ℹ️</span>
-                Validation Mode: {validationMode === 'progressive' ? 'Progressive (Validates as you type)' : 'Strict (Validates all fields)'}
+              <div className="text-sm font-medium text-blue-800">
+                🎯 Validation Mode: {validationMode === 'progressive' ? 'Progressive (Validates as you type)' : 'Strict (Validates all fields)'}
               </div>
               <button 
                 onClick={() => setValidationMode(prev => prev === 'progressive' ? 'strict' : 'progressive')}
-                className="px-3 py-1.5 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                className="px-3 py-1 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700"
               >
                 Switch to {validationMode === 'progressive' ? 'Strict' : 'Progressive'}
               </button>
             </div>
           </div>
           
-          {/* Top row: Vehicle + QuickFill */}
+          {/* Top row: Product Type + QuickFill */}
           <div className="flex flex-col md:flex-row gap-3 mb-4">
-            <div className="flex-1">
-              <LabeledInput 
-                label="Vehicle Number*" 
-                required 
-                placeholder="KA01AB1234 or KA 51 MM" 
-                value={form.vehicleNumber} 
-                onChange={handleVehicleNumberChange}
-              />
-            </div>
-            <button onClick={quickFill} className="px-4 py-2.5 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 transition-colors h-[42px] mt-6">
-              Prefill from last policy
-            </button>
-            <div className="ml-auto flex items-center gap-2 text-xs text-zinc-600 mt-6">
-              <Car className="w-4 h-4"/> Make/Model autofill in v1.1
-            </div>
+            <LabeledSelect label="Product Type" value={form.productType} onChange={v=>set('productType', v)} options={[
+              { value: "Life Insurance", label: "Life Insurance" },
+              { value: "Motor Insurance", label: "Motor Insurance" },
+              { value: "Health Insurance", label: "Health Insurance" },
+              { value: "Travel Insurance", label: "Travel Insurance" },
+              { value: "Home Insurance", label: "Home Insurance" },
+              { value: "Cyber Insurance", label: "Cyber Insurance" }
+            ]}/>
+            <button onClick={quickFill} className="px-4 py-2 rounded-xl bg-indigo-600 text-white h-[42px] mt-6">Prefill from last policy</button>
+            <div className="ml-auto flex items-center gap-2 text-xs text-zinc-600"><Car className="w-4 h-4"/> Make/Model autofill in v1.1</div>
           </div>
   
           {/* Vehicle Search Results */}
@@ -1361,229 +1133,296 @@ function PageManualForm() {
             </div>
           )}
   
-          {/* Policy & Vehicle */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <LabeledInput label="Policy Number" required value={form.policyNumber} onChange={v=>set('policyNumber', v)}/>
-            <LabeledInput label="Insurer (Company)" required placeholder="e.g., Tata AIG" value={form.insurer} onChange={v=>set('insurer', v)}/>
-            <LabeledSelect label="Product Type" value={form.productType} onChange={v=>set('productType', v)} options={[
-              { value: "Life Insurance", label: "Life Insurance" },
-              { value: "Motor Insurance", label: "Motor Insurance" },
-              { value: "Health Insurance", label: "Health Insurance" },
-              { value: "Travel Insurance", label: "Travel Insurance" },
-              { value: "Home Insurance", label: "Home Insurance" },
-              { value: "Cyber Insurance", label: "Cyber Insurance" }
-            ]}/>
-            <LabeledSelect label="Vehicle Type" value={form.vehicleType} onChange={v=>set('vehicleType', v)} options={[
-              { value: "Private Car", label: "Private Car" },
-              { value: "GCV", label: "GCV" },
-              { value: "LCV", label: "LCV" },
-              { value: "MCV", label: "MCV" },
-              { value: "HCV", label: "HCV" }
-            ]}/>
-            <LabeledInput label="Make" placeholder="Maruti / Hyundai / …" value={form.make} onChange={v=>set('make', v)}/>
-            <LabeledInput label="Model" placeholder="Swift / i20 / …" value={form.model} onChange={v=>set('model', v)}/>
-            <LabeledInput label="CC" hint="engine size" value={form.cc} onChange={v=>set('cc', v)}/>
-            <LabeledInput label="MFG Year" value={form.manufacturingYear} onChange={v=>set('manufacturingYear', v)}/>
-          </div>
-  
-          {/* Dates & Values */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
-            <LabeledDateInput label="Issue Date" value={form.issueDate} onChange={v=>set('issueDate', v)}/>
-            <LabeledDateInput label="Expiry Date" value={form.expiryDate} onChange={v=>set('expiryDate', v)}/>
-            <LabeledInput label="IDV (₹)" value={form.idv} onChange={v=>set('idv', v)}/>
-            <LabeledInput label="NCB (%)" value={form.ncb} onChange={v=>set('ncb', v)}/>
-            <LabeledInput label="DIS (%)" hint="discount" value={form.discount} onChange={v=>set('discount', v)}/>
-            <LabeledInput label="Net Addon" hint="net addon" value={form.ref} onChange={v=>set('ref', v)}/>
-          </div>
-  
-          {/* Premiums */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
-            <LabeledInput label="Net OD (₹)" hint="Own Damage" value={form.netOd} onChange={v=>set('netOd', v)}/>
-            <LabeledInput label="Total OD (₹)" value={form.totalOd} onChange={v=>set('totalOd', v)}/>
-            <LabeledInput label="Net Premium (₹)" value={form.netPremium} onChange={v=>set('netPremium', v)}/>
-            <LabeledInput label="Total Premium (₹)" required value={form.totalPremium} onChange={onTotalChange}/>
-          </div>
-  
-          {/* Cashback & Payments */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
-            <LabeledInput label="Cashback %" hint="auto-calculates amount" value={form.cashbackPct} onChange={onPctChange}/>
-            <LabeledInput label="Cashback Amount (₹)" hint="fills when % given" value={form.cashbackAmt} onChange={onAmtChange}/>
-            <LabeledInput label="Customer Paid (₹)" value={form.customerPaid} onChange={v=>set('customerPaid', v)}/>
-            <LabeledInput label="Customer Cheque No" value={form.customerChequeNo} onChange={v=>set('customerChequeNo', v)}/>
-            <LabeledInput label="Our Cheque No" value={form.ourChequeNo} onChange={v=>set('ourChequeNo', v)}/>
-            <LabeledSelect 
-              label="Payment Method" 
-              value={form.paymentMethod}
-              onChange={(value) => {
-                set('paymentMethod', value);
-                if (value !== 'NICSAN') {
-                  set('paymentSubMethod', '');
-                }
-              }}
-              options={[
-                { value: "INSURER", label: "INSURER" },
-                { value: "NICSAN", label: "NICSAN" }
-              ]}
-              placeholder="Select Payment Method"
-            />
-            {form.paymentMethod === 'NICSAN' && (
-              <LabeledSelect 
-                label="Payment Sub-Method" 
-                value={form.paymentSubMethod}
-                onChange={(value) => set('paymentSubMethod', value)}
-                options={[
-                  { value: "DIRECT", label: "DIRECT" },
-                  { value: "EXECUTIVE", label: "EXECUTIVE" }
-                ]}
-                placeholder="Select Sub-Method"
-              />
-            )}
-          </div>
-  
-          {/* Brokerage & Additional */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
-            <div style={{ display: 'none' }}>
-              <LabeledInput label="Brokerage (₹)" hint="commission amount" value={form.brokerage} onChange={v=>set('brokerage', v)}/>
-            </div>
-            <LabeledInput label="Cashback (₹)" hint="total cashback amount" value={form.cashback} onChange={v=>set('cashback', v)}/>
-          </div>
-  
-          {/* People & Notes - Reorganized to match production layout */}
-          <div className="space-y-3 mt-4">
-            {/* First row - Executive, Ops Executive, Caller Name */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <LabeledSelect 
-                label="Executive" 
-                value={form.executive} 
-                onChange={v=>set('executive', v)} 
-                options={[
-                  { value: "", label: "Select Executive" },
-                  { value: "Yashwanth", label: "Yashwanth" },
-                  { value: "Kavya", label: "Kavya" },
-                  { value: "Bhagya", label: "Bhagya" },
-                  { value: "Sandesh", label: "Sandesh" },
-                  { value: "Yallappa", label: "Yallappa" },
-                  { value: "Nethravathi", label: "Nethravathi" },
-                  { value: "Tejaswini", label: "Tejaswini" }
-                ]}
-                placeholder="Select Executive"
-              />
-              <LabeledSelect 
-                label="Ops Executive" 
-                value={form.opsExecutive} 
-                onChange={v=>set('opsExecutive', v)} 
-                options={[
-                  { value: "", label: "Select Ops Executive" },
-                  { value: "NA", label: "NA" },
-                  { value: "Ravi", label: "Ravi" },
-                  { value: "Pavan", label: "Pavan" },
-                  { value: "Manjunath", label: "Manjunath" }
-                ]}
-                placeholder="Select Ops Executive"
-              />
-              <LabeledAutocompleteInput 
-                label="Caller Name" 
-                value={form.callerName} 
-                onChange={(v: string)=>set('callerName', v)} 
-                getSuggestions={getFilteredCallerSuggestions} 
-                onAddNew={handleAddNewTelecaller} 
-                showAddNew={true}
-                placeholder="Enter caller name"
-              />
-          </div>
-  
-            {/* Second row - Mobile Number, Rollover/Renewal, Customer Email ID */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <LabeledInput 
-                label="Mobile Number" 
-                required 
-                placeholder="9xxxxxxxxx" 
-                value={form.mobile} 
-                onChange={v=>set('mobile', v)}
-              />
-              <LabeledSelect 
-                label="Rollover/Renewal" 
-                value={form.rollover} 
-                onChange={v=>set('rollover', v)} 
-                options={[
-                  { value: "", label: "Select Rollover/Renewal" },
-                  { value: "ROLLOVER", label: "ROLLOVER" },
-                  { value: "RENEWAL", label: "RENEWAL" }
-                ]}
-                placeholder="Select Rollover/Renewal"
-              />
-              <LabeledInput 
-                label="Customer Email ID" 
-                value={form.customerEmail} 
-                onChange={v=>set('customerEmail', v)}
-                placeholder="customer@example.com"
-              />
-            </div>
+          {/* Conditional Fields based on Product Type */}
+          {form.productType === "Health Insurance" ? (
+            <>
+              {/* Health Insurance Fields */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <LabeledInput label="Policy Number" required value={form.policyNumber} onChange={v=>set('policyNumber', v)}/>
+                <LabeledInput label="Insurer (Company)" required placeholder="e.g., Apollo Munich, Max Bupa" value={form.insurer} onChange={v=>set('insurer', v)}/>
+              </div>
 
-            {/* Third row - Customer Name, Branch, Remark */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <LabeledInput 
-                label="Customer Name" 
-                value={form.customerName} 
-                onChange={v=>set('customerName', v)}
-                placeholder="Enter customer name"
-              />
-              <LabeledSelect 
-                label="Branch" 
-                required 
-                value={form.branch} 
-                onChange={v=>set('branch', v)} 
-                options={[
-                  { value: "", label: "Select Branch" },
-                  { value: "MYSORE", label: "MYSORE" },
-                  { value: "BANASHANKARI", label: "BANASHANKARI" },
-                  { value: "ADUGODI", label: "ADUGODI" }
-                ]}
-                placeholder="Select Branch"
-              />
-              <LabeledInput 
-                label="Remark" 
-                placeholder="Any note" 
-                value={form.remark} 
-                onChange={v=>set('remark', v)}
-              />
-            </div>
+              {/* Insured Persons Section */}
+              <div className="mt-6">
+                <h3 className="text-lg font-semibold text-zinc-800 mb-4 flex items-center gap-2">
+                  <User className="w-5 h-5" />
+                  Insured Persons
+                </h3>
+                
+                {form.insuredPersons.map((person: any, index: number) => (
+                  <div key={index} className="bg-zinc-50 p-4 rounded-lg mb-4 border border-zinc-200">
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="font-medium text-zinc-700">Person {index + 1}</h4>
+                      {form.insuredPersons.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removeInsuredPerson(index)}
+                          className="text-red-500 hover:text-red-700 p-1"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <LabeledInput 
+                        label="Name" 
+                        required 
+                        value={person.name} 
+                        onChange={(value) => updateInsuredPerson(index, 'name', value)}
+                        placeholder="Full Name"
+                        hint={index === 0 ? "Will auto-fill Customer Name" : ""}
+                      />
+                      <LabeledInput 
+                        label="PAN Card Number" 
+                        required 
+                        value={person.panCard} 
+                        onChange={(value) => updateInsuredPerson(index, 'panCard', value)}
+                        placeholder="ABCDE1234F"
+                      />
+                      <LabeledInput 
+                        label="Aadhaar Card Number" 
+                        required 
+                        value={person.aadhaarCard} 
+                        onChange={(value) => updateInsuredPerson(index, 'aadhaarCard', value)}
+                        placeholder="1234 5678 9012"
+                      />
+                      <LabeledInput 
+                        label="Date of Birth" 
+                        required 
+                        type="date"
+                        value={person.dateOfBirth} 
+                        onChange={(value) => updateInsuredPerson(index, 'dateOfBirth', value)}
+                      />
+                      <LabeledInput 
+                        label="Weight (kg)" 
+                        required 
+                        value={person.weight} 
+                        onChange={(value) => updateInsuredPerson(index, 'weight', value)}
+                        placeholder="70"
+                      />
+                      <LabeledInput 
+                        label="Height (cm)" 
+                        required 
+                        value={person.height} 
+                        onChange={(value) => updateInsuredPerson(index, 'height', value)}
+                        placeholder="170"
+                      />
+                    </div>
+                    
+                    {/* Pre-existing Disease Section */}
+                    <div className="mt-4 pt-4 border-t border-zinc-300">
+                      <h5 className="text-sm font-medium text-zinc-700 mb-3">Pre-existing Disease Information</h5>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <LabeledCheckbox 
+                          label="Do you have any pre-existing disease?" 
+                          value={person.preExistingDisease} 
+                          onChange={(value) => updateInsuredPerson(index, 'preExistingDisease', value)}
+                          hint="Check if you have any medical conditions"
+                        />
+                        
+                        {person.preExistingDisease && (
+                          <>
+                            <LabeledInput 
+                              label="Disease Name" 
+                              required 
+                              value={person.diseaseName} 
+                              onChange={(value) => updateInsuredPerson(index, 'diseaseName', value)}
+                              placeholder="e.g., Diabetes, Hypertension, Heart Disease"
+                            />
+                            <LabeledInput 
+                              label="Years with Disease" 
+                              required 
+                              value={person.diseaseYears} 
+                              onChange={(value) => updateInsuredPerson(index, 'diseaseYears', value)}
+                              placeholder="e.g., 5 years"
+                            />
+                            <div className="md:col-span-2">
+                              <LabeledInput 
+                                label="Tablet/Medication Details" 
+                                value={person.tabletDetails} 
+                                onChange={(value) => updateInsuredPerson(index, 'tabletDetails', value)}
+                                placeholder="e.g., Metformin 500mg twice daily, Amlodipine 5mg once daily"
+                                hint="List all current medications and dosages"
+                              />
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {/* Surgery Information Section */}
+                    <div className="mt-4 pt-4 border-t border-zinc-300">
+                      <h5 className="text-sm font-medium text-zinc-700 mb-3">Surgery Information</h5>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <LabeledCheckbox 
+                          label="Have you undergone any surgery?" 
+                          value={person.surgery} 
+                          onChange={(value) => updateInsuredPerson(index, 'surgery', value)}
+                          hint="Check if you have had any surgical procedures"
+                        />
+                        
+                        {person.surgery && (
+                          <>
+                            <LabeledInput 
+                              label="Surgery Name" 
+                              required 
+                              value={person.surgeryName} 
+                              onChange={(value) => updateInsuredPerson(index, 'surgeryName', value)}
+                              placeholder="e.g., Appendectomy, Gallbladder removal, Heart surgery"
+                            />
+                            <div className="md:col-span-2">
+                              <LabeledInput 
+                                label="Surgery Details" 
+                                value={person.surgeryDetails} 
+                                onChange={(value) => updateInsuredPerson(index, 'surgeryDetails', value)}
+                                placeholder="e.g., Laparoscopic appendectomy performed in 2020, No complications, Full recovery"
+                                hint="Provide details about the surgery, date, complications, and recovery"
+                              />
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                
+                <button
+                  type="button"
+                  onClick={addInsuredPerson}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Another Person
+                </button>
+              </div>
+
+              {/* Health Insurance Premium Fields */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+                <LabeledInput label="Issue Date" value={form.issueDate} onChange={v=>set('issueDate', v)}/>
+                <LabeledInput label="Expiry Date" value={form.expiryDate} onChange={v=>set('expiryDate', v)}/>
+                <LabeledInput label="Sum Insured (₹)" value={form.idv} onChange={v=>set('idv', v)} placeholder="e.g., 500000"/>
+                <LabeledInput label="Premium Amount (₹)" required value={form.totalPremium} onChange={onTotalChange}/>
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Motor Insurance Fields */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <LabeledInput label="Policy Number" required value={form.policyNumber} onChange={v=>set('policyNumber', v)}/>
+                <LabeledInput label="Vehicle Number" required placeholder="KA01AB1234 or KA 51 MM 1214" value={form.vehicleNumber} onChange={handleVehicleNumberChange}/>
+                <LabeledInput label="Insurer (Company)" required placeholder="e.g., Tata AIG" value={form.insurer} onChange={v=>set('insurer', v)}/>
+                <LabeledSelect label="Vehicle Type" value={form.vehicleType} onChange={v=>set('vehicleType', v)} options={[
+                  { value: "Private Car", label: "Private Car" },
+                  { value: "GCV", label: "GCV" },
+                  { value: "LCV", label: "LCV" },
+                  { value: "MCV", label: "MCV" },
+                  { value: "HCV", label: "HCV" }
+                ]}/>
+                <LabeledInput label="Make" placeholder="Maruti / Hyundai / …" value={form.make} onChange={v=>set('make', v)}/>
+                <LabeledInput label="Model" placeholder="Swift / i20 / …" value={form.model} onChange={v=>set('model', v)}/>
+                <LabeledInput label="CC" hint="engine size" value={form.cc} onChange={v=>set('cc', v)}/>
+                <LabeledInput label="MFG Year" value={form.manufacturingYear} onChange={v=>set('manufacturingYear', v)}/>
+              </div>
+            </>
+          )}
+  
+          {/* Motor Insurance specific fields - only show for Motor Insurance */}
+          {form.productType !== "Health Insurance" && (
+            <>
+              {/* Dates & Values */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                <LabeledInput label="Issue Date" value={form.issueDate} onChange={v=>set('issueDate', v)}/>
+                <LabeledInput label="Expiry Date" value={form.expiryDate} onChange={v=>set('expiryDate', v)}/>
+                <LabeledInput label="IDV (₹)" value={form.idv} onChange={v=>set('idv', v)}/>
+                <LabeledInput label="NCB (%)" value={form.ncb} onChange={v=>set('ncb', v)}/>
+                <LabeledInput label="DIS (%)" hint="discount" value={form.discount} onChange={v=>set('discount', v)}/>
+                <LabeledInput label="Net Addon" hint="net addon" value={form.ref} onChange={v=>set('ref', v)}/>
+              </div>
+              
+              {/* Premiums */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                <LabeledInput label="Net OD (₹)" hint="Own Damage" value={form.netOd} onChange={v=>set('netOd', v)}/>
+                <LabeledInput label="Total OD (₹)" value={form.totalOd} onChange={v=>set('totalOd', v)}/>
+                <LabeledInput label="Net Premium (₹)" value={form.netPremium} onChange={v=>set('netPremium', v)}/>
+                <LabeledInput label="Total Premium (₹)" required value={form.totalPremium} onChange={onTotalChange}/>
+              </div>
+  
+              {/* Cashback & Payments */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                <LabeledInput label="Cashback %" hint="auto-calculates amount" value={form.cashbackPct} onChange={onPctChange}/>
+                <LabeledInput label="Cashback Amount (₹)" hint="fills when % given" value={form.cashbackAmt} onChange={onAmtChange}/>
+                <LabeledInput label="Customer Paid (₹)" value={form.customerPaid} onChange={v=>set('customerPaid', v)}/>
+                <LabeledInput label="Customer Cheque No" value={form.customerChequeNo} onChange={v=>set('customerChequeNo', v)}/>
+                <LabeledInput label="Our Cheque No" value={form.ourChequeNo} onChange={v=>set('ourChequeNo', v)}/>
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Payment Method</label>
+                  <select 
+                    value={form.paymentMethod}
+                    onChange={(e) => {
+                      set('paymentMethod', e.target.value);
+                      if (e.target.value !== 'NICSAN') {
+                        set('paymentSubMethod', '');
+                      }
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                  >
+                    <option value="INSURER">INSURER</option>
+                    <option value="NICSAN">NICSAN</option>
+                  </select>
+                </div>
+                {form.paymentMethod === 'NICSAN' && (
+                  <div>
+                    <label className="block text-xs text-gray-600 mb-1">Payment Sub-Method</label>
+                    <select 
+                      value={form.paymentSubMethod}
+                      onChange={(e) => set('paymentSubMethod', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                    >
+                      <option value="">Select Sub-Method</option>
+                      <option value="DIRECT">DIRECT</option>
+                      <option value="EXECUTIVE">EXECUTIVE</option>
+                    </select>
+                  </div>
+                )}
+              </div>
+  
+              {/* Brokerage & Additional */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                <div style={{ display: 'none' }}>
+                  <LabeledInput label="Brokerage (₹)" hint="commission amount" value={form.brokerage} onChange={v=>set('brokerage', v)}/>
+                </div>
+                <LabeledInput label="Cashback (₹)" hint="total cashback amount" value={form.cashback} onChange={v=>set('cashback', v)}/>
+              </div>
+            </>
+          )}
+  
+          {/* People & Notes */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+            <LabeledInput label="Executive" value={form.executive} onChange={v=>set('executive', v)} disabled={true} hint="Auto-filled from current user"/>
+            <LabeledInput label="Ops Executive" value={form.opsExecutive} onChange={v=>set('opsExecutive', v)}/>
+            <AutocompleteInput label="Caller Name" value={form.callerName} onChange={v=>set('callerName', v)} getSuggestions={getFilteredCallerSuggestions} onAddNew={handleAddNewTelecaller} showAddNew={true}/>
+            <LabeledInput label="Mobile Number" required placeholder="9xxxxxxxxx" value={form.mobile} onChange={v=>set('mobile', v)}/>
+            <LabeledInput label="Rollover/Renewal" hint="internal code" value={form.rollover} onChange={v=>set('rollover', v)}/>
+            <LabeledInput label="Customer Name" value={form.customerName} onChange={v=>set('customerName', v)}/>
+            <LabeledInput label="Customer Email ID" value={form.customerEmail} onChange={v=>set('customerEmail', v)}/>
+            <LabeledInput label="Branch" required value={form.branch} onChange={v=>set('branch', v)}/>
+            <LabeledInput label="Remark" placeholder="Any note" value={form.remark} onChange={v=>set('remark', v)}/>
           </div>
   
-          {/* Assist panels - Enhanced to match production */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-            <div className="bg-amber-50 border border-amber-200 text-amber-800 rounded-xl p-4 text-sm">
-              <div className="font-semibold mb-2 flex items-center gap-2">
-                <span>⚠️</span>
-                Error tray
-              </div>
-              {errors.length > 0 ? (
-                <ul className="list-disc pl-5 space-y-1">
-                  {errors.map((e,i) => (
-                    <li key={i} className="text-amber-700">{e}</li>
-                  ))}
-                </ul>
-              ) : (
-                <div className="text-amber-600">No blocking errors.</div>
-              )}
+          {/* Assist panels */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4">
+            <div className="bg-amber-50 text-amber-800 rounded-xl p-3 text-sm">
+              <div className="font-medium mb-1">Error tray</div>
+              {errors.length? <ul className="list-disc pl-5">{errors.map((e,i)=>(<li key={i}>{e}</li>))}</ul>:<div>No blocking errors.</div>}
             </div>
-            <div className="bg-zinc-50 border border-zinc-200 rounded-xl p-4 text-sm">
-              <div className="font-semibold mb-2 flex items-center gap-2">
-                <span>⌨️</span>
-                Shortcuts
-              </div>
-              <div className="space-y-1 text-zinc-600">
-                <div><kbd className="px-1 py-0.5 bg-zinc-200 rounded text-xs">Ctrl+S</kbd> save</div>
-                <div><kbd className="px-1 py-0.5 bg-zinc-200 rounded text-xs">Ctrl+Enter</kbd> save & new</div>
-                <div><kbd className="px-1 py-0.5 bg-zinc-200 rounded text-xs">Alt+E</kbd> first error</div>
-              </div>
+            <div className="bg-zinc-50 rounded-xl p-3 text-sm">
+              <div className="font-medium mb-1">Shortcuts</div>
+              <div>Ctrl+S save · Ctrl+Enter save & new · Alt+E first error</div>
             </div>
-            <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl p-4 text-sm">
-              <div className="font-semibold mb-2 flex items-center gap-2">
-                <span>🤖</span>
-                Smart autofill
-              </div>
-              <div className="text-emerald-700">Typing a vehicle no. offers last-year data to copy.</div>
+            <div className="bg-emerald-50 text-emerald-800 rounded-xl p-3 text-sm">
+              <div className="font-medium mb-1">Smart autofill</div>
+              <div>Typing a vehicle no. offers last-year data to copy.</div>
             </div>
           </div>
   

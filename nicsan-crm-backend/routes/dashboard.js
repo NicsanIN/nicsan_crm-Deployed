@@ -273,5 +273,24 @@ router.get('/total-od/financial-year', authenticateToken, requireFounder, async 
   }
 });
 
+// Get Health Insurance Metrics - Premium Only
+router.get('/health-metrics', authenticateToken, requireFounder, async (req, res) => {
+  try {
+    const { period = '14d' } = req.query;
+    const result = await storageService.calculateHealthInsuranceMetrics(period);
+    
+    res.json({
+      success: true,
+      data: result
+    });
+  } catch (error) {
+    console.error('Health insurance metrics error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to get health insurance metrics'
+    });
+  }
+});
+
 module.exports = router;
 
