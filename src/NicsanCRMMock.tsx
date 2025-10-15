@@ -248,32 +248,32 @@ export function AutocompleteInput({
   const debouncedGetSuggestions = useMemo(
     () => {
       let timeoutId: NodeJS.Timeout;
-    return (input: string) => {
-      clearTimeout(timeoutId);
-      timeoutId = setTimeout(async () => {
-        if (input.length >= 2 && getSuggestions) {
-          setIsLoading(true);
-          try {
-            const newSuggestions = await getSuggestions(input);
-            setSuggestions(newSuggestions);
-            setShowSuggestions(true);
+      return (input: string) => {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(async () => {
+          if (input.length >= 2 && getSuggestions) {
+            setIsLoading(true);
+            try {
+              const newSuggestions = await getSuggestions(input);
+              setSuggestions(newSuggestions);
+              setShowSuggestions(true);
               
               // Show "Add New" option if no suggestions found
-            setShowAddNewOption(newSuggestions.length === 0 && showAddNew);
-          } catch (error) {
-            console.warn('Failed to get suggestions:', error);
-            setSuggestions([]);
-            setShowAddNewOption(showAddNew);
-          } finally {
-            setIsLoading(false);
-          }
+              setShowAddNewOption(newSuggestions.length === 0 && showAddNew);
+            } catch (error) {
+              console.warn('Failed to get suggestions:', error);
+              setSuggestions([]);
+              setShowAddNewOption(showAddNew);
+            } finally {
+              setIsLoading(false);
+            }
           } else {
             setSuggestions([]);
             setShowSuggestions(false);
             setShowAddNewOption(false);
-        }
-      }, 300);
-    };
+          }
+        }, 300);
+      };
     },
     [getSuggestions, showAddNew]
   );
@@ -415,18 +415,6 @@ function NicsanCRMMock() {
 
   return (
     <div className="min-h-screen bg-zinc-50">
-      {/* Backend Status Indicator */}
-      {ENABLE_DEBUG && backendStatus && (
-        <div className={`px-4 py-2 text-xs font-medium ${
-          backendStatus.backendAvailable 
-            ? 'bg-green-100 text-green-800' 
-            : 'bg-red-100 text-red-800'
-        }`}>
-          ≡ƒöù Backend: {backendStatus.backendAvailable ? 'Connected' : 'Disconnected'} 
-          | Mock: {ENABLE_MOCK_DATA ? 'Enabled' : 'Disabled'}
-          | Debug: {ENABLE_DEBUG ? 'On' : 'Off'}
-        </div>
-      )}
       
       <TopTabs tab={tab} setTab={setTab} user={user} onLogout={()=>setUser(null)} />
       {tab === "ops" ? (
