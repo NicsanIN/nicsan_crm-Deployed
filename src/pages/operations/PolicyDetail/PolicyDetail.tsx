@@ -26,6 +26,10 @@ function PagePolicyDetail() {
     // Document functionality state
     const [documents, setDocuments] = useState<any>(null);
     const [isLoadingDocuments, setIsLoadingDocuments] = useState(false);
+    
+    // Simple caching for performance optimization
+    const [policyCache, setPolicyCache] = useState<Map<string, any>>(new Map());
+    const [documentCache, setDocumentCache] = useState<Map<string, any>>(new Map());
   
     const loadAvailablePolicies = async () => {
       try {
@@ -65,6 +69,21 @@ function PagePolicyDetail() {
         // Convert id to string and determine if this is a health insurance policy
         const idString = String(id);
         
+        // Check cache first for performance optimization
+        if (policyCache.has(idString)) {
+          const cachedData = policyCache.get(idString);
+          setPolicyData(cachedData);
+          setDataSource('CACHED');
+          setIsLoading(false);
+          
+          // Load documents from cache or API
+          const policyNumber = cachedData.policy_number;
+          if (policyNumber) {
+            loadDocuments(policyNumber);
+          }
+          return;
+        }
+        
         // Enhanced health policy detection - check if it's a health policy by looking at available policies
         const isHealthPolicy = idString.startsWith('health-') || 
                               idString.includes('health') || 
@@ -99,6 +118,9 @@ function PagePolicyDetail() {
           setPolicyData(response.data);
           setDataSource(response.source);
           
+          // Cache the policy data for future use
+          setPolicyCache(prev => new Map(prev).set(idString, response.data));
+          
           // Load documents for this policy
           const policyNumber = response.data.policy_number;
           if (policyNumber) {
@@ -117,10 +139,21 @@ function PagePolicyDetail() {
     const loadDocuments = async (policyNumber: string) => {
       try {
         setIsLoadingDocuments(true);
+        
+        // Check document cache first for performance optimization
+        if (documentCache.has(policyNumber)) {
+          const cachedDocs = documentCache.get(policyNumber);
+          setDocuments(cachedDocs);
+          setIsLoadingDocuments(false);
+          return;
+        }
+        
         const response = await DualStorageService.getPolicyDocuments(policyNumber);
         
         if (response.success) {
           setDocuments(response.data);
+          // Cache the documents for future use
+          setDocumentCache(prev => new Map(prev).set(policyNumber, response.data));
         } else {
           setDocuments(null);
         }
@@ -166,6 +199,9 @@ function PagePolicyDetail() {
         setSearchQuery('');
         setSearchResults([]);
         setShowResults(false);
+        // Clear cache when user changes
+        setPolicyCache(new Map());
+        setDocumentCache(new Map());
         loadAvailablePolicies();
         loadPolicyDetail('1');
       }
@@ -173,15 +209,13 @@ function PagePolicyDetail() {
 
     useEffect(() => {
       loadAvailablePolicies();
-      loadPolicyDetail(policyId);
+      // Remove duplicate loadPolicyDetail call - it will be called by the dependency useEffect
     }, []);
   
     useEffect(() => {
-      if (policyId && policyId !== '') {
-        // Wait for availablePolicies to be loaded before loading policy detail
-        if (availablePolicies.length > 0) {
-          loadPolicyDetail(policyId);
-        }
+      if (policyId && policyId !== '' && availablePolicies.length > 0) {
+        // Only load policy detail when both policyId and availablePolicies are ready
+        loadPolicyDetail(policyId);
       }
     }, [policyId, availablePolicies]);
   

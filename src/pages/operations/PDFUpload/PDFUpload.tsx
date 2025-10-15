@@ -873,8 +873,8 @@ function PageUpload() {
           )}
 
           {/* Additional Documents Upload Section */}
-          <div className="mt-6 p-4 bg-green-50 rounded-xl border border-green-200">
-            <div className="text-sm font-medium mb-3 text-green-800">📋 Additional Documents (Optional)</div>
+          <div className="mt-6 p-4 bg-white rounded-xl border border-gray-200">
+            <div className="text-sm font-medium mb-3 text-gray-800">📋 Additional Documents (Optional)</div>
             
             {/* Aadhaar Upload */}
             <div className="mb-4">
@@ -882,7 +882,7 @@ function PageUpload() {
                 <span className="text-lg">🆔</span>
                 <span className="font-medium">Aadhaar Card</span>
                 {uploadedDocuments.aadhaar && (
-                  <span className="text-green-600 text-sm">✓ Uploaded</span>
+                  <span className="text-blue-600 text-sm">✓ Uploaded</span>
                 )}
               </div>
               <div className="flex gap-2">
@@ -895,14 +895,14 @@ function PageUpload() {
                 />
                 <button 
                   onClick={() => aadhaarInputRef.current?.click()}
-                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                  className="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm w-32"
                 >
                   Upload Aadhaar
                 </button>
                 {uploadedDocuments.aadhaar && (
                   <button 
                     onClick={() => viewDocument('aadhaar')}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                    className="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm w-16"
                   >
                     View
                   </button>
@@ -921,7 +921,7 @@ function PageUpload() {
                 <span className="text-lg">📋</span>
                 <span className="font-medium">PAN Card</span>
                 {uploadedDocuments.pancard && (
-                  <span className="text-green-600 text-sm">✓ Uploaded</span>
+                  <span className="text-blue-600 text-sm">✓ Uploaded</span>
                 )}
               </div>
               <div className="flex gap-2">
@@ -934,14 +934,14 @@ function PageUpload() {
                 />
                 <button 
                   onClick={() => panInputRef.current?.click()}
-                  className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700"
+                  className="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm w-28"
                 >
                   Upload PAN
                 </button>
                 {uploadedDocuments.pancard && (
                   <button 
                     onClick={() => viewDocument('pancard')}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                    className="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm w-16"
                   >
                     View
                   </button>
@@ -960,7 +960,7 @@ function PageUpload() {
                 <span className="text-lg">🚗</span>
                 <span className="font-medium">RC Document</span>
                 {uploadedDocuments.rc && (
-                  <span className="text-green-600 text-sm">✓ Uploaded</span>
+                  <span className="text-blue-600 text-sm">✓ Uploaded</span>
                 )}
               </div>
               <div className="flex gap-2">
@@ -973,14 +973,14 @@ function PageUpload() {
                 />
                 <button 
                   onClick={() => rcInputRef.current?.click()}
-                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+                  className="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm w-24"
                 >
                   Upload RC
                 </button>
                 {uploadedDocuments.rc && (
                   <button 
                     onClick={() => viewDocument('rc')}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                    className="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm w-16"
                   >
                     View
                   </button>
