@@ -16,7 +16,10 @@ const fmtINR = (amount: number | string) => {
 };
 
 const pct = (value: number | string) => {
-  if (typeof value === 'string') return value;
+  if (typeof value === 'string') {
+    // If it's already a string with %, return as is, otherwise add %
+    return value.includes('%') ? value : `${value}%`;
+  }
   if (value === null || value === undefined || isNaN(value)) return "0%";
   return `${value.toFixed(1)}%`;
 };
@@ -46,7 +49,6 @@ function PageKPIs() {
     useEffect(() => {
       if (userChanged && user) {
         setKpiData(null);
-        setDataSource('');
       }
     }, [userChanged, user]);
 
@@ -79,11 +81,11 @@ function PageKPIs() {
     const totalBrokerage = kpiData?.basicMetrics?.totalBrokerage || 0;
     const totalCashback = kpiData?.basicMetrics?.totalCashback || 0;
   
-    // Use settings for calculations
-    const brokeragePercent = parseFloat(settings.brokeragePercent) / 100;
-    const repDailyCost = parseFloat(settings.repDailyCost);
-    const expectedConversion = parseFloat(settings.expectedConversion) / 100;
-    const premiumGrowth = parseFloat(settings.premiumGrowth) / 100;
+    // Use settings for calculations with fallbacks
+    const brokeragePercent = parseFloat(settings?.brokeragePercent || '15') / 100;
+    const repDailyCost = parseFloat(settings?.repDailyCost || '2000');
+    const expectedConversion = parseFloat(settings?.expectedConversion || '25') / 100;
+    const premiumGrowth = parseFloat(settings?.premiumGrowth || '10') / 100;
   
     // Use backend KPI calculations if available, otherwise calculate from real data with settings
     const backendKPIs = kpiData?.kpis || {};
@@ -164,7 +166,7 @@ function PageKPIs() {
           {/* Settings-Based Calculations */}
           <Card title="Business Projections">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-              <Tile label="Expected Brokerage" value={fmtINR(calculatedBrokerage)} sub={`${settings.brokeragePercent}% of ${fmtINR(sumGWP)}`}/>
+              <Tile label="Expected Brokerage" value={fmtINR(calculatedBrokerage)} sub={`${settings?.brokeragePercent || '15'}% of ${fmtINR(sumGWP)}`}/>
               <Tile label="Backlog Value" value={fmtINR(expectedBacklogValue)} sub={`${totalLeads - totalConverted} pending leads`}/>
               <Tile label="3-Year LTV" value={fmtINR(projectedLTV)} sub="Projected customer value"/>
               <Tile label="Daily Rep Cost" value={fmtINR(repDailyCost)} sub="From settings"/>
