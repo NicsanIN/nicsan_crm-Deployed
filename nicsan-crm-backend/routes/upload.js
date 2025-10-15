@@ -350,63 +350,61 @@ router.post('/:uploadId/confirm', authenticateToken, requireOps, async (req, res
       
       console.log('✅ Policy created successfully with data source:', editedData ? 'EDITED' : 'ORIGINAL');
       
-      // NEW: Send PDF via email to customer
-      try {
-        const customerEmail = policyData.customer_email || policyData.customerEmail;
-        if (customerEmail) {
-          console.log('📧 Sending policy PDF to customer:', customerEmail);
-          
-          const emailResult = await emailService.sendPolicyPDF(
-            customerEmail,
-            policyData,
-            upload.s3_key,  // Original PDF S3 key
-            upload.filename  // Original PDF filename
-          );
-          
-          if (emailResult.success) {
-            console.log('✅ PDF sent to customer successfully:', emailResult.messageId);
-          } else {
-            console.error('⚠️ Email sending failed:', emailResult.error);
-            // Don't fail policy creation if email fails
-          }
-        } else {
-          console.log('⚠️ No customer email found, skipping email sending');
-        }
-      } catch (emailError) {
-        console.error('⚠️ Email service error:', emailError.message);
-        // Don't fail policy creation if email fails
-      }
-
-      // NEW: Send PDF via WhatsApp to customer
-      try {
-        const customerPhone = policyData.customer_phone || policyData.customerPhone;
-        if (customerPhone) {
-          console.log('📱 Sending policy PDF via WhatsApp to customer:', customerPhone);
-          
-          const whatsappResult = await whatsappService.sendPolicyWhatsApp(
-            customerPhone,
-            policyData,
-            upload.s3_key,  // Original PDF S3 key
-            upload.filename  // Original PDF filename
-          );
-          
-          if (whatsappResult.success) {
-            console.log('✅ PDF sent via WhatsApp successfully:', whatsappResult.textMessageId, whatsappResult.documentMessageId);
-          } else {
-            console.error('⚠️ WhatsApp sending failed:', whatsappResult.error);
-            // Don't fail policy creation if WhatsApp fails
-          }
-        } else {
-          console.log('⚠️ No customer phone found, skipping WhatsApp sending');
-        }
-      } catch (whatsappError) {
-        console.error('⚠️ WhatsApp service error:', whatsappError.message);
-        // Don't fail policy creation if WhatsApp fails
-      }
-      
+      // Send immediate response
       res.json({
         success: true,
         data: result.data
+      });
+      
+      // Move notifications to background processing
+      setImmediate(async () => {
+        try {
+          // Email notification (runs in background)
+          const customerEmail = policyData.customer_email || policyData.customerEmail;
+          if (customerEmail) {
+            console.log('📧 Sending policy PDF to customer (background):', customerEmail);
+            
+            const emailResult = await emailService.sendPolicyPDF(
+              customerEmail,
+              policyData,
+              upload.s3_key,  // Original PDF S3 key
+              upload.filename  // Original PDF filename
+            );
+            
+            if (emailResult.success) {
+              console.log('✅ PDF sent to customer successfully (background):', emailResult.messageId);
+            } else {
+              console.error('⚠️ Email sending failed (background):', emailResult.error);
+            }
+          } else {
+            console.log('⚠️ No customer email found, skipping email sending');
+          }
+          
+          // WhatsApp notification (runs in background)
+          const customerPhone = policyData.customer_phone || policyData.customerPhone;
+          if (customerPhone) {
+            console.log('📱 Sending policy PDF via WhatsApp to customer (background):', customerPhone);
+            
+            const whatsappResult = await whatsappService.sendPolicyWhatsApp(
+              customerPhone,
+              policyData,
+              upload.s3_key,  // Original PDF S3 key
+              upload.filename  // Original PDF filename
+            );
+            
+            if (whatsappResult.success) {
+              console.log('✅ PDF sent via WhatsApp successfully (background):', whatsappResult.textMessageId, whatsappResult.documentMessageId);
+            } else {
+              console.error('⚠️ WhatsApp sending failed (background):', whatsappResult.error);
+            }
+          } else {
+            console.log('⚠️ No customer phone found, skipping WhatsApp sending');
+          }
+          
+          console.log('✅ Background notifications completed');
+        } catch (error) {
+          console.error('❌ Background notifications failed:', error);
+        }
       });
     } else {
       res.status(400).json({
