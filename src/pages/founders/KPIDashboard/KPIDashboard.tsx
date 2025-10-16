@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card } from '../../../components/common/Card';
 import { useSettings } from '../../../contexts/SettingsContext';
 import DualStorageService from '../../../services/dualStorageService';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useUserChange } from '../../../hooks/useUserChange';
+import CrossDeviceSyncService from '../../../services/crossDeviceSyncService';
 
 // Environment variables
 const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
@@ -44,33 +45,90 @@ function PageKPIs() {
     const { userChanged } = useUserChange();
     const { settings } = useSettings();
     const [kpiData, setKpiData] = useState<any>(null);
+    const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+    const [isRefreshing, setIsRefreshing] = useState(false);
+    const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
+    const syncServiceRef = useRef<CrossDeviceSyncService | null>(null);
   
     // Handle user changes - reset KPI data when user changes
     useEffect(() => {
       if (userChanged && user) {
         setKpiData(null);
+        setLastUpdated(null);
       }
     }, [userChanged, user]);
 
-    useEffect(() => {
-      const loadKPIData = async () => {
-        try {
-          // Use dual storage pattern: S3 → Database → Mock Data
-          const response = await DualStorageService.getDashboardMetrics();
-          
-          if (response.success) {
-            setKpiData(response.data);
-            
-            if (ENABLE_DEBUG) {
-            }
-          }
-        } catch (error) {
-          console.error('Failed to load KPI data:', error);
+    // Load KPI data function
+    const loadKPIData = async (showRefreshIndicator = false) => {
+      try {
+        if (showRefreshIndicator) {
+          setIsRefreshing(true);
         }
-      };
-      
+        
+        // Use dual storage pattern: S3 → Database → Mock Data
+        const response = await DualStorageService.getDashboardMetrics();
+        
+        if (response.success) {
+          setKpiData(response.data);
+          setLastUpdated(new Date());
+          
+          if (ENABLE_DEBUG) {
+            console.log('✅ KPI Dashboard data refreshed:', response.data);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load KPI data:', error);
+      } finally {
+        if (showRefreshIndicator) {
+          setIsRefreshing(false);
+        }
+      }
+    };
+
+    // Initial data load
+    useEffect(() => {
       loadKPIData();
     }, []);
+
+    // Set up real-time updates
+    useEffect(() => {
+      // Initialize cross-device sync service
+      syncServiceRef.current = CrossDeviceSyncService.getInstance();
+      
+      // Set up WebSocket listener for real-time updates
+      const handleDataUpdate = (data: any) => {
+        if (data.type === 'dashboard' || data.type === 'policies') {
+          if (ENABLE_DEBUG) {
+            console.log('🔄 Real-time dashboard update received:', data);
+          }
+          loadKPIData();
+        }
+      };
+
+      // Subscribe to real-time updates using the correct method
+      if (syncServiceRef.current) {
+        syncServiceRef.current.onDataChange(handleDataUpdate);
+      }
+
+      // Set up periodic refresh (every 30 seconds)
+      refreshIntervalRef.current = setInterval(() => {
+        loadKPIData(true);
+      }, 30000);
+
+      // Cleanup on unmount
+      return () => {
+        if (refreshIntervalRef.current) {
+          clearInterval(refreshIntervalRef.current);
+        }
+        // Note: CrossDeviceSyncService doesn't have unsubscribe method
+        // The service handles cleanup internally
+      };
+    }, []);
+
+    // Manual refresh function
+    const handleManualRefresh = () => {
+      loadKPIData(true);
+    };
   
     // Use ONLY real data from backend - no hardcoded assumptions
     const totalPolicies = kpiData?.basicMetrics?.totalPolicies || 0;
@@ -123,6 +181,36 @@ function PageKPIs() {
   
     return (
       <>
+        {/* Header with refresh controls */}
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-zinc-900">KPI Dashboard</h1>
+            {lastUpdated && (
+              <p className="text-sm text-zinc-500 mt-1">
+                Last updated: {lastUpdated.toLocaleTimeString()}
+              </p>
+            )}
+          </div>
+          <div className="flex items-center gap-3">
+            {isRefreshing && (
+              <div className="flex items-center gap-2 text-sm text-blue-600">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                Refreshing...
+              </div>
+            )}
+            <button
+              onClick={handleManualRefresh}
+              disabled={isRefreshing}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              Refresh
+            </button>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 gap-6">
           {/* Acquisition */}
           <Card title="Acquisition">
