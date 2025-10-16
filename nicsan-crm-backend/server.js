@@ -26,6 +26,7 @@ const corsOptions = {
       'https://staging.nicsanin.com',
       'http://localhost:3000',
       'http://localhost:3001',
+      'http://localhost:3002',
       process.env.FRONTEND_URL || 'https://app.nicsanin.com'
     ];
     
