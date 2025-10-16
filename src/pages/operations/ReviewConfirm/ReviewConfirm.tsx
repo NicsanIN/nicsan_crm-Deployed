@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card } from '../../../components/common/Card';
 import { CheckCircle2, AlertTriangle } from 'lucide-react';
 import DualStorageService from '../../../services/dualStorageService';
@@ -35,6 +35,281 @@ function LabeledInput({ label, value, onChange, type = "text", placeholder, hint
         className={`w-full px-3 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${disabled ? 'bg-gray-100 cursor-not-allowed' : ''}`}
       />
       {hint && <p className="text-xs text-zinc-500">{hint}</p>}
+    </div>
+  );
+}
+
+// LabeledDateInput component - Custom date picker with calendar
+function LabeledDateInput({
+  label,
+  value,
+  onChange,
+  placeholder = "dd-mm-yyyy",
+  required = false
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  required?: boolean;
+}) {
+  const parseDateFromString = (dateString: string): Date | null => {
+    try {
+      // Handle dd-mm-yyyy format
+      const parts = dateString.split('-');
+      if (parts.length === 3) {
+        // Check if it's dd-mm-yyyy format (day is 1-31, month is 1-12)
+        const firstPart = parseInt(parts[0], 10);
+        const secondPart = parseInt(parts[1], 10);
+        const thirdPart = parseInt(parts[2], 10);
+
+        if (firstPart >= 1 && firstPart <= 31 && secondPart >= 1 && secondPart <= 12) {
+          // dd-mm-yyyy format
+          const day = firstPart;
+          const month = secondPart - 1; // JavaScript months are 0-indexed
+          const year = thirdPart;
+          return new Date(year, month, day);
+        } else if (thirdPart >= 1 && thirdPart <= 31 && secondPart >= 1 && secondPart <= 12) {
+          // yyyy-mm-dd format
+          const year = firstPart;
+          const month = secondPart - 1; // JavaScript months are 0-indexed
+          const day = thirdPart;
+          return new Date(year, month, day);
+        }
+      }
+      // Fallback to standard Date parsing
+      return new Date(dateString);
+    } catch (error) {
+      return null;
+    }
+  };
+
+  const [isOpen, setIsOpen] = useState(false);
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date | null>(
+    value ? parseDateFromString(value) : null
+  );
+  const calendarRef = useRef<HTMLDivElement>(null);
+
+  // Update selectedDate when value prop changes
+  useEffect(() => {
+    if (value) {
+      const parsedDate = parseDateFromString(value);
+      setSelectedDate(parsedDate);
+    } else {
+      setSelectedDate(null);
+    }
+  }, [value]);
+
+  // Handle click outside to close calendar
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (calendarRef.current && !calendarRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isOpen]);
+
+  const formatDate = (date: Date) => {
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}-${month}-${year}`;
+  };
+
+  const handleDateSelect = (date: Date) => {
+    setSelectedDate(date);
+    onChange(formatDate(date));
+    setIsOpen(false);
+  };
+
+  const handleClear = () => {
+    setSelectedDate(null);
+    onChange('');
+    setIsOpen(false);
+  };
+
+  const handleToday = () => {
+    const today = new Date();
+    setSelectedDate(today);
+    onChange(formatDate(today));
+    setIsOpen(false);
+  };
+
+  const getDaysInMonth = (date: Date) => {
+    return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+  };
+
+  const getFirstDayOfMonth = (date: Date) => {
+    return new Date(date.getFullYear(), date.getMonth(), 1).getDay();
+  };
+
+  const getDaysArray = (date: Date) => {
+    const daysInMonth = getDaysInMonth(date);
+    const firstDay = getFirstDayOfMonth(date);
+    const days = [];
+
+    // Previous month's trailing days
+    const prevMonth = new Date(date.getFullYear(), date.getMonth() - 1, 0);
+    const prevMonthDays = prevMonth.getDate();
+    for (let i = firstDay - 1; i >= 0; i--) {
+      days.push({
+        day: prevMonthDays - i,
+        isCurrentMonth: false,
+        date: new Date(date.getFullYear(), date.getMonth() - 1, prevMonthDays - i)
+      });
+    }
+
+    // Current month's days
+    for (let i = 1; i <= daysInMonth; i++) {
+      days.push({
+        day: i,
+        isCurrentMonth: true,
+        date: new Date(date.getFullYear(), date.getMonth(), i)
+      });
+    }
+
+    // Next month's leading days
+    const remainingDays = 42 - days.length; // 6 weeks * 7 days
+    for (let i = 1; i <= remainingDays; i++) {
+      days.push({
+        day: i,
+        isCurrentMonth: false,
+        date: new Date(date.getFullYear(), date.getMonth() + 1, i)
+      });
+    }
+
+    return days;
+  };
+
+  const navigateMonth = (direction: 'prev' | 'next') => {
+    setCurrentDate(prev => {
+      const newDate = new Date(prev);
+      if (direction === 'prev') {
+        newDate.setMonth(prev.getMonth() - 1);
+      } else {
+        newDate.setMonth(prev.getMonth() + 1);
+      }
+      return newDate;
+    });
+  };
+
+  const isToday = (date: Date) => {
+    const today = new Date();
+    return date.toDateString() === today.toDateString();
+  };
+
+  const isSelected = (date: Date) => {
+    return selectedDate && date.toDateString() === selectedDate.toDateString();
+  };
+
+  return (
+    <div className="space-y-1 relative" ref={calendarRef}>
+      <label className="text-sm font-medium text-zinc-700 flex items-center gap-1">
+        {label}
+        {required && <span className="text-red-500">*</span>}
+      </label>
+      <div className="relative">
+        <input
+          type="text"
+          value={value || ''}
+          onChange={(e) => onChange(e.target.value)}
+          onFocus={() => setIsOpen(true)}
+          placeholder={placeholder}
+          className="w-full px-3 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        />
+        
+        {/* Calendar Icon */}
+        <button
+          type="button"
+          onClick={() => setIsOpen(!isOpen)}
+          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-zinc-400 hover:text-zinc-600"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+        </button>
+
+        {/* Calendar Dropdown */}
+        {isOpen && (
+          <div className="absolute z-50 mt-1 bg-white border border-zinc-200 rounded-lg shadow-lg p-4 w-80">
+            {/* Calendar Header */}
+            <div className="flex items-center justify-between mb-4">
+              <button
+                onClick={() => navigateMonth('prev')}
+                className="p-1 hover:bg-zinc-100 rounded"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              <h3 className="font-medium text-zinc-900">
+                {currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+              </h3>
+              <button
+                onClick={() => navigateMonth('next')}
+                className="p-1 hover:bg-zinc-100 rounded"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Calendar Grid */}
+            <div className="grid grid-cols-7 gap-1 mb-2">
+              {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(day => (
+                <div key={day} className="text-xs font-medium text-zinc-500 text-center py-1">
+                  {day}
+                </div>
+              ))}
+            </div>
+            
+            <div className="grid grid-cols-7 gap-1">
+              {getDaysArray(currentDate).map((dayObj, index) => (
+                <button
+                  key={index}
+                  onClick={() => dayObj.isCurrentMonth && handleDateSelect(dayObj.date)}
+                  className={`
+                    text-sm py-1 px-1 rounded hover:bg-blue-50 transition-colors
+                    ${!dayObj.isCurrentMonth ? 'text-zinc-300' : 'text-zinc-700'}
+                    ${isToday(dayObj.date) ? 'bg-blue-100 font-medium' : ''}
+                    ${isSelected(dayObj.date) ? 'bg-blue-500 text-white hover:bg-blue-600' : ''}
+                    ${!dayObj.isCurrentMonth ? 'cursor-not-allowed' : 'cursor-pointer'}
+                  `}
+                  disabled={!dayObj.isCurrentMonth}
+                >
+                  {dayObj.day}
+                </button>
+              ))}
+            </div>
+
+            {/* Calendar Footer */}
+            <div className="flex justify-between mt-4 pt-3 border-t border-zinc-200">
+              <button
+                onClick={handleToday}
+                className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+              >
+                Today
+              </button>
+              <button
+                onClick={handleClear}
+                className="text-sm text-zinc-500 hover:text-zinc-700"
+              >
+                Clear
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -838,15 +1113,17 @@ function PageReview() {
                 value={editableData.pdfData.manufacturing_year || pdfData.manufacturing_year}
                 onChange={(value) => updatePdfData('manufacturing_year', value)}
               />
-              <LabeledInput 
+              <LabeledDateInput 
                 label="Issue Date" 
                 value={editableData.pdfData.issue_date || pdfData.issue_date}
                 onChange={(value) => updatePdfData('issue_date', value)}
+                required={true}
               />
-              <LabeledInput 
+              <LabeledDateInput 
                 label="Expiry Date" 
                 value={editableData.pdfData.expiry_date || pdfData.expiry_date}
                 onChange={(value) => updatePdfData('expiry_date', value)}
+                required={true}
               />
               <LabeledInput 
                 label="IDV (₹)" 
