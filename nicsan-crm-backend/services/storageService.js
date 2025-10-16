@@ -289,7 +289,7 @@ async savePolicy(policyData) {
       const uploadId = `upload_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
       
       // 1. Upload to S3 (Primary Storage) with insurer detection
-      const s3Key = generatePolicyS3Key(uploadId, 'manual'); 
+      const s3Key = await generateS3Key(file.originalname, insurer, file.buffer, 'policy'); 
       const s3Result = await uploadToS3(file, s3Key);
       
       // 2. Save metadata to PostgreSQL (Secondary Storage)
@@ -2130,13 +2130,20 @@ async savePolicy(policyData) {
       const policyResult = await query(policyQuery, [policyNumber]);
       
       // Get additional documents - also check for 'pending' documents from same insurer
+      // but only those uploaded after the policy was created to avoid conflicts
       const documentsQuery = `
         SELECT * FROM document_uploads 
-        WHERE policy_number = $1 OR (policy_number = 'pending' AND insurer = (
-          SELECT insurer FROM pdf_uploads 
-          WHERE extracted_data->>'policy_number' = $1 
-          ORDER BY created_at DESC LIMIT 1
-        ))
+        WHERE policy_number = $1 OR (
+          policy_number = 'pending' AND insurer = (
+            SELECT insurer FROM pdf_uploads 
+            WHERE extracted_data->>'policy_number' = $1 
+            ORDER BY created_at DESC LIMIT 1
+          ) AND created_at > (
+            SELECT created_at FROM pdf_uploads 
+            WHERE extracted_data->>'policy_number' = $1 
+            ORDER BY created_at DESC LIMIT 1
+          )
+        )
         ORDER BY created_at DESC
       `;
       
