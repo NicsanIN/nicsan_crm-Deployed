@@ -202,6 +202,18 @@ function LabeledDateInput({
     });
   };
 
+  const navigateYear = (direction: 'prev' | 'next') => {
+    setCurrentDate(prev => {
+      const newDate = new Date(prev);
+      if (direction === 'prev') {
+        newDate.setFullYear(prev.getFullYear() - 1);
+      } else {
+        newDate.setFullYear(prev.getFullYear() + 1);
+      }
+      return newDate;
+    });
+  };
+
   const isToday = (date: Date) => {
     const today = new Date();
     return date.toDateString() === today.toDateString();
@@ -242,26 +254,52 @@ function LabeledDateInput({
         {isOpen && (
           <div className="absolute z-50 mt-1 bg-white border border-zinc-200 rounded-lg shadow-lg p-4 w-80">
             {/* Calendar Header */}
-            <div className="flex items-center justify-between mb-4">
-              <button
-                onClick={() => navigateMonth('prev')}
-                className="p-1 hover:bg-zinc-100 rounded"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                </svg>
-              </button>
-              <h3 className="font-medium text-zinc-900">
-                {currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-              </h3>
-              <button
-                onClick={() => navigateMonth('next')}
-                className="p-1 hover:bg-zinc-100 rounded"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </button>
+            <div className="mb-4">
+              {/* Year Navigation */}
+              <div className="flex items-center justify-between mb-2">
+                <button
+                  onClick={() => navigateYear('prev')}
+                  className="p-1 hover:bg-zinc-100 rounded text-sm"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+                  </svg>
+                </button>
+                <h2 className="font-semibold text-zinc-900 text-lg">
+                  {currentDate.getFullYear()}
+                </h2>
+                <button
+                  onClick={() => navigateYear('next')}
+                  className="p-1 hover:bg-zinc-100 rounded text-sm"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </div>
+              
+              {/* Month Navigation */}
+              <div className="flex items-center justify-between">
+                <button
+                  onClick={() => navigateMonth('prev')}
+                  className="p-1 hover:bg-zinc-100 rounded"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+                <h3 className="font-medium text-zinc-900">
+                  {currentDate.toLocaleDateString('en-US', { month: 'long' })}
+                </h3>
+                <button
+                  onClick={() => navigateMonth('next')}
+                  className="p-1 hover:bg-zinc-100 rounded"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </div>
             </div>
 
             {/* Calendar Grid */}
@@ -310,6 +348,138 @@ function LabeledDateInput({
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+// LabeledAutocompleteInput component for Review Confirm with consistent styling
+function LabeledAutocompleteInput({ 
+  label, 
+  value, 
+  onChange, 
+  getSuggestions, 
+  onAddNew, 
+  showAddNew = false, 
+  placeholder, 
+  hint,
+  required = false 
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  getSuggestions: (input: string) => Promise<string[]>;
+  onAddNew?: (value: string) => void;
+  showAddNew?: boolean;
+  placeholder?: string;
+  hint?: string;
+  required?: boolean;
+}) {
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [isOpen, setIsOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleInputChange = async (inputValue: string) => {
+    onChange(inputValue);
+    
+    if (inputValue.length >= 2) {
+      setIsLoading(true);
+      try {
+        const newSuggestions = await getSuggestions(inputValue);
+        setSuggestions(newSuggestions);
+        setIsOpen(newSuggestions.length > 0 || (showAddNew && inputValue.trim().length > 0 && newSuggestions.length === 0));
+      } catch (error) {
+        setSuggestions([]);
+        setIsOpen(false);
+      } finally {
+        setIsLoading(false);
+      }
+    } else {
+      setSuggestions([]);
+      setIsOpen(false);
+    }
+  };
+
+  const handleSuggestionClick = (suggestion: string) => {
+    onChange(suggestion);
+    setIsOpen(false);
+  };
+
+  const handleAddNew = () => {
+    if (onAddNew && value.trim()) {
+      onAddNew(value.trim());
+      setIsOpen(false);
+    }
+  };
+
+  return (
+    <div className="space-y-1 relative">
+      <label className="text-sm font-medium text-zinc-700 flex items-center gap-1">
+        {label}
+        {required && <span className="text-red-500">*</span>}
+      </label>
+      <div className="relative">
+        <input
+          type="text"
+          value={value || ''}
+          onChange={(e) => handleInputChange(e.target.value)}
+          onFocus={async () => {
+            if (value.length >= 2) {
+              try {
+                const newSuggestions = await getSuggestions(value);
+                setSuggestions(newSuggestions);
+                setIsOpen(newSuggestions.length > 0 || (showAddNew && value.trim().length > 0 && newSuggestions.length === 0));
+              } catch (error) {
+                // Silent error handling
+              }
+            }
+          }}
+          onBlur={() => {
+            setTimeout(() => setIsOpen(false), 150);
+          }}
+          placeholder={placeholder}
+          className="w-full px-3 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        />
+        
+        {/* Dropdown Arrow */}
+        <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
+          <svg className="w-4 h-4 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </div>
+
+        {/* Suggestions Dropdown */}
+        {isOpen && (
+          <div className="absolute z-50 w-full mt-1 bg-white border border-zinc-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+            {isLoading ? (
+              <div className="px-3 py-2 text-sm text-zinc-500 flex items-center gap-2">
+                <div className="w-4 h-4 border-2 border-zinc-300 border-t-blue-600 rounded-full animate-spin"></div>
+                Loading suggestions...
+              </div>
+            ) : (
+              <>
+                {suggestions.map((suggestion, index) => (
+                  <button
+                    key={index}
+                    onClick={() => handleSuggestionClick(suggestion)}
+                    className="w-full px-3 py-2 text-left text-sm text-zinc-700 hover:bg-blue-50 transition-colors first:rounded-t-lg last:rounded-b-lg"
+                  >
+                    {suggestion}
+                  </button>
+                ))}
+                {showAddNew && value.trim() && !suggestions.includes(value.trim()) && (
+                  <button
+                    onClick={handleAddNew}
+                    className="w-full px-3 py-2 text-left text-sm text-blue-600 hover:bg-blue-50 transition-colors border-t border-zinc-200 rounded-b-lg"
+                  >
+                    + Add "{value.trim()}" as new telecaller
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+        )}
+      </div>
+      {hint && <p className="text-xs text-zinc-500">{hint}</p>}
     </div>
   );
 }
@@ -1189,14 +1359,16 @@ function PageReview() {
                 onChange={(value) => updateManualExtras('opsExecutive', value)}
                 hint="ops executive name"
               />
-              <AutocompleteInput 
+              <LabeledAutocompleteInput 
                 label="Caller Name" 
                 value={editableData.manualExtras.callerName || manualExtras.callerName}
                 onChange={(value) => updateManualExtras('callerName', value)}
+                placeholder="Telecaller name"
                 hint="telecaller name"
                 getSuggestions={getFilteredCallerSuggestions}
                 onAddNew={handleAddNewTelecaller}
                 showAddNew={true}
+                required={true}
               />
               <LabeledInput 
                 label="Customer Email ID" 

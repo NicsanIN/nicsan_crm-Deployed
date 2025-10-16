@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Card } from '../../../components/common/Card';
 import { User, Car, Trash2, Plus } from 'lucide-react';
 import DualStorageService from '../../../services/dualStorageService';
@@ -90,6 +90,448 @@ function LabeledCheckbox({ label, value, onChange, hint }: {
         {label}
       </label>
       {hint && <p className="text-xs text-zinc-500">{hint}</p>}
+    </div>
+  );
+}
+
+// LabeledDateInput component - Custom date picker with calendar
+function LabeledDateInput({
+  label,
+  value,
+  onChange,
+  placeholder = "dd-mm-yyyy",
+  required = false
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  required?: boolean;
+}) {
+  const parseDateFromString = (dateString: string): Date | null => {
+    try {
+      // Handle dd-mm-yyyy format
+      const parts = dateString.split('-');
+      if (parts.length === 3) {
+        // Check if it's dd-mm-yyyy format (day is 1-31, month is 1-12)
+        const firstPart = parseInt(parts[0], 10);
+        const secondPart = parseInt(parts[1], 10);
+        const thirdPart = parseInt(parts[2], 10);
+
+        if (firstPart >= 1 && firstPart <= 31 && secondPart >= 1 && secondPart <= 12) {
+          // dd-mm-yyyy format
+          const day = firstPart;
+          const month = secondPart - 1; // JavaScript months are 0-indexed
+          const year = thirdPart;
+          return new Date(year, month, day);
+        } else if (thirdPart >= 1 && thirdPart <= 31 && secondPart >= 1 && secondPart <= 12) {
+          // yyyy-mm-dd format
+          const year = firstPart;
+          const month = secondPart - 1; // JavaScript months are 0-indexed
+          const day = thirdPart;
+          return new Date(year, month, day);
+        }
+      }
+      // Fallback to standard Date parsing
+      return new Date(dateString);
+    } catch (error) {
+      return null;
+    }
+  };
+
+  const [isOpen, setIsOpen] = useState(false);
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date | null>(
+    value ? parseDateFromString(value) : null
+  );
+  const calendarRef = useRef<HTMLDivElement>(null);
+
+  // Update selectedDate when value prop changes
+  useEffect(() => {
+    if (value) {
+      const parsedDate = parseDateFromString(value);
+      setSelectedDate(parsedDate);
+    } else {
+      setSelectedDate(null);
+    }
+  }, [value]);
+
+  // Handle click outside to close calendar
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (calendarRef.current && !calendarRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isOpen]);
+
+  const formatDate = (date: Date) => {
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}-${month}-${year}`;
+  };
+
+  const handleDateSelect = (date: Date) => {
+    setSelectedDate(date);
+    onChange(formatDate(date));
+    setIsOpen(false);
+  };
+
+  const handleClear = () => {
+    setSelectedDate(null);
+    onChange('');
+    setIsOpen(false);
+  };
+
+  const handleToday = () => {
+    const today = new Date();
+    setSelectedDate(today);
+    onChange(formatDate(today));
+    setIsOpen(false);
+  };
+
+  const getDaysInMonth = (date: Date) => {
+    return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+  };
+
+  const getFirstDayOfMonth = (date: Date) => {
+    return new Date(date.getFullYear(), date.getMonth(), 1).getDay();
+  };
+
+  const getDaysArray = (date: Date) => {
+    const daysInMonth = getDaysInMonth(date);
+    const firstDay = getFirstDayOfMonth(date);
+    const days = [];
+
+    // Previous month's trailing days
+    const prevMonth = new Date(date.getFullYear(), date.getMonth() - 1, 0);
+    const prevMonthDays = prevMonth.getDate();
+    for (let i = firstDay - 1; i >= 0; i--) {
+      days.push({
+        day: prevMonthDays - i,
+        isCurrentMonth: false,
+        date: new Date(date.getFullYear(), date.getMonth() - 1, prevMonthDays - i)
+      });
+    }
+
+    // Current month's days
+    for (let i = 1; i <= daysInMonth; i++) {
+      days.push({
+        day: i,
+        isCurrentMonth: true,
+        date: new Date(date.getFullYear(), date.getMonth(), i)
+      });
+    }
+
+    // Next month's leading days
+    const remainingDays = 42 - days.length; // 6 weeks * 7 days
+    for (let i = 1; i <= remainingDays; i++) {
+      days.push({
+        day: i,
+        isCurrentMonth: false,
+        date: new Date(date.getFullYear(), date.getMonth() + 1, i)
+      });
+    }
+
+    return days;
+  };
+
+  const navigateMonth = (direction: 'prev' | 'next') => {
+    setCurrentDate(prev => {
+      const newDate = new Date(prev);
+      if (direction === 'prev') {
+        newDate.setMonth(prev.getMonth() - 1);
+      } else {
+        newDate.setMonth(prev.getMonth() + 1);
+      }
+      return newDate;
+    });
+  };
+
+  const navigateYear = (direction: 'prev' | 'next') => {
+    setCurrentDate(prev => {
+      const newDate = new Date(prev);
+      if (direction === 'prev') {
+        newDate.setFullYear(prev.getFullYear() - 1);
+      } else {
+        newDate.setFullYear(prev.getFullYear() + 1);
+      }
+      return newDate;
+    });
+  };
+
+  const isToday = (date: Date) => {
+    const today = new Date();
+    return date.toDateString() === today.toDateString();
+  };
+
+  const isSelected = (date: Date) => {
+    return selectedDate && date.toDateString() === selectedDate.toDateString();
+  };
+
+  return (
+    <div className="space-y-1 relative" ref={calendarRef}>
+      <label className="text-sm font-medium text-zinc-700 flex items-center gap-1">
+        {label}
+        {required && <span className="text-red-500">*</span>}
+      </label>
+      <div className="relative">
+        <input
+          type="text"
+          value={value || ''}
+          onChange={(e) => onChange(e.target.value)}
+          onFocus={() => setIsOpen(true)}
+          placeholder={placeholder}
+          className="w-full px-3 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        />
+        
+        {/* Calendar Icon */}
+        <button
+          type="button"
+          onClick={() => setIsOpen(!isOpen)}
+          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-zinc-400 hover:text-zinc-600"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+        </button>
+
+        {/* Calendar Dropdown */}
+        {isOpen && (
+          <div className="absolute z-50 mt-1 bg-white border border-zinc-200 rounded-lg shadow-lg p-4 w-80">
+            {/* Calendar Header */}
+            <div className="mb-4">
+              {/* Year Navigation */}
+              <div className="flex items-center justify-between mb-2">
+                <button
+                  onClick={() => navigateYear('prev')}
+                  className="p-1 hover:bg-zinc-100 rounded text-sm"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+                  </svg>
+                </button>
+                <h2 className="font-semibold text-zinc-900 text-lg">
+                  {currentDate.getFullYear()}
+                </h2>
+                <button
+                  onClick={() => navigateYear('next')}
+                  className="p-1 hover:bg-zinc-100 rounded text-sm"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </div>
+              
+              {/* Month Navigation */}
+              <div className="flex items-center justify-between">
+                <button
+                  onClick={() => navigateMonth('prev')}
+                  className="p-1 hover:bg-zinc-100 rounded"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+                <h3 className="font-medium text-zinc-900">
+                  {currentDate.toLocaleDateString('en-US', { month: 'long' })}
+                </h3>
+                <button
+                  onClick={() => navigateMonth('next')}
+                  className="p-1 hover:bg-zinc-100 rounded"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Calendar Grid */}
+            <div className="grid grid-cols-7 gap-1 mb-2">
+              {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(day => (
+                <div key={day} className="text-xs font-medium text-zinc-500 text-center py-1">
+                  {day}
+                </div>
+              ))}
+            </div>
+            
+            <div className="grid grid-cols-7 gap-1">
+              {getDaysArray(currentDate).map((dayObj, index) => (
+                <button
+                  key={index}
+                  onClick={() => dayObj.isCurrentMonth && handleDateSelect(dayObj.date)}
+                  className={`
+                    text-sm py-1 px-1 rounded hover:bg-blue-50 transition-colors
+                    ${!dayObj.isCurrentMonth ? 'text-zinc-300' : 'text-zinc-700'}
+                    ${isToday(dayObj.date) ? 'bg-blue-100 font-medium' : ''}
+                    ${isSelected(dayObj.date) ? 'bg-blue-500 text-white hover:bg-blue-600' : ''}
+                    ${!dayObj.isCurrentMonth ? 'cursor-not-allowed' : 'cursor-pointer'}
+                  `}
+                  disabled={!dayObj.isCurrentMonth}
+                >
+                  {dayObj.day}
+                </button>
+              ))}
+            </div>
+
+            {/* Calendar Footer */}
+            <div className="flex justify-between mt-4 pt-3 border-t border-zinc-200">
+              <button
+                onClick={handleToday}
+                className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+              >
+                Today
+              </button>
+              <button
+                onClick={handleClear}
+                className="text-sm text-zinc-500 hover:text-zinc-700"
+              >
+                Clear
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// LabeledAutocompleteInput component for Manual Form with consistent styling
+function LabeledAutocompleteInput({ 
+  label, 
+  value, 
+  onChange, 
+  getSuggestions, 
+  onAddNew, 
+  showAddNew = false, 
+  placeholder, 
+  required = false 
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  getSuggestions: (input: string) => Promise<string[]>;
+  onAddNew?: (value: string) => void;
+  showAddNew?: boolean;
+  placeholder?: string;
+  required?: boolean;
+}) {
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [isOpen, setIsOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleInputChange = async (inputValue: string) => {
+    onChange(inputValue);
+    
+    if (inputValue.length >= 2) {
+      setIsLoading(true);
+      try {
+        const newSuggestions = await getSuggestions(inputValue);
+        setSuggestions(newSuggestions);
+        setIsOpen(newSuggestions.length > 0 || (showAddNew && inputValue.trim().length > 0 && newSuggestions.length === 0));
+      } catch (error) {
+        setSuggestions([]);
+        setIsOpen(false);
+      } finally {
+        setIsLoading(false);
+      }
+    } else {
+      setSuggestions([]);
+      setIsOpen(false);
+    }
+  };
+
+  const handleSuggestionClick = (suggestion: string) => {
+    onChange(suggestion);
+    setIsOpen(false);
+  };
+
+  const handleAddNew = () => {
+    if (onAddNew && value.trim()) {
+      onAddNew(value.trim());
+      setIsOpen(false);
+    }
+  };
+
+  return (
+    <div className="space-y-1 relative">
+      <label className="text-sm font-medium text-zinc-700 flex items-center gap-1">
+        {label}
+        {required && <span className="text-red-500">*</span>}
+      </label>
+      <div className="relative">
+        <input
+          type="text"
+          value={value || ''}
+          onChange={(e) => handleInputChange(e.target.value)}
+          onFocus={async () => {
+            if (value.length >= 2) {
+              try {
+                const newSuggestions = await getSuggestions(value);
+                setSuggestions(newSuggestions);
+                setIsOpen(newSuggestions.length > 0 || (showAddNew && value.trim().length > 0 && newSuggestions.length === 0));
+              } catch (error) {
+                // Silent error handling
+              }
+            }
+          }}
+          onBlur={() => {
+            setTimeout(() => setIsOpen(false), 150);
+          }}
+          placeholder={placeholder}
+          className="w-full px-3 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        />
+        
+        {/* Dropdown Arrow */}
+        <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
+          <svg className="w-4 h-4 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </div>
+
+        {/* Suggestions Dropdown */}
+        {isOpen && (
+          <div className="absolute z-50 w-full mt-1 bg-white border border-zinc-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+            {isLoading ? (
+              <div className="px-3 py-2 text-sm text-zinc-500 flex items-center gap-2">
+                <div className="w-4 h-4 border-2 border-zinc-300 border-t-blue-600 rounded-full animate-spin"></div>
+                Loading suggestions...
+              </div>
+            ) : (
+              <>
+                {suggestions.map((suggestion, index) => (
+                  <button
+                    key={index}
+                    onClick={() => handleSuggestionClick(suggestion)}
+                    className="w-full px-3 py-2 text-left text-sm text-zinc-700 hover:bg-blue-50 transition-colors first:rounded-t-lg last:rounded-b-lg"
+                  >
+                    {suggestion}
+                  </button>
+                ))}
+                {showAddNew && value.trim() && !suggestions.includes(value.trim()) && (
+                  <button
+                    onClick={handleAddNew}
+                    className="w-full px-3 py-2 text-left text-sm text-blue-600 hover:bg-blue-50 transition-colors border-t border-zinc-200 rounded-b-lg"
+                  >
+                    + Add "{value.trim()}" as new telecaller
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -1299,8 +1741,8 @@ function PageManualForm() {
 
               {/* Health Insurance Premium Fields */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-                <LabeledInput label="Issue Date" value={form.issueDate} onChange={v=>set('issueDate', v)}/>
-                <LabeledInput label="Expiry Date" value={form.expiryDate} onChange={v=>set('expiryDate', v)}/>
+                <LabeledDateInput label="Issue Date" value={form.issueDate} onChange={v=>set('issueDate', v)} required={true}/>
+                <LabeledDateInput label="Expiry Date" value={form.expiryDate} onChange={v=>set('expiryDate', v)} required={true}/>
                 <LabeledInput label="Sum Insured (₹)" value={form.idv} onChange={v=>set('idv', v)} placeholder="e.g., 500000"/>
                 <LabeledInput label="Premium Amount (₹)" required value={form.totalPremium} onChange={onTotalChange}/>
               </div>
@@ -1332,8 +1774,8 @@ function PageManualForm() {
             <>
               {/* Dates & Values */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                <LabeledInput label="Issue Date" value={form.issueDate} onChange={v=>set('issueDate', v)}/>
-                <LabeledInput label="Expiry Date" value={form.expiryDate} onChange={v=>set('expiryDate', v)}/>
+                <LabeledDateInput label="Issue Date" value={form.issueDate} onChange={v=>set('issueDate', v)} required={true}/>
+                <LabeledDateInput label="Expiry Date" value={form.expiryDate} onChange={v=>set('expiryDate', v)} required={true}/>
                 <LabeledInput label="IDV (₹)" value={form.idv} onChange={v=>set('idv', v)}/>
                 <LabeledInput label="NCB (%)" value={form.ncb} onChange={v=>set('ncb', v)}/>
                 <LabeledInput label="DIS (%)" hint="discount" value={form.discount} onChange={v=>set('discount', v)}/>
@@ -1401,7 +1843,16 @@ function PageManualForm() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
             <LabeledInput label="Executive" value={form.executive} onChange={v=>set('executive', v)} disabled={true} hint="Auto-filled from current user"/>
             <LabeledInput label="Ops Executive" value={form.opsExecutive} onChange={v=>set('opsExecutive', v)}/>
-            <AutocompleteInput label="Caller Name" value={form.callerName} onChange={v=>set('callerName', v)} getSuggestions={getFilteredCallerSuggestions} onAddNew={handleAddNewTelecaller} showAddNew={true}/>
+            <LabeledAutocompleteInput 
+              label="Caller Name" 
+              value={form.callerName} 
+              onChange={v=>set('callerName', v)} 
+              placeholder="Telecaller name"
+              getSuggestions={getFilteredCallerSuggestions}
+              onAddNew={handleAddNewTelecaller}
+              showAddNew={true}
+              required={true}
+            />
             <LabeledInput label="Mobile Number" required placeholder="9xxxxxxxxx" value={form.mobile} onChange={v=>set('mobile', v)}/>
             <LabeledInput label="Rollover/Renewal" hint="internal code" value={form.rollover} onChange={v=>set('rollover', v)}/>
             <LabeledInput label="Customer Name" value={form.customerName} onChange={v=>set('customerName', v)}/>
