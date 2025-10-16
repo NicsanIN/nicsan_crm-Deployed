@@ -652,6 +652,12 @@ function PageUpload() {
         formData.append('insurer', selectedInsurer);
         formData.append('policyNumber', 'pending'); // Will be updated after policy creation
         
+        // Add PDF upload ID for direct connection
+        const currentPdfUpload = uploadedFiles.find(f => f.status === 'UPLOADED' || f.status === 'REVIEW' || f.status === 'COMPLETED');
+        if (currentPdfUpload?.id) {
+          formData.append('pdf_upload_id', currentPdfUpload.id);
+        }
+        
         // Upload individual document
         const result = await DualStorageService.uploadDocument(formData);
         

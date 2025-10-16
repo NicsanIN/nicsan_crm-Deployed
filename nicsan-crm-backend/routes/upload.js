@@ -470,7 +470,7 @@ router.post('/document', authenticateToken, requireOps, upload.single('document'
       });
     }
 
-    const { documentType, insurer, policyNumber } = req.body;
+    const { documentType, insurer, policyNumber, pdf_upload_id } = req.body;
     if (!documentType) {
       return res.status(400).json({
         success: false,
@@ -489,7 +489,8 @@ router.post('/document', authenticateToken, requireOps, upload.single('document'
       file: req.file,
       insurer,
       documentType,
-      policyNumber: policyNumber || 'pending'
+      policyNumber: policyNumber || 'pending',
+      pdf_upload_id
     };
 
     const result = await storageService.saveAdditionalDocument(uploadData);
