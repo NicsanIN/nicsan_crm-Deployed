@@ -181,7 +181,18 @@ function PageUpload() {
     const [selectedInsurer, setSelectedInsurer] = useState<string>('TATA_AIG');
     
     // Enhanced state for additional documents
-    const [uploadedDocuments, setUploadedDocuments] = useState({
+    interface UploadedDocument {
+        id: string;
+        filename: string;
+        size: string;
+        uploadTime: string;
+    }
+    
+    const [uploadedDocuments, setUploadedDocuments] = useState<{
+        aadhaar: UploadedDocument | null;
+        pancard: UploadedDocument | null;
+        rc: UploadedDocument | null;
+    }>({
         aadhaar: null,
         pancard: null,
         rc: null
@@ -681,7 +692,7 @@ function PageUpload() {
 
     // View document handler
     const viewDocument = (documentType: string) => {
-      const document = uploadedDocuments[documentType];
+      const document = uploadedDocuments[documentType as keyof typeof uploadedDocuments];
       if (!document) return;
       
       // For demo purposes, show document info

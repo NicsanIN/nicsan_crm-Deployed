@@ -16,6 +16,7 @@ interface SyncStatus {
 
 interface SyncData {
   policies: any[];
+  healthInsurance: any[];
   uploads: any[];
   dashboard: any;
   lastUpdated: number;

@@ -10,7 +10,7 @@ import { useUserChange } from '../../../hooks/useUserChange';
 type SettingsTab = 'business' | 'telecallers' | 'passwords' | 'users';
 
 const PageFounderSettings: React.FC = () => {
-  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { user } = useAuth();
   const { userChanged } = useUserChange();
   const [activeTab, setActiveTab] = useState<SettingsTab>('business');
 

@@ -40,7 +40,7 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [userChangeListeners, setUserChangeListeners] = useState<Set<() => void>>(new Set());
+  const [userChangeListeners] = useState<Set<() => void>>(new Set());
 
   const isAuthenticated = !!user;
 

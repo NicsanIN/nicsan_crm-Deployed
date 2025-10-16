@@ -29,7 +29,7 @@ declare module 'jspdf' {
 
 // Environment variables
 const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
-const ENABLE_MOCK_DATA = import.meta.env.VITE_ENABLE_MOCK_DATA === 'true';
+// const ENABLE_MOCK_DATA = import.meta.env.VITE_ENABLE_MOCK_DATA === 'true';
 // ---------- AUTH ----------
 function LoginPage({ onLogin }: { onLogin: (user: { name: string; email: string; role: "ops" | "founder" }) => void }) {
   const [email, setEmail] = useState("");
@@ -392,13 +392,13 @@ function NicsanCRMMock() {
   const [tab, setTab] = useState<"ops"|"founder">("ops");
   const [opsPage, setOpsPage] = useState("upload");
   const [founderPage, setFounderPage] = useState("overview");
-  const [backendStatus, setBackendStatus] = useState<any>(null);
+  // const [backendStatus, setBackendStatus] = useState<any>(null);
 
   // Check backend status on component mount
   useEffect(() => {
     const checkBackendStatus = async () => {
-      const status = DualStorageService.getEnvironmentInfo();
-      setBackendStatus(status);
+      // const status = DualStorageService.getEnvironmentInfo();
+        // setBackendStatus(status);
       
       if (ENABLE_DEBUG) {
       }

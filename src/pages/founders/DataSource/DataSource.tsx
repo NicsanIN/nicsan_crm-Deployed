@@ -16,7 +16,7 @@ const demoSources = [
 ];
 
 function PageSources() {
-  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { user } = useAuth();
   const { userChanged } = useUserChange();
   const [dataSources, setDataSources] = useState<any[]>([]);
   const [dataSource, setDataSource] = useState<string>('');

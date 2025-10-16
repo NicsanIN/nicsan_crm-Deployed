@@ -1,10 +1,6 @@
 import { Card } from '../../../components/common/Card';
-import { useAuth } from '../../../contexts/AuthContext';
-import { useUserChange } from '../../../hooks/useUserChange';
 
 function PageTests() {
-    const { user, isAuthenticated, isLoading: authLoading } = useAuth();
-    const { userChanged } = useUserChange();
     
     // Simple run-time tests for core form math (no framework)
     type Case = { name: string; total: number; pct?: number; amt?: number; expectAmt?: number; expectPct?: number };

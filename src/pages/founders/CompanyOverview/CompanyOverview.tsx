@@ -192,7 +192,7 @@ function TotalODBreakdown() {
 }
 
 function PageOverview() {
-    const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+    const { user } = useAuth();
     const { userChanged } = useUserChange();
     const [policyType, setPolicyType] = useState<'motor' | 'health'>('motor'); // Default: motor
     const [metrics, setMetrics] = useState<any>(null);

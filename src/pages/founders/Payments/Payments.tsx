@@ -46,7 +46,7 @@ function Tile({ label, value, sub, info, onClick }: { label: string; value: stri
 // ];
 
 function PagePayments() {
-    const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+    const { user } = useAuth();
     const { userChanged } = useUserChange();
     const [payments, setPayments] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);

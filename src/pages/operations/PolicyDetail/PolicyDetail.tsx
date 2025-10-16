@@ -7,7 +7,7 @@ import { useUserChange } from '../../../hooks/useUserChange';
 
 
 function PagePolicyDetail() {
-    const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+    const { user } = useAuth();
     const { userChanged } = useUserChange();
     const [policyData, setPolicyData] = useState<any>(null);
     const [dataSource, setDataSource] = useState<string>('');
@@ -166,7 +166,7 @@ function PagePolicyDetail() {
     };
 
     // Download document function
-    const downloadDocument = async (s3Key: string, filename: string) => {
+    const downloadDocument = async (s3Key: string) => {
       try {
         const response = await fetch(`http://localhost:3001/api/upload/s3-url/${encodeURIComponent(s3Key)}`, {
           headers: {
@@ -874,7 +874,7 @@ function PagePolicyDetail() {
                         </div>
                       </div>
                       <button
-                        onClick={() => downloadDocument(documents.policyPDF.s3Key, documents.policyPDF.filename)}
+                        onClick={() => downloadDocument(documents.policyPDF.s3Key)}
                         className="px-3 py-1 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700"
                       >
                         Download
@@ -895,7 +895,7 @@ function PagePolicyDetail() {
                         </div>
                       </div>
                       <button
-                        onClick={() => downloadDocument(documents.aadhaar.s3Key, documents.aadhaar.filename)}
+                        onClick={() => downloadDocument(documents.aadhaar.s3Key)}
                         className="px-3 py-1 bg-green-600 text-white rounded-md text-sm hover:bg-green-700"
                       >
                         Download
@@ -916,7 +916,7 @@ function PagePolicyDetail() {
                         </div>
                       </div>
                       <button
-                        onClick={() => downloadDocument(documents.pancard.s3Key, documents.pancard.filename)}
+                        onClick={() => downloadDocument(documents.pancard.s3Key)}
                         className="px-3 py-1 bg-yellow-600 text-white rounded-md text-sm hover:bg-yellow-700"
                       >
                         Download
@@ -937,7 +937,7 @@ function PagePolicyDetail() {
                         </div>
                       </div>
                       <button
-                        onClick={() => downloadDocument(documents.rc.s3Key, documents.rc.filename)}
+                        onClick={() => downloadDocument(documents.rc.s3Key)}
                         className="px-3 py-1 bg-purple-600 text-white rounded-md text-sm hover:bg-purple-700"
                       >
                         Download

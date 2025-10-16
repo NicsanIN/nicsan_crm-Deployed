@@ -1,11 +1,11 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { Settings } from 'lucide-react';
 import WorkingPasswordChange from '../../../components/PasswordChange/WorkingPasswordChange';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useUserChange } from '../../../hooks/useUserChange';
 
 function PageOperationsSettings() {
-  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { user } = useAuth();
   const { userChanged } = useUserChange();
 
   // Handle user changes - reset settings when user changes

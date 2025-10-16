@@ -40,7 +40,7 @@ function Tile({ label, value, sub, info, onClick }: { label: string; value: stri
 }
 
 function PageKPIs() {
-    const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+    const { user } = useAuth();
     const { userChanged } = useUserChange();
     const { settings } = useSettings();
     const [kpiData, setKpiData] = useState<any>(null);

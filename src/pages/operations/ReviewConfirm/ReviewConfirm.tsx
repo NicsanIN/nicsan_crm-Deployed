@@ -7,10 +7,10 @@ import { useAuth } from '../../../contexts/AuthContext';
 import { useUserChange } from '../../../hooks/useUserChange';
 
 // Environment variables
-const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
+// const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
 
 // LabeledInput component
-function LabeledInput({ label, value, onChange, type = "text", placeholder, hint, required = false }: {
+function LabeledInput({ label, value, onChange, type = "text", placeholder, hint, required = false, disabled = false }: {
   label: string;
   value: any;
   onChange: (value: any) => void;
@@ -18,6 +18,7 @@ function LabeledInput({ label, value, onChange, type = "text", placeholder, hint
   placeholder?: string;
   hint?: string;
   required?: boolean;
+  disabled?: boolean;
 }) {
   return (
     <div className="space-y-1">
@@ -30,7 +31,8 @@ function LabeledInput({ label, value, onChange, type = "text", placeholder, hint
         value={value || ''}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full px-3 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        disabled={disabled}
+        className={`w-full px-3 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${disabled ? 'bg-gray-100 cursor-not-allowed' : ''}`}
       />
       {hint && <p className="text-xs text-zinc-500">{hint}</p>}
     </div>
@@ -56,7 +58,7 @@ function PageReview() {
     // Reset editableData when user changes - Unified user change detection
     useEffect(() => {
       if (userChanged && user) {
-        setEditableData(prevData => ({
+        setEditableData((prevData: any) => ({
           ...prevData,
           manualExtras: {
             ...prevData.manualExtras,

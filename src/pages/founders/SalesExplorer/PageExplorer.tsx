@@ -48,7 +48,7 @@ const demoPolicies = [
 ];
 
 function PageExplorer() {
-  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { user } = useAuth();
   const { userChanged } = useUserChange();
   const [make, setMake] = useState("All");
   const [model, setModel] = useState("All");

@@ -41,7 +41,7 @@ const demoReps = [
 ];
 
 function PageLeaderboard() {
-  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { user } = useAuth();
   const { userChanged } = useUserChange();
   const [reps, setReps] = useState<any[]>([]);
   const [sortField, setSortField] = useState<string>('');
