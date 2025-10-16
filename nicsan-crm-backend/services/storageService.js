@@ -1176,13 +1176,16 @@ async savePolicy(policyData) {
   }
 
   // Calculate dashboard metrics from PostgreSQL
-  async calculateDashboardMetrics(period = '14d') {
+  async calculateDashboardMetrics(period = 'all') {
     const now = new Date();
     let startDate;
     
     switch (period) {
       case '7d':
         startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case '14d':
+        startDate = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
         break;
       case '30d':
         startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
@@ -1191,22 +1194,37 @@ async savePolicy(policyData) {
         startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
         break;
       default:
-        startDate = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+        startDate = null; // All-time data
     }
 
     // Get basic metrics
-    const basicMetrics = await query(`
-      SELECT 
-        COUNT(*) as total_policies,
-        SUM(total_premium) as total_gwp,
-        SUM(brokerage) as total_brokerage,
-        SUM(cashback) as total_cashback,
-        SUM(brokerage - cashback) as net_revenue,
-        SUM(total_od) as total_outstanding_debt,
-        AVG(total_premium) as avg_premium
-      FROM policies 
-      WHERE created_at >= $1
-    `, [startDate]);
+    let basicMetrics;
+    if (startDate) {
+      basicMetrics = await query(`
+        SELECT 
+          COUNT(*) as total_policies,
+          SUM(total_premium) as total_gwp,
+          SUM(brokerage) as total_brokerage,
+          SUM(cashback) as total_cashback,
+          SUM(brokerage - cashback) as net_revenue,
+          SUM(total_od) as total_outstanding_debt,
+          AVG(total_premium) as avg_premium
+        FROM policies 
+        WHERE created_at >= $1
+      `, [startDate]);
+    } else {
+      basicMetrics = await query(`
+        SELECT 
+          COUNT(*) as total_policies,
+          SUM(total_premium) as total_gwp,
+          SUM(brokerage) as total_brokerage,
+          SUM(cashback) as total_cashback,
+          SUM(brokerage - cashback) as net_revenue,
+          SUM(total_od) as total_outstanding_debt,
+          AVG(total_premium) as avg_premium
+        FROM policies
+      `);
+    }
 
     // Get policies by source (all-time data for consistency)
     const sourceMetrics = await query(`
@@ -1220,34 +1238,67 @@ async savePolicy(policyData) {
     `);
 
     // Get top performers
-    const topPerformers = await query(`
-      SELECT 
-        executive,
-        COUNT(*) as policies,
-        SUM(total_premium) as gwp,
-        SUM(brokerage) as brokerage,
-        SUM(cashback) as cashback,
-        SUM(brokerage - cashback) as net
-      FROM policies 
-      WHERE created_at >= $1 AND executive IS NOT NULL
-      GROUP BY executive
-      ORDER BY net DESC
-      LIMIT 10
-    `, [startDate]);
+    let topPerformers;
+    if (startDate) {
+      topPerformers = await query(`
+        SELECT 
+          executive,
+          COUNT(*) as policies,
+          SUM(total_premium) as gwp,
+          SUM(brokerage) as brokerage,
+          SUM(cashback) as cashback,
+          SUM(brokerage - cashback) as net
+        FROM policies 
+        WHERE created_at >= $1 AND executive IS NOT NULL
+        GROUP BY executive
+        ORDER BY net DESC
+        LIMIT 10
+      `, [startDate]);
+    } else {
+      topPerformers = await query(`
+        SELECT 
+          executive,
+          COUNT(*) as policies,
+          SUM(total_premium) as gwp,
+          SUM(brokerage) as brokerage,
+          SUM(cashback) as cashback,
+          SUM(brokerage - cashback) as net
+        FROM policies 
+        WHERE executive IS NOT NULL
+        GROUP BY executive
+        ORDER BY net DESC
+        LIMIT 10
+      `);
+    }
 
     // Get daily trend
-    const dailyTrend = await query(`
-      SELECT 
-        DATE(created_at) as date,
-        COUNT(*) as policies,
-        SUM(total_premium) as gwp,
-        SUM(brokerage - cashback) as net
-      FROM policies 
-      WHERE created_at >= $1
-      GROUP BY DATE(created_at)
-      ORDER BY date DESC
-      LIMIT 30
-    `, [startDate]);
+    let dailyTrend;
+    if (startDate) {
+      dailyTrend = await query(`
+        SELECT 
+          DATE(created_at) as date,
+          COUNT(*) as policies,
+          SUM(total_premium) as gwp,
+          SUM(brokerage - cashback) as net
+        FROM policies 
+        WHERE created_at >= $1
+        GROUP BY DATE(created_at)
+        ORDER BY date DESC
+        LIMIT 30
+      `, [startDate]);
+    } else {
+      dailyTrend = await query(`
+        SELECT 
+          DATE(created_at) as date,
+          COUNT(*) as policies,
+          SUM(total_premium) as gwp,
+          SUM(brokerage - cashback) as net
+        FROM policies 
+        GROUP BY DATE(created_at)
+        ORDER BY date DESC
+        LIMIT 30
+      `);
+    }
 
     // Calculate KPIs
     const metrics = basicMetrics.rows[0];

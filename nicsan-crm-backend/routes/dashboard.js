@@ -16,7 +16,7 @@ router.get('/test-token', authenticateToken, (req, res) => {
 // Get dashboard metrics with dual storage (S3 → PostgreSQL → Mock Data)
 router.get('/metrics', authenticateToken, requireFounder, async (req, res) => {
   try {
-    const { period = '14d' } = req.query;
+    const { period = 'all' } = req.query;
     const metrics = await storageService.getDashboardMetricsWithFallback(period);
     
     res.json({
