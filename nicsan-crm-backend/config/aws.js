@@ -61,13 +61,15 @@ const deleteFromS3 = async (key) => {
 
 const getS3Url = async (key) => {
   try {
-    const params = {
-      Bucket: process.env.AWS_S3_BUCKET,
-      Key: key,
-      Expires: 3600 // URL expires in 1 hour
-    };
+    const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
+    const { GetObjectCommand } = require('@aws-sdk/client-s3');
     
-    const url = await s3.getSignedUrl('getObject', params);
+    const command = new GetObjectCommand({
+      Bucket: process.env.AWS_S3_BUCKET,
+      Key: key
+    });
+    
+    const url = await getSignedUrl(s3Client, command, { expiresIn: 3600 }); // URL expires in 1 hour
     return url;
   } catch (error) {
     console.error('❌ S3 signed URL generation error:', error);

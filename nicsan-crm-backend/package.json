@@ -37,6 +37,7 @@
     "@aws-sdk/client-s3": "^3.899.0",
     "@aws-sdk/client-ssm": "^3.891.0",
     "@aws-sdk/client-textract": "^3.899.0",
+    "@aws-sdk/s3-request-presigner": "^3.911.0",
     "aws-sdk": "^2.1450.0",
     "axios": "^1.12.2",
     "bcryptjs": "^2.4.3",
