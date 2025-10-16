@@ -168,7 +168,7 @@ function PagePolicyDetail() {
     // Download document function
     const downloadDocument = async (s3Key: string) => {
       try {
-        const response = await fetch(`http://localhost:3001/api/upload/s3-url/${encodeURIComponent(s3Key)}`, {
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/upload/s3-url/${encodeURIComponent(s3Key)}`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
           },
