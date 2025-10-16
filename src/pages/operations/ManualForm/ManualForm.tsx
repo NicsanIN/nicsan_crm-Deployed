@@ -2,7 +2,6 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { Card } from '../../../components/common/Card';
 import { User, Car, Trash2, Plus } from 'lucide-react';
 import DualStorageService from '../../../services/dualStorageService';
-import { AutocompleteInput } from '../../../NicsanCRMMock';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useUserChange } from '../../../hooks/useUserChange';
 
