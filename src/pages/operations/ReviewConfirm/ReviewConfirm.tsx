@@ -8,6 +8,42 @@ import { useUserChange } from '../../../hooks/useUserChange';
 // Environment variables
 // const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
 
+// Date format conversion function
+const convertDateFormat = (dateString: string) => {
+  if (!dateString) return null;
+  
+  // Handle DD-MM-YYYY format
+  if (dateString.includes('-') && dateString.split('-')[0].length === 2) {
+    const parts = dateString.split('-');
+    if (parts.length === 3) {
+      const day = parts[0];
+      const month = parts[1];
+      const year = parts[2];
+      return `${year}-${month}-${day}`; // Convert to YYYY-MM-DD
+    }
+  }
+  
+  // If already in YYYY-MM-DD format, return as is
+  if (dateString.includes('-') && dateString.split('-')[0].length === 4) {
+    return dateString;
+  }
+  
+  // For other formats, try to parse and convert
+  try {
+    const date = new Date(dateString);
+    if (!isNaN(date.getTime())) {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+  } catch (error) {
+    console.warn('Failed to parse date:', dateString);
+  }
+  
+  return dateString; // Return original if conversion fails
+};
+
 // LabeledInput component
 function LabeledInput({ label, value, onChange, type = "text", placeholder, hint, required = false, disabled = false }: {
   label: string;
@@ -899,8 +935,18 @@ function PageReview() {
         }
         
         
+        // Convert date formats before sending to backend
+        const convertedData = {
+          pdfData: {
+            ...pendingSaveData.pdfData,
+            issue_date: convertDateFormat(pendingSaveData.pdfData.issue_date),
+            expiry_date: convertDateFormat(pendingSaveData.pdfData.expiry_date)
+          },
+          manualExtras: pendingSaveData.manualExtras
+        };
+        
         // Send edited data to backend
-        const result = await DualStorageService.confirmUploadAsPolicy(reviewData.id, pendingSaveData);
+        const result = await DualStorageService.confirmUploadAsPolicy(reviewData.id, convertedData);
         
         if (result.success) {
           console.log('✅ Policy confirmed successfully with edited data!');
