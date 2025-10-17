@@ -742,11 +742,11 @@ function PageUpload() {
                   value={manualExtras.executive || ''}
                   onChange={(e) => handleManualExtrasChange('executive', e.target.value)}
                   disabled={true}
-                  className="w-full px-3 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  className="w-full px-3 py-2 border-2 border-blue-400 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 disabled:bg-blue-50 disabled:cursor-not-allowed"
                 />
-                <p className="text-xs text-zinc-500">Auto-filled from current user</p>
+                <p className="text-xs text-blue-500">Auto-filled from current user</p>
               </div>
-              <div>
+              <div className="space-y-1">
                 <label className="block text-xs text-blue-700 mb-1">Ops Executive</label>
                 <select 
                   value={manualExtras.opsExecutive}
