@@ -23,7 +23,6 @@ interface CostSummary {
   active_costs: number;
   inactive_costs: number;
   total_active_amount: number;
-  average_cost: number;
 }
 
 interface CategoryBreakdown {

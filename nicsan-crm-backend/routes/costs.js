@@ -199,8 +199,7 @@ router.get('/summary', authenticateToken, async (req, res) => {
         COUNT(*) as total_costs,
         COUNT(CASE WHEN status = 'active' THEN 1 END) as active_costs,
         COUNT(CASE WHEN status = 'inactive' THEN 1 END) as inactive_costs,
-        SUM(CASE WHEN status = 'active' THEN cost_amount ELSE 0 END) as total_active_amount,
-        AVG(CASE WHEN status = 'active' THEN cost_amount ELSE NULL END) as average_cost
+        SUM(CASE WHEN status = 'active' THEN cost_amount ELSE 0 END) as total_active_amount
       FROM monthly_recurring_costs
     `);
 
