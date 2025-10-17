@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { DollarSign, Plus, Edit, Trash2, Filter, Search, Calendar, Tag } from 'lucide-react';
+import { DollarSign, Plus, Edit, Trash2, Search, Calendar, Tag } from 'lucide-react';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useUserChange } from '../../../hooks/useUserChange';
 
@@ -26,18 +26,12 @@ interface CostSummary {
   average_cost: number;
 }
 
-interface CategoryBreakdown {
-  category: string;
-  count: number;
-  total_amount: number;
-}
 
 const MonthlyRecurringCost: React.FC = () => {
   const { user } = useAuth();
   const { userChanged } = useUserChange();
   const [costs, setCosts] = useState<MonthlyCost[]>([]);
   const [summary, setSummary] = useState<CostSummary | null>(null);
-  const [categoryBreakdown, setCategoryBreakdown] = useState<CategoryBreakdown[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -101,7 +95,6 @@ const MonthlyRecurringCost: React.FC = () => {
         const data = await response.json();
         if (data.success) {
           setSummary(data.data.summary);
-          setCategoryBreakdown(data.data.categoryBreakdown);
         }
       }
     } catch (error) {
