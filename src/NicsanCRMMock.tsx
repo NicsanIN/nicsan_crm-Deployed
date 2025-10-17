@@ -1,5 +1,5 @@
 ﻿import React, { useMemo, useState, useEffect } from "react";
-import { Upload, FileText, CheckCircle2, Table2, Settings, LayoutDashboard, Users, BarChart3, LogOut, SlidersHorizontal, TrendingUp, RefreshCw, CreditCard } from "lucide-react";
+import { Upload, FileText, CheckCircle2, Table2, Settings, LayoutDashboard, Users, BarChart3, LogOut, SlidersHorizontal, TrendingUp, RefreshCw, CreditCard, DollarSign } from "lucide-react";
 import { authUtils } from './services/api';
 import DualStorageService from './services/dualStorageService';
 import HorizontalLogo from './assets/images/HorizontalLogo.svg';
@@ -12,6 +12,7 @@ import PageOverview from './pages/founders/CompanyOverview/CompanyOverview';
 import PageFounderSettings from './pages/founders/Settings/Settings';
 import PageKPIs from './pages/founders/KPIDashboard/KPIDashboard';
 import PageTests from './pages/founders/DevTest/DevTest';
+import PageMonthlyCosts from './pages/founders/MonthlyRecurringCost/MonthlyRecurringCost';
 import PageReview from './pages/operations/ReviewConfirm/ReviewConfirm';
 import PageManualGrid from './pages/operations/GridEntry/GridEntry';
 import PagePolicyDetail from './pages/operations/PolicyDetail/PolicyDetail';
@@ -373,6 +374,7 @@ function FounderSidebar({ page, setPage }: { page: string; setPage: (p: string) 
     { id: "explorer", label: "Sales Explorer", icon: BarChart3 },
     { id: "sources", label: "Data Sources", icon: BarChart3 },
     { id: "payments", label: "Payments", icon: CreditCard },
+    { id: "monthly-costs", label: "Monthly Costs", icon: DollarSign },
     { id: "tests", label: "Dev/Test", icon: SlidersHorizontal },
     { id: "settings", label: "Settings", icon: Settings },
   ]
@@ -435,6 +437,7 @@ function NicsanCRMMock() {
           {founderPage === "explorer" && <PageExplorer/>}
           {founderPage === "sources" && <PageSources/>}
           {founderPage === "payments" && <PagePayments/>}
+          {founderPage === "monthly-costs" && <PageMonthlyCosts/>}
           {founderPage === "tests" && <PageTests/>}
           {founderPage === "settings" && <PageFounderSettings/>}
         </Shell>

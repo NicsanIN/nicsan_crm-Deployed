@@ -733,18 +733,16 @@ function PageUpload() {
           <div className="mb-6 p-4 bg-blue-50 rounded-xl border border-blue-200">
             <div className="text-sm font-medium mb-3 text-blue-800">📝 Manual Extras (from Sales Rep)</div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <label className="block text-xs text-blue-700 mb-1">
-                  Executive
-                </label>
+              <div>
+                <label className="block text-xs text-blue-700 mb-1">Executive</label>
                 <input
                   type="text"
                   value={manualExtras.executive || ''}
                   onChange={(e) => handleManualExtrasChange('executive', e.target.value)}
                   disabled={true}
-                  className="w-full px-3 py-2 border-2 border-blue-400 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 disabled:bg-blue-50 disabled:cursor-not-allowed"
+                  className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 disabled:bg-gray-100 disabled:cursor-not-allowed"
                 />
-                <p className="text-xs text-blue-500">Auto-filled from current user</p>
+                <p className="text-xs text-zinc-500">Auto-filled from current user</p>
               </div>
               <div className="space-y-1">
                 <label className="block text-xs text-blue-700 mb-1">Ops Executive</label>
@@ -966,6 +964,18 @@ function PageUpload() {
                     } catch (error) {
                       alert('Failed to validate telecaller. Please try again.');
                       return;
+                    }
+                  }
+                  
+                  // Validate Customer Email if provided
+                  if (manualExtras.customerEmail && manualExtras.customerEmail.trim() !== '') {
+                    const trimmedEmail = manualExtras.customerEmail.trim();
+                    if (trimmedEmail.toLowerCase() !== 'n/a') {
+                      const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+                      if (!emailRegex.test(trimmedEmail)) {
+                        alert('Email must be a valid email address or "N/A"');
+                        return;
+                      }
                     }
                   }
                   

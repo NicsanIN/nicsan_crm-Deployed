@@ -869,6 +869,17 @@ function PageReview() {
         errors.push('Invalid mobile number format (10 digits starting with 6-9)');
       }
       
+      // Customer Email validation
+      if (editableData.manualExtras.customerEmail && editableData.manualExtras.customerEmail.trim() !== '') {
+        const trimmedEmail = editableData.manualExtras.customerEmail.trim();
+        if (trimmedEmail.toLowerCase() !== 'n/a') {
+          const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+          if (!emailRegex.test(trimmedEmail)) {
+            errors.push('Email must be a valid email address or "N/A"');
+          }
+        }
+      }
+      
       return errors;
     };
   
@@ -1344,12 +1355,14 @@ function PageReview() {
               />
               <LabeledDateInput 
                 label="Issue Date" 
+                type="date"
                 value={editableData.pdfData.issue_date || pdfData.issue_date}
                 onChange={(value) => updatePdfData('issue_date', value)}
                 required={true}
               />
               <LabeledDateInput 
                 label="Expiry Date" 
+                type="date"
                 value={editableData.pdfData.expiry_date || pdfData.expiry_date}
                 onChange={(value) => updatePdfData('expiry_date', value)}
                 required={true}

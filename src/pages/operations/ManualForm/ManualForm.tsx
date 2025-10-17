@@ -987,6 +987,18 @@ function PageManualForm() {
             errors.push('Remark must be at least 5 characters');
           }
           break;
+          
+        case 'customerEmail':
+          if (value && value.trim() !== '') {
+            const trimmedEmail = value.trim();
+            if (trimmedEmail.toLowerCase() !== 'n/a') {
+              const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+              if (!emailRegex.test(trimmedEmail)) {
+                errors.push('Email must be a valid email address or "N/A"');
+              }
+            }
+          }
+          break;
       }
       
       return errors;
