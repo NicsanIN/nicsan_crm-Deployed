@@ -303,6 +303,20 @@ router.post('/:uploadId/confirm', authenticateToken, requireOps, async (req, res
       });
     }
 
+    // Validate customer email format if provided
+    if (policyData.customer_email && policyData.customer_email.trim() !== '') {
+      const trimmedEmail = policyData.customer_email.trim();
+      if (trimmedEmail.toLowerCase() !== 'n/a') {
+        const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+        if (!emailRegex.test(trimmedEmail)) {
+          return res.status(400).json({
+            success: false,
+            error: 'Email must be a valid email address or "N/A"'
+          });
+        }
+      }
+    }
+
     // Validate telecaller exists in database
     if (policyData.caller_name) {
       console.log('🔍 Checking telecaller:', policyData.caller_name);

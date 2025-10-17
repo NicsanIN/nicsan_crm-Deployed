@@ -38,7 +38,7 @@ const corsOptions = {
     }
   },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   optionsSuccessStatus: 200
 };
@@ -79,6 +79,7 @@ app.use('/api/telecallers', require('./routes/telecallers'));
 app.use('/api/debug', require('./routes/debug'));
 app.use('/api/password', require('./routes/password'));
 app.use('/api/users', require('./routes/users'));
+app.use('/api/costs', require('./routes/costs'));
 
 // Initialize WebSocket Service (handles Socket.IO internally)
 const wsService = require('./services/websocketService');

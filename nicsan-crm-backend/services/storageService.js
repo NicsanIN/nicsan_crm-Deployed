@@ -38,6 +38,17 @@ async savePolicy(policyData) {
         }
       }
       
+      // Validate customer email format before saving
+      if (policyData.customer_email && policyData.customer_email.trim() !== '') {
+        const trimmedEmail = policyData.customer_email.trim();
+        if (trimmedEmail.toLowerCase() !== 'n/a') {
+          const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+          if (!emailRegex.test(trimmedEmail)) {
+            throw new Error(`Invalid email format: ${policyData.customer_email}. Email must be a valid email address or "N/A"`);
+          }
+        }
+      }
+      
       // Enhanced financial validation before saving
       const totalPremium = validatePremium(policyData.total_premium);
       if (!totalPremium.isValid) {

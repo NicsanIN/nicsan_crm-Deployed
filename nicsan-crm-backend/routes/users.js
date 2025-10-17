@@ -314,6 +314,12 @@ router.patch('/:id/password', authenticateToken, requireRole(['founder']), async
       WHERE id = $2
     `, [hashedPassword, id]);
 
+    // Log the change
+    await query(
+      'INSERT INTO password_change_logs (changed_by, target_user, action, timestamp) VALUES ($1, $2, $3, CURRENT_TIMESTAMP)',
+      [req.user.id, id, 'admin_password_change']
+    );
+
     res.json({
       success: true,
       message: `Password updated successfully for user "${existingUser.rows[0].name}"`

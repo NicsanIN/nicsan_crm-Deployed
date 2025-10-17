@@ -139,6 +139,7 @@ function LabeledAutocompleteInput({
 // Environment variables
 // const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
 
+
 // LabeledSelect component
 function LabeledSelect({ label, value, onChange, options, placeholder, hint, required = false }: {
   label: string;
@@ -734,20 +735,14 @@ function PageUpload() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs text-blue-700 mb-1">Executive</label>
-                <select 
-                  value={manualExtras.executive}
+                <input
+                  type="text"
+                  value={manualExtras.executive || ''}
                   onChange={(e) => handleManualExtrasChange('executive', e.target.value)}
-                  className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
-                >
-                  <option value="">Select Executive</option>
-                  <option value="Yashwanth">Yashwanth</option>
-                  <option value="Kavya">Kavya</option>
-                  <option value="Bhagya">Bhagya</option>
-                  <option value="Sandesh">Sandesh</option>
-                  <option value="Yallappa">Yallappa</option>
-                  <option value="Nethravathi">Nethravathi</option>
-                  <option value="Tejaswini">Tejaswini</option>
-                </select>
+                  disabled={true}
+                  className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                />
+                <p className="text-xs text-zinc-500">Auto-filled from current user</p>
               </div>
               <div>
                 <label className="block text-xs text-blue-700 mb-1">Ops Executive</label>
@@ -969,6 +964,18 @@ function PageUpload() {
                     } catch (error) {
                       alert('Failed to validate telecaller. Please try again.');
                       return;
+                    }
+                  }
+                  
+                  // Validate Customer Email if provided
+                  if (manualExtras.customerEmail && manualExtras.customerEmail.trim() !== '') {
+                    const trimmedEmail = manualExtras.customerEmail.trim();
+                    if (trimmedEmail.toLowerCase() !== 'n/a') {
+                      const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+                      if (!emailRegex.test(trimmedEmail)) {
+                        alert('Email must be a valid email address or "N/A"');
+                        return;
+                      }
                     }
                   }
                   

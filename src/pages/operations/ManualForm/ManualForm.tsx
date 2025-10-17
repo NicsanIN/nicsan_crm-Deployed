@@ -546,6 +546,18 @@ function PageManualForm() {
             errors.push('Remark must be at least 5 characters');
           }
           break;
+          
+        case 'customerEmail':
+          if (value && value.trim() !== '') {
+            const trimmedEmail = value.trim();
+            if (trimmedEmail.toLowerCase() !== 'n/a') {
+              const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+              if (!emailRegex.test(trimmedEmail)) {
+                errors.push('Email must be a valid email address or "N/A"');
+              }
+            }
+          }
+          break;
       }
       
       return errors;
@@ -1299,8 +1311,8 @@ function PageManualForm() {
 
               {/* Health Insurance Premium Fields */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-                <LabeledInput label="Issue Date" value={form.issueDate} onChange={v=>set('issueDate', v)}/>
-                <LabeledInput label="Expiry Date" value={form.expiryDate} onChange={v=>set('expiryDate', v)}/>
+                <LabeledInput label="Issue Date" type="date" value={form.issueDate} onChange={v=>set('issueDate', v)}/>
+                <LabeledInput label="Expiry Date" type="date" value={form.expiryDate} onChange={v=>set('expiryDate', v)}/>
                 <LabeledInput label="Sum Insured (₹)" value={form.idv} onChange={v=>set('idv', v)} placeholder="e.g., 500000"/>
                 <LabeledInput label="Premium Amount (₹)" required value={form.totalPremium} onChange={onTotalChange}/>
               </div>
@@ -1332,8 +1344,8 @@ function PageManualForm() {
             <>
               {/* Dates & Values */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                <LabeledInput label="Issue Date" value={form.issueDate} onChange={v=>set('issueDate', v)}/>
-                <LabeledInput label="Expiry Date" value={form.expiryDate} onChange={v=>set('expiryDate', v)}/>
+                <LabeledInput label="Issue Date" type="date" value={form.issueDate} onChange={v=>set('issueDate', v)}/>
+                <LabeledInput label="Expiry Date" type="date" value={form.expiryDate} onChange={v=>set('expiryDate', v)}/>
                 <LabeledInput label="IDV (₹)" value={form.idv} onChange={v=>set('idv', v)}/>
                 <LabeledInput label="NCB (%)" value={form.ncb} onChange={v=>set('ncb', v)}/>
                 <LabeledInput label="DIS (%)" hint="discount" value={form.discount} onChange={v=>set('discount', v)}/>
