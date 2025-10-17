@@ -245,13 +245,6 @@ const MonthlyRecurringCost: React.FC = () => {
             </div>
             <p className="text-2xl font-semibold text-gray-900">₹{summary.total_active_amount ? Number(summary.total_active_amount).toLocaleString() : '0'}</p>
           </div>
-          <div className="bg-white rounded-lg border border-gray-200 p-4">
-            <div className="flex items-center gap-2">
-              <DollarSign className="h-4 w-4 text-orange-600" />
-              <span className="text-sm font-medium text-gray-600">Average Cost</span>
-            </div>
-            <p className="text-2xl font-semibold text-gray-900">₹{summary.average_cost ? Number(summary.average_cost).toFixed(0) : '0'}</p>
-          </div>
         </div>
       )}
 

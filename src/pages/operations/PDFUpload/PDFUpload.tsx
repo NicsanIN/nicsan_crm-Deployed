@@ -967,6 +967,18 @@ function PageUpload() {
                     }
                   }
                   
+                  // Validate Customer Email if provided
+                  if (manualExtras.customerEmail && manualExtras.customerEmail.trim() !== '') {
+                    const trimmedEmail = manualExtras.customerEmail.trim();
+                    if (trimmedEmail.toLowerCase() !== 'n/a') {
+                      const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+                      if (!emailRegex.test(trimmedEmail)) {
+                        alert('Email must be a valid email address or "N/A"');
+                        return;
+                      }
+                    }
+                  }
+                  
                   setManualExtrasSaved(true);
                   setUploadStatus('✅ Manual extras saved! Now drop your PDF to complete the upload.');
                 }}

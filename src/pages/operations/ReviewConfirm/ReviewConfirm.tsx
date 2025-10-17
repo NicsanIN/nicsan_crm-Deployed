@@ -389,6 +389,17 @@ function PageReview() {
         errors.push('Invalid mobile number format (10 digits starting with 6-9)');
       }
       
+      // Customer Email validation
+      if (editableData.manualExtras.customerEmail && editableData.manualExtras.customerEmail.trim() !== '') {
+        const trimmedEmail = editableData.manualExtras.customerEmail.trim();
+        if (trimmedEmail.toLowerCase() !== 'n/a') {
+          const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+          if (!emailRegex.test(trimmedEmail)) {
+            errors.push('Email must be a valid email address or "N/A"');
+          }
+        }
+      }
+      
       return errors;
     };
   
