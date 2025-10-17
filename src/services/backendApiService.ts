@@ -875,6 +875,15 @@ const response = await fetch(`${API_BASE_URL}/policies`, {
         }
       } : {};
 
+      // Debug: Log the request being sent
+      if (ENABLE_DEBUG) {
+        console.log('🔍 BackendApiService: Sending request:', {
+          uploadId,
+          requestBody,
+          url: `${API_BASE_URL}/upload/${uploadId}/confirm`
+        });
+      }
+
       const response = await fetch(`${API_BASE_URL}/upload/${uploadId}/confirm`, {
         method: 'POST',
         headers: {
@@ -885,7 +894,18 @@ const response = await fetch(`${API_BASE_URL}/policies`, {
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        // Try to get the error details from the response
+        let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+        try {
+          const errorData = await response.json();
+          if (errorData.error) {
+            errorMessage = errorData.error;
+          }
+          console.error('🔍 BackendApiService: Error response:', errorData);
+        } catch (e) {
+          console.error('🔍 BackendApiService: Could not parse error response');
+        }
+        throw new Error(errorMessage);
       }
 
       const result = await response.json();

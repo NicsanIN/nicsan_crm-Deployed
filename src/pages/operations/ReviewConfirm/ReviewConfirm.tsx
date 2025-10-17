@@ -945,6 +945,20 @@ function PageReview() {
           manualExtras: pendingSaveData.manualExtras
         };
         
+        // Debug: Log the data being sent
+        console.log('🔍 Data being sent to backend:', {
+          uploadId: reviewData.id,
+          convertedData: convertedData,
+          originalDates: {
+            issue_date: pendingSaveData.pdfData.issue_date,
+            expiry_date: pendingSaveData.pdfData.expiry_date
+          },
+          convertedDates: {
+            issue_date: convertedData.pdfData.issue_date,
+            expiry_date: convertedData.pdfData.expiry_date
+          }
+        });
+        
         // Send edited data to backend
         const result = await DualStorageService.confirmUploadAsPolicy(reviewData.id, convertedData);
         
