@@ -840,11 +840,13 @@ function PageReview() {
               />
               <LabeledInput 
                 label="Issue Date" 
+                type="date"
                 value={editableData.pdfData.issue_date || pdfData.issue_date}
                 onChange={(value) => updatePdfData('issue_date', value)}
               />
               <LabeledInput 
                 label="Expiry Date" 
+                type="date"
                 value={editableData.pdfData.expiry_date || pdfData.expiry_date}
                 onChange={(value) => updatePdfData('expiry_date', value)}
               />
