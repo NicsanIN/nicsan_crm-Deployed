@@ -139,35 +139,6 @@ function LabeledAutocompleteInput({
 // Environment variables
 // const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
 
-// LabeledInput component
-function LabeledInput({ label, value, onChange, type = "text", placeholder, hint, required = false, disabled = false }: {
-  label: string;
-  value: any;
-  onChange: (value: any) => void;
-  type?: string;
-  placeholder?: string;
-  hint?: string;
-  required?: boolean;
-  disabled?: boolean;
-}) {
-  return (
-    <div className="space-y-1">
-      <label className="text-sm font-medium text-zinc-700 flex items-center gap-1">
-        {label}
-        {required && <span className="text-red-500">*</span>}
-      </label>
-      <input
-        type={type}
-        value={value || ''}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        disabled={disabled}
-        className={`w-full px-3 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${disabled ? 'bg-gray-100 cursor-not-allowed' : ''}`}
-      />
-      {hint && <p className="text-xs text-zinc-500">{hint}</p>}
-    </div>
-  );
-}
 
 // LabeledSelect component
 function LabeledSelect({ label, value, onChange, options, placeholder, hint, required = false }: {
@@ -762,16 +733,14 @@ function PageUpload() {
           <div className="mb-6 p-4 bg-blue-50 rounded-xl border border-blue-200">
             <div className="text-sm font-medium mb-3 text-blue-800">📝 Manual Extras (from Sales Rep)</div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <label className="block text-xs text-blue-700 mb-1">
-                  Executive
-                </label>
+              <div>
+                <label className="block text-xs text-blue-700 mb-1">Executive</label>
                 <input
                   type="text"
                   value={manualExtras.executive || ''}
                   onChange={(e) => handleManualExtrasChange('executive', e.target.value)}
                   disabled={true}
-                  className="w-full px-3 py-2 border border-zinc-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 disabled:bg-gray-100 disabled:cursor-not-allowed"
                 />
                 <p className="text-xs text-zinc-500">Auto-filled from current user</p>
               </div>
