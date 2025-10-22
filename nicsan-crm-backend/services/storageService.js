@@ -463,7 +463,27 @@ async savePolicy(policyData) {
         
         // Validate IDV is within reasonable range for vehicle insurance
         if (correctedIdv >= 100000 && correctedIdv <= 10000000) {
-          console.log(`✅ IDV validated: ${correctedIdv} (from table or header source)`);
+          // Check for policy year concatenation pattern (1-4 digits + 6-7 digit IDV)
+          const policyYearPattern = /^(\d{1,4})(\d{6,7})$/;
+          const match = idvStr.match(policyYearPattern);
+          
+          if (match) {
+            const policyYear = match[1];
+            const idvValue = match[2];
+            const idvNum = parseInt(idvValue);
+            
+            // Validate policy year is reasonable (1-4 digits) and IDV is reasonable
+            if (policyYear.length >= 1 && policyYear.length <= 4 && 
+                parseInt(policyYear) >= 1 && parseInt(policyYear) <= 9999 &&
+                idvNum >= 100000 && idvNum <= 10000000) {
+              correctedIdv = idvNum;
+              console.log(`✅ IDV corrected from ${openaiResult.idv} to ${correctedIdv} (policy year prefix removed)`);
+            } else {
+              console.log(`✅ IDV validated: ${correctedIdv} (from table or header source)`);
+            }
+          } else {
+            console.log(`✅ IDV validated: ${correctedIdv} (from table or header source)`);
+          }
         } else if (correctedIdv > 10000000) {
           // Only correct if value is unreasonably large (likely extraction error)
           console.log('⚠️ IDV value seems unreasonably large, checking for extraction errors...');
