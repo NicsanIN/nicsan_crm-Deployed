@@ -333,7 +333,7 @@ class DailyReportScheduler {
     try {
       console.log(`📊 Generating ${branch} branch report data for date: ${date}`);
       
-      // Query to get branch-specific, vehicle type-wise, rollover/renewal breakdown
+      // Query to get branch-specific, vehicle type-wise, rollover-only breakdown
       const reportQuery = `
         SELECT 
           COALESCE(branch, 'Unknown') as branch,
@@ -343,31 +343,29 @@ class DailyReportScheduler {
           SUM(COALESCE(total_od, 0)) as total_od_amount,
           SUM(COALESCE(total_premium, 0)) as total_premium_amount
         FROM policies 
-        WHERE DATE(created_at) = $1 AND branch = $2
+        WHERE DATE(created_at) = $1 AND branch = $2 AND rollover = 'Rollover'
         GROUP BY branch, vehicle_type, rollover
         ORDER BY branch, vehicle_type, rollover_status
       `;
       
       const result = await query(reportQuery, [date, branch]);
       
-      // Get branch-specific summary totals
+      // Get branch-specific summary totals (rollover only)
       const summaryQuery = `
         SELECT 
           COUNT(*) as total_policies,
           SUM(COALESCE(total_od, 0)) as total_od,
           SUM(COALESCE(total_premium, 0)) as total_premium,
           COUNT(CASE WHEN rollover = 'Rollover' THEN 1 END) as rollover_count,
-          COUNT(CASE WHEN rollover = 'Renewal' THEN 1 END) as renewal_count,
-          SUM(CASE WHEN rollover = 'Rollover' THEN COALESCE(total_od, 0) ELSE 0 END) as rollover_od,
-          SUM(CASE WHEN rollover = 'Renewal' THEN COALESCE(total_od, 0) ELSE 0 END) as renewal_od
+          SUM(CASE WHEN rollover = 'Rollover' THEN COALESCE(total_od, 0) ELSE 0 END) as rollover_od
         FROM policies 
-        WHERE DATE(created_at) = $1 AND branch = $2
+        WHERE DATE(created_at) = $1 AND branch = $2 AND rollover = 'Rollover'
       `;
       
       const summaryResult = await query(summaryQuery, [date, branch]);
       const summary = summaryResult.rows[0];
       
-      // Structure the data for email template
+      // Structure the data for email template (rollover only)
       const reportData = {
         date: date,
         branch: branch,
@@ -376,9 +374,7 @@ class DailyReportScheduler {
           totalOD: parseFloat(summary.total_od) || 0,
           totalPremium: parseFloat(summary.total_premium) || 0,
           rolloverCount: parseInt(summary.rollover_count) || 0,
-          renewalCount: parseInt(summary.renewal_count) || 0,
-          rolloverOD: parseFloat(summary.rollover_od) || 0,
-          renewalOD: parseFloat(summary.renewal_od) || 0
+          rolloverOD: parseFloat(summary.rollover_od) || 0
         },
         branches: {}
       };

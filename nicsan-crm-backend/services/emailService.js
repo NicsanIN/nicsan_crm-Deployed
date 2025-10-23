@@ -930,10 +930,6 @@ function generateBranchODReportContent(reportData, branch) {
               <td><strong>Rollover Policies:</strong></td>
               <td>${summary.rolloverCount} (${formatCurrency(summary.rolloverOD)})</td>
             </tr>
-            <tr>
-              <td><strong>Renewal Policies:</strong></td>
-              <td>${summary.renewalCount} (${formatCurrency(summary.renewalOD)})</td>
-            </tr>
           </table>
         </div>
         
@@ -955,11 +951,6 @@ function generateBranchODReportContent(reportData, branch) {
                     <td>Rollover</td>
                     <td class="highlight">${formatCurrency(vehicleType.rollover.amount)}</td>
                     <td>${vehicleType.rollover.count}</td>
-                  </tr>
-                  <tr>
-                    <td>Renewal</td>
-                    <td class="highlight">${formatCurrency(vehicleType.renewal.amount)}</td>
-                    <td>${vehicleType.renewal.count}</td>
                   </tr>
                 </table>
               </div>
@@ -1033,7 +1024,6 @@ ${branch} BRANCH SUMMARY:
 - Total Policies: ${summary.totalPolicies}
 - Total OD Amount: ${formatCurrency(summary.totalOD)}
 - Rollover Policies: ${summary.rolloverCount} (${formatCurrency(summary.rolloverOD)})
-- Renewal Policies: ${summary.renewalCount} (${formatCurrency(summary.renewalOD)})
 
 ${branches.map(branchData => `
 ${branchData.branchName} BRANCH DETAILS:
@@ -1042,7 +1032,6 @@ Total: ${formatCurrency(branchData.totalOD)} (${branchData.totalPolicies} polici
 ${branchData.vehicleTypes.map(vehicleType => `
   ${vehicleType.vehicleType}:
     Rollover: ${formatCurrency(vehicleType.rollover.amount)} (${vehicleType.rollover.count} policies)
-    Renewal: ${formatCurrency(vehicleType.renewal.amount)} (${vehicleType.renewal.count} policies)
 `).join('')}
 `).join('')}
 
