@@ -421,8 +421,259 @@ async function sendTestEmail(testEmail) {
   }
 }
 
+/**
+ * Send daily Total OD report to founders
+ * @param {Object} reportData - Daily OD report data
+ * @returns {Promise<Object>} Email sending result
+ */
+async function sendDailyODReport(reportData) {
+  try {
+    console.log(`📧 Sending daily OD report for date: ${reportData.date}`);
+    
+    // Get founder emails from environment
+    const founderEmails = [
+      process.env.FOUNDER_EMAIL_1,
+      process.env.FOUNDER_EMAIL_2
+    ].filter(email => email && email.trim() !== '');
+    
+    if (founderEmails.length === 0) {
+      throw new Error('No founder emails configured');
+    }
+    
+    // Generate email content
+    const emailContent = generateDailyODReportContent(reportData);
+    
+    // Prepare email options
+    const mailOptions = {
+      from: {
+        name: 'Nicsan CRM System',
+        address: process.env.SMTP_USER
+      },
+      to: founderEmails.join(', '),
+      subject: `Daily Total OD Report - ${reportData.date}`,
+      html: emailContent.html,
+      text: emailContent.text
+    };
+    
+    // Send email
+    const result = await transporter.sendMail(mailOptions);
+    
+    console.log('✅ Daily OD report email sent successfully:', result.messageId);
+    return {
+      success: true,
+      messageId: result.messageId,
+      recipients: founderEmails
+    };
+    
+  } catch (error) {
+    console.error('❌ Daily OD report email failed:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+/**
+ * Generate daily OD report email content
+ * @param {Object} reportData - Report data
+ * @returns {Object} Email content with HTML and text versions
+ */
+function generateDailyODReportContent(reportData) {
+  const { date, summary, branches } = reportData;
+  
+  // Format currency
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(amount);
+  };
+  
+  // Generate HTML content
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Daily Total OD Report</title>
+      <style>
+        body {
+          font-family: Arial, sans-serif;
+          line-height: 1.6;
+          color: #333;
+          max-width: 1200px;
+          margin: 0 auto;
+          padding: 20px;
+        }
+        .header {
+          background-color: #004e98;
+          color: white;
+          padding: 20px;
+          text-align: center;
+          border-radius: 8px 8px 0 0;
+        }
+        .content {
+          background-color: #f8f9fa;
+          padding: 20px;
+          border-radius: 0 0 8px 8px;
+        }
+        .summary {
+          background-color: #e3f2fd;
+          padding: 15px;
+          border-radius: 5px;
+          margin: 20px 0;
+        }
+        .branch-section {
+          margin: 20px 0;
+          background-color: white;
+          padding: 15px;
+          border-radius: 5px;
+          border-left: 4px solid #004e98;
+        }
+        .vehicle-type {
+          margin: 10px 0;
+          padding: 10px;
+          background-color: #f5f5f5;
+          border-radius: 3px;
+        }
+        table {
+          width: 100%;
+          border-collapse: collapse;
+          margin: 10px 0;
+        }
+        th, td {
+          padding: 8px 12px;
+          text-align: left;
+          border-bottom: 1px solid #ddd;
+        }
+        th {
+          background-color: #004e98;
+          color: white;
+        }
+        .highlight {
+          font-weight: bold;
+          color: #004e98;
+        }
+        .footer {
+          text-align: center;
+          margin-top: 30px;
+          padding: 20px;
+          background-color: #f8f9fa;
+          border-radius: 5px;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <h1>📊 Daily Total OD Report</h1>
+        <h2>${new Date(date).toLocaleDateString('en-IN', { 
+          weekday: 'long', 
+          year: 'numeric', 
+          month: 'long', 
+          day: 'numeric' 
+        })}</h2>
+      </div>
+      
+      <div class="content">
+        <div class="summary">
+          <h3>📈 Summary</h3>
+          <table>
+            <tr>
+              <td><strong>Total Policies:</strong></td>
+              <td class="highlight">${summary.totalPolicies}</td>
+            </tr>
+            <tr>
+              <td><strong>Total OD Amount:</strong></td>
+              <td class="highlight">${formatCurrency(summary.totalOD)}</td>
+            </tr>
+            <tr>
+              <td><strong>Rollover Policies:</strong></td>
+              <td>${summary.rolloverCount} (${formatCurrency(summary.rolloverOD)})</td>
+            </tr>
+            <tr>
+              <td><strong>Renewal Policies:</strong></td>
+              <td>${summary.renewalCount} (${formatCurrency(summary.renewalOD)})</td>
+            </tr>
+          </table>
+        </div>
+        
+        ${branches.map(branch => `
+          <div class="branch-section">
+            <h3>🏢 Branch: ${branch.branchName}</h3>
+            <p><strong>Branch Total:</strong> ${formatCurrency(branch.totalOD)} (${branch.totalPolicies} policies)</p>
+            
+            ${branch.vehicleTypes.map(vehicleType => `
+              <div class="vehicle-type">
+                <h4>🚗 ${vehicleType.vehicleType}</h4>
+                <table>
+                  <tr>
+                    <th>Type</th>
+                    <th>Amount</th>
+                    <th>Policies</th>
+                  </tr>
+                  <tr>
+                    <td>Rollover</td>
+                    <td class="highlight">${formatCurrency(vehicleType.rollover.amount)}</td>
+                    <td>${vehicleType.rollover.count}</td>
+                  </tr>
+                  <tr>
+                    <td>Renewal</td>
+                    <td class="highlight">${formatCurrency(vehicleType.renewal.amount)}</td>
+                    <td>${vehicleType.renewal.count}</td>
+                  </tr>
+                </table>
+              </div>
+            `).join('')}
+          </div>
+        `).join('')}
+        
+        <div class="footer">
+          <p><strong>Generated by Nicsan CRM System</strong></p>
+          <p>This is an automated daily report. For any queries, please contact the system administrator.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+  
+  // Generate text content
+  const text = `
+DAILY TOTAL OD REPORT - ${new Date(date).toLocaleDateString('en-IN')}
+========================================================
+
+SUMMARY:
+- Total Policies: ${summary.totalPolicies}
+- Total OD Amount: ${formatCurrency(summary.totalOD)}
+- Rollover Policies: ${summary.rolloverCount} (${formatCurrency(summary.rolloverOD)})
+- Renewal Policies: ${summary.renewalCount} (${formatCurrency(summary.renewalOD)})
+
+BRANCH BREAKDOWN:
+${branches.map(branch => `
+BRANCH: ${branch.branchName}
+Total: ${formatCurrency(branch.totalOD)} (${branch.totalPolicies} policies)
+
+${branch.vehicleTypes.map(vehicleType => `
+  ${vehicleType.vehicleType}:
+    Rollover: ${formatCurrency(vehicleType.rollover.amount)} (${vehicleType.rollover.count} policies)
+    Renewal: ${formatCurrency(vehicleType.renewal.amount)} (${vehicleType.renewal.count} policies)
+`).join('')}
+`).join('')}
+
+---
+Generated by Nicsan CRM System
+This is an automated daily report.
+  `;
+  
+  return { html, text };
+}
+
 module.exports = {
   sendPolicyPDF,
   testEmailConfiguration,
-  sendTestEmail
+  sendTestEmail,
+  sendDailyODReport
 };
