@@ -197,8 +197,70 @@ class DailyReportScheduler {
         vehicleTypes: Object.values(branch.vehicleTypes)
       }));
       
+      // Get daily breakdown data (last 7 days)
+      console.log('📊 Fetching daily breakdown data...');
+      const dailyBreakdownQuery = `
+        SELECT 
+          DATE(created_at) as date,
+          SUM(total_od) as total_od,
+          COUNT(*) as policy_count,
+          AVG(total_od) as avg_od_per_policy,
+          MAX(total_od) as max_od,
+          MIN(total_od) as min_od
+        FROM policies 
+        WHERE created_at >= $1 AND total_od > 0
+        GROUP BY DATE(created_at)
+        ORDER BY date DESC
+        LIMIT 7
+      `;
+      
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      const dailyResult = await query(dailyBreakdownQuery, [sevenDaysAgo.toISOString().split('T')[0]]);
+      
+      reportData.dailyBreakdown = dailyResult.rows.map(row => ({
+        date: row.date,
+        totalOD: parseFloat(row.total_od) || 0,
+        policyCount: parseInt(row.policy_count) || 0,
+        avgODPerPolicy: parseFloat(row.avg_od_per_policy) || 0,
+        maxOD: parseFloat(row.max_od) || 0,
+        minOD: parseFloat(row.min_od) || 0
+      }));
+      
+      // Get monthly breakdown data (last 12 months)
+      console.log('📊 Fetching monthly breakdown data...');
+      const monthlyBreakdownQuery = `
+        SELECT 
+          DATE_TRUNC('month', created_at) as month,
+          SUM(total_od) as total_od,
+          COUNT(*) as policy_count,
+          AVG(total_od) as avg_od_per_policy,
+          MAX(total_od) as max_od,
+          MIN(total_od) as min_od
+        FROM policies 
+        WHERE created_at >= $1 AND total_od > 0
+        GROUP BY DATE_TRUNC('month', created_at)
+        ORDER BY month DESC
+        LIMIT 12
+      `;
+      
+      const twelveMonthsAgo = new Date();
+      twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
+      const monthlyResult = await query(monthlyBreakdownQuery, [twelveMonthsAgo.toISOString().split('T')[0]]);
+      
+      reportData.monthlyBreakdown = monthlyResult.rows.map(row => ({
+        month: row.month,
+        totalOD: parseFloat(row.total_od) || 0,
+        policyCount: parseInt(row.policy_count) || 0,
+        avgODPerPolicy: parseFloat(row.avg_od_per_policy) || 0,
+        maxOD: parseFloat(row.max_od) || 0,
+        minOD: parseFloat(row.min_od) || 0
+      }));
+      
       console.log(`✅ Report data generated successfully`);
       console.log(`📈 Summary: ${reportData.summary.totalPolicies} policies, ₹${reportData.summary.totalOD.toLocaleString('en-IN')} Total OD`);
+      console.log(`📊 Daily breakdown: ${reportData.dailyBreakdown.length} days`);
+      console.log(`📈 Monthly breakdown: ${reportData.monthlyBreakdown.length} months`);
       
       return reportData;
       
