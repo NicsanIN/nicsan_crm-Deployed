@@ -743,10 +743,347 @@ ${branch.vehicleTypes.map(vehicleType => `
   return { html, text };
 }
 
+/**
+ * Send branch-specific daily Total OD report to branch head
+ * @param {Object} reportData - Branch-specific report data
+ * @param {string} branch - Branch name
+ * @returns {Promise<Object>} Email sending result
+ */
+async function sendBranchODReport(reportData, branch) {
+  try {
+    console.log(`📧 Sending ${branch} branch daily OD report for date: ${reportData.date}`);
+    
+    // Get branch head email from environment
+    const branchHeadEmail = getBranchHeadEmail(branch);
+    
+    if (!branchHeadEmail) {
+      throw new Error(`No email configured for ${branch} branch head`);
+    }
+    
+    // Generate branch-specific email content
+    const emailContent = generateBranchODReportContent(reportData, branch);
+    
+    // Prepare email options
+    const mailOptions = {
+      from: {
+        name: 'Nicsan CRM System',
+        address: process.env.SMTP_USER
+      },
+      to: branchHeadEmail,
+      subject: `Daily Total OD Report - ${branch} Branch - ${reportData.date}`,
+      html: emailContent.html,
+      text: emailContent.text
+    };
+    
+    // Send email
+    const result = await transporter.sendMail(mailOptions);
+    
+    console.log(`✅ ${branch} branch daily OD report email sent successfully:`, result.messageId);
+    return {
+      success: true,
+      messageId: result.messageId,
+      recipients: [branchHeadEmail]
+    };
+    
+  } catch (error) {
+    console.error(`❌ ${branch} branch daily OD report email failed:`, error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+/**
+ * Get branch head email from environment variables
+ * @param {string} branch - Branch name
+ * @returns {string|null} Branch head email address
+ */
+function getBranchHeadEmail(branch) {
+  const branchEmails = {
+    'MYSORE': process.env.MYSORE_BRANCH_HEAD_EMAIL,
+    'BANASHANKARI': process.env.BANASHANKARI_BRANCH_HEAD_EMAIL,
+    'ADUGODI': process.env.ADUGODI_BRANCH_HEAD_EMAIL
+  };
+  
+  return branchEmails[branch] || null;
+}
+
+/**
+ * Generate branch-specific daily OD report email content
+ * @param {Object} reportData - Branch-specific report data
+ * @param {string} branch - Branch name
+ * @returns {Object} Email content with HTML and text versions
+ */
+function generateBranchODReportContent(reportData, branch) {
+  const { date, summary, branches, dailyBreakdown = [], monthlyBreakdown = [] } = reportData;
+  
+  // Format currency
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(amount);
+  };
+  
+  // Generate HTML content
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Daily Total OD Report - ${branch} Branch</title>
+      <style>
+        body {
+          font-family: Arial, sans-serif;
+          line-height: 1.6;
+          color: #333;
+          max-width: 1200px;
+          margin: 0 auto;
+          padding: 20px;
+        }
+        .header {
+          background-color: #004e98;
+          color: white;
+          padding: 20px;
+          text-align: center;
+          border-radius: 8px 8px 0 0;
+        }
+        .content {
+          background-color: #f8f9fa;
+          padding: 20px;
+          border-radius: 0 0 8px 8px;
+        }
+        .summary {
+          background-color: #e3f2fd;
+          padding: 15px;
+          border-radius: 5px;
+          margin: 20px 0;
+        }
+        .branch-section {
+          margin: 20px 0;
+          background-color: white;
+          padding: 15px;
+          border-radius: 5px;
+          border-left: 4px solid #004e98;
+        }
+        .vehicle-type {
+          margin: 10px 0;
+          padding: 10px;
+          background-color: #f5f5f5;
+          border-radius: 3px;
+        }
+        table {
+          width: 100%;
+          border-collapse: collapse;
+          margin: 10px 0;
+        }
+        th, td {
+          padding: 8px 12px;
+          text-align: left;
+          border-bottom: 1px solid #ddd;
+        }
+        th {
+          background-color: #004e98;
+          color: white;
+        }
+        .highlight {
+          font-weight: bold;
+          color: #004e98;
+        }
+        .footer {
+          text-align: center;
+          margin-top: 30px;
+          padding: 20px;
+          background-color: #f8f9fa;
+          border-radius: 5px;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <h1>📊 Daily Total OD Report - ${branch} Branch</h1>
+        <h2>${new Date(date).toLocaleDateString('en-IN', { 
+          weekday: 'long', 
+          year: 'numeric', 
+          month: 'long', 
+          day: 'numeric' 
+        })}</h2>
+      </div>
+      
+      <div class="content">
+        <div class="summary">
+          <h3>📈 ${branch} Branch Summary</h3>
+          <table>
+            <tr>
+              <td><strong>Total Policies:</strong></td>
+              <td class="highlight">${summary.totalPolicies}</td>
+            </tr>
+            <tr>
+              <td><strong>Total OD Amount:</strong></td>
+              <td class="highlight">${formatCurrency(summary.totalOD)}</td>
+            </tr>
+            <tr>
+              <td><strong>Rollover Policies:</strong></td>
+              <td>${summary.rolloverCount} (${formatCurrency(summary.rolloverOD)})</td>
+            </tr>
+            <tr>
+              <td><strong>Renewal Policies:</strong></td>
+              <td>${summary.renewalCount} (${formatCurrency(summary.renewalOD)})</td>
+            </tr>
+          </table>
+        </div>
+        
+        ${branches.map(branchData => `
+          <div class="branch-section">
+            <h3>🏢 ${branchData.branchName} Branch Details</h3>
+            <p><strong>Branch Total:</strong> ${formatCurrency(branchData.totalOD)} (${branchData.totalPolicies} policies)</p>
+            
+            ${branchData.vehicleTypes.map(vehicleType => `
+              <div class="vehicle-type">
+                <h4>🚗 ${vehicleType.vehicleType}</h4>
+                <table>
+                  <tr>
+                    <th>Type</th>
+                    <th>Amount</th>
+                    <th>Policies</th>
+                  </tr>
+                  <tr>
+                    <td>Rollover</td>
+                    <td class="highlight">${formatCurrency(vehicleType.rollover.amount)}</td>
+                    <td>${vehicleType.rollover.count}</td>
+                  </tr>
+                  <tr>
+                    <td>Renewal</td>
+                    <td class="highlight">${formatCurrency(vehicleType.renewal.amount)}</td>
+                    <td>${vehicleType.renewal.count}</td>
+                  </tr>
+                </table>
+              </div>
+            `).join('')}
+          </div>
+        `).join('')}
+        
+        ${dailyBreakdown.length > 0 ? `
+          <div class="branch-section">
+            <h3>📊 Daily Total OD Breakdown - ${branch} Branch (Last 7 Days)</h3>
+            <table>
+              <tr>
+                <th>Date</th>
+                <th>Policies</th>
+                <th>Total OD</th>
+                <th>Avg OD</th>
+                <th>Max OD</th>
+              </tr>
+              ${dailyBreakdown.map(day => `
+                <tr>
+                  <td>${new Date(day.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</td>
+                  <td>${day.policyCount}</td>
+                  <td class="highlight">${formatCurrency(day.totalOD)}</td>
+                  <td>${formatCurrency(day.avgODPerPolicy)}</td>
+                  <td>${formatCurrency(day.maxOD)}</td>
+                </tr>
+              `).join('')}
+            </table>
+          </div>
+        ` : ''}
+        
+        ${monthlyBreakdown.length > 0 ? `
+          <div class="branch-section">
+            <h3>📈 Monthly Total OD Breakdown - ${branch} Branch (Last 12 Months)</h3>
+            <table>
+              <tr>
+                <th>Month</th>
+                <th>Policies</th>
+                <th>Total OD</th>
+                <th>Avg OD</th>
+                <th>Max OD</th>
+              </tr>
+              ${monthlyBreakdown.map(month => `
+                <tr>
+                  <td>${new Date(month.month).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}</td>
+                  <td>${month.policyCount}</td>
+                  <td class="highlight">${formatCurrency(month.totalOD)}</td>
+                  <td>${formatCurrency(month.avgODPerPolicy)}</td>
+                  <td>${formatCurrency(month.maxOD)}</td>
+                </tr>
+              `).join('')}
+            </table>
+          </div>
+        ` : ''}
+        
+        <div class="footer">
+          <p><strong>Generated by Nicsan CRM System</strong></p>
+          <p>This is an automated daily report for ${branch} branch. For any queries, please contact the system administrator.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+  
+  // Generate text content
+  const text = `
+DAILY TOTAL OD REPORT - ${branch} BRANCH - ${new Date(date).toLocaleDateString('en-IN')}
+========================================================
+
+${branch} BRANCH SUMMARY:
+- Total Policies: ${summary.totalPolicies}
+- Total OD Amount: ${formatCurrency(summary.totalOD)}
+- Rollover Policies: ${summary.rolloverCount} (${formatCurrency(summary.rolloverOD)})
+- Renewal Policies: ${summary.renewalCount} (${formatCurrency(summary.renewalOD)})
+
+${branches.map(branchData => `
+${branchData.branchName} BRANCH DETAILS:
+Total: ${formatCurrency(branchData.totalOD)} (${branchData.totalPolicies} policies)
+
+${branchData.vehicleTypes.map(vehicleType => `
+  ${vehicleType.vehicleType}:
+    Rollover: ${formatCurrency(vehicleType.rollover.amount)} (${vehicleType.rollover.count} policies)
+    Renewal: ${formatCurrency(vehicleType.renewal.amount)} (${vehicleType.renewal.count} policies)
+`).join('')}
+`).join('')}
+
+${dailyBreakdown.length > 0 ? `
+DAILY TOTAL OD BREAKDOWN - ${branch} BRANCH (Last 7 Days):
+=======================================================
+${dailyBreakdown.map(day => `
+${new Date(day.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}:
+  Policies: ${day.policyCount}
+  Total OD: ${formatCurrency(day.totalOD)}
+  Avg OD: ${formatCurrency(day.avgODPerPolicy)}
+  Max OD: ${formatCurrency(day.maxOD)}
+`).join('')}
+` : ''}
+
+${monthlyBreakdown.length > 0 ? `
+MONTHLY TOTAL OD BREAKDOWN - ${branch} BRANCH (Last 12 Months):
+============================================================
+${monthlyBreakdown.map(month => `
+${new Date(month.month).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}:
+  Policies: ${month.policyCount}
+  Total OD: ${formatCurrency(month.totalOD)}
+  Avg OD: ${formatCurrency(month.avgODPerPolicy)}
+  Max OD: ${formatCurrency(month.maxOD)}
+`).join('')}
+` : ''}
+
+---
+Generated by Nicsan CRM System
+This is an automated daily report for ${branch} branch.
+  `;
+  
+  return { html, text };
+}
+
 module.exports = {
   sendPolicyPDF,
   testEmailConfiguration,
   sendTestEmail,
   sendDailyODReport,
-  generateDailyODReportContent
+  generateDailyODReportContent,
+  sendBranchODReport,
+  generateBranchODReportContent
 };
