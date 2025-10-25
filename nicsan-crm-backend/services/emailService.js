@@ -433,7 +433,8 @@ async function sendDailyODReport(reportData) {
     // Get founder emails from environment
     const founderEmails = [
       process.env.FOUNDER_EMAIL_1,
-      process.env.FOUNDER_EMAIL_2
+      process.env.FOUNDER_EMAIL_2,
+      process.env.FOUNDER_EMAIL_3
     ].filter(email => email && email.trim() !== '');
     
     if (founderEmails.length === 0) {

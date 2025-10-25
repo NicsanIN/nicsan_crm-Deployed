@@ -23,6 +23,7 @@ Add these environment variables to your `.env` file:
 # Founder Emails (Overall Reports) - EXISTING
 FOUNDER_EMAIL_1=founder1@company.com
 FOUNDER_EMAIL_2=founder2@company.com
+FOUNDER_EMAIL_3=founder3@company.com
 
 # Branch Head Emails (Branch-Specific Reports) - NEW
 MYSORE_BRANCH_HEAD_EMAIL=mysore.head@company.com

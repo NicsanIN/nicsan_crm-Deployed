@@ -40,6 +40,7 @@ Add these to your `.env` file:
 # Founder Email Addresses
 FOUNDER_EMAIL_1=founder1@company.com
 FOUNDER_EMAIL_2=founder2@company.com
+FOUNDER_EMAIL_3=founder3@company.com
 
 # Email Configuration
 SMTP_HOST=smtp.gmail.com

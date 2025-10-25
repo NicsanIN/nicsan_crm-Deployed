@@ -283,7 +283,8 @@ class DailyReportScheduler {
       nextRun: this.nextRun,
       founderEmails: [
         process.env.FOUNDER_EMAIL_1,
-        process.env.FOUNDER_EMAIL_2
+        process.env.FOUNDER_EMAIL_2,
+        process.env.FOUNDER_EMAIL_3
       ].filter(email => email && email.trim() !== '')
     };
   }
