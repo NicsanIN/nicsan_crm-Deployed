@@ -402,7 +402,7 @@ router.post('/:uploadId/confirm', authenticateToken, requireOps, async (req, res
           }
           
           // WhatsApp notification (runs in background)
-          const customerPhone = policyData.customer_phone || policyData.customerPhone;
+          const customerPhone = policyData.customer_phone || policyData.customerPhone || policyData.mobile || policyData.Mobile;
           if (customerPhone) {
             console.log('📱 Sending policy PDF via WhatsApp to customer (background):', customerPhone);
             

@@ -123,6 +123,54 @@ async function sendTextMessage(phoneNumber, message) {
 }
 
 /**
+ * Sends a template message via WhatsApp Cloud API.
+ * @param {string} phoneNumber - The recipient's phone number (with country code).
+ * @param {string} templateName - The template name.
+ * @param {Array} parameters - Template parameters.
+ * @returns {Promise<Object>} A promise that resolves with the template message sending result.
+ */
+async function sendTemplateMessage(phoneNumber, templateName, parameters) {
+  try {
+    const url = `${whatsappConfig.baseUrl}/${whatsappConfig.apiVersion}/${whatsappConfig.phoneNumberId}/messages`;
+    
+    const payload = {
+      messaging_product: 'whatsapp',
+      to: phoneNumber,
+      type: 'template',
+      template: {
+        name: templateName,
+        language: { code: 'en' },
+        components: [
+          {
+            type: 'body',
+            parameters: parameters.map(param => ({ type: 'text', text: param }))
+          }
+        ]
+      }
+    };
+
+    const response = await axios.post(url, payload, {
+      headers: {
+        'Authorization': `Bearer ${whatsappConfig.accessToken}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    console.log('✅ WhatsApp template message sent successfully:', response.data.messages[0].id);
+    return {
+      success: true,
+      messageId: response.data.messages[0].id
+    };
+  } catch (error) {
+    console.error('❌ Failed to send WhatsApp template message:', error.response?.data || error.message);
+    return {
+      success: false,
+      error: error.response?.data?.error?.message || error.message
+    };
+  }
+}
+
+/**
  * Sends a PDF document via WhatsApp Cloud API.
  * @param {string} phoneNumber - The recipient's phone number (with country code).
  * @param {Buffer} pdfBuffer - The PDF file buffer.
@@ -184,17 +232,24 @@ async function sendPolicyWhatsApp(customerPhone, policyData, pdfS3Key, pdfFilena
     // Download PDF from S3
     const pdfBuffer = await downloadPDFFromS3(pdfS3Key);
 
-    // Generate message content
-    const messageContent = generateWhatsAppMessage(policyData);
+    // Prepare template parameters
+    const templateParameters = [
+      policyData.customer_name || 'Customer',
+      policyData.policy_number || 'N/A',
+      policyData.make || 'N/A',
+      policyData.model || '',
+      policyData.vehicle_number || 'N/A',
+      policyData.total_premium ? `₹${policyData.total_premium.toLocaleString('en-IN')}` : 'N/A'
+    ];
 
-    // Send text message first
-    const textResult = await sendTextMessage(formattedPhone, messageContent);
+    // Send template message first (bypasses 24-hour window restriction)
+    const textResult = await sendTemplateMessage(formattedPhone, 'policy', templateParameters);
     
     if (!textResult.success) {
-      console.error('⚠️ WhatsApp text message failed:', textResult.error);
+      console.error('⚠️ WhatsApp template message failed:', textResult.error);
       return {
         success: false,
-        error: `Text message failed: ${textResult.error}`
+        error: `Template message failed: ${textResult.error}`
       };
     }
 
@@ -299,5 +354,6 @@ module.exports = {
   sendTestWhatsApp,
   testWhatsAppConfiguration,
   sendTextMessage,
+  sendTemplateMessage,
   sendPDFDocument
 };
