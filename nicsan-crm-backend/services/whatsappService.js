@@ -1,5 +1,6 @@
 const axios = require('axios');
 const AWS = require('aws-sdk');
+const { query } = require('../config/database');
 
 // WhatsApp Cloud API Configuration
 const whatsappConfig = {
@@ -60,6 +61,94 @@ Thank you for choosing Nicsan Insurance for your motor insurance needs!
 
 Best regards,
 *Nicsan Insurance Team*`;
+}
+
+/**
+ * Gets the PDF S3 key from the pdf_uploads table for a given policy number.
+ * @param {string} policyNumber - The policy number to look up.
+ * @returns {Promise<Object>} A promise that resolves with the PDF S3 key and filename.
+ */
+async function getPdfS3KeyFromDatabase(policyNumber) {
+  try {
+    console.log(`🔍 Looking up PDF S3 key for policy: ${policyNumber}`);
+    
+    // First, check if policy exists in policies table
+    const policyQuery = `
+      SELECT policy_number, customer_name, s3_key as policy_s3_key 
+      FROM policies 
+      WHERE policy_number = $1
+    `;
+    
+    const policyResult = await query(policyQuery, [policyNumber]);
+    
+    if (!policyResult.rows || policyResult.rows.length === 0) {
+      console.log(`❌ Policy ${policyNumber} not found in policies table`);
+      return { success: false, error: 'Policy not found' };
+    }
+    
+    const policy = policyResult.rows[0];
+    console.log(`📋 Policy found: ${policy.policy_number} - ${policy.customer_name}`);
+    
+    // Search for PDF by policy number in filename (since there's no upload_id column)
+    console.log('🔍 Searching for PDF by policy number in filename...');
+    
+    const pdfQuery = `
+      SELECT s3_key, filename, upload_id, status
+      FROM pdf_uploads 
+      WHERE filename ILIKE $1 
+      AND status IN ('COMPLETED', 'UPLOADED')
+      ORDER BY created_at DESC 
+      LIMIT 1
+    `;
+    
+    const pdfResult = await query(pdfQuery, [`%${policyNumber}%`]);
+    
+    if (pdfResult.rows && pdfResult.rows.length > 0) {
+      const pdf = pdfResult.rows[0];
+      console.log(`✅ PDF found by filename search: ${pdf.filename} (${pdf.status})`);
+      return {
+        success: true,
+        s3Key: pdf.s3_key,
+        filename: pdf.filename,
+        uploadId: pdf.upload_id
+      };
+    } else {
+      console.log(`❌ No PDF found for policy ${policyNumber}`);
+      
+      // Try a broader search with partial policy number
+      const partialPolicyNumber = policyNumber.substring(0, 8); // First 8 digits
+      console.log(`🔍 Trying partial search with: ${partialPolicyNumber}`);
+      
+      const partialPdfQuery = `
+        SELECT s3_key, filename, upload_id, status
+        FROM pdf_uploads 
+        WHERE filename ILIKE $1 
+        AND status IN ('COMPLETED', 'UPLOADED')
+        ORDER BY created_at DESC 
+        LIMIT 1
+      `;
+      
+      const partialPdfResult = await query(partialPdfQuery, [`%${partialPolicyNumber}%`]);
+      
+      if (partialPdfResult.rows && partialPdfResult.rows.length > 0) {
+        const pdf = partialPdfResult.rows[0];
+        console.log(`✅ PDF found by partial search: ${pdf.filename} (${pdf.status})`);
+        return {
+          success: true,
+          s3Key: pdf.s3_key,
+          filename: pdf.filename,
+          uploadId: pdf.upload_id
+        };
+      } else {
+        console.log(`❌ No PDF found even with partial search`);
+        return { success: false, error: 'No PDF found for this policy' };
+      }
+    }
+    
+  } catch (error) {
+    console.error('❌ Failed to get PDF S3 key from database:', error);
+    return { success: false, error: error.message };
+  }
 }
 
 /**
@@ -143,7 +232,10 @@ async function sendTemplateMessage(phoneNumber, templateName, parameters) {
         components: [
           {
             type: 'body',
-            parameters: parameters.map(param => ({ type: 'text', text: param }))
+            parameters: parameters.map(param => ({ 
+              type: 'text', 
+              text: String(param || '').trim() 
+            }))
           }
         ]
       }
@@ -179,21 +271,43 @@ async function sendTemplateMessage(phoneNumber, templateName, parameters) {
  */
 async function sendPDFDocument(phoneNumber, pdfBuffer, filename) {
   try {
-    // First, upload the PDF to a temporary URL or use WhatsApp's media API
-    const url = `${whatsappConfig.baseUrl}/${whatsappConfig.apiVersion}/${whatsappConfig.phoneNumberId}/messages`;
+    // First, upload the PDF to WhatsApp's media API to get a media ID
+    const mediaUrl = `${whatsappConfig.baseUrl}/${whatsappConfig.apiVersion}/${whatsappConfig.phoneNumberId}/media`;
+    
+    // Upload the PDF as form data
+    const FormData = require('form-data');
+    const form = new FormData();
+    form.append('file', pdfBuffer, {
+      filename: filename,
+      contentType: 'application/pdf'
+    });
+    form.append('messaging_product', 'whatsapp');
+    form.append('type', 'application/pdf');
+
+    const mediaResponse = await axios.post(mediaUrl, form, {
+      headers: {
+        'Authorization': `Bearer ${whatsappConfig.accessToken}`,
+        ...form.getHeaders()
+      }
+    });
+
+    const mediaId = mediaResponse.data.id;
+    console.log('✅ PDF uploaded to WhatsApp media API:', mediaId);
+
+    // Now send the document using the media ID
+    const messageUrl = `${whatsappConfig.baseUrl}/${whatsappConfig.apiVersion}/${whatsappConfig.phoneNumberId}/messages`;
     
     const payload = {
       messaging_product: 'whatsapp',
       to: phoneNumber,
       type: 'document',
       document: {
-        filename: filename,
-        data: pdfBuffer.toString('base64'),
-        mime_type: 'application/pdf'
+        id: mediaId,
+        filename: filename
       }
     };
 
-    const response = await axios.post(url, payload, {
+    const response = await axios.post(messageUrl, payload, {
       headers: {
         'Authorization': `Bearer ${whatsappConfig.accessToken}`,
         'Content-Type': 'application/json'
@@ -218,19 +332,71 @@ async function sendPDFDocument(phoneNumber, pdfBuffer, filename) {
  * Sends a policy PDF to the customer's WhatsApp as an attachment.
  * @param {string} customerPhone - The recipient's phone number (with country code).
  * @param {Object} policyData - The policy details.
- * @param {string} pdfS3Key - The S3 key of the PDF to attach.
- * @param {string} pdfFilename - The desired filename for the attachment.
+ * @param {string} pdfS3Key - The S3 key of the PDF to attach (optional, will be looked up if not provided).
+ * @param {string} pdfFilename - The desired filename for the attachment (optional, will be looked up if not provided).
  * @returns {Promise<Object>} A promise that resolves with the WhatsApp sending result.
  */
-async function sendPolicyWhatsApp(customerPhone, policyData, pdfS3Key, pdfFilename) {
+async function sendPolicyWhatsApp(customerPhone, policyData, pdfS3Key = null, pdfFilename = null) {
   try {
     // Format phone number (ensure it has country code)
     const formattedPhone = customerPhone.startsWith('+') ? customerPhone : `+91${customerPhone}`;
     
     console.log('📱 Sending policy via WhatsApp to:', formattedPhone);
 
+    // Get PDF S3 key from database if not provided
+    let actualPdfS3Key = pdfS3Key;
+    let actualPdfFilename = pdfFilename;
+    
+    if (!actualPdfS3Key && policyData.policy_number) {
+      console.log('🔍 PDF S3 key not provided, looking up from database...');
+      const pdfLookup = await getPdfS3KeyFromDatabase(policyData.policy_number);
+      
+      if (pdfLookup.success) {
+        actualPdfS3Key = pdfLookup.s3Key;
+        actualPdfFilename = pdfLookup.filename;
+        console.log(`✅ Using PDF from database: ${actualPdfFilename}`);
+      } else {
+        console.log('⚠️ No PDF found in database, will send text message only');
+        // Don't return error, just continue without PDF
+      }
+    }
+    
+    if (!actualPdfS3Key) {
+      console.log('⚠️ No PDF available, sending text message only...');
+      
+      // Send text message only when no PDF is available
+      const templateParameters = [
+        policyData.customer_name || 'Customer',
+        policyData.policy_number || 'N/A',
+        policyData.make || 'N/A',
+        policyData.model || '',
+        policyData.vehicle_number || 'N/A',
+        policyData.total_premium ? `₹${policyData.total_premium.toLocaleString('en-IN')}` : 'N/A'
+      ];
+
+      console.log('📤 Sending template message (no PDF)...');
+      const textResult = await sendTemplateMessage(formattedPhone, 'policy', templateParameters);
+      
+      if (!textResult.success) {
+        console.error('⚠️ WhatsApp template message failed:', textResult.error);
+        return {
+          success: false,
+          error: `Template message failed: ${textResult.error}`
+        };
+      }
+
+      console.log('✅ Policy notification sent via WhatsApp (text only)');
+      return {
+        success: true,
+        textMessageId: textResult.messageId,
+        documentMessageId: null,
+        message: 'Text message sent (no PDF available)'
+      };
+    }
+
     // Download PDF from S3
-    const pdfBuffer = await downloadPDFFromS3(pdfS3Key);
+    console.log(`📥 Downloading PDF from S3: ${actualPdfS3Key}`);
+    const pdfBuffer = await downloadPDFFromS3(actualPdfS3Key);
 
     // Prepare template parameters
     const templateParameters = [
@@ -243,6 +409,7 @@ async function sendPolicyWhatsApp(customerPhone, policyData, pdfS3Key, pdfFilena
     ];
 
     // Send template message first (bypasses 24-hour window restriction)
+    console.log('📤 Sending template message...');
     const textResult = await sendTemplateMessage(formattedPhone, 'policy', templateParameters);
     
     if (!textResult.success) {
@@ -254,10 +421,11 @@ async function sendPolicyWhatsApp(customerPhone, policyData, pdfS3Key, pdfFilena
     }
 
     // Send PDF document
+    console.log('📤 Sending PDF document...');
     const pdfResult = await sendPDFDocument(
       formattedPhone, 
       pdfBuffer, 
-      pdfFilename || `Policy_${policyData.policy_number || 'Document'}.pdf`
+      actualPdfFilename || `Policy_${policyData.policy_number || 'Document'}.pdf`
     );
 
     if (!pdfResult.success) {
@@ -355,5 +523,6 @@ module.exports = {
   testWhatsAppConfiguration,
   sendTextMessage,
   sendTemplateMessage,
-  sendPDFDocument
+  sendPDFDocument,
+  getPdfS3KeyFromDatabase
 };

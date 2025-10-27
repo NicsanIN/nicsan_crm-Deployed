@@ -1,4 +1,5 @@
 const { Pool } = require('pg');
+require('dotenv').config();
 
 // PostgreSQL Configuration (Secondary Storage)
 const pool = new Pool({
