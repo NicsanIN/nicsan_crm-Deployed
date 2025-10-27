@@ -451,9 +451,80 @@ async function sendPolicyWhatsApp(customerPhone, policyData, pdfS3Key = null, pd
       };
     }
 
-    // Download PDF from S3
-    console.log(`📥 Downloading PDF from S3: ${actualPdfS3Key}`);
-    const pdfBuffer = await downloadPDFFromS3(actualPdfS3Key);
+    // Download PDF from S3 with error handling
+    let pdfBuffer;
+    try {
+      console.log(`📥 Downloading PDF from S3: ${actualPdfS3Key}`);
+      pdfBuffer = await downloadPDFFromS3(actualPdfS3Key);
+      console.log(`✅ PDF downloaded successfully, size: ${pdfBuffer.length} bytes`);
+    } catch (error) {
+      console.error('❌ Failed to download PDF from S3:', error);
+      console.log('⚠️ Falling back to text-only message due to PDF download failure');
+      
+      // Fall back to text-only message
+      const templateParameters = [
+        policyData.customer_name || 'Customer',
+        policyData.policy_number || 'N/A',
+        policyData.make || 'N/A',
+        policyData.model || '',
+        policyData.vehicle_number || 'N/A',
+        policyData.total_premium ? `₹${policyData.total_premium.toLocaleString('en-IN')}` : 'N/A'
+      ];
+
+      console.log('📤 Sending template message (PDF download failed)...');
+      const textResult = await sendTemplateMessage(formattedPhone, 'policy', templateParameters);
+      
+      if (!textResult.success) {
+        console.error('⚠️ WhatsApp template message failed:', textResult.error);
+        return {
+          success: false,
+          error: `Template message failed: ${textResult.error}`
+        };
+      }
+
+      console.log('✅ Policy notification sent via WhatsApp (text only - PDF download failed)');
+      return {
+        success: true,
+        textMessageId: textResult.messageId,
+        documentMessageId: null,
+        message: 'Text message sent (PDF download failed)'
+      };
+    }
+
+    // Validate PDF buffer
+    if (!pdfBuffer || pdfBuffer.length === 0) {
+      console.error('❌ PDF buffer is empty or invalid');
+      console.log('⚠️ Falling back to text-only message due to invalid PDF buffer');
+      
+      // Fall back to text-only message
+      const templateParameters = [
+        policyData.customer_name || 'Customer',
+        policyData.policy_number || 'N/A',
+        policyData.make || 'N/A',
+        policyData.model || '',
+        policyData.vehicle_number || 'N/A',
+        policyData.total_premium ? `₹${policyData.total_premium.toLocaleString('en-IN')}` : 'N/A'
+      ];
+
+      console.log('📤 Sending template message (invalid PDF buffer)...');
+      const textResult = await sendTemplateMessage(formattedPhone, 'policy', templateParameters);
+      
+      if (!textResult.success) {
+        console.error('⚠️ WhatsApp template message failed:', textResult.error);
+        return {
+          success: false,
+          error: `Template message failed: ${textResult.error}`
+        };
+      }
+
+      console.log('✅ Policy notification sent via WhatsApp (text only - invalid PDF buffer)');
+      return {
+        success: true,
+        textMessageId: textResult.messageId,
+        documentMessageId: null,
+        message: 'Text message sent (invalid PDF buffer)'
+      };
+    }
 
     // Prepare template parameters
     const templateParameters = [
@@ -477,28 +548,43 @@ async function sendPolicyWhatsApp(customerPhone, policyData, pdfS3Key = null, pd
       };
     }
 
-    // Send PDF document
-    console.log('📤 Sending PDF document...');
-    const pdfResult = await sendPDFDocument(
-      formattedPhone, 
-      pdfBuffer, 
-      actualPdfFilename || `Policy_${policyData.policy_number || 'Document'}.pdf`
-    );
+    // Send PDF document with error handling
+    let pdfResult;
+    try {
+      console.log('📤 Sending PDF document...');
+      pdfResult = await sendPDFDocument(
+        formattedPhone, 
+        pdfBuffer, 
+        actualPdfFilename || `Policy_${policyData.policy_number || 'Document'}.pdf`
+      );
 
-    if (!pdfResult.success) {
-      console.error('⚠️ WhatsApp PDF document failed:', pdfResult.error);
+      if (!pdfResult.success) {
+        console.error('⚠️ WhatsApp PDF document failed:', pdfResult.error);
+        console.log('⚠️ PDF upload failed, but text message was sent successfully');
+        return {
+          success: true,
+          textMessageId: textResult.messageId,
+          documentMessageId: null,
+          message: 'Text message sent (PDF upload failed)'
+        };
+      }
+
+      console.log('✅ Policy sent via WhatsApp successfully with PDF attachment');
       return {
-        success: false,
-        error: `PDF document failed: ${pdfResult.error}`
+        success: true,
+        textMessageId: textResult.messageId,
+        documentMessageId: pdfResult.messageId
+      };
+    } catch (error) {
+      console.error('❌ Failed to send PDF document:', error);
+      console.log('⚠️ PDF upload failed with exception, but text message was sent successfully');
+      return {
+        success: true,
+        textMessageId: textResult.messageId,
+        documentMessageId: null,
+        message: 'Text message sent (PDF upload exception)'
       };
     }
-
-    console.log('✅ Policy sent via WhatsApp successfully');
-    return {
-      success: true,
-      textMessageId: textResult.messageId,
-      documentMessageId: pdfResult.messageId
-    };
   } catch (error) {
     console.error('❌ Failed to send policy via WhatsApp:', error);
     return {
