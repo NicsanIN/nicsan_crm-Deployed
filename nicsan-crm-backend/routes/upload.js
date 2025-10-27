@@ -408,8 +408,9 @@ router.post('/:uploadId/confirm', authenticateToken, requireOps, async (req, res
             
             const whatsappResult = await whatsappService.sendPolicyWhatsApp(
               customerPhone,
-              policyData
-              // Note: Let the service look up PDF S3 key from database automatically
+              policyData,
+              upload.s3_key,  // Pass S3 key directly like email service
+              upload.filename  // Pass filename directly like email service
             );
             
             if (whatsappResult.success) {

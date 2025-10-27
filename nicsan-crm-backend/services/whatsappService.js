@@ -89,23 +89,23 @@ async function getPdfS3KeyFromDatabase(policyNumber) {
     const policy = policyResult.rows[0];
     console.log(`📋 Policy found: ${policy.policy_number} - ${policy.customer_name}`);
     
-    // Search for PDF by policy number in filename (since there's no upload_id column)
-    console.log('🔍 Searching for PDF by policy number in filename...');
+    // Search for PDF by policy number in manual_extras JSONB field (PRIMARY METHOD)
+    console.log('🔍 Searching for PDF by policy number in manual_extras...');
     
     const pdfQuery = `
       SELECT s3_key, filename, upload_id, status
       FROM pdf_uploads 
-      WHERE filename ILIKE $1 
-      AND status IN ('COMPLETED', 'UPLOADED')
+      WHERE manual_extras->>'policy_number' = $1 
+      AND status IN ('COMPLETED', 'UPLOADED', 'SAVED')
       ORDER BY created_at DESC 
       LIMIT 1
     `;
     
-    const pdfResult = await query(pdfQuery, [`%${policyNumber}%`]);
+    const pdfResult = await query(pdfQuery, [policyNumber]);
     
     if (pdfResult.rows && pdfResult.rows.length > 0) {
       const pdf = pdfResult.rows[0];
-      console.log(`✅ PDF found by filename search: ${pdf.filename} (${pdf.status})`);
+      console.log(`✅ PDF found by manual_extras search: ${pdf.filename} (${pdf.status})`);
       return {
         success: true,
         s3Key: pdf.s3_key,
@@ -113,26 +113,25 @@ async function getPdfS3KeyFromDatabase(policyNumber) {
         uploadId: pdf.upload_id
       };
     } else {
-      console.log(`❌ No PDF found for policy ${policyNumber}`);
+      console.log(`❌ No PDF found in manual_extras for policy ${policyNumber}`);
       
-      // Try a broader search with partial policy number
-      const partialPolicyNumber = policyNumber.substring(0, 8); // First 8 digits
-      console.log(`🔍 Trying partial search with: ${partialPolicyNumber}`);
+      // FALLBACK 1: Search by policy number in filename
+      console.log('🔍 Fallback 1: Searching by policy number in filename...');
       
-      const partialPdfQuery = `
+      const filenameQuery = `
         SELECT s3_key, filename, upload_id, status
         FROM pdf_uploads 
         WHERE filename ILIKE $1 
-        AND status IN ('COMPLETED', 'UPLOADED')
+        AND status IN ('COMPLETED', 'UPLOADED', 'SAVED')
         ORDER BY created_at DESC 
         LIMIT 1
       `;
       
-      const partialPdfResult = await query(partialPdfQuery, [`%${partialPolicyNumber}%`]);
+      const filenameResult = await query(filenameQuery, [`%${policyNumber}%`]);
       
-      if (partialPdfResult.rows && partialPdfResult.rows.length > 0) {
-        const pdf = partialPdfResult.rows[0];
-        console.log(`✅ PDF found by partial search: ${pdf.filename} (${pdf.status})`);
+      if (filenameResult.rows && filenameResult.rows.length > 0) {
+        const pdf = filenameResult.rows[0];
+        console.log(`✅ PDF found by filename search: ${pdf.filename} (${pdf.status})`);
         return {
           success: true,
           s3Key: pdf.s3_key,
@@ -140,8 +139,63 @@ async function getPdfS3KeyFromDatabase(policyNumber) {
           uploadId: pdf.upload_id
         };
       } else {
-        console.log(`❌ No PDF found even with partial search`);
-        return { success: false, error: 'No PDF found for this policy' };
+        console.log(`❌ No PDF found by filename search`);
+        
+        // FALLBACK 2: Search with partial policy number
+        const partialPolicyNumber = policyNumber.substring(0, 8); // First 8 digits
+        console.log(`🔍 Fallback 2: Trying partial search with: ${partialPolicyNumber}`);
+        
+        const partialPdfQuery = `
+          SELECT s3_key, filename, upload_id, status
+          FROM pdf_uploads 
+          WHERE filename ILIKE $1 
+          AND status IN ('COMPLETED', 'UPLOADED', 'SAVED')
+          ORDER BY created_at DESC 
+          LIMIT 1
+        `;
+        
+        const partialPdfResult = await query(partialPdfQuery, [`%${partialPolicyNumber}%`]);
+        
+        if (partialPdfResult.rows && partialPdfResult.rows.length > 0) {
+          const pdf = partialPdfResult.rows[0];
+          console.log(`✅ PDF found by partial search: ${pdf.filename} (${pdf.status})`);
+          return {
+            success: true,
+            s3Key: pdf.s3_key,
+            filename: pdf.filename,
+            uploadId: pdf.upload_id
+          };
+        } else {
+          console.log(`❌ No PDF found even with partial search`);
+          
+          // FALLBACK 3: Search by creation date proximity (last 24 hours)
+          console.log('🔍 Fallback 3: Searching by creation date proximity...');
+          
+          const dateQuery = `
+            SELECT s3_key, filename, upload_id, status
+            FROM pdf_uploads 
+            WHERE created_at >= NOW() - INTERVAL '24 hours'
+            AND status IN ('COMPLETED', 'UPLOADED', 'SAVED')
+            ORDER BY created_at DESC 
+            LIMIT 1
+          `;
+          
+          const dateResult = await query(dateQuery);
+          
+          if (dateResult.rows && dateResult.rows.length > 0) {
+            const pdf = dateResult.rows[0];
+            console.log(`✅ PDF found by date proximity: ${pdf.filename} (${pdf.status})`);
+            return {
+              success: true,
+              s3Key: pdf.s3_key,
+              filename: pdf.filename,
+              uploadId: pdf.upload_id
+            };
+          } else {
+            console.log(`❌ No PDF found with any search method`);
+            return { success: false, error: 'No PDF found for this policy' };
+          }
+        }
       }
     }
     
@@ -343,7 +397,7 @@ async function sendPolicyWhatsApp(customerPhone, policyData, pdfS3Key = null, pd
     
     console.log('📱 Sending policy via WhatsApp to:', formattedPhone);
 
-    // Get PDF S3 key from database if not provided
+    // Use provided S3 key and filename (passed directly from upload route)
     let actualPdfS3Key = pdfS3Key;
     let actualPdfFilename = pdfFilename;
     
@@ -359,6 +413,9 @@ async function sendPolicyWhatsApp(customerPhone, policyData, pdfS3Key = null, pd
         console.log('⚠️ No PDF found in database, will send text message only');
         // Don't return error, just continue without PDF
       }
+    } else if (actualPdfS3Key) {
+      console.log(`✅ Using provided PDF S3 key: ${actualPdfS3Key}`);
+      console.log(`✅ Using provided PDF filename: ${actualPdfFilename}`);
     }
     
     if (!actualPdfS3Key) {
