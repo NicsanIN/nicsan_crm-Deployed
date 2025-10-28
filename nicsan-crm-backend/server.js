@@ -80,10 +80,15 @@ app.use('/api/debug', require('./routes/debug'));
 app.use('/api/password', require('./routes/password'));
 app.use('/api/users', require('./routes/users'));
 app.use('/api/costs', require('./routes/costs'));
+app.use('/api/reports', require('./routes/reports'));
 
 // Initialize WebSocket Service (handles Socket.IO internally)
 const wsService = require('./services/websocketService');
 wsService.initialize(server);
+
+// Initialize Daily Report Scheduler
+const dailyReportScheduler = require('./jobs/dailyReport');
+dailyReportScheduler.start();
 
 // Middleware already configured above
 

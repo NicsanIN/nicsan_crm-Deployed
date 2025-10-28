@@ -229,7 +229,6 @@ class OpenAIService {
   "expiry_date": "string",
   "idv": "number",
   "ncb": "number",
-  "discount": "number",
   "net_od": "number",
   "add_on_premium_c": "number",
   "ref": "string",
@@ -245,12 +244,11 @@ EXTRACTION RULES:
 OTHER EXTRACTION RULES:
 2. Extract IDV (Insured Declared Value) from multiple sources with priority order
 3. PRIORITY 1: Table data - "Vehicle IDV (₹)" or "Total IDV (₹)" in tables (ACCEPT these values)
-4. PRIORITY 2: Policy year context - "Policy Year: 2024, Vehicle IDV: 495000" (ACCEPT policy year + IDV combinations)
+4. PRIORITY 2: Policy year context - "Policy Year: 2024, Vehicle IDV: 495000" (EXTRACT ONLY the IDV value, NOT the policy year)
 5. PRIORITY 3: Header data - "IDV (₹):" in header sections (fallback when table data unavailable)
 6. For IDV: ACCEPT both header "IDV (₹):" AND table "Vehicle IDV (₹)" or "Total IDV (₹)" values
-7. Policy year and IDV can be combined - extract policy year context when available
-8. For table data, extract IDV column value AND policy year when present
-9. For TATA_AIG policies specifically: PRIORITIZE "Total IDV (₹)" as the primary source over "Vehicle IDV (₹)"
+7. For IDV: Extract ONLY the IDV value from table columns, DO NOT combine with policy year
+8. For table data: Extract IDV column value ONLY, policy year is separate information
 ${otherInsurerRules}
 12. For NCB: Extract percentage value, use 0 if not found (not 20)
 13. For CUSTOMER_NAME: Extract customer name from policy holder information, insured name, or customer details section. Look for fields like "Policy Holder Name", "Insured Name", "Customer Name", "Name of Insured", etc.

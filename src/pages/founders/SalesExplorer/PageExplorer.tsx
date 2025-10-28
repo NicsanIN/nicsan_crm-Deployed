@@ -14,6 +14,8 @@ const demoPolicies = [
     make: "Honda",
     model: "City",
     insurer: "Bajaj Allianz",
+    policyNumber: "POL-2024-001",
+    customerName: "John Doe",
     issueDate: "2024-01-15",
     expiryDate: "2025-01-14",
     rollover: "New",
@@ -32,6 +34,8 @@ const demoPolicies = [
     make: "Maruti",
     model: "Swift",
     insurer: "ICICI Lombard",
+    policyNumber: "POL-2024-002",
+    customerName: "Jane Smith",
     issueDate: "2024-02-10",
     expiryDate: "2025-02-09",
     rollover: "Renewal",
@@ -62,6 +66,7 @@ function PageExplorer() {
   const [expiryFromDate, setExpiryFromDate] = useState("");
   const [expiryToDate, setExpiryToDate] = useState("");
   const [cashbackMax, setCashbackMax] = useState(20);
+  const [showPolicyDetails, setShowPolicyDetails] = useState(false);
 
   const handleRefresh = () => {
     setMake('All');
@@ -76,29 +81,36 @@ function PageExplorer() {
     setToDate('');
     setExpiryFromDate('');
     setExpiryToDate('');
+    setShowPolicyDetails(false);
   };
 
   const downloadCSV = () => {
-    const headers = ['Telecaller', 'Make', 'Model', 'Insurer', 'Issue Date', 'Expiry Date', 'Type of Business', 'Branch', '# Policies', 'GWP', 'Total Premium', 'Total OD', 'Avg Cashback %', 'Cashback (₹)', 'Net (₹)'];
+    const baseHeaders = ['Telecaller', 'Make', 'Model', 'Insurer'];
+    const policyHeaders = showPolicyDetails ? ['Policy Number', 'Customer Name'] : [];
+    const remainingHeaders = ['Issue Date', 'Expiry Date', 'Type of Business', 'Branch', '# Policies', 'GWP', 'Total Premium', 'Total OD', 'Avg Cashback %', 'Cashback (₹)', 'Net (₹)'];
+    const headers = [...baseHeaders, ...policyHeaders, ...remainingHeaders];
+    
     const csvContent = [
       headers.join(','),
-      ...filtered.map(row => [
-        row.rep,
-        `"${row.make}"`,
-        `"${row.model}"`,
-        `"${row.insurer}"`,
-        row.issueDate && row.issueDate !== 'N/A' ? new Date(row.issueDate).toLocaleDateString('en-GB') : 'N/A',
-        row.expiryDate && row.expiryDate !== 'N/A' ? new Date(row.expiryDate).toLocaleDateString('en-GB') : 'N/A',
-        row.rollover,
-        row.branch,
-        row.policies,
-        row.gwp,
-        row.totalPremium || 0,
-        row.totalOD || 0,
-        parseFloat(row.cashbackPctAvg || 0).toFixed(1),
-        row.cashback,
-        row.net
-      ].join(','))
+      ...filtered.map(row => {
+        const baseData = [row.rep, `"${row.make}"`, `"${row.model}"`, `"${row.insurer}"`];
+        const policyData = showPolicyDetails ? [`"${row.policyNumber || 'N/A'}"`, `"${row.customerName || 'N/A'}"`] : [];
+        const remainingData = [
+          row.issueDate && row.issueDate !== 'N/A' ? new Date(row.issueDate).toLocaleDateString('en-GB') : 'N/A',
+          row.expiryDate && row.expiryDate !== 'N/A' ? new Date(row.expiryDate).toLocaleDateString('en-GB') : 'N/A',
+          row.rollover,
+          row.branch,
+          row.policies,
+          row.gwp,
+          row.totalPremium || 0,
+          row.totalOD || 0,
+          parseFloat(row.cashbackPctAvg || 0).toFixed(1),
+          row.cashback,
+          row.net
+        ];
+        
+        return [...baseData, ...policyData, ...remainingData].join(',');
+      })
     ].join('\n');
     
     const blob = new Blob([csvContent], { type: 'text/csv' });
@@ -347,31 +359,47 @@ function PageExplorer() {
             </div>
           </div>
           
-          {/* Date Filters Row */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-600">Issue From Date</label>
-              <input type="date" value={fromDate} onChange={e=>setFromDate(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"/>
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-600">Issue To Date</label>
-              <input type="date" value={toDate} onChange={e=>setToDate(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"/>
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-600">Expiry From Date</label>
-              <input type="date" value={expiryFromDate} onChange={e=>setExpiryFromDate(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"/>
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-600">Expiry To Date</label>
-              <input type="date" value={expiryToDate} onChange={e=>setExpiryToDate(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"/>
-            </div>
-          </div>
+              {/* Date Filters Row */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-600">Issue From Date</label>
+                  <input type="date" value={fromDate} onChange={e=>setFromDate(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"/>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-600">Issue To Date</label>
+                  <input type="date" value={toDate} onChange={e=>setToDate(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"/>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-600">Expiry From Date</label>
+                  <input type="date" value={expiryFromDate} onChange={e=>setExpiryFromDate(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"/>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-600">Expiry To Date</label>
+                  <input type="date" value={expiryToDate} onChange={e=>setExpiryToDate(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"/>
+                </div>
+              </div>
+
+              {/* Column Toggle Row */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-600 flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={showPolicyDetails}
+                      onChange={(e) => setShowPolicyDetails(e.target.checked)}
+                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                    />
+                    Show Policy Details
+                  </label>
+                  <p className="text-xs text-gray-500">Toggle Policy Number and Customer Name columns</p>
+                </div>
+              </div>
         </div>
         <div className="overflow-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-zinc-500">
-                <th className="py-2 px-2">Telecaller</th><th className="px-2">Make</th><th className="px-2">Model</th><th className="px-2">Insurer</th><th className="px-2">Issue Date</th><th className="px-2">Expiry Date</th><th className="px-2">Type of Business</th><th className="px-2">Branch</th><th className="px-2"># Policies</th><th className="px-2">GWP</th><th className="px-2">Total Premium</th><th className="px-2">Total OD</th><th className="px-2">Avg Cashback %</th><th className="px-2">Cashback (₹)</th><th className="px-2">Net (₹)</th>
+                <th className="py-2 px-2">Telecaller</th><th className="px-2">Make</th><th className="px-2">Model</th><th className="px-2">Insurer</th>{showPolicyDetails && <th className="px-2">Policy Number</th>}{showPolicyDetails && <th className="px-2">Customer Name</th>}<th className="px-2">Issue Date</th><th className="px-2">Expiry Date</th><th className="px-2">Type of Business</th><th className="px-2">Branch</th><th className="px-2"># Policies</th><th className="px-2">GWP</th><th className="px-2">Total Premium</th><th className="px-2">Total OD</th><th className="px-2">Avg Cashback %</th><th className="px-2">Cashback (₹)</th><th className="px-2">Net (₹)</th>
               </tr>
             </thead>
             <tbody>
@@ -381,6 +409,8 @@ function PageExplorer() {
                   <td className="px-2">{r.make}</td>
                   <td className="px-2">{r.model}</td>
                   <td className="px-2">{r.insurer}</td>
+                  {showPolicyDetails && <td className="px-2">{r.policyNumber || 'N/A'}</td>}
+                  {showPolicyDetails && <td className="px-2">{r.customerName || 'N/A'}</td>}
                   <td className="px-2">{r.issueDate && r.issueDate !== 'N/A' ? new Date(r.issueDate).toLocaleDateString('en-GB') : 'N/A'}</td>
                   <td className="px-2">{r.expiryDate && r.expiryDate !== 'N/A' ? new Date(r.expiryDate).toLocaleDateString('en-GB') : 'N/A'}</td>
                   <td className="px-2">{r.rollover}</td>
