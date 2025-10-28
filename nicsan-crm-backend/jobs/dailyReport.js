@@ -329,7 +329,7 @@ class DailyReportScheduler {
             console.error(`❌ Failed to send ${branch} branch report:`, branchEmailResult.error);
           }
         } else {
-          console.log(`📭 No policies found for ${branch} branch today, skipping email report`);
+          console.log(`📭 No policies found for ${branch} branch yesterday, skipping email report`);
         }
       }
       
