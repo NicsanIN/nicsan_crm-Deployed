@@ -4,11 +4,25 @@ const { query } = require('../config/database');
 const { authenticateToken, requireFounder } = require('../middleware/auth');
 const emailService = require('../services/emailService');
 
+/**
+ * Get yesterday's date in IST timezone for daily reports
+ * @returns {string} Yesterday's date in YYYY-MM-DD format
+ */
+function getYesterdayIST() {
+  const now = new Date();
+  const istOffset = 5.5 * 60 * 60 * 1000; // IST is UTC+5:30
+  const istTime = new Date(now.getTime() + istOffset);
+  const yesterday = new Date(istTime);
+  yesterday.setDate(yesterday.getDate() - 1);
+  return yesterday.toISOString().split('T')[0];
+}
+
 // Get daily Total OD report data
 router.get('/daily-od-report', authenticateToken, requireFounder, async (req, res) => {
   try {
     const { date } = req.query;
-    const reportDate = date || new Date().toISOString().split('T')[0]; // Default to today
+    // Default to yesterday's date for daily reports (since we report on completed work)
+    const reportDate = date || getYesterdayIST();
     
     console.log(`📊 Generating daily OD report for date: ${reportDate}`);
     
@@ -126,7 +140,8 @@ router.get('/daily-od-report', authenticateToken, requireFounder, async (req, re
 router.post('/send-daily-od-report', authenticateToken, requireFounder, async (req, res) => {
   try {
     const { date } = req.body;
-    const reportDate = date || new Date().toISOString().split('T')[0];
+    // Default to yesterday's date for daily reports (since we report on completed work)
+    const reportDate = date || getYesterdayIST();
     
     console.log(`📧 Sending daily OD report email for date: ${reportDate}`);
     

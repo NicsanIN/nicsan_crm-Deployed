@@ -4,6 +4,19 @@ const emailService = require('../services/emailService');
 const { query } = require('../config/database');
 
 /**
+ * Get yesterday's date in IST timezone for daily reports
+ * @returns {string} Yesterday's date in YYYY-MM-DD format
+ */
+function getYesterdayIST() {
+  const now = new Date();
+  const istOffset = 5.5 * 60 * 60 * 1000; // IST is UTC+5:30
+  const istTime = new Date(now.getTime() + istOffset);
+  const yesterday = new Date(istTime);
+  yesterday.setDate(yesterday.getDate() - 1);
+  return yesterday.toISOString().split('T')[0];
+}
+
+/**
  * Daily OD Report Scheduler
  * Runs every day at 9:00 AM IST
  */
@@ -65,12 +78,13 @@ class DailyReportScheduler {
     try {
       console.log('📊 Generating daily OD reports...');
       
-      // Get today's date
-      const today = new Date().toISOString().split('T')[0];
+      // Get yesterday's date (since we're reporting on completed work from previous day)
+      const reportDate = getYesterdayIST();
+      console.log(`📅 Report date (yesterday in IST): ${reportDate}`);
       
       // 1. Send overall report to founders (existing functionality)
       console.log('📊 Generating overall report for founders...');
-      const overallReportData = await this.generateReportData(today);
+      const overallReportData = await this.generateReportData(reportDate);
       
       if (overallReportData.summary.totalPolicies > 0) {
         console.log('📧 Sending overall daily OD report to founders...');
@@ -84,12 +98,12 @@ class DailyReportScheduler {
           console.error('❌ Failed to send overall daily OD report to founders:', founderEmailResult.error);
         }
       } else {
-        console.log('📭 No policies found for today, skipping founder email report');
+        console.log(`📭 No policies found for ${reportDate}, skipping founder email report`);
       }
 
       // 2. Send branch-specific reports to branch heads (new functionality)
       console.log('📊 Generating branch-specific reports...');
-      await this.sendBranchReports(today);
+      await this.sendBranchReports(reportDate);
 
     } catch (error) {
       console.error('❌ Daily report generation failed:', error);
@@ -502,6 +516,35 @@ class DailyReportScheduler {
   async testDailyReport() {
     console.log('🧪 Testing daily report...');
     await this.sendDailyReport();
+  }
+
+  /**
+   * Test the date calculation logic
+   */
+  testDateCalculation() {
+    console.log('🧪 Testing date calculation logic...');
+    
+    const reportDate = getYesterdayIST();
+    const now = new Date();
+    const today = now.toISOString().split('T')[0];
+    
+    console.log(`📅 Current date (today): ${today}`);
+    console.log(`📅 Report date (yesterday): ${reportDate}`);
+    console.log(`⏰ Current time: ${now.toISOString()}`);
+    
+    // Verify the date is actually yesterday
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const expectedYesterday = yesterday.toISOString().split('T')[0];
+    
+    if (reportDate === expectedYesterday) {
+      console.log('✅ Date calculation is correct!');
+    } else {
+      console.log('❌ Date calculation is incorrect!');
+      console.log(`Expected: ${expectedYesterday}, Got: ${reportDate}`);
+    }
+    
+    return reportDate;
   }
 }
 
