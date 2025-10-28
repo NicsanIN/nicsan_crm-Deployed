@@ -65,12 +65,14 @@ class DailyReportScheduler {
     try {
       console.log('📊 Generating daily OD reports...');
       
-      // Get today's date
-      const today = new Date().toISOString().split('T')[0];
+      // Get yesterday's date for reporting (report on completed business day)
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayString = yesterday.toISOString().split('T')[0];
       
       // 1. Send overall report to founders (existing functionality)
       console.log('📊 Generating overall report for founders...');
-      const overallReportData = await this.generateReportData(today);
+      const overallReportData = await this.generateReportData(yesterdayString);
       
       if (overallReportData.summary.totalPolicies > 0) {
         console.log('📧 Sending overall daily OD report to founders...');
@@ -84,12 +86,12 @@ class DailyReportScheduler {
           console.error('❌ Failed to send overall daily OD report to founders:', founderEmailResult.error);
         }
       } else {
-        console.log('📭 No policies found for today, skipping founder email report');
+        console.log('📭 No policies found for yesterday, skipping founder email report');
       }
 
       // 2. Send branch-specific reports to branch heads (new functionality)
       console.log('📊 Generating branch-specific reports...');
-      await this.sendBranchReports(today);
+      await this.sendBranchReports(yesterdayString);
 
     } catch (error) {
       console.error('❌ Daily report generation failed:', error);
@@ -315,7 +317,7 @@ class DailyReportScheduler {
             console.error(`❌ Failed to send ${branch} branch report:`, branchEmailResult.error);
           }
         } else {
-          console.log(`📭 No policies found for ${branch} branch today, skipping email report`);
+          console.log(`📭 No policies found for ${branch} branch yesterday, skipping email report`);
         }
       }
       
