@@ -31,3 +31,5 @@ dailyReportScheduler.testDailyReport()
     console.error('\n❌ Daily report test failed:', error);
     process.exit(1);
   });
+
+
