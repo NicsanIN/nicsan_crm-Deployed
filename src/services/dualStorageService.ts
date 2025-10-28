@@ -223,10 +223,10 @@ class DualStorageService {
   // Sales Explorer with dual storage
   async getSalesExplorer(filters: any = {}): Promise<DualStorageResult> {
     const mockData = [
-      { rep: 'Asha', make: 'Maruti', model: 'Swift', vehicleNumber: 'KA01AB1234', rollover: 'New', branch: 'Bangalore', issueDate: '2025-01-15', expiryDate: '2026-01-15', policies: 12, gwp: 130000, totalPremium: 135000, totalOD: 120000, cashbackPctAvg: 2.4, cashback: 3100, net: 16900 },
-      { rep: 'Asha', make: 'Hyundai', model: 'i20', vehicleNumber: 'KA02CD5678', rollover: 'Renewal', branch: 'Bangalore', issueDate: '2025-02-20', expiryDate: '2026-02-20', policies: 10, gwp: 130000, totalPremium: 135000, totalOD: 120000, cashbackPctAvg: 1.9, cashback: 2500, net: 17500 },
-      { rep: 'Vikram', make: 'Hyundai', model: 'i20', vehicleNumber: 'MH01EF9012', rollover: 'New', branch: 'Mumbai', issueDate: '2025-03-10', expiryDate: '2026-03-10', policies: 9, gwp: 115000, totalPremium: 120000, totalOD: 110000, cashbackPctAvg: 1.1, cashback: 1200, net: 17100 },
-      { rep: 'Meera', make: 'Maruti', model: 'Baleno', vehicleNumber: 'DL01GH3456', rollover: 'Renewal', branch: 'Delhi', issueDate: '2025-04-05', expiryDate: '2026-04-05', policies: 11, gwp: 125000, totalPremium: 130000, totalOD: 115000, cashbackPctAvg: 0.9, cashback: 1100, net: 17800 }
+      { rep: 'Asha', make: 'Maruti', model: 'Swift', vehicleNumber: 'KA01AB1234', policyNumber: 'POL-2025-001', customerName: 'Rajesh Kumar', rollover: 'New', branch: 'Bangalore', issueDate: '2025-01-15', expiryDate: '2026-01-15', policies: 12, gwp: 130000, totalPremium: 135000, totalOD: 120000, cashbackPctAvg: 2.4, cashback: 3100, net: 16900 },
+      { rep: 'Asha', make: 'Hyundai', model: 'i20', vehicleNumber: 'KA02CD5678', policyNumber: 'POL-2025-002', customerName: 'Priya Sharma', rollover: 'Renewal', branch: 'Bangalore', issueDate: '2025-02-20', expiryDate: '2026-02-20', policies: 10, gwp: 130000, totalPremium: 135000, totalOD: 120000, cashbackPctAvg: 1.9, cashback: 2500, net: 17500 },
+      { rep: 'Vikram', make: 'Hyundai', model: 'i20', vehicleNumber: 'MH01EF9012', policyNumber: 'POL-2025-003', customerName: 'Amit Patel', rollover: 'New', branch: 'Mumbai', issueDate: '2025-03-10', expiryDate: '2026-03-10', policies: 9, gwp: 115000, totalPremium: 120000, totalOD: 110000, cashbackPctAvg: 1.1, cashback: 1200, net: 17100 },
+      { rep: 'Meera', make: 'Maruti', model: 'Baleno', vehicleNumber: 'DL01GH3456', policyNumber: 'POL-2025-004', customerName: 'Sunita Singh', rollover: 'Renewal', branch: 'Delhi', issueDate: '2025-04-05', expiryDate: '2026-04-05', policies: 11, gwp: 125000, totalPremium: 130000, totalOD: 115000, cashbackPctAvg: 0.9, cashback: 1100, net: 17800 }
     ];
 
 
@@ -245,6 +245,8 @@ class DualStorageService {
         model: item.model,
         insurer: item.insurer,
         vehicleNumber: item.vehicle_number || 'N/A',
+        policyNumber: item.policy_number || 'N/A',
+        customerName: item.customer_name || 'N/A',
         rollover: item.rollover || 'N/A',
         branch: item.branch || 'N/A',
         issueDate: item.issue_date || 'N/A',

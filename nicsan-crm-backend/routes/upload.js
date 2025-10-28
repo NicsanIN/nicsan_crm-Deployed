@@ -402,15 +402,15 @@ router.post('/:uploadId/confirm', authenticateToken, requireOps, async (req, res
           }
           
           // WhatsApp notification (runs in background)
-          const customerPhone = policyData.customer_phone || policyData.customerPhone;
+          const customerPhone = policyData.customer_phone || policyData.customerPhone || policyData.mobile || policyData.Mobile;
           if (customerPhone) {
             console.log('📱 Sending policy PDF via WhatsApp to customer (background):', customerPhone);
             
             const whatsappResult = await whatsappService.sendPolicyWhatsApp(
               customerPhone,
               policyData,
-              upload.s3_key,  // Original PDF S3 key
-              upload.filename  // Original PDF filename
+              upload.s3_key,  // Pass S3 key directly like email service
+              upload.filename  // Pass filename directly like email service
             );
             
             if (whatsappResult.success) {

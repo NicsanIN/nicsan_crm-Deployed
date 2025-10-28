@@ -1559,6 +1559,8 @@ async savePolicy(policyData) {
         model,
         insurer,
         vehicle_number,
+        policy_number,
+        customer_name,
         rollover,
         branch,
         issue_date,
@@ -1571,7 +1573,7 @@ async savePolicy(policyData) {
         SUM(brokerage - cashback_amount) as net
       FROM policies 
       ${whereClause}
-      GROUP BY caller_name, make, model, insurer, vehicle_number, rollover, branch, issue_date, expiry_date
+      GROUP BY caller_name, make, model, insurer, vehicle_number, policy_number, customer_name, rollover, branch, issue_date, expiry_date
       ORDER BY net DESC
     `, params);
 
