@@ -685,6 +685,11 @@ function generateDailyODReportContent(reportData) {
             border-bottom: 2px solid #004e98 !important;
             display: block !important;
           }
+
+          /* Hide explicit Date/Month cell on mobile to avoid duplication */
+          .breakdown-table td.date-cell {
+            display: none !important;
+          }
           
           .breakdown-table td {
             display: block !important;
@@ -700,6 +705,11 @@ function generateDailyODReportContent(reportData) {
             color: #004e98 !important;
             display: inline-block !important;
             width: 80px !important;
+          }
+
+          /* Hide explicit Date/Month cell on mobile to avoid duplication */
+          .breakdown-table td.date-cell {
+            display: none !important;
           }
           
           .footer {
@@ -794,6 +804,7 @@ function generateDailyODReportContent(reportData) {
                      <tbody>
                        ${dailyBreakdown.map(day => `
                          <tr data-date="${new Date(day.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}">
+                            <td class="date-cell">${new Date(day.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</td>
                            <td data-label="Policies">${day.policyCount}</td>
                            <td data-label="Total OD" class="highlight">${formatCurrency(day.totalOD)}</td>
                            <td data-label="Avg OD">${formatCurrency(day.avgODPerPolicy)}</td>
@@ -821,6 +832,7 @@ function generateDailyODReportContent(reportData) {
                      <tbody>
                        ${monthlyBreakdown.map(month => `
                          <tr data-date="${new Date(month.month).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}">
+                            <td class="date-cell">${new Date(month.month).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}</td>
                            <td data-label="Policies">${month.policyCount}</td>
                            <td data-label="Total OD" class="highlight">${formatCurrency(month.totalOD)}</td>
                            <td data-label="Avg OD">${formatCurrency(month.avgODPerPolicy)}</td>
@@ -1273,6 +1285,7 @@ function generateBranchODReportContent(reportData, branch) {
               <tbody>
                 ${dailyBreakdown.map(day => `
                   <tr data-date="${new Date(day.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}">
+                    <td class="date-cell">${new Date(day.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</td>
                     <td data-label="Policies">${day.policyCount}</td>
                     <td data-label="Total OD" class="highlight">${formatCurrency(day.totalOD)}</td>
                     <td data-label="Avg OD">${formatCurrency(day.avgODPerPolicy)}</td>
@@ -1300,6 +1313,7 @@ function generateBranchODReportContent(reportData, branch) {
               <tbody>
                 ${monthlyBreakdown.map(month => `
                   <tr data-date="${new Date(month.month).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}">
+                    <td class="date-cell">${new Date(month.month).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}</td>
                     <td data-label="Policies">${month.policyCount}</td>
                     <td data-label="Total OD" class="highlight">${formatCurrency(month.totalOD)}</td>
                     <td data-label="Avg OD">${formatCurrency(month.avgODPerPolicy)}</td>
