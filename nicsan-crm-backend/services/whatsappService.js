@@ -428,7 +428,8 @@ async function sendPolicyWhatsApp(customerPhone, policyData, pdfS3Key = null, pd
       const templateParameters = [
         policyData.customer_name || 'Customer',
         policyData.policy_number || 'N/A',
-        `${policyData.make || 'N/A'} ${policyData.model || ''}`.trim(),
+        policyData.make || 'N/A',
+        policyData.model || '',
         policyData.vehicle_number || 'N/A',
         policyData.total_premium ? `₹${policyData.total_premium.toLocaleString('en-IN')}` : 'N/A'
       ];
@@ -461,7 +462,8 @@ async function sendPolicyWhatsApp(customerPhone, policyData, pdfS3Key = null, pd
     const templateParameters = [
       policyData.customer_name || 'Customer',
       policyData.policy_number || 'N/A',
-      `${policyData.make || 'N/A'} ${policyData.model || ''}`.trim(),
+      policyData.make || 'N/A',
+      policyData.model || '',
       policyData.vehicle_number || 'N/A',
       policyData.total_premium ? `₹${policyData.total_premium.toLocaleString('en-IN')}` : 'N/A'
     ];
