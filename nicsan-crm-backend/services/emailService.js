@@ -566,6 +566,152 @@ function generateDailyODReportContent(reportData) {
           background-color: #f8f9fa;
           border-radius: 5px;
         }
+        
+        /* Mobile Responsive Styles */
+        @media only screen and (max-width: 600px) {
+          body {
+            padding: 10px !important;
+            font-size: 14px !important;
+          }
+          
+          .header {
+            padding: 15px !important;
+          }
+          
+          .header h1 {
+            font-size: 20px !important;
+            margin: 5px 0 !important;
+          }
+          
+          .header h2 {
+            font-size: 16px !important;
+            margin: 5px 0 !important;
+          }
+          
+          .content {
+            padding: 15px !important;
+          }
+          
+          .summary {
+            padding: 12px !important;
+            margin: 15px 0 !important;
+          }
+          
+          .branch-section {
+            margin: 15px 0 !important;
+            padding: 12px !important;
+          }
+          
+          .vehicle-type {
+            margin: 8px 0 !important;
+            padding: 8px !important;
+          }
+          
+          /* Mobile Table Styles */
+          table {
+            font-size: 12px !important;
+            width: 100% !important;
+            display: block !important;
+            overflow-x: auto !important;
+            white-space: nowrap !important;
+          }
+          
+          th, td {
+            padding: 6px 8px !important;
+            font-size: 12px !important;
+            min-width: 60px !important;
+          }
+          
+          /* Mobile Summary Table - Stack on very small screens */
+          .summary table {
+            display: table !important;
+          }
+          
+          .summary td {
+            display: block !important;
+            width: 100% !important;
+            padding: 4px 0 !important;
+            border-bottom: 1px solid #eee !important;
+          }
+          
+          .summary td:first-child {
+            font-weight: bold !important;
+            color: #004e98 !important;
+          }
+          
+          /* Mobile Branch Details Table - Horizontal Scroll */
+          .vehicle-type table {
+            display: block !important;
+            overflow-x: auto !important;
+            -webkit-overflow-scrolling: touch !important;
+          }
+          
+          .vehicle-type th,
+          .vehicle-type td {
+            white-space: nowrap !important;
+            min-width: 80px !important;
+          }
+          
+          /* Mobile Daily/Monthly Breakdown Tables - Add Heading Only */
+          .breakdown-table {
+            display: block !important;
+          }
+          
+          .breakdown-table thead {
+            display: none !important;
+          }
+          
+          .breakdown-table tbody {
+            display: block !important;
+          }
+          
+          .breakdown-table tr {
+            display: block !important;
+            background: white !important;
+            margin: 10px 0 !important;
+            padding: 12px !important;
+            border-radius: 5px !important;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+            border: 1px solid #ddd !important;
+          }
+          
+          .breakdown-table tr:before {
+            content: attr(data-date) !important;
+            font-weight: bold !important;
+            color: #004e98 !important;
+            font-size: 16px !important;
+            margin-bottom: 10px !important;
+            padding-bottom: 8px !important;
+            border-bottom: 2px solid #004e98 !important;
+            display: block !important;
+          }
+          
+          .breakdown-table td {
+            display: block !important;
+            width: 100% !important;
+            padding: 4px 0 !important;
+            border: none !important;
+            text-align: left !important;
+          }
+          
+          .breakdown-table td:before {
+            content: attr(data-label) ": " !important;
+            font-weight: bold !important;
+            color: #004e98 !important;
+            display: inline-block !important;
+            width: 80px !important;
+          }
+          
+          .footer {
+            padding: 15px !important;
+            margin-top: 20px !important;
+          }
+          
+          .footer p {
+            font-size: 12px !important;
+            margin: 5px 0 !important;
+          }
+        }
       </style>
     </head>
     <body>
@@ -635,23 +781,26 @@ function generateDailyODReportContent(reportData) {
                ${dailyBreakdown.length > 0 ? `
                  <div class="branch-section">
                    <h3>📊 Daily Total OD Breakdown (Last 7 Days)</h3>
-                   <table>
-                     <tr>
-                       <th>Date</th>
-                       <th>Policies</th>
-                       <th>Total OD</th>
-                       <th>Avg OD</th>
-                       <th>Max OD</th>
-                     </tr>
-                     ${dailyBreakdown.map(day => `
+                   <table class="breakdown-table">
+                     <thead>
                        <tr>
-                         <td>${new Date(day.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</td>
-                         <td>${day.policyCount}</td>
-                         <td class="highlight">${formatCurrency(day.totalOD)}</td>
-                         <td>${formatCurrency(day.avgODPerPolicy)}</td>
-                         <td>${formatCurrency(day.maxOD)}</td>
+                         <th>Date</th>
+                         <th>Policies</th>
+                         <th>Total OD</th>
+                         <th>Avg OD</th>
+                         <th>Max OD</th>
                        </tr>
-                     `).join('')}
+                     </thead>
+                     <tbody>
+                       ${dailyBreakdown.map(day => `
+                         <tr data-date="${new Date(day.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}">
+                           <td data-label="Policies">${day.policyCount}</td>
+                           <td data-label="Total OD" class="highlight">${formatCurrency(day.totalOD)}</td>
+                           <td data-label="Avg OD">${formatCurrency(day.avgODPerPolicy)}</td>
+                           <td data-label="Max OD">${formatCurrency(day.maxOD)}</td>
+                         </tr>
+                       `).join('')}
+                     </tbody>
                    </table>
                  </div>
                ` : ''}
@@ -659,23 +808,26 @@ function generateDailyODReportContent(reportData) {
                ${monthlyBreakdown.length > 0 ? `
                  <div class="branch-section">
                    <h3>📈 Monthly Total OD Breakdown (Last 12 Months)</h3>
-                   <table>
-                     <tr>
-                       <th>Month</th>
-                       <th>Policies</th>
-                       <th>Total OD</th>
-                       <th>Avg OD</th>
-                       <th>Max OD</th>
-                     </tr>
-                     ${monthlyBreakdown.map(month => `
+                   <table class="breakdown-table">
+                     <thead>
                        <tr>
-                         <td>${new Date(month.month).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}</td>
-                         <td>${month.policyCount}</td>
-                         <td class="highlight">${formatCurrency(month.totalOD)}</td>
-                         <td>${formatCurrency(month.avgODPerPolicy)}</td>
-                         <td>${formatCurrency(month.maxOD)}</td>
+                         <th>Month</th>
+                         <th>Policies</th>
+                         <th>Total OD</th>
+                         <th>Avg OD</th>
+                         <th>Max OD</th>
                        </tr>
-                     `).join('')}
+                     </thead>
+                     <tbody>
+                       ${monthlyBreakdown.map(month => `
+                         <tr data-date="${new Date(month.month).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}">
+                           <td data-label="Policies">${month.policyCount}</td>
+                           <td data-label="Total OD" class="highlight">${formatCurrency(month.totalOD)}</td>
+                           <td data-label="Avg OD">${formatCurrency(month.avgODPerPolicy)}</td>
+                           <td data-label="Max OD">${formatCurrency(month.maxOD)}</td>
+                         </tr>
+                       `).join('')}
+                     </tbody>
                    </table>
                  </div>
                ` : ''}
@@ -902,6 +1054,152 @@ function generateBranchODReportContent(reportData, branch) {
           background-color: #f8f9fa;
           border-radius: 5px;
         }
+        
+        /* Mobile Responsive Styles */
+        @media only screen and (max-width: 600px) {
+          body {
+            padding: 10px !important;
+            font-size: 14px !important;
+          }
+          
+          .header {
+            padding: 15px !important;
+          }
+          
+          .header h1 {
+            font-size: 18px !important;
+            margin: 5px 0 !important;
+          }
+          
+          .header h2 {
+            font-size: 14px !important;
+            margin: 5px 0 !important;
+          }
+          
+          .content {
+            padding: 15px !important;
+          }
+          
+          .summary {
+            padding: 12px !important;
+            margin: 15px 0 !important;
+          }
+          
+          .branch-section {
+            margin: 15px 0 !important;
+            padding: 12px !important;
+          }
+          
+          .vehicle-type {
+            margin: 8px 0 !important;
+            padding: 8px !important;
+          }
+          
+          /* Mobile Table Styles */
+          table {
+            font-size: 12px !important;
+            width: 100% !important;
+            display: block !important;
+            overflow-x: auto !important;
+            white-space: nowrap !important;
+          }
+          
+          th, td {
+            padding: 6px 8px !important;
+            font-size: 12px !important;
+            min-width: 60px !important;
+          }
+          
+          /* Mobile Summary Table - Stack on very small screens */
+          .summary table {
+            display: table !important;
+          }
+          
+          .summary td {
+            display: block !important;
+            width: 100% !important;
+            padding: 4px 0 !important;
+            border-bottom: 1px solid #eee !important;
+          }
+          
+          .summary td:first-child {
+            font-weight: bold !important;
+            color: #004e98 !important;
+          }
+          
+          /* Mobile Branch Details Table - Horizontal Scroll */
+          .vehicle-type table {
+            display: block !important;
+            overflow-x: auto !important;
+            -webkit-overflow-scrolling: touch !important;
+          }
+          
+          .vehicle-type th,
+          .vehicle-type td {
+            white-space: nowrap !important;
+            min-width: 80px !important;
+          }
+          
+          /* Mobile Daily/Monthly Breakdown Tables - Add Heading Only */
+          .breakdown-table {
+            display: block !important;
+          }
+          
+          .breakdown-table thead {
+            display: none !important;
+          }
+          
+          .breakdown-table tbody {
+            display: block !important;
+          }
+          
+          .breakdown-table tr {
+            display: block !important;
+            background: white !important;
+            margin: 10px 0 !important;
+            padding: 12px !important;
+            border-radius: 5px !important;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+            border: 1px solid #ddd !important;
+          }
+          
+          .breakdown-table tr:before {
+            content: attr(data-date) !important;
+            font-weight: bold !important;
+            color: #004e98 !important;
+            font-size: 16px !important;
+            margin-bottom: 10px !important;
+            padding-bottom: 8px !important;
+            border-bottom: 2px solid #004e98 !important;
+            display: block !important;
+          }
+          
+          .breakdown-table td {
+            display: block !important;
+            width: 100% !important;
+            padding: 4px 0 !important;
+            border: none !important;
+            text-align: left !important;
+          }
+          
+          .breakdown-table td:before {
+            content: attr(data-label) ": " !important;
+            font-weight: bold !important;
+            color: #004e98 !important;
+            display: inline-block !important;
+            width: 80px !important;
+          }
+          
+          .footer {
+            padding: 15px !important;
+            margin-top: 20px !important;
+          }
+          
+          .footer p {
+            font-size: 12px !important;
+            margin: 5px 0 !important;
+          }
+        }
       </style>
     </head>
     <body>
@@ -962,23 +1260,26 @@ function generateBranchODReportContent(reportData, branch) {
         ${dailyBreakdown.length > 0 ? `
           <div class="branch-section">
             <h3>📊 Daily Total OD Breakdown - ${branch} Branch (Last 7 Days)</h3>
-            <table>
-              <tr>
-                <th>Date</th>
-                <th>Policies</th>
-                <th>Total OD</th>
-                <th>Avg OD</th>
-                <th>Max OD</th>
-              </tr>
-              ${dailyBreakdown.map(day => `
+            <table class="breakdown-table">
+              <thead>
                 <tr>
-                  <td>${new Date(day.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</td>
-                  <td>${day.policyCount}</td>
-                  <td class="highlight">${formatCurrency(day.totalOD)}</td>
-                  <td>${formatCurrency(day.avgODPerPolicy)}</td>
-                  <td>${formatCurrency(day.maxOD)}</td>
+                  <th>Date</th>
+                  <th>Policies</th>
+                  <th>Total OD</th>
+                  <th>Avg OD</th>
+                  <th>Max OD</th>
                 </tr>
-              `).join('')}
+              </thead>
+              <tbody>
+                ${dailyBreakdown.map(day => `
+                  <tr data-date="${new Date(day.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}">
+                    <td data-label="Policies">${day.policyCount}</td>
+                    <td data-label="Total OD" class="highlight">${formatCurrency(day.totalOD)}</td>
+                    <td data-label="Avg OD">${formatCurrency(day.avgODPerPolicy)}</td>
+                    <td data-label="Max OD">${formatCurrency(day.maxOD)}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
             </table>
           </div>
         ` : ''}
@@ -986,23 +1287,26 @@ function generateBranchODReportContent(reportData, branch) {
         ${monthlyBreakdown.length > 0 ? `
           <div class="branch-section">
             <h3>📈 Monthly Total OD Breakdown - ${branch} Branch (Last 12 Months)</h3>
-            <table>
-              <tr>
-                <th>Month</th>
-                <th>Policies</th>
-                <th>Total OD</th>
-                <th>Avg OD</th>
-                <th>Max OD</th>
-              </tr>
-              ${monthlyBreakdown.map(month => `
+            <table class="breakdown-table">
+              <thead>
                 <tr>
-                  <td>${new Date(month.month).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}</td>
-                  <td>${month.policyCount}</td>
-                  <td class="highlight">${formatCurrency(month.totalOD)}</td>
-                  <td>${formatCurrency(month.avgODPerPolicy)}</td>
-                  <td>${formatCurrency(month.maxOD)}</td>
+                  <th>Month</th>
+                  <th>Policies</th>
+                  <th>Total OD</th>
+                  <th>Avg OD</th>
+                  <th>Max OD</th>
                 </tr>
-              `).join('')}
+              </thead>
+              <tbody>
+                ${monthlyBreakdown.map(month => `
+                  <tr data-date="${new Date(month.month).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}">
+                    <td data-label="Policies">${month.policyCount}</td>
+                    <td data-label="Total OD" class="highlight">${formatCurrency(month.totalOD)}</td>
+                    <td data-label="Avg OD">${formatCurrency(month.avgODPerPolicy)}</td>
+                    <td data-label="Max OD">${formatCurrency(month.maxOD)}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
             </table>
           </div>
         ` : ''}
