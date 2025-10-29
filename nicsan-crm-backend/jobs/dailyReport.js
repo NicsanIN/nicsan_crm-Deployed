@@ -18,7 +18,7 @@ function getYesterdayIST() {
 
 /**
  * Daily OD Report Scheduler
- * Runs every day at 9:00 AM IST
+ * Runs every day at 10:30 AM IST
  */
 class DailyReportScheduler {
   constructor() {
@@ -33,8 +33,8 @@ class DailyReportScheduler {
   start() {
     console.log('🕘 Starting Daily OD Report Scheduler...');
     
-    // Schedule daily report at 9:00 AM IST (3:30 AM UTC)
-    cron.schedule('30 3 * * *', async () => {
+    // Schedule daily report at 10:30 AM IST (5:00 AM UTC)
+    cron.schedule('0 5 * * *', async () => {
       await this.sendDailyReport();
     }, {
       scheduled: true,
@@ -51,7 +51,7 @@ class DailyReportScheduler {
     }
 
     console.log('✅ Daily OD Report Scheduler started');
-    console.log('📅 Next report will be sent at 9:00 AM IST');
+    console.log('📅 Next report will be sent at 10:30 AM IST');
   }
 
   /**
@@ -144,10 +144,10 @@ class DailyReportScheduler {
           COUNT(*) as total_policies,
           SUM(COALESCE(total_od, 0)) as total_od,
           SUM(COALESCE(total_premium, 0)) as total_premium,
-          COUNT(CASE WHEN rollover = 'Rollover' THEN 1 END) as rollover_count,
-          COUNT(CASE WHEN rollover = 'Renewal' THEN 1 END) as renewal_count,
-          SUM(CASE WHEN rollover = 'Rollover' THEN COALESCE(total_od, 0) ELSE 0 END) as rollover_od,
-          SUM(CASE WHEN rollover = 'Renewal' THEN COALESCE(total_od, 0) ELSE 0 END) as renewal_od
+          COUNT(CASE WHEN UPPER(rollover) = 'ROLLOVER' THEN 1 END) as rollover_count,
+          COUNT(CASE WHEN UPPER(rollover) = 'RENEWAL' THEN 1 END) as renewal_count,
+          SUM(CASE WHEN UPPER(rollover) = 'ROLLOVER' THEN COALESCE(total_od, 0) ELSE 0 END) as rollover_od,
+          SUM(CASE WHEN UPPER(rollover) = 'RENEWAL' THEN COALESCE(total_od, 0) ELSE 0 END) as renewal_od
         FROM policies 
         WHERE DATE(created_at) = $1
       `;
@@ -196,10 +196,10 @@ class DailyReportScheduler {
         const amount = parseFloat(row.total_od_amount) || 0;
         const count = parseInt(row.policy_count) || 0;
         
-        if (rolloverStatus === 'Rollover') {
+        if (rolloverStatus && rolloverStatus.toUpperCase() === 'ROLLOVER') {
           reportData.branches[branch].vehicleTypes[vehicleType].rollover.amount = amount;
           reportData.branches[branch].vehicleTypes[vehicleType].rollover.count = count;
-        } else if (rolloverStatus === 'Renewal') {
+        } else if (rolloverStatus && rolloverStatus.toUpperCase() === 'RENEWAL') {
           reportData.branches[branch].vehicleTypes[vehicleType].renewal.amount = amount;
           reportData.branches[branch].vehicleTypes[vehicleType].renewal.count = count;
         }
@@ -371,10 +371,10 @@ class DailyReportScheduler {
           COUNT(*) as total_policies,
           SUM(COALESCE(total_od, 0)) as total_od,
           SUM(COALESCE(total_premium, 0)) as total_premium,
-          COUNT(CASE WHEN rollover = 'Rollover' THEN 1 END) as rollover_count,
-          SUM(CASE WHEN rollover = 'Rollover' THEN COALESCE(total_od, 0) ELSE 0 END) as rollover_od
+          COUNT(CASE WHEN UPPER(rollover) = 'ROLLOVER' THEN 1 END) as rollover_count,
+          SUM(CASE WHEN UPPER(rollover) = 'ROLLOVER' THEN COALESCE(total_od, 0) ELSE 0 END) as rollover_od
         FROM policies 
-        WHERE DATE(created_at) = $1 AND branch = $2 AND rollover = 'Rollover'
+        WHERE DATE(created_at) = $1 AND branch = $2 AND UPPER(rollover) = 'ROLLOVER'
       `;
       
       const summaryResult = await query(summaryQuery, [date, branch]);
@@ -419,10 +419,10 @@ class DailyReportScheduler {
         const amount = parseFloat(row.total_od_amount) || 0;
         const count = parseInt(row.policy_count) || 0;
         
-        if (rolloverStatus === 'Rollover') {
+        if (rolloverStatus && rolloverStatus.toUpperCase() === 'ROLLOVER') {
           reportData.branches[branch].vehicleTypes[vehicleType].rollover.amount = amount;
           reportData.branches[branch].vehicleTypes[vehicleType].rollover.count = count;
-        } else if (rolloverStatus === 'Renewal') {
+        } else if (rolloverStatus && rolloverStatus.toUpperCase() === 'RENEWAL') {
           reportData.branches[branch].vehicleTypes[vehicleType].renewal.amount = amount;
           reportData.branches[branch].vehicleTypes[vehicleType].renewal.count = count;
         }
@@ -448,7 +448,7 @@ class DailyReportScheduler {
           MAX(total_od) as max_od,
           MIN(total_od) as min_od
         FROM policies 
-        WHERE created_at >= $1 AND total_od > 0 AND branch = $2
+        WHERE created_at >= $1 AND total_od > 0 AND branch = $2 AND UPPER(rollover) = 'ROLLOVER'
         GROUP BY DATE(created_at)
         ORDER BY date DESC
         LIMIT 7
@@ -478,7 +478,7 @@ class DailyReportScheduler {
           MAX(total_od) as max_od,
           MIN(total_od) as min_od
         FROM policies 
-        WHERE created_at >= $1 AND total_od > 0 AND branch = $2
+        WHERE created_at >= $1 AND total_od > 0 AND branch = $2 AND UPPER(rollover) = 'ROLLOVER'
         GROUP BY DATE_TRUNC('month', created_at)
         ORDER BY month DESC
         LIMIT 12

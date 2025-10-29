@@ -342,7 +342,10 @@ async function sendPDFDocument(phoneNumber, pdfBuffer, filename) {
       headers: {
         'Authorization': `Bearer ${whatsappConfig.accessToken}`,
         ...form.getHeaders()
-      }
+      },
+      timeout: 30000, // 30 second timeout
+      maxContentLength: Infinity,
+      maxBodyLength: Infinity
     });
 
     const mediaId = mediaResponse.data.id;
@@ -365,7 +368,8 @@ async function sendPDFDocument(phoneNumber, pdfBuffer, filename) {
       headers: {
         'Authorization': `Bearer ${whatsappConfig.accessToken}`,
         'Content-Type': 'application/json'
-      }
+      },
+      timeout: 15000 // 15 second timeout
     });
 
     console.log('✅ WhatsApp PDF document sent successfully:', response.data.messages[0].id);
@@ -401,7 +405,9 @@ async function sendPolicyWhatsApp(customerPhone, policyData, pdfS3Key = null, pd
     let actualPdfS3Key = pdfS3Key;
     let actualPdfFilename = pdfFilename;
     
-    if (!actualPdfS3Key && policyData.policy_number) {
+    if (actualPdfS3Key) {
+      console.log(`✅ Using provided PDF S3 key: ${actualPdfS3Key}`);
+    } else if (policyData.policy_number) {
       console.log('🔍 PDF S3 key not provided, looking up from database...');
       const pdfLookup = await getPdfS3KeyFromDatabase(policyData.policy_number);
       
@@ -413,9 +419,6 @@ async function sendPolicyWhatsApp(customerPhone, policyData, pdfS3Key = null, pd
         console.log('⚠️ No PDF found in database, will send text message only');
         // Don't return error, just continue without PDF
       }
-    } else if (actualPdfS3Key) {
-      console.log(`✅ Using provided PDF S3 key: ${actualPdfS3Key}`);
-      console.log(`✅ Using provided PDF filename: ${actualPdfFilename}`);
     }
     
     if (!actualPdfS3Key) {
@@ -477,13 +480,36 @@ async function sendPolicyWhatsApp(customerPhone, policyData, pdfS3Key = null, pd
       };
     }
 
+    // Add a small delay between template and PDF to avoid rate limiting
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
     // Send PDF document
     console.log('📤 Sending PDF document...');
+    
+    // Try sending as document first
     const pdfResult = await sendPDFDocument(
       formattedPhone, 
       pdfBuffer, 
       actualPdfFilename || `Policy_${policyData.policy_number || 'Document'}.pdf`
     );
+    
+    // If PDF document fails, try sending as text with S3 link
+    if (!pdfResult.success) {
+      console.log('⚠️ PDF document failed, trying text message with S3 link...');
+      const s3Url = `https://nicsan-crm-pdfs.s3.ap-south-1.amazonaws.com/${actualPdfS3Key}`;
+      const linkMessage = `📎 Your policy document is available here: ${s3Url}`;
+      
+      const linkResult = await sendTextMessage(formattedPhone, linkMessage);
+      if (linkResult.success) {
+        console.log('✅ PDF link sent via text message:', linkResult.messageId);
+        return {
+          success: true,
+          textMessageId: textResult.messageId,
+          documentMessageId: linkResult.messageId,
+          message: 'Text message with PDF link sent'
+        };
+      }
+    }
 
     if (!pdfResult.success) {
       console.error('⚠️ WhatsApp PDF document failed:', pdfResult.error);
@@ -574,6 +600,36 @@ async function testWhatsAppConfiguration() {
   }
 }
 
+/**
+ * Checks WhatsApp Business API status and rate limits
+ * @returns {Promise<Object>} A promise that resolves with the API status
+ */
+async function checkWhatsAppAPIStatus() {
+  try {
+    const url = `${whatsappConfig.baseUrl}/${whatsappConfig.apiVersion}/${whatsappConfig.phoneNumberId}`;
+    
+    const response = await axios.get(url, {
+      headers: {
+        'Authorization': `Bearer ${whatsappConfig.accessToken}`
+      }
+    });
+
+    console.log('📊 WhatsApp API Status:', JSON.stringify(response.data, null, 2));
+    
+    return { 
+      success: true, 
+      data: response.data,
+      message: 'WhatsApp API is accessible'
+    };
+  } catch (error) {
+    console.error('❌ WhatsApp API status check failed:', error.response?.data || error.message);
+    return { 
+      success: false, 
+      error: error.response?.data?.error?.message || error.message 
+    };
+  }
+}
+
 module.exports = {
   sendPolicyWhatsApp,
   sendTestWhatsApp,
@@ -581,5 +637,6 @@ module.exports = {
   sendTextMessage,
   sendTemplateMessage,
   sendPDFDocument,
-  getPdfS3KeyFromDatabase
+  getPdfS3KeyFromDatabase,
+  checkWhatsAppAPIStatus
 };
