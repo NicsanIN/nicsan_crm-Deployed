@@ -226,6 +226,65 @@ async function downloadPDFFromS3(s3Key) {
 }
 
 /**
+ * Downloads an image file from AWS S3.
+ * @param {string} s3Key - The S3 key of the image file.
+ * @returns {Promise<Buffer>} A promise that resolves with the image file buffer.
+ */
+async function downloadImageFromS3(s3Key) {
+  try {
+    const params = {
+      Bucket: process.env.AWS_S3_BUCKET || 'nicsan-crm-pdfs',
+      Key: s3Key
+    };
+
+    const result = await s3.getObject(params).promise();
+    return result.Body; // Returns image as buffer
+  } catch (error) {
+    console.error('❌ Failed to download image from S3:', error);
+    throw new Error(`Failed to download image: ${error.message}`);
+  }
+}
+
+/**
+ * Uploads an image to WhatsApp Media API and returns the media ID.
+ * @param {Buffer} imageBuffer - The image file buffer.
+ * @param {string} filename - The filename for the image.
+ * @param {string} contentType - The content type (e.g., 'image/png', 'image/jpeg').
+ * @returns {Promise<string>} A promise that resolves with the media ID.
+ */
+async function uploadImageToWhatsApp(imageBuffer, filename, contentType = 'image/png') {
+  try {
+    const mediaUrl = `${whatsappConfig.baseUrl}/${whatsappConfig.apiVersion}/${whatsappConfig.phoneNumberId}/media`;
+    
+    const FormData = require('form-data');
+    const form = new FormData();
+    form.append('file', imageBuffer, {
+      filename: filename,
+      contentType: contentType
+    });
+    form.append('messaging_product', 'whatsapp');
+    form.append('type', contentType);
+
+    const mediaResponse = await axios.post(mediaUrl, form, {
+      headers: {
+        'Authorization': `Bearer ${whatsappConfig.accessToken}`,
+        ...form.getHeaders()
+      },
+      timeout: 30000, // 30 second timeout
+      maxContentLength: Infinity,
+      maxBodyLength: Infinity
+    });
+
+    const mediaId = mediaResponse.data.id;
+    console.log('✅ Image uploaded to WhatsApp media API:', mediaId);
+    return mediaId;
+  } catch (error) {
+    console.error('❌ Failed to upload image to WhatsApp media API:', error.response?.data || error.message);
+    throw new Error(`Failed to upload image to WhatsApp: ${error.message}`);
+  }
+}
+
+/**
  * Sends a text message via WhatsApp Cloud API.
  * @param {string} phoneNumber - The recipient's phone number (with country code).
  * @param {string} message - The message text to send.
@@ -270,11 +329,38 @@ async function sendTextMessage(phoneNumber, message) {
  * @param {string} phoneNumber - The recipient's phone number (with country code).
  * @param {string} templateName - The template name.
  * @param {Array} parameters - Template parameters.
+ * @param {string} headerImageMediaId - Optional header image media ID from WhatsApp Media API.
  * @returns {Promise<Object>} A promise that resolves with the template message sending result.
  */
-async function sendTemplateMessage(phoneNumber, templateName, parameters) {
+async function sendTemplateMessage(phoneNumber, templateName, parameters, headerImageMediaId = null) {
   try {
     const url = `${whatsappConfig.baseUrl}/${whatsappConfig.apiVersion}/${whatsappConfig.phoneNumberId}/messages`;
+    
+    const components = [];
+    
+    // Add header component with image if provided
+    if (headerImageMediaId) {
+      components.push({
+        type: 'header',
+        parameters: [
+          {
+            type: 'image',
+            image: {
+              id: headerImageMediaId
+            }
+          }
+        ]
+      });
+    }
+    
+    // Add body component with text parameters
+    components.push({
+      type: 'body',
+      parameters: parameters.map(param => ({ 
+        type: 'text', 
+        text: String(param || '').trim() 
+      }))
+    });
     
     const payload = {
       messaging_product: 'whatsapp',
@@ -283,15 +369,7 @@ async function sendTemplateMessage(phoneNumber, templateName, parameters) {
       template: {
         name: templateName,
         language: { code: 'en' },
-        components: [
-          {
-            type: 'body',
-            parameters: parameters.map(param => ({ 
-              type: 'text', 
-              text: String(param || '').trim() 
-            }))
-          }
-        ]
+        components: components
       }
     };
 
@@ -421,6 +499,52 @@ async function sendPolicyWhatsApp(customerPhone, policyData, pdfS3Key = null, pd
       }
     }
     
+    // Download and upload header image for template
+    let headerImageMediaId = null;
+    try {
+      // Use environment variable for header image path, with fallback to default
+      const customHeaderPath = process.env.WHATSAPP_HEADER_IMAGE_S3_KEY;
+      const defaultHeaderPath = 'email-assets/headers/header-desktop.png';
+      let headerImageS3Key = customHeaderPath || defaultHeaderPath;
+      
+      console.log('🖼️ Downloading header image from S3:', headerImageS3Key);
+      let headerImageBuffer;
+      
+      try {
+        headerImageBuffer = await downloadImageFromS3(headerImageS3Key);
+        console.log(`✅ Header image loaded from: ${headerImageS3Key}`);
+      } catch (customPathError) {
+        // If custom path fails and it's not the default, try default path
+        if (customHeaderPath && customHeaderPath !== defaultHeaderPath) {
+          console.log(`ℹ️  Custom header path not found (${headerImageS3Key}), using default header...`);
+          headerImageS3Key = defaultHeaderPath;
+          try {
+            headerImageBuffer = await downloadImageFromS3(defaultHeaderPath);
+            console.log('✅ Default header image loaded successfully');
+          } catch (defaultPathError) {
+            console.error('❌ Failed to load header image from both custom and default paths');
+            throw new Error(`Both custom path (${customHeaderPath}) and default path (${defaultHeaderPath}) failed. Default error: ${defaultPathError.message}`);
+          }
+        } else {
+          throw customPathError;
+        }
+      }
+      
+      // Extract filename from S3 key for WhatsApp upload
+      const headerImageFilename = headerImageS3Key.split('/').pop() || 'header-desktop.png';
+      const contentType = headerImageFilename.endsWith('.png') ? 'image/png' : 
+                         headerImageFilename.endsWith('.jpg') || headerImageFilename.endsWith('.jpeg') ? 'image/jpeg' : 
+                         'image/png'; // Default to PNG
+      
+      console.log('📤 Uploading header image to WhatsApp Media API...');
+      headerImageMediaId = await uploadImageToWhatsApp(headerImageBuffer, headerImageFilename, contentType);
+      console.log('✅ Header image uploaded, media ID:', headerImageMediaId);
+    } catch (headerError) {
+      console.error('❌ Failed to load header image:', headerError.message);
+      console.error('⚠️ Template message requires header image. Message cannot be sent without it.');
+      throw new Error(`Header image required for WhatsApp template but failed to load: ${headerError.message}`);
+    }
+
     if (!actualPdfS3Key) {
       console.log('⚠️ No PDF available, sending text message only...');
       
@@ -435,7 +559,7 @@ async function sendPolicyWhatsApp(customerPhone, policyData, pdfS3Key = null, pd
       ];
 
       console.log('📤 Sending template message (no PDF)...');
-      const textResult = await sendTemplateMessage(formattedPhone, 'policy', templateParameters);
+      const textResult = await sendTemplateMessage(formattedPhone, 'policy', templateParameters, headerImageMediaId);
       
       if (!textResult.success) {
         console.error('⚠️ WhatsApp template message failed:', textResult.error);
@@ -469,8 +593,8 @@ async function sendPolicyWhatsApp(customerPhone, policyData, pdfS3Key = null, pd
     ];
 
     // Send template message first (bypasses 24-hour window restriction)
-    console.log('📤 Sending template message...');
-    const textResult = await sendTemplateMessage(formattedPhone, 'policy', templateParameters);
+    console.log('📤 Sending template message with header image...');
+    const textResult = await sendTemplateMessage(formattedPhone, 'policy', templateParameters, headerImageMediaId);
     
     if (!textResult.success) {
       console.error('⚠️ WhatsApp template message failed:', textResult.error);
