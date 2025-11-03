@@ -334,6 +334,9 @@ async function sendTextMessage(phoneNumber, message) {
  */
 async function sendTemplateMessage(phoneNumber, templateName, parameters, headerImageMediaId = null) {
   try {
+    // Format phone number (ensure it has country code)
+    const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : `+91${phoneNumber}`;
+    
     const url = `${whatsappConfig.baseUrl}/${whatsappConfig.apiVersion}/${whatsappConfig.phoneNumberId}/messages`;
     
     const components = [];
@@ -364,7 +367,7 @@ async function sendTemplateMessage(phoneNumber, templateName, parameters, header
     
     const payload = {
       messaging_product: 'whatsapp',
-      to: phoneNumber,
+      to: formattedPhone,
       type: 'template',
       template: {
         name: templateName,

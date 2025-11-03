@@ -1,6 +1,7 @@
 const cron = require('node-cron');
 const axios = require('axios');
 const emailService = require('../services/emailService');
+const whatsappService = require('../services/whatsappService');
 const { query } = require('../config/database');
 
 /**
@@ -89,9 +90,25 @@ class DailyReportScheduler {
         console.log('📭 No policies found for yesterday, skipping founder email report');
       }
 
-      // 2. Send branch-specific reports to branch heads (new functionality)
+      // 2. Send branch-specific reports to branch heads (email)
       console.log('📊 Generating branch-specific reports...');
       await this.sendBranchReports(yesterdayString);
+
+      // 3. Send overall WhatsApp report to founders
+      if (overallReportData.summary.totalPolicies > 0) {
+        console.log('📱 Sending overall WhatsApp report to founders...');
+        await this.sendOverallReportWhatsApp(overallReportData);
+      } else {
+        console.log('📭 No policies found, skipping WhatsApp reports');
+      }
+
+      // 4. Send branch-wise WhatsApp reports to branch heads
+      if (overallReportData.summary.totalPolicies > 0) {
+        console.log('📱 Sending branch-wise WhatsApp reports to branch heads...');
+        await this.sendBranchReportsWhatsApp(overallReportData);
+      } else {
+        console.log('📭 No policies found, skipping branch WhatsApp reports');
+      }
 
     } catch (error) {
       console.error('❌ Daily report generation failed:', error);
@@ -287,7 +304,12 @@ class DailyReportScheduler {
         process.env.FOUNDER_EMAIL_1,
         process.env.FOUNDER_EMAIL_2,
         process.env.FOUNDER_EMAIL_3
-      ].filter(email => email && email.trim() !== '')
+      ].filter(email => email && email.trim() !== ''),
+      founderWhatsAppNumbers: [
+        process.env.FOUNDER_WHATSAPP_1,
+        process.env.FOUNDER_WHATSAPP_2,
+        process.env.FOUNDER_WHATSAPP_3
+      ].filter(phone => phone && phone.trim() !== '')
     };
   }
 
@@ -496,6 +518,264 @@ class DailyReportScheduler {
       console.error(`❌ ${branch} branch report data generation failed:`, error);
       throw error;
     }
+  }
+
+  /**
+   * Send overall WhatsApp report to founders
+   * @param {Object} overallReportData - Overall report data with all branches
+   */
+  async sendOverallReportWhatsApp(overallReportData) {
+    try {
+      // Get founder WhatsApp numbers from environment
+      const founderWhatsAppNumbers = [
+        process.env.FOUNDER_WHATSAPP_1,
+        process.env.FOUNDER_WHATSAPP_2,
+        process.env.FOUNDER_WHATSAPP_3
+      ]
+        .filter(phone => phone && phone.trim() !== '')
+        .filter((phone, index, self) => self.indexOf(phone) === index); // Remove duplicates
+
+      if (founderWhatsAppNumbers.length === 0) {
+        console.log('⚠️ No founder WhatsApp numbers configured, skipping overall WhatsApp report');
+        return;
+      }
+
+      console.log(`📱 Found ${founderWhatsAppNumbers.length} founder WhatsApp number(s) for overall report`);
+
+      // Prepare template parameters for overall report
+      const parameters = this.prepareOverallTemplateParameters(overallReportData);
+
+      // Send to each founder
+      for (const founderPhone of founderWhatsAppNumbers) {
+        try {
+          // Send template message without header image (as per user request)
+          const result = await whatsappService.sendTemplateMessage(
+            founderPhone,
+            'daily_od_report_overall', // Template name for overall report
+            parameters,
+            null // No header image
+          );
+
+          if (result.success) {
+            console.log(`✅ Overall WhatsApp report sent to ${founderPhone} (Message ID: ${result.messageId})`);
+          } else {
+            console.error(`❌ Failed to send overall WhatsApp report to ${founderPhone}:`, result.error);
+          }
+
+          // Rate limit delay (1 second between messages)
+          await new Promise(resolve => setTimeout(resolve, 1000));
+
+        } catch (error) {
+          console.error(`❌ Error sending overall WhatsApp report to ${founderPhone}:`, error.message);
+        }
+      }
+
+      console.log('✅ Overall WhatsApp reports sent to founders');
+
+    } catch (error) {
+      console.error('❌ Overall WhatsApp reports failed:', error);
+    }
+  }
+
+  /**
+   * Prepare template parameters for overall WhatsApp report
+   * @param {Object} reportData - Overall report data with all branches
+   * @returns {Array} Array of template parameters
+   */
+  prepareOverallTemplateParameters(reportData) {
+    // Format currency (remove ₹ symbol, will be in template)
+    const formatCurrency = (amount) => {
+      return new Intl.NumberFormat('en-IN', {
+        style: 'currency',
+        currency: 'INR',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
+      }).format(amount || 0).replace('₹', '');
+    };
+
+    // Format date
+    const formatDate = (date) => {
+      return new Date(date).toLocaleDateString('en-IN', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric'
+      });
+    };
+
+    // Format ALL branches with their vehicle types as single text string
+    // Note: WhatsApp parameters cannot have newlines, tabs, or more than 4 consecutive spaces
+    // Using better formatting with clearer separators for readability
+    const branchesText = reportData.branches
+      .map((branch, branchIndex) => {
+        // Format vehicle types for this branch
+        const vehicleTypesText = branch.vehicleTypes
+          .map((vehicleType, vtIndex) => {
+            const rolloverAmount = formatCurrency(vehicleType.rollover?.amount || 0);
+            const rolloverCount = vehicleType.rollover?.count || 0;
+            const renewalAmount = formatCurrency(vehicleType.renewal?.amount || 0);
+            const renewalCount = vehicleType.renewal?.count || 0;
+            
+            // Format with better spacing
+            return `🚗 ${vehicleType.vehicleType || 'Unknown'}: Rollover ₹${rolloverAmount} (${rolloverCount} policies) | Renewal ₹${renewalAmount} (${renewalCount} policies)`;
+          })
+          .join(' '); // Single space between vehicle types
+
+        // Format branch with clearer structure - each branch on its own "line" visually
+        const branchHeader = `🏢 ${branch.branchName}: Total ₹${formatCurrency(branch.totalOD)} (${branch.totalPolicies} policies)`;
+        const vehicleSection = vehicleTypesText.length > 0 ? `- ${vehicleTypesText}` : '';
+        return `${branchHeader} ${vehicleSection}`.trim();
+      })
+      .join(' '); // Space separator - template formatting will handle layout
+
+    return [
+      formatDate(reportData.date),                           // {{1}} - Date
+      (reportData.summary.totalPolicies || 0).toString(),    // {{2}} - Total Policies (All Branches)
+      formatCurrency(reportData.summary.totalOD || 0),        // {{3}} - Total OD (All Branches)
+      (reportData.summary.rolloverCount || 0).toString(),    // {{4}} - Rollover Count
+      formatCurrency(reportData.summary.rolloverOD || 0),    // {{5}} - Rollover OD
+      (reportData.summary.renewalCount || 0).toString(),      // {{6}} - Renewal Count
+      formatCurrency(reportData.summary.renewalOD || 0),     // {{7}} - Renewal OD
+      reportData.branches.length.toString(),                  // {{8}} - Number of Branches
+      branchesText || 'No branches'                           // {{9}} - All Branches Details
+    ];
+  }
+
+  /**
+   * Send branch-wise WhatsApp reports to branch heads
+   * @param {Object} overallReportData - Overall report data with branches
+   */
+  async sendBranchReportsWhatsApp(overallReportData) {
+    try {
+      // Get branches from report data
+      const branches = overallReportData.branches || [];
+
+      if (branches.length === 0) {
+        console.log('⚠️ No branches found in report data, skipping branch WhatsApp reports');
+        return;
+      }
+
+      // Loop through branches
+      for (const branchData of branches) {
+        // Skip if branch has no policies
+        if (!branchData.totalPolicies || branchData.totalPolicies === 0) {
+          console.log(`⏭️ Skipping ${branchData.branchName} branch - no policies`);
+          continue;
+        }
+
+        // Get branch head WhatsApp number for this branch
+        const branchHeadWhatsApp = this.getBranchHeadWhatsApp(branchData.branchName);
+
+        if (!branchHeadWhatsApp) {
+          console.log(`⚠️ No WhatsApp number configured for ${branchData.branchName} branch head, skipping`);
+          continue;
+        }
+
+        console.log(`📱 Preparing WhatsApp report for ${branchData.branchName} branch to branch head (Rollover only)...`);
+
+        // Prepare template parameters (ROLLOVER ONLY for branch heads)
+        const parameters = this.prepareBranchTemplateParametersRolloverOnly(overallReportData, branchData);
+
+        try {
+          // Send template message without header image (as per user request)
+          const result = await whatsappService.sendTemplateMessage(
+            branchHeadWhatsApp,
+            'daily_od_report_branch', // Template name created in Meta
+            parameters,
+            null // No header image
+          );
+
+          if (result.success) {
+            console.log(`✅ WhatsApp report sent to ${branchData.branchName} branch head (${branchHeadWhatsApp}) for ${branchData.branchName} branch (Message ID: ${result.messageId})`);
+          } else {
+            console.error(`❌ Failed to send WhatsApp report to ${branchData.branchName} branch head:`, result.error);
+          }
+
+          // Rate limit delay (1 second between messages)
+          await new Promise(resolve => setTimeout(resolve, 1000));
+
+        } catch (error) {
+          console.error(`❌ Error sending WhatsApp report to ${branchData.branchName} branch head:`, error.message);
+        }
+      }
+
+      console.log('✅ Branch-wise WhatsApp reports sent to branch heads');
+
+    } catch (error) {
+      console.error('❌ Branch-wise WhatsApp reports failed:', error);
+    }
+  }
+
+  /**
+   * Get branch head WhatsApp number from environment variables
+   * @param {string} branch - Branch name
+   * @returns {string|null} Branch head WhatsApp number
+   */
+  getBranchHeadWhatsApp(branch) {
+    const branchWhatsApp = {
+      'MYSORE': process.env.MYSORE_BRANCH_HEAD_WHATSAPP,
+      'BANASHANKARI': process.env.BANASHANKARI_BRANCH_HEAD_WHATSAPP,
+      'ADUGODI': process.env.ADUGODI_BRANCH_HEAD_WHATSAPP
+    };
+    
+    return branchWhatsApp[branch] || null;
+  }
+
+  /**
+   * Prepare template parameters for branch WhatsApp report (ROLLOVER ONLY for branch heads)
+   * @param {Object} reportData - Overall report data
+   * @param {Object} branchData - Branch-specific data
+   * @returns {Array} Array of template parameters
+   */
+  prepareBranchTemplateParametersRolloverOnly(reportData, branchData) {
+    // Format currency (remove ₹ symbol, will be in template)
+    const formatCurrency = (amount) => {
+      return new Intl.NumberFormat('en-IN', {
+        style: 'currency',
+        currency: 'INR',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
+      }).format(amount || 0).replace('₹', '');
+    };
+
+    // Format date
+    const formatDate = (date) => {
+      return new Date(date).toLocaleDateString('en-IN', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric'
+      });
+    };
+
+    // Format ALL vehicle types with ROLLOVER ONLY (no renewal data)
+    // Note: WhatsApp parameters cannot have newlines, tabs, or more than 4 consecutive spaces
+    const vehicleTypesText = branchData.vehicleTypes
+      .map(vehicleType => {
+        const rolloverAmount = formatCurrency(vehicleType.rollover?.amount || 0);
+        const rolloverCount = vehicleType.rollover?.count || 0;
+
+        // Only show rollover data (matching email format for branch heads)
+        return `🚗 ${vehicleType.vehicleType || 'Unknown'}: Rollover ₹${rolloverAmount} (${rolloverCount} policies)`;
+      })
+      .join(' | '); // Use pipe separator between vehicle types
+
+    // Calculate branch summary (ROLLOVER ONLY)
+    const branchRolloverCount = branchData.vehicleTypes.reduce((sum, vt) => sum + (vt.rollover?.count || 0), 0);
+    const branchRolloverOD = branchData.vehicleTypes.reduce((sum, vt) => sum + (vt.rollover?.amount || 0), 0);
+
+    // Calculate total policies and OD from rollover data only (matching email format)
+    // Note: branchData.totalPolicies includes both rollover and renewal, but for branch heads we show rollover only
+    const rolloverOnlyTotalPolicies = branchRolloverCount;
+    const rolloverOnlyTotalOD = branchRolloverOD;
+
+    return [
+      branchData.branchName || 'Unknown',              // {{1}} - Branch Name
+      formatDate(reportData.date),                     // {{2}} - Date
+      rolloverOnlyTotalPolicies.toString(),             // {{3}} - Branch Total Policies (Rollover only)
+      formatCurrency(rolloverOnlyTotalOD),             // {{4}} - Branch Total OD (Rollover only)
+      branchRolloverCount.toString(),                   // {{5}} - Branch Rollover Count
+      formatCurrency(branchRolloverOD),                // {{6}} - Branch Rollover OD
+      vehicleTypesText || 'No vehicle types'          // {{7}} - Vehicle Types (Rollover only)
+    ];
   }
 
   /**
