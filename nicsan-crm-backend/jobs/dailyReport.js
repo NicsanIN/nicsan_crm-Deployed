@@ -551,7 +551,7 @@ class DailyReportScheduler {
           // Send template message without header image (as per user request)
           const result = await whatsappService.sendTemplateMessage(
             founderPhone,
-            'daily_od_report_overall', // Template name for overall report
+            'daily_od_report_overall1', // Template name for overall report
             parameters,
             null // No header image
           );
