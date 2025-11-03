@@ -602,42 +602,68 @@ class DailyReportScheduler {
       });
     };
 
-    // Format ALL branches with their vehicle types as single text string
-    // Note: WhatsApp parameters cannot have newlines, tabs, or more than 4 consecutive spaces
-    // Using better formatting with clearer separators for readability
-    const branchesText = reportData.branches
-      .map((branch, branchIndex) => {
-        // Format vehicle types for this branch
-        const vehicleTypesText = branch.vehicleTypes
-          .map((vehicleType, vtIndex) => {
-            const rolloverAmount = formatCurrency(vehicleType.rollover?.amount || 0);
-            const rolloverCount = vehicleType.rollover?.count || 0;
-            const renewalAmount = formatCurrency(vehicleType.renewal?.amount || 0);
-            const renewalCount = vehicleType.renewal?.count || 0;
-            
-            // Format with better spacing
-            return `🚗 ${vehicleType.vehicleType || 'Unknown'}: Rollover ₹${rolloverAmount} (${rolloverCount} policies) | Renewal ₹${renewalAmount} (${renewalCount} policies)`;
-          })
-          .join(' '); // Single space between vehicle types
+    // Format each branch as separate parameter - this allows template to add newlines between branches
+    // Each branch will be sent as: {{9}}, {{10}}, {{11}}, {{12}}, {{13}}
+    const formatBranchText = (branch) => {
+      // Format vehicle types for this branch
+      const vehicleTypesText = branch.vehicleTypes
+        .map((vehicleType) => {
+          const rolloverAmount = formatCurrency(vehicleType.rollover?.amount || 0);
+          const rolloverCount = vehicleType.rollover?.count || 0;
+          const renewalAmount = formatCurrency(vehicleType.renewal?.amount || 0);
+          const renewalCount = vehicleType.renewal?.count || 0;
+          
+          // Format: Vehicle type, Rollover, Renewal (separated by | for readability)
+          return `🚗 ${vehicleType.vehicleType || 'Unknown'}: Rollover ₹${rolloverAmount} (${rolloverCount} policies) | Renewal ₹${renewalAmount} (${renewalCount} policies)`;
+        })
+        .join(' '); // Single space between multiple vehicle types
 
-        // Format branch with clearer structure - each branch on its own "line" visually
-        const branchHeader = `🏢 ${branch.branchName}: Total ₹${formatCurrency(branch.totalOD)} (${branch.totalPolicies} policies)`;
-        const vehicleSection = vehicleTypesText.length > 0 ? `- ${vehicleTypesText}` : '';
-        return `${branchHeader} ${vehicleSection}`.trim();
-      })
-      .join(' '); // Space separator - template formatting will handle layout
+      // Format branch header with dash - template adds newline after this parameter
+      const branchHeader = `🏢 ${branch.branchName}: Total ₹${formatCurrency(branch.totalOD)} (${branch.totalPolicies} policies) -`;
+      const vehicleSection = vehicleTypesText.length > 0 ? vehicleTypesText : '';
+      
+      return `${branchHeader} ${vehicleSection}`.trim();
+    };
 
-    return [
+    // Base parameters (1-8)
+    const baseParams = [
       formatDate(reportData.date),                           // {{1}} - Date
-      (reportData.summary.totalPolicies || 0).toString(),    // {{2}} - Total Policies (All Branches)
-      formatCurrency(reportData.summary.totalOD || 0),        // {{3}} - Total OD (All Branches)
+      (reportData.summary.totalPolicies || 0).toString(),    // {{2}} - Total Policies
+      formatCurrency(reportData.summary.totalOD || 0),        // {{3}} - Total OD
       (reportData.summary.rolloverCount || 0).toString(),    // {{4}} - Rollover Count
       formatCurrency(reportData.summary.rolloverOD || 0),    // {{5}} - Rollover OD
       (reportData.summary.renewalCount || 0).toString(),      // {{6}} - Renewal Count
       formatCurrency(reportData.summary.renewalOD || 0),     // {{7}} - Renewal OD
       reportData.branches.length.toString(),                  // {{8}} - Number of Branches
-      branchesText || 'No branches'                           // {{9}} - All Branches Details
     ];
+
+    // Support up to 5 branches as separate parameters ({{9}} through {{13}})
+    // Template MUST have newlines between these parameters to create line breaks
+    const maxBranches = 5;
+    const branchParams = [];
+    
+    // Add each branch as separate parameter
+    for (let i = 0; i < Math.min(reportData.branches.length, maxBranches); i++) {
+      branchParams.push(formatBranchText(reportData.branches[i]));
+    }
+    
+    // If more than max branches, combine remaining into last parameter
+    if (reportData.branches.length > maxBranches) {
+      const remainingBranches = reportData.branches.slice(maxBranches)
+        .map(branch => formatBranchText(branch))
+        .join(' ');
+      if (branchParams.length > 0) {
+        branchParams[branchParams.length - 1] += ' ' + remainingBranches;
+      }
+    }
+    
+    // Pad with space for empty branches (WhatsApp requires non-empty parameters)
+    // whatsappService will convert empty strings to space
+    while (branchParams.length < maxBranches) {
+      branchParams.push(''); // Empty string - whatsappService will handle it
+    }
+
+    return [...baseParams, ...branchParams];
   }
 
   /**

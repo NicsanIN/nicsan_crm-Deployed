@@ -357,12 +357,17 @@ async function sendTemplateMessage(phoneNumber, templateName, parameters, header
     }
     
     // Add body component with text parameters
+    // WhatsApp requires non-empty text parameters - replace empty with space
     components.push({
       type: 'body',
-      parameters: parameters.map(param => ({ 
-        type: 'text', 
-        text: String(param || '').trim() 
-      }))
+      parameters: parameters.map(param => {
+        const text = String(param || '').trim();
+        // WhatsApp doesn't accept empty text parameters, use space if empty
+        return { 
+          type: 'text', 
+          text: text || ' ' 
+        };
+      })
     });
     
     const payload = {
