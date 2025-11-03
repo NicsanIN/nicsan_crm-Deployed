@@ -504,7 +504,7 @@ async function sendPolicyWhatsApp(customerPhone, policyData, pdfS3Key = null, pd
     try {
       // Use environment variable for header image path, with fallback to default
       const customHeaderPath = process.env.WHATSAPP_HEADER_IMAGE_S3_KEY;
-      const defaultHeaderPath = 'email-assets/headers/header-desktop.png';
+      const defaultHeaderPath = 'whatsapp-assets/WhatsappMain-02-02-03.jpg';
       let headerImageS3Key = customHeaderPath || defaultHeaderPath;
       
       console.log('🖼️ Downloading header image from S3:', headerImageS3Key);
@@ -531,7 +531,7 @@ async function sendPolicyWhatsApp(customerPhone, policyData, pdfS3Key = null, pd
       }
       
       // Extract filename from S3 key for WhatsApp upload
-      const headerImageFilename = headerImageS3Key.split('/').pop() || 'header-desktop.png';
+      const headerImageFilename = headerImageS3Key.split('/').pop() || 'WhatsappMain-02-02-03.jpg';
       const contentType = headerImageFilename.endsWith('.png') ? 'image/png' : 
                          headerImageFilename.endsWith('.jpg') || headerImageFilename.endsWith('.jpeg') ? 'image/jpeg' : 
                          'image/png'; // Default to PNG
@@ -559,7 +559,7 @@ async function sendPolicyWhatsApp(customerPhone, policyData, pdfS3Key = null, pd
       ];
 
       console.log('📤 Sending template message (no PDF)...');
-      const textResult = await sendTemplateMessage(formattedPhone, 'policy', templateParameters, headerImageMediaId);
+      const textResult = await sendTemplateMessage(formattedPhone, 'customer_policy_issued', templateParameters, headerImageMediaId);
       
       if (!textResult.success) {
         console.error('⚠️ WhatsApp template message failed:', textResult.error);
@@ -594,7 +594,7 @@ async function sendPolicyWhatsApp(customerPhone, policyData, pdfS3Key = null, pd
 
     // Send template message first (bypasses 24-hour window restriction)
     console.log('📤 Sending template message with header image...');
-    const textResult = await sendTemplateMessage(formattedPhone, 'policy', templateParameters, headerImageMediaId);
+    const textResult = await sendTemplateMessage(formattedPhone, 'customer_policy_issued', templateParameters, headerImageMediaId);
     
     if (!textResult.success) {
       console.error('⚠️ WhatsApp template message failed:', textResult.error);
