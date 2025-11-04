@@ -87,26 +87,56 @@ function PageLeaderboard() {
     });
   };
 
-  const downloadCSV = () => {
+  const downloadRolloverCSV = () => {
     const headers = ['Telecaller', 'Leads Assigned', 'Converted', 'Total OD'];
     
     const csvContent = [
       headers.join(','),
-      ...getSortedReps().map(rep => {
-        return [
-          `"${rep.name || ''}"`,
-          rep.leads_assigned || rep.leads || 0,
-          rep.converted || 0,
-          rep.total_od || 0
-        ].join(',');
-      })
+      ...reps
+        .filter(rep => (rep.rollover_policies || 0) > 0)
+        .sort((a, b) => (b.rollover_total_od || 0) - (a.rollover_total_od || 0))
+        .map(rep => {
+          return [
+            `"${rep.name || ''}"`,
+            rep.rollover_policies || 0,
+            rep.rollover_policies || 0,
+            rep.rollover_total_od || 0
+          ].join(',');
+        })
     ].join('\n');
     
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `rep-leaderboard-${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `rep-leaderboard-rollover-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const downloadRenewalCSV = () => {
+    const headers = ['Telecaller', 'Leads Assigned', 'Converted', 'Total OD'];
+    
+    const csvContent = [
+      headers.join(','),
+      ...reps
+        .filter(rep => (rep.renewal_policies || 0) > 0)
+        .sort((a, b) => (b.renewal_total_od || 0) - (a.renewal_total_od || 0))
+        .map(rep => {
+          return [
+            `"${rep.name || ''}"`,
+            rep.renewal_policies || 0,
+            rep.renewal_policies || 0,
+            rep.renewal_total_od || 0
+          ].join(',');
+        })
+    ].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `rep-leaderboard-renewal-${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -148,11 +178,18 @@ function PageLeaderboard() {
         </div>
         <div className="ml-auto flex items-center gap-2 text-sm">
           <button 
-            onClick={downloadCSV}
+            onClick={downloadRolloverCSV}
             className="flex items-center gap-2 px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
             <Download className="w-4 h-4"/>
-            Download CSV
+            Rollover CSV
+          </button>
+          <button 
+            onClick={downloadRenewalCSV}
+            className="flex items-center gap-2 px-3 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+          >
+            <Download className="w-4 h-4"/>
+            Renewal CSV
           </button>
           <Filter className="w-4 h-4"/> <span>Sort by</span>
           <select className="border rounded-lg px-2 py-1">

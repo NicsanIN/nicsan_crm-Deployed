@@ -238,7 +238,12 @@ class BackendApiService {
         cashback: rep.cashback,
         net_revenue: rep.net_revenue,
         total_od: rep.total_od,        // Map total_od → total_od
-        cac: Math.round(1800 / rep.policies) // Calculate CAC
+        cac: Math.round(1800 / rep.policies), // Calculate CAC
+        // Preserve rollover/renewal breakdown data
+        rollover_policies: rep.rollover_policies || 0,
+        renewal_policies: rep.renewal_policies || 0,
+        rollover_total_od: rep.rollover_total_od || 0,
+        renewal_total_od: rep.renewal_total_od || 0
       }));
 
       return {

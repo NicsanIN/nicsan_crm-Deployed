@@ -1370,17 +1370,21 @@ async savePolicy(policyData) {
     };
   }
 
-  // Calculate sales reps from PostgreSQL
+  // Calculate sales reps from PostgreSQL with rollover/renewal breakdown
   async calculateSalesReps() {
     const result = await query(`
       SELECT 
         COALESCE(caller_name, 'Unknown') as name,
         COUNT(*) as policies,
+        COUNT(*) FILTER (WHERE UPPER(COALESCE(rollover, '')) = 'ROLLOVER') as rollover_policies,
+        COUNT(*) FILTER (WHERE UPPER(COALESCE(rollover, '')) = 'RENEWAL') as renewal_policies,
         SUM(total_premium) as gwp,
         SUM(brokerage) as brokerage,
         SUM(cashback_amount) as cashback,
         SUM(brokerage - cashback_amount) as net_revenue,
         SUM(total_od) as total_od,
+        SUM(total_od) FILTER (WHERE UPPER(COALESCE(rollover, '')) = 'ROLLOVER') as rollover_total_od,
+        SUM(total_od) FILTER (WHERE UPPER(COALESCE(rollover, '')) = 'RENEWAL') as renewal_total_od,
         AVG(cashback_percentage) as avg_cashback_pct
       FROM policies 
       GROUP BY COALESCE(caller_name, 'Unknown')
