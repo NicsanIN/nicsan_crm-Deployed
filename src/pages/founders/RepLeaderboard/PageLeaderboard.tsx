@@ -92,8 +92,9 @@ function PageLeaderboard() {
     
     const csvContent = [
       headers.join(','),
-      ...getSortedReps()
+      ...reps
         .filter(rep => (rep.rollover_policies || 0) > 0)
+        .sort((a, b) => (b.rollover_total_od || 0) - (a.rollover_total_od || 0))
         .map(rep => {
           return [
             `"${rep.name || ''}"`,
@@ -118,8 +119,9 @@ function PageLeaderboard() {
     
     const csvContent = [
       headers.join(','),
-      ...getSortedReps()
+      ...reps
         .filter(rep => (rep.renewal_policies || 0) > 0)
+        .sort((a, b) => (b.renewal_total_od || 0) - (a.renewal_total_od || 0))
         .map(rep => {
           return [
             `"${rep.name || ''}"`,
