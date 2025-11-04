@@ -21,13 +21,6 @@ import PageUpload from './pages/operations/PDFUpload/PDFUpload';
 import PageOperationsSettings from './pages/operations/Settings/Settings';
 import { SettingsProvider } from './contexts/SettingsContext';
 
-// Extend jsPDF type to include autoTable
-declare module 'jspdf' {
-  interface jsPDF {
-    autoTable: (options: any) => jsPDF;
-  }
-}
-
 // Environment variables
 const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
 // const ENABLE_MOCK_DATA = import.meta.env.VITE_ENABLE_MOCK_DATA === 'true';
