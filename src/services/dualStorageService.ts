@@ -183,7 +183,11 @@ class DualStorageService {
         net_revenue: 29000,
         total_od: 450000,
         conversion_rate: 0.183,
-        cac: 82
+        cac: 82,
+        rollover_policies: 15,
+        renewal_policies: 7,
+        rollover_total_od: 300000,
+        renewal_total_od: 150000
       },
       {
         id: '2',
@@ -196,7 +200,11 @@ class DualStorageService {
         net_revenue: 22500,
         total_od: 380000,
         conversion_rate: 0.164,
-        cac: 100
+        cac: 100,
+        rollover_policies: 12,
+        renewal_policies: 6,
+        rollover_total_od: 250000,
+        renewal_total_od: 130000
       },
       {
         id: '3',
@@ -209,7 +217,11 @@ class DualStorageService {
         net_revenue: 28000,
         total_od: 420000,
         conversion_rate: 0.222,
-        cac: 90
+        cac: 90,
+        rollover_policies: 14,
+        renewal_policies: 6,
+        rollover_total_od: 280000,
+        renewal_total_od: 140000
       }
     ];
 
