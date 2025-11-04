@@ -3,6 +3,7 @@ const router = express.Router();
 const { query } = require('../config/database');
 const { authenticateToken, requireFounder } = require('../middleware/auth');
 const emailService = require('../services/emailService');
+const dailyReportScheduler = require('../jobs/dailyReport');
 
 /**
  * Get yesterday's date in IST timezone for daily reports
@@ -180,6 +181,53 @@ router.post('/send-daily-od-report', authenticateToken, requireFounder, async (r
     res.status(500).json({
       success: false,
       error: 'Failed to send daily OD report'
+    });
+  }
+});
+
+// Test WhatsApp reports (for manual testing)
+router.post('/test-whatsapp-reports', authenticateToken, requireFounder, async (req, res) => {
+  try {
+    const { date } = req.body;
+    const reportDate = date || new Date().toISOString().split('T')[0];
+    
+    console.log(`📱 Testing WhatsApp reports for date: ${reportDate}`);
+    
+    // Generate report data
+    const reportData = await dailyReportScheduler.generateReportData(reportDate);
+    
+    if (reportData.summary.totalPolicies === 0) {
+      return res.json({
+        success: false,
+        message: 'No policies found for the selected date',
+        date: reportDate
+      });
+    }
+    
+    // Send WhatsApp reports
+    console.log('📱 Sending WhatsApp reports...');
+    await dailyReportScheduler.sendBranchReportsWhatsApp(reportData);
+    
+    res.json({
+      success: true,
+      message: 'WhatsApp reports sent successfully',
+      date: reportDate,
+      summary: {
+        totalPolicies: reportData.summary.totalPolicies,
+        totalOD: reportData.summary.totalOD,
+        branches: reportData.branches.map(b => ({
+          name: b.branchName,
+          policies: b.totalPolicies,
+          totalOD: b.totalOD
+        }))
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Test WhatsApp reports error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to send WhatsApp reports'
     });
   }
 });
