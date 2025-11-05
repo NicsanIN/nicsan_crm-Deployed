@@ -90,6 +90,10 @@ wsService.initialize(server);
 const dailyReportScheduler = require('./jobs/dailyReport');
 dailyReportScheduler.start();
 
+// Initialize Weekly Rollover Report Scheduler
+const weeklyRolloverReportScheduler = require('./jobs/weeklyRolloverReport');
+weeklyRolloverReportScheduler.start();
+
 // Middleware already configured above
 
 // Error handling middleware

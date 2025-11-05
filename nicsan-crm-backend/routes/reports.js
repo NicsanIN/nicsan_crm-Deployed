@@ -4,6 +4,8 @@ const { query } = require('../config/database');
 const { authenticateToken, requireFounder } = require('../middleware/auth');
 const emailService = require('../services/emailService');
 const dailyReportScheduler = require('../jobs/dailyReport');
+const weeklyRolloverReportScheduler = require('../jobs/weeklyRolloverReport');
+const storageService = require('../services/storageService');
 
 /**
  * Get yesterday's date in IST timezone for daily reports
@@ -228,6 +230,114 @@ router.post('/test-whatsapp-reports', authenticateToken, requireFounder, async (
     res.status(500).json({
       success: false,
       error: error.message || 'Failed to send WhatsApp reports'
+    });
+  }
+});
+
+// Test weekly rollover report (email + WhatsApp) - for manual testing
+router.post('/test-weekly-rollover-report', authenticateToken, requireFounder, async (req, res) => {
+  try {
+    const { weekStart, weekEnd, branch } = req.body;
+    
+    // If no dates provided, calculate previous week
+    let calculatedWeekStart, calculatedWeekEnd;
+    if (!weekStart || !weekEnd) {
+      const { weekStart: start, weekEnd: end } = weeklyRolloverReportScheduler.calculatePreviousWeek();
+      calculatedWeekStart = start;
+      calculatedWeekEnd = end;
+    } else {
+      calculatedWeekStart = weekStart;
+      calculatedWeekEnd = weekEnd;
+    }
+    
+    console.log(`🧪 Testing weekly rollover report for week: ${calculatedWeekStart} to ${calculatedWeekEnd}`);
+    
+    // If branch specified, test only that branch, otherwise test all branches
+    const branches = branch ? [branch] : ['MYSORE', 'BANASHANKARI', 'ADUGODI'];
+    
+    const results = [];
+    
+    for (const branchName of branches) {
+      try {
+        console.log(`📊 Generating ${branchName} branch weekly rollover report...`);
+        
+        // Generate branch-specific weekly rollover data
+        const reportData = await storageService.calculateWeeklyRolloverReps(
+          calculatedWeekStart, 
+          calculatedWeekEnd, 
+          branchName
+        );
+        
+        if (reportData.reps.length === 0) {
+          results.push({
+            branch: branchName,
+            success: false,
+            message: 'No rollover policies found for this week',
+            weekStart: calculatedWeekStart,
+            weekEnd: calculatedWeekEnd
+          });
+          continue;
+        }
+        
+        // Send email report
+        console.log(`📧 Sending ${branchName} branch weekly rollover email report...`);
+        const emailResult = await emailService.sendWeeklyRolloverReport(reportData, branchName);
+        
+        // Send WhatsApp report
+        console.log(`📱 Sending ${branchName} branch weekly rollover WhatsApp report...`);
+        await weeklyRolloverReportScheduler.sendWeeklyRolloverWhatsApp(reportData, branchName);
+        
+        results.push({
+          branch: branchName,
+          success: true,
+          email: emailResult.success ? {
+            sent: true,
+            recipients: emailResult.recipients,
+            messageId: emailResult.messageId
+          } : {
+            sent: false,
+            error: emailResult.error
+          },
+          whatsapp: {
+            sent: true
+          },
+          data: {
+            weekStart: reportData.weekStart,
+            weekEnd: reportData.weekEnd,
+            totalTelecallers: reportData.reps.length,
+            totalPolicies: reportData.total,
+            telecallers: reportData.reps.map(rep => ({
+              name: rep.name,
+              converted: rep.converted
+            }))
+          }
+        });
+        
+      } catch (error) {
+        console.error(`❌ Error processing ${branchName} branch:`, error);
+        results.push({
+          branch: branchName,
+          success: false,
+          error: error.message
+        });
+      }
+    }
+    
+    res.json({
+      success: true,
+      message: 'Weekly rollover report test completed',
+      weekPeriod: {
+        start: calculatedWeekStart,
+        end: calculatedWeekEnd
+      },
+      results: results
+    });
+    
+  } catch (error) {
+    console.error('❌ Test weekly rollover report error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to send weekly rollover report'
     });
   }
 });

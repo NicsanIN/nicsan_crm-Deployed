@@ -975,6 +975,219 @@ function getBranchHeadEmail(branch) {
 }
 
 /**
+ * Send weekly rollover report to branch head
+ * @param {Object} reportData - Weekly rollover report data with reps array
+ * @param {string} branch - Branch name
+ * @returns {Promise<Object>} Email sending result
+ */
+async function sendWeeklyRolloverReport(reportData, branch) {
+  try {
+    console.log(`📧 Sending ${branch} branch weekly rollover report for week: ${reportData.weekStart} to ${reportData.weekEnd}`);
+    
+    // Get branch head email from environment
+    const branchHeadEmail = getBranchHeadEmail(branch);
+    
+    if (!branchHeadEmail) {
+      throw new Error(`No email configured for ${branch} branch head`);
+    }
+    
+    // Generate weekly rollover email content
+    const emailContent = generateWeeklyRolloverEmailContent(reportData, branch);
+    
+    // Format week period for subject
+    const formatWeekPeriod = (start, end) => {
+      const startDate = new Date(start);
+      const endDate = new Date(end);
+      const startFormatted = startDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+      const endFormatted = endDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+      return `${startFormatted} - ${endFormatted}`;
+    };
+    
+    const weekPeriod = formatWeekPeriod(reportData.weekStart, reportData.weekEnd);
+    
+    // Prepare email options
+    const mailOptions = {
+      from: {
+        name: 'Nicsan CRM System',
+        address: process.env.SMTP_USER
+      },
+      to: branchHeadEmail,
+      subject: `Weekly Rollover Report - ${branch} Branch - ${weekPeriod}`,
+      html: emailContent.html,
+      text: emailContent.text
+    };
+    
+    // Send email
+    const result = await transporter.sendMail(mailOptions);
+    
+    console.log(`✅ ${branch} branch weekly rollover report email sent successfully:`, result.messageId);
+    return {
+      success: true,
+      messageId: result.messageId,
+      recipients: [branchHeadEmail]
+    };
+    
+  } catch (error) {
+    console.error(`❌ ${branch} branch weekly rollover report email failed:`, error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+/**
+ * Generate weekly rollover email content (simple 2-column table)
+ * @param {Object} reportData - Weekly rollover report data
+ * @param {string} branch - Branch name
+ * @returns {Object} Email content with HTML and text versions
+ */
+function generateWeeklyRolloverEmailContent(reportData, branch) {
+  const { weekStart, weekEnd, reps, total } = reportData;
+  
+  // Format week period
+  const formatWeekPeriod = (start, end) => {
+    const startDate = new Date(start);
+    const endDate = new Date(end);
+    const startFormatted = startDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+    const endFormatted = endDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+    return `${startFormatted} - ${endFormatted}`;
+  };
+  
+  const weekPeriod = formatWeekPeriod(weekStart, weekEnd);
+  
+  // Generate HTML content
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Weekly Rollover Report - ${branch} Branch</title>
+      <style>
+        body {
+          font-family: Arial, sans-serif;
+          line-height: 1.6;
+          color: #333;
+          max-width: 800px;
+          margin: 0 auto;
+          padding: 20px;
+          background-color: #f4f4f4;
+        }
+        .container {
+          background-color: #ffffff;
+          padding: 30px;
+          border-radius: 10px;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+          color: #2c3e50;
+          border-bottom: 3px solid #3498db;
+          padding-bottom: 10px;
+        }
+        .week-info {
+          background-color: #ecf0f1;
+          padding: 15px;
+          border-radius: 5px;
+          margin: 20px 0;
+          font-size: 16px;
+        }
+        table {
+          width: 100%;
+          border-collapse: collapse;
+          margin: 20px 0;
+          background-color: #ffffff;
+        }
+        th {
+          background-color: #3498db;
+          color: #ffffff;
+          padding: 12px;
+          text-align: left;
+          font-weight: bold;
+        }
+        td {
+          padding: 12px;
+          border-bottom: 1px solid #ddd;
+        }
+        tr:hover {
+          background-color: #f5f5f5;
+        }
+        .total-row {
+          background-color: #ecf0f1;
+          font-weight: bold;
+          font-size: 16px;
+        }
+        .footer {
+          margin-top: 30px;
+          padding-top: 20px;
+          border-top: 1px solid #ddd;
+          color: #7f8c8d;
+          font-size: 12px;
+          text-align: center;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <h1>📊 Weekly Rollover Report - ${branch} Branch</h1>
+        
+        <div class="week-info">
+          <strong>Week Period:</strong> ${weekPeriod}
+        </div>
+        
+        <h2>Telecaller Performance</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Telecaller Name</th>
+              <th>Converted Policies</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${reps.length > 0 ? reps.map(rep => `
+              <tr>
+                <td>${rep.name}</td>
+                <td>${rep.converted}</td>
+              </tr>
+            `).join('') : '<tr><td colspan="2" style="text-align: center; color: #7f8c8d;">No rollover policies for this week</td></tr>'}
+            <tr class="total-row">
+              <td><strong>Total</strong></td>
+              <td><strong>${total}</strong></td>
+            </tr>
+          </tbody>
+        </table>
+        
+        <div class="footer">
+          <p>This is an automated report from Nicsan CRM System.</p>
+          <p>Report generated on ${new Date().toLocaleString('en-IN')}</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+  
+  // Generate text content
+  const text = `
+📊 Weekly Rollover Report - ${branch} Branch
+Week: ${weekPeriod}
+
+Telecaller Performance:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Telecaller Name        | Converted Policies
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${reps.length > 0 ? reps.map(rep => `${rep.name.padEnd(23)}| ${rep.converted}`).join('\n') : 'No rollover policies for this week'}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Total                 | ${total}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+This is an automated report from Nicsan CRM System.
+Report generated on ${new Date().toLocaleString('en-IN')}
+  `;
+  
+  return { html, text };
+}
+
+/**
  * Generate branch-specific daily OD report email content
  * @param {Object} reportData - Branch-specific report data
  * @param {string} branch - Branch name
@@ -1393,5 +1606,6 @@ module.exports = {
   sendDailyODReport,
   generateDailyODReportContent,
   sendBranchODReport,
-  generateBranchODReportContent
+  generateBranchODReportContent,
+  sendWeeklyRolloverReport
 };
