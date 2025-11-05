@@ -1378,7 +1378,7 @@ async savePolicy(policyData) {
       // month format: '2024-01' (YYYY-MM)
       // Validate month format and construct date
       const monthDate = `${month}-01`;
-      whereClause = `WHERE DATE_TRUNC('month', issue_date) = $1::date`;
+      whereClause = `WHERE DATE_TRUNC('month', created_at) = $1::date`;
       params.push(monthDate);
     }
     
@@ -1404,6 +1404,41 @@ async savePolicy(policyData) {
     `, params);
 
     return result.rows;
+  }
+
+  // Calculate weekly rollover reps for branch heads (telecaller name + converted policies only)
+  async calculateWeeklyRolloverReps(weekStart, weekEnd, branch) {
+    try {
+      const result = await query(`
+        SELECT 
+          COALESCE(caller_name, 'Unknown') as name,
+          COUNT(*) FILTER (WHERE UPPER(COALESCE(rollover, '')) = 'ROLLOVER') as converted
+        FROM policies 
+        WHERE created_at >= $1 
+          AND created_at <= $2 
+          AND branch = $3
+          AND UPPER(COALESCE(rollover, '')) = 'ROLLOVER'
+        GROUP BY COALESCE(caller_name, 'Unknown')
+        ORDER BY converted DESC
+      `, [weekStart, weekEnd, branch]);
+
+      // Calculate total
+      const total = result.rows.reduce((sum, rep) => sum + (parseInt(rep.converted) || 0), 0);
+
+      return {
+        weekStart: weekStart,
+        weekEnd: weekEnd,
+        branch: branch,
+        reps: result.rows.map(row => ({
+          name: row.name,
+          converted: parseInt(row.converted) || 0
+        })),
+        total: total
+      };
+    } catch (error) {
+      console.error(`❌ Error calculating weekly rollover reps for ${branch}:`, error);
+      throw error;
+    }
   }
 
   // Calculate vehicle analysis from PostgreSQL
