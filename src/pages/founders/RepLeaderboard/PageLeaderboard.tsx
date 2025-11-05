@@ -87,12 +87,26 @@ function PageLeaderboard() {
     });
   };
 
-  const downloadRolloverCSV = () => {
+  const downloadRolloverCSV = async () => {
+    // Get current month (YYYY-MM format)
+    const currentMonth = new Date().toISOString().slice(0, 7); // '2024-01'
+    
+    // Fetch month-specific data
+    let monthReps = reps;
+    try {
+      const response = await DualStorageService.getSalesReps(currentMonth);
+      if (response.success && Array.isArray(response.data)) {
+        monthReps = response.data;
+      }
+    } catch (error) {
+      console.error('Failed to load month-specific data, using current data:', error);
+    }
+    
     const headers = ['Telecaller', 'Leads Assigned', 'Converted', 'Total OD'];
     
     const csvContent = [
       headers.join(','),
-      ...reps
+      ...monthReps
         .filter(rep => (rep.rollover_policies || 0) > 0)
         .sort((a, b) => (b.rollover_total_od || 0) - (a.rollover_total_od || 0))
         .map(rep => {
@@ -109,17 +123,31 @@ function PageLeaderboard() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `rep-leaderboard-rollover-${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `rep-leaderboard-rollover-${currentMonth}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
 
-  const downloadRenewalCSV = () => {
+  const downloadRenewalCSV = async () => {
+    // Get current month (YYYY-MM format)
+    const currentMonth = new Date().toISOString().slice(0, 7); // '2024-01'
+    
+    // Fetch month-specific data
+    let monthReps = reps;
+    try {
+      const response = await DualStorageService.getSalesReps(currentMonth);
+      if (response.success && Array.isArray(response.data)) {
+        monthReps = response.data;
+      }
+    } catch (error) {
+      console.error('Failed to load month-specific data, using current data:', error);
+    }
+    
     const headers = ['Telecaller', 'Leads Assigned', 'Converted', 'Total OD'];
     
     const csvContent = [
       headers.join(','),
-      ...reps
+      ...monthReps
         .filter(rep => (rep.renewal_policies || 0) > 0)
         .sort((a, b) => (b.renewal_total_od || 0) - (a.renewal_total_od || 0))
         .map(rep => {
@@ -136,7 +164,7 @@ function PageLeaderboard() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `rep-leaderboard-renewal-${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `rep-leaderboard-renewal-${currentMonth}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
