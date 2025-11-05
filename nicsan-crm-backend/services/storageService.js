@@ -1136,11 +1136,11 @@ async savePolicy(policyData) {
   }
 
   // Sales Reps with PostgreSQL → S3 → Mock Data
-  async getSalesRepsWithFallback() {
+  async getSalesRepsWithFallback(month = null) {
     try {
       // Try PostgreSQL first (Primary Storage)
-      const reps = await this.calculateSalesReps();
-      console.log('✅ Retrieved sales reps from PostgreSQL (Primary Storage)');
+      const reps = await this.calculateSalesReps(month);
+      console.log('✅ Retrieved sales reps from PostgreSQL (Primary Storage)' + (month ? ` for month: ${month}` : ''));
       
       // Save to S3 for future use (Secondary Storage)
       const s3Key = withPrefix(`data/aggregated/sales-reps-${Date.now()}.json`);
@@ -1371,7 +1371,17 @@ async savePolicy(policyData) {
   }
 
   // Calculate sales reps from PostgreSQL with rollover/renewal breakdown
-  async calculateSalesReps() {
+  async calculateSalesReps(month = null) {
+    let whereClause = '';
+    let params = [];
+    if (month) {
+      // month format: '2024-01' (YYYY-MM)
+      // Validate month format and construct date
+      const monthDate = `${month}-01`;
+      whereClause = `WHERE DATE_TRUNC('month', issue_date) = $1::date`;
+      params.push(monthDate);
+    }
+    
     const result = await query(`
       SELECT 
         COALESCE(caller_name, 'Unknown') as name,
@@ -1387,10 +1397,11 @@ async savePolicy(policyData) {
         SUM(total_od) FILTER (WHERE UPPER(COALESCE(rollover, '')) = 'RENEWAL') as renewal_total_od,
         AVG(cashback_percentage) as avg_cashback_pct
       FROM policies 
+      ${whereClause}
       GROUP BY COALESCE(caller_name, 'Unknown')
       ORDER BY net_revenue DESC
       LIMIT 20
-    `);
+    `, params);
 
     return result.rows;
   }

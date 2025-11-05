@@ -210,10 +210,13 @@ class BackendApiService {
   }
 
   // Sales Reps from backend
-  async getSalesReps(): Promise<BackendApiResult> {
+  async getSalesReps(month?: string): Promise<BackendApiResult> {
     try {
+      const url = month 
+        ? `${API_BASE_URL}/dashboard/sales-reps?month=${month}`
+        : `${API_BASE_URL}/dashboard/sales-reps`;
 
-      const response = await fetch(`${API_BASE_URL}/dashboard/sales-reps`, {
+      const response = await fetch(url, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,

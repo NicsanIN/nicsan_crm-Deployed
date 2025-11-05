@@ -170,7 +170,7 @@ class DualStorageService {
   }
 
   // Sales Reps with dual storage
-  async getSalesReps(): Promise<DualStorageResult> {
+  async getSalesReps(month?: string): Promise<DualStorageResult> {
     const mockData = [
       {
         id: '1',
@@ -226,7 +226,7 @@ class DualStorageService {
     ];
 
     return this.executeDualStoragePattern(
-      () => this.backendApiService.getSalesReps(),
+      () => this.backendApiService.getSalesReps(month),
       mockData,
       'Sales Reps'
     );
