@@ -780,11 +780,12 @@ function PageUpload() {
                 />
               </div>
               <div>
-                <label className="block text-xs text-blue-700 mb-1">Rollover/Renewal</label>
+                <label className="block text-xs text-blue-700 mb-1">Rollover/Renewal <span className="text-red-500">*</span></label>
                 <select 
                   value={manualExtras.rollover}
                   onChange={(e) => handleManualExtrasChange('rollover', e.target.value)}
                   className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                  required
                 >
                   <option value="">Select Rollover/Renewal</option>
                   <option value="ROLLOVER">ROLLOVER</option>
@@ -933,6 +934,12 @@ function PageUpload() {
                   // Validate required branch field
                   if (!manualExtras.branch || manualExtras.branch.trim() === '') {
                     alert('Branch field is required! Please enter branch name.');
+                    return;
+                  }
+                  
+                  // Validate required rollover/renewal field
+                  if (!manualExtras.rollover || manualExtras.rollover.trim() === '') {
+                    alert('Rollover/Renewal field is required! Please select ROLLOVER or RENEWAL.');
                     return;
                   }
                   
