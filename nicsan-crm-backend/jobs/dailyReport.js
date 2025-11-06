@@ -143,16 +143,16 @@ class DailyReportScheduler {
       
       const result = await query(reportQuery, [date]);
       
-      // Get summary totals
+      // Get summary totals (only ROLLOVER and RENEWAL policies to match branch breakdown)
       const summaryQuery = `
         SELECT 
-          COUNT(*) as total_policies,
-          SUM(COALESCE(total_od, 0)) as total_od,
-          SUM(COALESCE(total_premium, 0)) as total_premium,
-          COUNT(CASE WHEN UPPER(rollover) = 'ROLLOVER' THEN 1 END) as rollover_count,
-          COUNT(CASE WHEN UPPER(rollover) = 'RENEWAL' THEN 1 END) as renewal_count,
-          SUM(CASE WHEN UPPER(rollover) = 'ROLLOVER' THEN COALESCE(total_od, 0) ELSE 0 END) as rollover_od,
-          SUM(CASE WHEN UPPER(rollover) = 'RENEWAL' THEN COALESCE(total_od, 0) ELSE 0 END) as renewal_od
+          COUNT(CASE WHEN UPPER(COALESCE(rollover, '')) IN ('ROLLOVER', 'RENEWAL') THEN 1 END) as total_policies,
+          SUM(CASE WHEN UPPER(COALESCE(rollover, '')) IN ('ROLLOVER', 'RENEWAL') THEN COALESCE(total_od, 0) ELSE 0 END) as total_od,
+          SUM(CASE WHEN UPPER(COALESCE(rollover, '')) IN ('ROLLOVER', 'RENEWAL') THEN COALESCE(total_premium, 0) ELSE 0 END) as total_premium,
+          COUNT(CASE WHEN UPPER(COALESCE(rollover, '')) = 'ROLLOVER' THEN 1 END) as rollover_count,
+          COUNT(CASE WHEN UPPER(COALESCE(rollover, '')) = 'RENEWAL' THEN 1 END) as renewal_count,
+          SUM(CASE WHEN UPPER(COALESCE(rollover, '')) = 'ROLLOVER' THEN COALESCE(total_od, 0) ELSE 0 END) as rollover_od,
+          SUM(CASE WHEN UPPER(COALESCE(rollover, '')) = 'RENEWAL' THEN COALESCE(total_od, 0) ELSE 0 END) as renewal_od
         FROM policies 
         WHERE DATE(created_at) = $1
       `;
@@ -201,16 +201,22 @@ class DailyReportScheduler {
         const amount = parseFloat(row.total_od_amount) || 0;
         const count = parseInt(row.policy_count) || 0;
         
+        // Only process and count policies with valid rollover status (ROLLOVER or RENEWAL)
+        // Unknown/NULL policies are excluded from branch totals to match displayed breakdown
         if (rolloverStatus && rolloverStatus.toUpperCase() === 'ROLLOVER') {
-          reportData.branches[branch].vehicleTypes[vehicleType].rollover.amount = amount;
-          reportData.branches[branch].vehicleTypes[vehicleType].rollover.count = count;
+          reportData.branches[branch].vehicleTypes[vehicleType].rollover.amount += amount;
+          reportData.branches[branch].vehicleTypes[vehicleType].rollover.count += count;
+          // Add to branch totals only for valid ROLLOVER status
+          reportData.branches[branch].totalOD += amount;
+          reportData.branches[branch].totalPolicies += count;
         } else if (rolloverStatus && rolloverStatus.toUpperCase() === 'RENEWAL') {
-          reportData.branches[branch].vehicleTypes[vehicleType].renewal.amount = amount;
-          reportData.branches[branch].vehicleTypes[vehicleType].renewal.count = count;
+          reportData.branches[branch].vehicleTypes[vehicleType].renewal.amount += amount;
+          reportData.branches[branch].vehicleTypes[vehicleType].renewal.count += count;
+          // Add to branch totals only for valid RENEWAL status
+          reportData.branches[branch].totalOD += amount;
+          reportData.branches[branch].totalPolicies += count;
         }
-        
-        reportData.branches[branch].totalOD += amount;
-        reportData.branches[branch].totalPolicies += count;
+        // Unknown/NULL policies are skipped - not added to branch totals
       });
       
       // Convert branches object to array for easier template processing
@@ -375,16 +381,16 @@ class DailyReportScheduler {
       
       const result = await query(reportQuery, [date, branch]);
       
-      // Get branch-specific summary totals (rollover only)
+      // Get branch-specific summary totals (rollover only - only ROLLOVER policies to match breakdown)
       const summaryQuery = `
         SELECT 
-          COUNT(*) as total_policies,
-          SUM(COALESCE(total_od, 0)) as total_od,
-          SUM(COALESCE(total_premium, 0)) as total_premium,
-          COUNT(CASE WHEN UPPER(rollover) = 'ROLLOVER' THEN 1 END) as rollover_count,
-          SUM(CASE WHEN UPPER(rollover) = 'ROLLOVER' THEN COALESCE(total_od, 0) ELSE 0 END) as rollover_od
+          COUNT(CASE WHEN UPPER(COALESCE(rollover, '')) = 'ROLLOVER' THEN 1 END) as total_policies,
+          SUM(CASE WHEN UPPER(COALESCE(rollover, '')) = 'ROLLOVER' THEN COALESCE(total_od, 0) ELSE 0 END) as total_od,
+          SUM(CASE WHEN UPPER(COALESCE(rollover, '')) = 'ROLLOVER' THEN COALESCE(total_premium, 0) ELSE 0 END) as total_premium,
+          COUNT(CASE WHEN UPPER(COALESCE(rollover, '')) = 'ROLLOVER' THEN 1 END) as rollover_count,
+          SUM(CASE WHEN UPPER(COALESCE(rollover, '')) = 'ROLLOVER' THEN COALESCE(total_od, 0) ELSE 0 END) as rollover_od
         FROM policies 
-        WHERE DATE(created_at) = $1 AND branch = $2 AND UPPER(rollover) = 'ROLLOVER'
+        WHERE DATE(created_at) = $1 AND branch = $2 AND UPPER(COALESCE(rollover, '')) = 'ROLLOVER'
       `;
       
       const summaryResult = await query(summaryQuery, [date, branch]);
@@ -429,16 +435,22 @@ class DailyReportScheduler {
         const amount = parseFloat(row.total_od_amount) || 0;
         const count = parseInt(row.policy_count) || 0;
         
+        // Only process and count policies with valid rollover status (ROLLOVER or RENEWAL)
+        // Unknown/NULL policies are excluded from branch totals to match displayed breakdown
         if (rolloverStatus && rolloverStatus.toUpperCase() === 'ROLLOVER') {
-          reportData.branches[branch].vehicleTypes[vehicleType].rollover.amount = amount;
-          reportData.branches[branch].vehicleTypes[vehicleType].rollover.count = count;
+          reportData.branches[branch].vehicleTypes[vehicleType].rollover.amount += amount;
+          reportData.branches[branch].vehicleTypes[vehicleType].rollover.count += count;
+          // Add to branch totals only for valid ROLLOVER status
+          reportData.branches[branch].totalOD += amount;
+          reportData.branches[branch].totalPolicies += count;
         } else if (rolloverStatus && rolloverStatus.toUpperCase() === 'RENEWAL') {
-          reportData.branches[branch].vehicleTypes[vehicleType].renewal.amount = amount;
-          reportData.branches[branch].vehicleTypes[vehicleType].renewal.count = count;
+          reportData.branches[branch].vehicleTypes[vehicleType].renewal.amount += amount;
+          reportData.branches[branch].vehicleTypes[vehicleType].renewal.count += count;
+          // Add to branch totals only for valid RENEWAL status
+          reportData.branches[branch].totalOD += amount;
+          reportData.branches[branch].totalPolicies += count;
         }
-        
-        reportData.branches[branch].totalOD += amount;
-        reportData.branches[branch].totalPolicies += count;
+        // Unknown/NULL policies are skipped - not added to branch totals
       });
       
       // Convert branches object to array for easier template processing
