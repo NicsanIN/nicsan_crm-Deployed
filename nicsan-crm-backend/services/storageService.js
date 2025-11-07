@@ -489,7 +489,7 @@ async savePolicy(policyData) {
           console.log('⚠️ IDV value seems unreasonably large, checking for extraction errors...');
           
           // Check if it's a concatenation error (not policy year context)
-          if (idvStr.length >= 8 && /^\d{8,}$/.test(idvStr)) {
+          if (idvStr.length >= 9 && /^\d{9,}$/.test(idvStr)) {
             // Try to extract reasonable IDV from the value
             const reasonableIdv = parseInt(idvStr.substring(0, 6)); // Take first 6 digits
             if (reasonableIdv >= 100000 && reasonableIdv <= 10000000) {
