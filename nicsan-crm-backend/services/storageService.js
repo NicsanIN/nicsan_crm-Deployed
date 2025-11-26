@@ -456,47 +456,25 @@ async savePolicy(policyData) {
       // IDV Validation and Processing
       let correctedIdv = openaiResult.idv;
       
-      // Accept IDV values from multiple sources (header and table data)
-      // Policy year context is now valid and should be preserved
       if (correctedIdv && correctedIdv > 0) {
         const idvStr = correctedIdv.toString();
+        const policyYearConcatPattern = /^((?:19|20)\d{2})(\d{5,7})$/;
+        const yearMatch = idvStr.match(policyYearConcatPattern);
         
-        // Validate IDV is within reasonable range for vehicle insurance
-        if (correctedIdv >= 100000 && correctedIdv <= 10000000) {
-          // Check for policy year concatenation pattern (1-4 digits + 6-7 digit IDV)
-          const policyYearPattern = /^(\d{1,4})(\d{6,7})$/;
-          const match = idvStr.match(policyYearPattern);
+        // Only strip a prefix when the first four digits are a realistic policy year (19xx/20xx)
+        if (yearMatch) {
+          const policyYear = parseInt(yearMatch[1], 10);
+          const idvValue = parseInt(yearMatch[2], 10);
           
-          if (match) {
-            const policyYear = match[1];
-            const idvValue = match[2];
-            const idvNum = parseInt(idvValue);
-            
-            // Validate policy year is reasonable (1-4 digits) and IDV is reasonable
-            if (policyYear.length >= 1 && policyYear.length <= 4 && 
-                parseInt(policyYear) >= 1 && parseInt(policyYear) <= 9999 &&
-                idvNum >= 100000 && idvNum <= 10000000) {
-              correctedIdv = idvNum;
-              console.log(`✅ IDV corrected from ${openaiResult.idv} to ${correctedIdv} (policy year prefix removed)`);
-            } else {
-              console.log(`✅ IDV validated: ${correctedIdv} (from table or header source)`);
-            }
-          } else {
-            console.log(`✅ IDV validated: ${correctedIdv} (from table or header source)`);
+          if (policyYear >= 1900 && policyYear <= 2100 && idvValue >= 100000) {
+            correctedIdv = idvValue;
+            console.log(`✅ IDV corrected from ${openaiResult.idv} to ${correctedIdv} (policy year prefix removed)`);
           }
         } else if (correctedIdv > 10000000) {
-          // Only correct if value is unreasonably large (likely extraction error)
-          console.log('⚠️ IDV value seems unreasonably large, checking for extraction errors...');
-          
-          // Check if it's a concatenation error (not policy year context)
-          if (idvStr.length >= 9 && /^\d{9,}$/.test(idvStr)) {
-            // Try to extract reasonable IDV from the value
-            const reasonableIdv = parseInt(idvStr.substring(0, 6)); // Take first 6 digits
-            if (reasonableIdv >= 100000 && reasonableIdv <= 10000000) {
-              correctedIdv = reasonableIdv;
-              console.log(`✅ IDV corrected from ${openaiResult.idv} to ${correctedIdv} (extraction error fix)`);
-            }
-          }
+          // For very large values, just log so reviewers can verify instead of truncating digits
+          console.log('⚠️ IDV appears unusually large; leaving value unchanged for manual review.');
+        } else {
+          console.log(`✅ IDV validated: ${correctedIdv} (from table or header source)`);
         }
       }
       
