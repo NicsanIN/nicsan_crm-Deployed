@@ -394,6 +394,126 @@ class BackendApiService {
     }
   }
 
+  // Get policy numbers only (fast query for validation, no S3 enrichment)
+  async getPolicyNumbers(): Promise<BackendApiResult> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/policies/policy-numbers`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+
+      return {
+        success: true,
+        data: result.data,
+        source: 'BACKEND_API'
+      };
+    } catch (error) {
+      if (ENABLE_DEBUG) {
+        console.error('❌ BackendApiService: Get policy numbers failed:', error);
+      }
+      throw error;
+    }
+  }
+
+  // Get search fields only (fast query for search dropdown, no S3 enrichment)
+  async getPolicySearchFields(): Promise<BackendApiResult> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/policies/search-fields`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+
+      return {
+        success: true,
+        data: result.data,
+        source: 'BACKEND_API'
+      };
+    } catch (error) {
+      if (ENABLE_DEBUG) {
+        console.error('❌ BackendApiService: Get policy search fields failed:', error);
+      }
+      throw error;
+    }
+  }
+
+  // Get health insurance search fields only (fast query for search dropdown, no S3 enrichment)
+  async getHealthInsuranceSearchFields(): Promise<BackendApiResult> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/health-insurance/search-fields`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+
+      return {
+        success: true,
+        data: result.data,
+        source: 'BACKEND_API'
+      };
+    } catch (error) {
+      if (ENABLE_DEBUG) {
+        console.error('❌ BackendApiService: Get health insurance search fields failed:', error);
+      }
+      throw error;
+    }
+  }
+
+  // Get policies by source (fast query for grid entry, no S3 enrichment)
+  async getPoliciesBySource(source: string): Promise<BackendApiResult> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/policies/by-source?source=${encodeURIComponent(source)}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+
+      return {
+        success: true,
+        data: result.data,
+        source: 'BACKEND_API'
+      };
+    } catch (error) {
+      if (ENABLE_DEBUG) {
+        console.error('❌ BackendApiService: Get policies by source failed:', error);
+      }
+      throw error;
+    }
+  }
+
   // All Policies from backend
   async getAllPolicies(): Promise<BackendApiResult> {
     try {

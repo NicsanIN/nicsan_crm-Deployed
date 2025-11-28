@@ -40,20 +40,17 @@ function PageManualGrid() {
         try {
           setIsLoading(true);
           
-          // Load all policies from backend
-          const response = await DualStorageService.getAllPolicies();
+          // Load policies by source (fast query, no S3 enrichment)
+          const response = await DualStorageService.getPoliciesBySource('MANUAL_GRID');
           
           if (response.success && Array.isArray(response.data)) {
-            // Filter policies that were saved from grid
-            const gridPolicies = response.data.filter((p: any) => p.source === 'MANUAL_GRID');
-            setSavedPolicies(gridPolicies);
-            
+            setSavedPolicies(response.data);
             
             // Show info message about saved policies
-            if (gridPolicies.length > 0) {
+            if (response.data.length > 0) {
               setSaveMessage({ 
                 type: 'info', 
-                message: `Found ${gridPolicies.length} saved policies. Grid is ready for new entries.` 
+                message: `Found ${response.data.length} saved policies. Grid is ready for new entries.` 
               });
             } else {
               setSaveMessage({ 
@@ -594,11 +591,18 @@ function PageManualGrid() {
       setSaveMessage(null);
       
       // Check for duplicate policy numbers before validation
+      // Get all policy numbers once (fast query, no S3 enrichment)
+      let existingPolicyNumbers: string[] = [];
+      try {
+        const policyNumbersResponse = await DualStorageService.getPolicyNumbers();
+        existingPolicyNumbers = policyNumbersResponse.success ? policyNumbersResponse.data : [];
+      } catch (error) {
+        console.warn('Failed to load policy numbers for duplicate check:', error);
+      }
+      
       const duplicateCheckPromises = rows.map(async (row, index) => {
         try {
-          const response = await DualStorageService.getAllPolicies();
-          const existingPolicies = response.success ? response.data : [];
-          const isDuplicate = existingPolicies.some((policy: any) => policy.policyNumber === row.policy);
+          const isDuplicate = existingPolicyNumbers.includes(row.policy);
           return {
             index,
             isDuplicate,

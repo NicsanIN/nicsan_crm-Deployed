@@ -56,6 +56,97 @@ router.get('/', authenticateToken, requireOps, async (req, res) => {
   }
 });
 
+// Get all policy numbers only (fast query for validation, no S3 enrichment)
+// Must be before /:id route to avoid route conflicts
+router.get('/policy-numbers', authenticateToken, requireOps, async (req, res) => {
+  try {
+    const result = await query(
+      'SELECT policy_number FROM policies ORDER BY created_at DESC'
+    );
+    
+    const policyNumbers = result.rows.map(row => row.policy_number);
+    
+    res.json({
+      success: true,
+      data: policyNumbers
+    });
+  } catch (error) {
+    console.error('Get policy numbers error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to get policy numbers'
+    });
+  }
+});
+
+// Get search fields only (fast query for search dropdown, no S3 enrichment)
+// Must be before /:id route to avoid route conflicts
+router.get('/search-fields', authenticateToken, requireOps, async (req, res) => {
+  try {
+    const result = await query(
+      'SELECT id, policy_number, vehicle_number, customer_name, insurer FROM policies ORDER BY created_at DESC'
+    );
+    
+    const searchFields = result.rows.map(row => ({
+      id: row.id,
+      policy_number: row.policy_number,
+      vehicle_number: row.vehicle_number,
+      customer_name: row.customer_name,
+      insurer: row.insurer,
+      type: 'MOTOR'
+    }));
+    
+    res.json({
+      success: true,
+      data: searchFields
+    });
+  } catch (error) {
+    console.error('Get search fields error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to get search fields'
+    });
+  }
+});
+
+// Get policies by source (fast query for grid entry, no S3 enrichment)
+// Must be before /:id route to avoid route conflicts
+router.get('/by-source', authenticateToken, requireOps, async (req, res) => {
+  try {
+    const { source } = req.query;
+    
+    if (!source) {
+      return res.status(400).json({
+        success: false,
+        error: 'Source parameter is required'
+      });
+    }
+    
+    const result = await query(
+      'SELECT id, policy_number, vehicle_number, source FROM policies WHERE source = $1 ORDER BY created_at DESC',
+      [source]
+    );
+    
+    const policies = result.rows.map(row => ({
+      id: row.id,
+      policy_number: row.policy_number,
+      vehicle_number: row.vehicle_number,
+      source: row.source
+    }));
+    
+    res.json({
+      success: true,
+      data: policies
+    });
+  } catch (error) {
+    console.error('Get policies by source error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to get policies by source'
+    });
+  }
+});
+
 // Get policy by ID (with dual storage fallback)
 router.get('/:id', authenticateToken, requireOps, async (req, res) => {
   try {
@@ -123,6 +214,7 @@ router.post('/grid', authenticateToken, requireOps, async (req, res) => {
     });
   }
 });
+
 
 // Check if policy number already exists
 router.get('/check-duplicate/:policyNumber', authenticateToken, requireOps, async (req, res) => {

@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const storageService = require('../services/storageService');
 const { authenticateToken } = require('../middleware/auth');
+const { query } = require('../config/database');
 
 // Save Health Insurance Policy
 router.post('/save', authenticateToken, async (req, res) => {
@@ -40,6 +41,35 @@ router.post('/save', authenticateToken, async (req, res) => {
     res.status(500).json({ 
       error: 'Failed to save health insurance policy',
       details: error.message 
+    });
+  }
+});
+
+// Get search fields only (fast query for search dropdown, no S3 enrichment)
+// Must be before /:policyNumber route to avoid route conflicts
+router.get('/search-fields', authenticateToken, async (req, res) => {
+  try {
+    const result = await query(
+      'SELECT id, policy_number, customer_name, insurer FROM health_insurance ORDER BY created_at DESC'
+    );
+    
+    const searchFields = result.rows.map(row => ({
+      id: row.id,
+      policy_number: row.policy_number,
+      customer_name: row.customer_name,
+      insurer: row.insurer,
+      type: 'HEALTH'
+    }));
+    
+    res.json({
+      success: true,
+      data: searchFields
+    });
+  } catch (error) {
+    console.error('Get health insurance search fields error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to get health insurance search fields'
     });
   }
 });
