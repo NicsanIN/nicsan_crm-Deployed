@@ -1037,9 +1037,9 @@ function PageManualForm() {
       }
       
       try {
-        const response = await DualStorageService.getAllPolicies();
-        const existingPolicies = response.success ? response.data : [];
-        const isDuplicate = existingPolicies.some((policy: any) => policy.policyNumber === value);
+        const response = await DualStorageService.getPolicyNumbers();
+        const existingPolicyNumbers = response.success ? response.data : [];
+        const isDuplicate = existingPolicyNumbers.includes(value);
         if (isDuplicate) {
           errors.push('Policy number already exists. Please use a different number.');
         }

@@ -34,15 +34,15 @@ function PagePolicyDetail() {
     const loadAvailablePolicies = async () => {
       try {
         setIsLoadingPolicies(true);
-        // Load both motor and health insurance policies
+        // Load both motor and health insurance search fields (fast query, no S3 enrichment)
         const [motorResponse, healthResponse] = await Promise.all([
-          DualStorageService.getAllPolicies(),
-          DualStorageService.getAllHealthInsurance()
+          DualStorageService.getPolicySearchFields(),
+          DualStorageService.getHealthInsuranceSearchFields()
         ]);
         
         const allPolicies = [
-          ...(motorResponse.success ? (motorResponse.data || []).map((p: any) => ({ ...p, type: 'MOTOR' })) : []),
-          ...(healthResponse.success ? (healthResponse.data || []).map((p: any) => ({ ...p, type: 'HEALTH' })) : [])
+          ...(motorResponse.success ? (motorResponse.data || []) : []),
+          ...(healthResponse.success ? (healthResponse.data || []) : [])
         ];
         
         setAvailablePolicies(allPolicies);
