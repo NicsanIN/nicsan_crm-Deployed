@@ -450,6 +450,60 @@ class DualStorageService {
   }
 
   // All Policies with dual storage
+  // Get policy numbers only (fast query for validation, no S3 enrichment)
+  async getPolicyNumbers(): Promise<DualStorageResult> {
+    const mockData = ['TA-9921', 'DG-4410', 'RS-7890', 'ZK-5678', 'HE-9012'];
+
+    return this.executeDualStoragePattern(
+      () => this.backendApiService.getPolicyNumbers(),
+      mockData,
+      'Policy Numbers'
+    );
+  }
+
+  // Get policy search fields only (fast query for search dropdown, no S3 enrichment)
+  async getPolicySearchFields(): Promise<DualStorageResult> {
+    const mockData = [
+      { id: '1', policy_number: 'TA-9921', vehicle_number: 'KA 51 MM 1214', customer_name: 'John Doe', insurer: 'Tata AIG', type: 'MOTOR' },
+      { id: '2', policy_number: 'DG-4410', vehicle_number: 'KA05CJ7777', customer_name: 'Jane Smith', insurer: 'Digit', type: 'MOTOR' },
+      { id: '3', policy_number: 'RS-7890', vehicle_number: 'KA02CD3456', customer_name: 'Sarah Wilson', insurer: 'Royal Sundaram General Insurance', type: 'MOTOR' }
+    ];
+
+    return this.executeDualStoragePattern(
+      () => this.backendApiService.getPolicySearchFields(),
+      mockData,
+      'Policy Search Fields'
+    );
+  }
+
+  // Get health insurance search fields only (fast query for search dropdown, no S3 enrichment)
+  async getHealthInsuranceSearchFields(): Promise<DualStorageResult> {
+    const mockData = [
+      { id: 'health-1', policy_number: 'HI-2024-001', customer_name: 'Rajesh Kumar', insurer: 'HDFC ERGO', type: 'HEALTH' },
+      { id: 'health-2', policy_number: 'STAR-2024-002', customer_name: 'Priya Sharma', insurer: 'Star Health', type: 'HEALTH' }
+    ];
+
+    return this.executeDualStoragePattern(
+      () => this.backendApiService.getHealthInsuranceSearchFields(),
+      mockData,
+      'Health Insurance Search Fields'
+    );
+  }
+
+  // Get policies by source (fast query for grid entry, no S3 enrichment)
+  async getPoliciesBySource(source: string): Promise<DualStorageResult> {
+    const mockData = [
+      { id: '1', policy_number: 'TA-9921', vehicle_number: 'KA 51 MM 1214', source: 'MANUAL_GRID' },
+      { id: '2', policy_number: 'DG-4410', vehicle_number: 'KA05CJ7777', source: 'MANUAL_GRID' }
+    ];
+
+    return this.executeDualStoragePattern(
+      () => this.backendApiService.getPoliciesBySource(source),
+      mockData,
+      'Policies By Source'
+    );
+  }
+
   async getAllPolicies(): Promise<DualStorageResult> {
     const mockData = [
       {
