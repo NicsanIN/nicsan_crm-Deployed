@@ -23,7 +23,7 @@ interface SyncData {
 
 class CrossDeviceSyncService {
   private static instance: CrossDeviceSyncService;
-  private syncInterval: number = 5000; // 5 seconds
+  private syncInterval: number = 30000; // 30 seconds (optimized from 5 seconds to reduce S3 calls)
   private isOnline: boolean = navigator.onLine;
   private deviceId: string;
   private lastSync: number = 0;
@@ -114,10 +114,11 @@ class CrossDeviceSyncService {
 
   private async fetchAllData(): Promise<SyncData | null> {
     try {
-      
+      // Use lightweight endpoints for background sync (no S3 enrichment)
+      // Full policy data is loaded on-demand when user opens specific pages
       const [policiesResponse, healthInsuranceResponse, uploadsResponse, dashboardResponse] = await Promise.all([
-        DualStorageService.getAllPolicies(),
-        DualStorageService.getAllHealthInsurance(),
+        DualStorageService.getPolicySearchFields(),
+        DualStorageService.getHealthInsuranceSearchFields(),
         DualStorageService.getUploads(),
         DualStorageService.getDashboardMetrics()
       ]);
