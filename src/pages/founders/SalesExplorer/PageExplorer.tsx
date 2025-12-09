@@ -86,7 +86,7 @@ function PageExplorer() {
 
   const downloadCSV = () => {
     const baseHeaders = ['Telecaller', 'Make', 'Model', 'Insurer'];
-    const policyHeaders = showPolicyDetails ? ['Policy Number', 'Customer Name'] : [];
+    const policyHeaders = showPolicyDetails ? ['Policy Number', 'Customer Name', 'Vehicle Number', 'Phone Number'] : [];
     const remainingHeaders = ['Issue Date', 'Expiry Date', 'Type of Business', 'Branch', '# Policies', 'GWP', 'Total Premium', 'Total OD', 'Avg Cashback %', 'Cashback (₹)', 'Net (₹)'];
     const headers = [...baseHeaders, ...policyHeaders, ...remainingHeaders];
     
@@ -94,7 +94,7 @@ function PageExplorer() {
       headers.join(','),
       ...filtered.map(row => {
         const baseData = [row.rep, `"${row.make}"`, `"${row.model}"`, `"${row.insurer}"`];
-        const policyData = showPolicyDetails ? [`"${row.policyNumber || 'N/A'}"`, `"${row.customerName || 'N/A'}"`] : [];
+        const policyData = showPolicyDetails ? [`"${row.policyNumber || 'N/A'}"`, `"${row.customerName || 'N/A'}"`, `"${row.vehicleNumber || 'N/A'}"`, `"${row.mobile || 'N/A'}"`] : [];
         const remainingData = [
           row.issueDate && row.issueDate !== 'N/A' ? new Date(row.issueDate).toLocaleDateString('en-GB') : 'N/A',
           row.expiryDate && row.expiryDate !== 'N/A' ? new Date(row.expiryDate).toLocaleDateString('en-GB') : 'N/A',
@@ -391,7 +391,7 @@ function PageExplorer() {
                     />
                     Show Policy Details
                   </label>
-                  <p className="text-xs text-gray-500">Toggle Policy Number and Customer Name columns</p>
+                  <p className="text-xs text-gray-500">Toggle Policy Number, Customer Name, Vehicle Number, and Phone Number columns</p>
                 </div>
               </div>
         </div>
@@ -399,7 +399,7 @@ function PageExplorer() {
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-zinc-500">
-                <th className="py-2 px-2">Telecaller</th><th className="px-2">Make</th><th className="px-2">Model</th><th className="px-2">Insurer</th>{showPolicyDetails && <th className="px-2">Policy Number</th>}{showPolicyDetails && <th className="px-2">Customer Name</th>}<th className="px-2">Issue Date</th><th className="px-2">Expiry Date</th><th className="px-2">Type of Business</th><th className="px-2">Branch</th><th className="px-2"># Policies</th><th className="px-2">GWP</th><th className="px-2">Total Premium</th><th className="px-2">Total OD</th><th className="px-2">Avg Cashback %</th><th className="px-2">Cashback (₹)</th><th className="px-2">Net (₹)</th>
+                <th className="py-2 px-2">Telecaller</th><th className="px-2">Make</th><th className="px-2">Model</th><th className="px-2">Insurer</th>{showPolicyDetails && <th className="px-2">Policy Number</th>}{showPolicyDetails && <th className="px-2">Customer Name</th>}{showPolicyDetails && <th className="px-2">Vehicle Number</th>}{showPolicyDetails && <th className="px-2">Phone Number</th>}<th className="px-2">Issue Date</th><th className="px-2">Expiry Date</th><th className="px-2">Type of Business</th><th className="px-2">Branch</th><th className="px-2"># Policies</th><th className="px-2">GWP</th><th className="px-2">Total Premium</th><th className="px-2">Total OD</th><th className="px-2">Avg Cashback %</th><th className="px-2">Cashback (₹)</th><th className="px-2">Net (₹)</th>
               </tr>
             </thead>
             <tbody>
@@ -411,6 +411,8 @@ function PageExplorer() {
                   <td className="px-2">{r.insurer}</td>
                   {showPolicyDetails && <td className="px-2">{r.policyNumber || 'N/A'}</td>}
                   {showPolicyDetails && <td className="px-2">{r.customerName || 'N/A'}</td>}
+                  {showPolicyDetails && <td className="px-2">{r.vehicleNumber || 'N/A'}</td>}
+                  {showPolicyDetails && <td className="px-2">{r.mobile || 'N/A'}</td>}
                   <td className="px-2">{r.issueDate && r.issueDate !== 'N/A' ? new Date(r.issueDate).toLocaleDateString('en-GB') : 'N/A'}</td>
                   <td className="px-2">{r.expiryDate && r.expiryDate !== 'N/A' ? new Date(r.expiryDate).toLocaleDateString('en-GB') : 'N/A'}</td>
                   <td className="px-2">{r.rollover}</td>

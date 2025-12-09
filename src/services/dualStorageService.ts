@@ -259,6 +259,7 @@ class DualStorageService {
         vehicleNumber: item.vehicle_number || 'N/A',
         policyNumber: item.policy_number || 'N/A',
         customerName: item.customer_name || 'N/A',
+        mobile: item.mobile || 'N/A',
         rollover: item.rollover || 'N/A',
         branch: item.branch || 'N/A',
         issueDate: item.issue_date || 'N/A',

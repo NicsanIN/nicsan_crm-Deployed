@@ -1,4 +1,4 @@
-﻿import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { Upload, FileText, CheckCircle2, Table2, Settings, LayoutDashboard, Users, BarChart3, LogOut, SlidersHorizontal, TrendingUp, RefreshCw, CreditCard, DollarSign } from "lucide-react";
 import { authUtils } from './services/api';
 import DualStorageService from './services/dualStorageService';
