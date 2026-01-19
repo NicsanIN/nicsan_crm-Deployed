@@ -391,6 +391,7 @@ function PagePayments() {
                   <thead>
                     <tr className="text-left text-zinc-500 border-b bg-gray-50">
                       <th className="py-2 px-2 font-medium">Customer Name</th>
+                      <th className="py-2 px-2 font-medium">Ops Executive</th>
                       <th className="py-2 px-2 font-medium">Amount</th>
                       <th className="py-2 px-2 font-medium">Customer Cheque</th>
                       <th className="py-2 px-2 font-medium">Our Cheque</th>
@@ -408,6 +409,7 @@ function PagePayments() {
                       return (
                         <tr key={index} className="border-b hover:bg-gray-50 transition-colors">
                           <td className="py-2 px-2 font-medium text-gray-900">{payment.customer_name || 'N/A'}</td>
+                          <td className="py-2 px-2 text-gray-600">{payment.ops_executive || 'N/A'}</td>
                           <td className="py-2 px-2 font-semibold text-green-700">{formatCurrency(parseFloat(payment.customer_paid) || 0)}</td>
                           <td className="py-2 px-2 text-gray-600">{payment.customer_cheque_no || 'N/A'}</td>
                           <td className="py-2 px-2 text-gray-600">{payment.our_cheque_no || 'N/A'}</td>
