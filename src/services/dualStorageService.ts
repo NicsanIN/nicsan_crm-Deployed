@@ -307,6 +307,7 @@ class DualStorageService {
     const mockData = [
       {
         executive: 'Priya Singh',
+        ops_executive: 'Ops User 1',
         customer_paid: 12150,
         customer_cheque_no: 'CHQ123456',
         our_cheque_no: 'CHQ789012',
@@ -322,6 +323,7 @@ class DualStorageService {
       },
       {
         executive: 'Rahul Kumar',
+        ops_executive: 'Ops User 2',
         customer_paid: 13500,
         customer_cheque_no: 'CHQ123457',
         our_cheque_no: '',
@@ -337,6 +339,7 @@ class DualStorageService {
       },
       {
         executive: 'Anjali Sharma',
+        ops_executive: 'Ops User 3',
         customer_paid: 10800,
         customer_cheque_no: 'CHQ123458',
         our_cheque_no: 'CHQ789013',
