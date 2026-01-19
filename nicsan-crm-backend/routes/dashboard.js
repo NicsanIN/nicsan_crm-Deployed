@@ -148,6 +148,7 @@ router.get('/payments/executive', authenticateToken, requireFounder, async (req,
     const result = await query(`
       SELECT 
         executive,
+        ops_executive,
         customer_paid,
         customer_cheque_no,
         our_cheque_no,
