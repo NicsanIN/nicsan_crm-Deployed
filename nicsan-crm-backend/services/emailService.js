@@ -189,6 +189,11 @@ function generateEmailContent(policyData) {
           font-weight: bold; 
         }
         
+        .policy-highlight { 
+          color: #5AB9EA; 
+          font-weight: bold; 
+        }
+        
         /* Mobile Responsive */
         @media only screen and (max-width: 600px) {
           .email-container {
@@ -257,7 +262,7 @@ function generateEmailContent(policyData) {
             <table style="width: 100%; border-collapse: collapse;">
               <tr>
                 <td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Policy Number:</strong></td>
-                <td style="padding: 8px; border-bottom: 1px solid #ddd;" class="highlight">${policy_number}</td>
+                <td style="padding: 8px; border-bottom: 1px solid #ddd;" class="policy-highlight">${policy_number}</td>
               </tr>
               <tr>
                 <td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>Vehicle:</strong></td>
@@ -277,7 +282,7 @@ function generateEmailContent(policyData) {
               </tr>
               <tr>
                 <td style="padding: 8px;"><strong>Total Premium:</strong></td>
-                <td style="padding: 8px;" class="highlight">₹${total_premium}</td>
+                <td style="padding: 8px;" class="policy-highlight">₹${total_premium}</td>
               </tr>
             </table>
           </div>
