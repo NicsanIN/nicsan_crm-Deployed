@@ -88,8 +88,12 @@ router.get('/leaderboard', authenticateToken, requireFounder, async (req, res) =
 // Alias for frontend compatibility - sales reps with dual storage (S3 → PostgreSQL → Mock Data)
 router.get('/sales-reps', authenticateToken, requireFounder, async (req, res) => {
   try {
-    const { month } = req.query; // Get month from query params (format: YYYY-MM)
-    const reps = await storageService.getSalesRepsWithFallback(month || null);
+    const { month, fromDate, toDate } = req.query; // Get date params
+    const reps = await storageService.getSalesRepsWithFallback(
+      month || null,
+      fromDate || null,
+      toDate || null
+    );
     
     res.json({
       success: true,

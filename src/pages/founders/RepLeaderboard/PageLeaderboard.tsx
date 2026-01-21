@@ -37,6 +37,63 @@ function PageLeaderboard() {
   const [reps, setReps] = useState<any[]>([]);
   const [sortField, setSortField] = useState<string>('');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [selectedPeriod, setSelectedPeriod] = useState<'week' | 'month' | 'ytd' | null>(null);
+
+  // Function to get date range based on selected period
+  const getDateRange = (period: 'week' | 'month' | 'ytd' | null): { month?: string; fromDate?: string; toDate?: string } | null => {
+    if (period === null) {
+      return null; // No filtering - show all data
+    }
+    
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    today.setHours(23, 59, 59, 999); // End of today
+    
+    switch (period) {
+      case 'week':
+        // Current week: Sunday to today
+        const weekStart = new Date(today);
+        const dayOfWeek = weekStart.getDay(); // 0 = Sunday, 6 = Saturday
+        weekStart.setDate(weekStart.getDate() - dayOfWeek); // Go back to Sunday
+        weekStart.setHours(0, 0, 0, 0);
+        return {
+          fromDate: weekStart.toISOString().split('T')[0],
+          toDate: today.toISOString().split('T')[0]
+        };
+        
+      case 'month':
+        // Current month: 1st of month to today
+        const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+        monthStart.setHours(0, 0, 0, 0);
+        return {
+          fromDate: monthStart.toISOString().split('T')[0],
+          toDate: today.toISOString().split('T')[0]
+        };
+        
+      case 'ytd':
+        // Financial Year to Date: April 1st of current financial year to today
+        // Financial year in India: April 1 to March 31
+        const currentMonth = today.getMonth(); // 0 = January, 3 = April
+        let financialYearStart: Date;
+        
+        if (currentMonth >= 3) {
+          // If we're in April (3) or later, financial year started this calendar year
+          financialYearStart = new Date(today.getFullYear(), 3, 1); // April 1st (month 3 = April)
+        } else {
+          // If we're in Jan, Feb, or March, financial year started last calendar year
+          financialYearStart = new Date(today.getFullYear() - 1, 3, 1); // April 1st of previous year
+        }
+        
+        financialYearStart.setHours(0, 0, 0, 0);
+        return {
+          fromDate: financialYearStart.toISOString().split('T')[0],
+          toDate: today.toISOString().split('T')[0]
+        };
+        
+      default:
+        return null;
+    }
+  };
 
   const handleSort = (field: string) => {
     if (sortField === field) {
@@ -175,17 +232,32 @@ function PageLeaderboard() {
       setReps([]);
       setSortField('');
       setSortDirection('asc');
+      setSelectedPeriod(null);
     }
   }, [userChanged, user]);
 
   useEffect(() => {
     const loadSalesReps = async () => {
       try {
-        // Use dual storage pattern: S3 → Database → Mock Data
-        const response = await DualStorageService.getSalesReps();
+        const dateRange = getDateRange(selectedPeriod);
         
-        if (response.success) {
-          setReps(Array.isArray(response.data) ? response.data : []);
+        if (dateRange === null) {
+          // No filtering - show all data
+          const response = await DualStorageService.getSalesReps();
+          if (response.success) {
+            setReps(Array.isArray(response.data) ? response.data : []);
+          }
+        } else {
+          // Use date range filtering
+          const response = await DualStorageService.getSalesReps(
+            dateRange.month, // month (null for date ranges)
+            dateRange.fromDate,
+            dateRange.toDate
+          );
+          
+          if (response.success) {
+            setReps(Array.isArray(response.data) ? response.data : []);
+          }
         }
       } catch (error) {
         console.error('Failed to load sales reps:', error);
@@ -194,15 +266,50 @@ function PageLeaderboard() {
     };
     
     loadSalesReps();
-  }, []);
+  }, [selectedPeriod]);
 
   return (
     <Card title="Rep Leaderboard">
       <div className="flex items-center gap-2 mb-3">
         <div className="flex items-center gap-2 rounded-xl bg-zinc-100 p-1">
-          <button className="px-3 py-1 rounded-lg bg-white shadow text-sm">Last 14d</button>
-          <button className="px-3 py-1 rounded-lg text-sm text-zinc-600">MTD</button>
-          <button className="px-3 py-1 rounded-lg text-sm text-zinc-600">Last 90d</button>
+          <button 
+            onClick={() => setSelectedPeriod('week')}
+            className={`px-3 py-1 rounded-lg text-sm transition-colors ${
+              selectedPeriod === 'week' 
+                ? 'bg-white shadow text-zinc-900 font-medium' 
+                : 'text-zinc-600 hover:text-zinc-900'
+            }`}
+          >
+            Current Week
+          </button>
+          <button 
+            onClick={() => setSelectedPeriod('month')}
+            className={`px-3 py-1 rounded-lg text-sm transition-colors ${
+              selectedPeriod === 'month' 
+                ? 'bg-white shadow text-zinc-900 font-medium' 
+                : 'text-zinc-600 hover:text-zinc-900'
+            }`}
+          >
+            Current Month
+          </button>
+          <button 
+            onClick={() => setSelectedPeriod('ytd')}
+            className={`px-3 py-1 rounded-lg text-sm transition-colors ${
+              selectedPeriod === 'ytd' 
+                ? 'bg-white shadow text-zinc-900 font-medium' 
+                : 'text-zinc-600 hover:text-zinc-900'
+            }`}
+          >
+            YTD
+          </button>
+          {selectedPeriod && (
+            <button 
+              onClick={() => setSelectedPeriod(null)}
+              className="px-3 py-1 rounded-lg text-sm bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium transition-colors"
+            >
+              Clear
+            </button>
+          )}
         </div>
         <div className="ml-auto flex items-center gap-2 text-sm">
           <button 
