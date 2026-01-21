@@ -1114,11 +1114,14 @@ async savePolicy(policyData) {
   }
 
   // Sales Reps with PostgreSQL → S3 → Mock Data
-  async getSalesRepsWithFallback(month = null) {
+  async getSalesRepsWithFallback(month = null, fromDate = null, toDate = null) {
     try {
       // Try PostgreSQL first (Primary Storage)
-      const reps = await this.calculateSalesReps(month);
-      console.log('✅ Retrieved sales reps from PostgreSQL (Primary Storage)' + (month ? ` for month: ${month}` : ''));
+      const reps = await this.calculateSalesReps(month, fromDate, toDate);
+      const dateRangeInfo = month 
+        ? ` for month: ${month}` 
+        : (fromDate && toDate ? ` for date range: ${fromDate} to ${toDate}` : '');
+      console.log('✅ Retrieved sales reps from PostgreSQL (Primary Storage)' + dateRangeInfo);
       
       // Save to S3 for future use (Secondary Storage)
       const s3Key = withPrefix(`data/aggregated/sales-reps-${Date.now()}.json`);
@@ -1349,15 +1352,23 @@ async savePolicy(policyData) {
   }
 
   // Calculate sales reps from PostgreSQL with rollover/renewal breakdown
-  async calculateSalesReps(month = null) {
-    let whereClause = '';
+  async calculateSalesReps(month = null, fromDate = null, toDate = null) {
+    let whereConditions = [];
     let params = [];
+    let paramIndex = 1;
+    
     if (month) {
       // month format: '2024-01' (YYYY-MM)
       // Validate month format and construct date
       const monthDate = `${month}-01`;
-      whereClause = `WHERE DATE_TRUNC('month', created_at) = $1::date`;
+      whereConditions.push(`DATE_TRUNC('month', created_at) = $${paramIndex}::date`);
       params.push(monthDate);
+      paramIndex++;
+    } else if (fromDate && toDate) {
+      // Date range filtering (for week, month, YTD)
+      whereConditions.push(`created_at >= $${paramIndex} AND created_at <= $${paramIndex + 1}`);
+      params.push(fromDate, toDate);
+      paramIndex += 2;
     }
     
     const result = await query(`
@@ -1375,7 +1386,7 @@ async savePolicy(policyData) {
         SUM(total_od) FILTER (WHERE UPPER(COALESCE(rollover, '')) = 'RENEWAL') as renewal_total_od,
         AVG(cashback_percentage) as avg_cashback_pct
       FROM policies 
-      ${whereClause}
+      ${whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : ''}
       GROUP BY COALESCE(caller_name, 'Unknown')
       ORDER BY net_revenue DESC
       LIMIT 20

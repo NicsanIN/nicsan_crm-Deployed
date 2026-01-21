@@ -210,10 +210,16 @@ class BackendApiService {
   }
 
   // Sales Reps from backend
-  async getSalesReps(month?: string): Promise<BackendApiResult> {
+  async getSalesReps(month?: string, fromDate?: string, toDate?: string): Promise<BackendApiResult> {
     try {
-      const url = month 
-        ? `${API_BASE_URL}/dashboard/sales-reps?month=${month}`
+      const params = new URLSearchParams();
+      if (month) params.append('month', month);
+      if (fromDate) params.append('fromDate', fromDate);
+      if (toDate) params.append('toDate', toDate);
+      
+      const queryString = params.toString();
+      const url = queryString 
+        ? `${API_BASE_URL}/dashboard/sales-reps?${queryString}`
         : `${API_BASE_URL}/dashboard/sales-reps`;
 
       const response = await fetch(url, {
