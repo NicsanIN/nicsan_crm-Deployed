@@ -1222,7 +1222,7 @@ async savePolicy(policyData) {
           SUM(total_od) as total_outstanding_debt,
           AVG(total_premium) as avg_premium
         FROM policies 
-        WHERE created_at >= $1
+        WHERE issue_date >= $1 AND issue_date IS NOT NULL
       `, [startDate]);
     } else {
       basicMetrics = await query(`
@@ -1235,6 +1235,7 @@ async savePolicy(policyData) {
           SUM(total_od) as total_outstanding_debt,
           AVG(total_premium) as avg_premium
         FROM policies
+        WHERE issue_date IS NOT NULL
       `);
     }
 
@@ -1245,6 +1246,7 @@ async savePolicy(policyData) {
         COUNT(*) as count,
         SUM(total_premium) as gwp
       FROM policies 
+      WHERE issue_date IS NOT NULL
       GROUP BY source
       ORDER BY gwp DESC
     `);
@@ -1261,7 +1263,7 @@ async savePolicy(policyData) {
           SUM(cashback) as cashback,
           SUM(brokerage - cashback) as net
         FROM policies 
-        WHERE created_at >= $1 AND executive IS NOT NULL
+        WHERE issue_date >= $1 AND issue_date IS NOT NULL AND executive IS NOT NULL
         GROUP BY executive
         ORDER BY net DESC
         LIMIT 10
@@ -1276,7 +1278,7 @@ async savePolicy(policyData) {
           SUM(cashback) as cashback,
           SUM(brokerage - cashback) as net
         FROM policies 
-        WHERE executive IS NOT NULL
+        WHERE issue_date IS NOT NULL AND executive IS NOT NULL
         GROUP BY executive
         ORDER BY net DESC
         LIMIT 10
@@ -1288,25 +1290,26 @@ async savePolicy(policyData) {
     if (startDate) {
       dailyTrend = await query(`
         SELECT 
-          DATE(created_at) as date,
+          DATE(issue_date) as date,
           COUNT(*) as policies,
           SUM(total_premium) as gwp,
           SUM(brokerage - cashback) as net
         FROM policies 
-        WHERE created_at >= $1
-        GROUP BY DATE(created_at)
+        WHERE issue_date >= $1 AND issue_date IS NOT NULL
+        GROUP BY DATE(issue_date)
         ORDER BY date DESC
         LIMIT 30
       `, [startDate]);
     } else {
       dailyTrend = await query(`
         SELECT 
-          DATE(created_at) as date,
+          DATE(issue_date) as date,
           COUNT(*) as policies,
           SUM(total_premium) as gwp,
           SUM(brokerage - cashback) as net
         FROM policies 
-        GROUP BY DATE(created_at)
+        WHERE issue_date IS NOT NULL
+        GROUP BY DATE(issue_date)
         ORDER BY date DESC
         LIMIT 30
       `);
@@ -1758,15 +1761,15 @@ async savePolicy(policyData) {
       
       const result = await query(`
         SELECT 
-          DATE(created_at) as date,
+          DATE(issue_date) as date,
           SUM(total_od) as total_od,
           COUNT(*) as policy_count,
           AVG(total_od) as avg_od_per_policy,
           MAX(total_od) as max_od,
           MIN(total_od) as min_od
         FROM policies 
-        WHERE created_at >= $1 AND total_od > 0
-        GROUP BY DATE(created_at)
+        WHERE issue_date >= $1 AND issue_date IS NOT NULL AND total_od > 0
+        GROUP BY DATE(issue_date)
         ORDER BY date DESC
       `, [startDate]);
       
@@ -1785,15 +1788,15 @@ async savePolicy(policyData) {
       
       const result = await query(`
         SELECT 
-          DATE_TRUNC('month', created_at) as month,
+          DATE_TRUNC('month', issue_date) as month,
           SUM(total_od) as total_od,
           COUNT(*) as policy_count,
           AVG(total_od) as avg_od_per_policy,
           MAX(total_od) as max_od,
           MIN(total_od) as min_od
         FROM policies 
-        WHERE created_at >= $1 AND total_od > 0
-        GROUP BY DATE_TRUNC('month', created_at)
+        WHERE issue_date >= $1 AND issue_date IS NOT NULL AND total_od > 0
+        GROUP BY DATE_TRUNC('month', issue_date)
         ORDER BY month DESC
       `, [startDate]);
       
@@ -1814,9 +1817,9 @@ async savePolicy(policyData) {
       const result = await query(`
         SELECT 
           CASE 
-            WHEN EXTRACT(MONTH FROM created_at) >= 4 
-            THEN EXTRACT(YEAR FROM created_at)
-            ELSE EXTRACT(YEAR FROM created_at) - 1
+            WHEN EXTRACT(MONTH FROM issue_date) >= 4 
+            THEN EXTRACT(YEAR FROM issue_date)
+            ELSE EXTRACT(YEAR FROM issue_date) - 1
           END as financial_year,
           SUM(total_od) as total_od,
           COUNT(*) as policy_count,
@@ -1824,12 +1827,12 @@ async savePolicy(policyData) {
           MAX(total_od) as max_od,
           MIN(total_od) as min_od
         FROM policies 
-        WHERE EXTRACT(YEAR FROM created_at) >= $1 AND total_od > 0
+        WHERE EXTRACT(YEAR FROM issue_date) >= $1 AND issue_date IS NOT NULL AND total_od > 0
         GROUP BY 
           CASE 
-            WHEN EXTRACT(MONTH FROM created_at) >= 4 
-            THEN EXTRACT(YEAR FROM created_at)
-            ELSE EXTRACT(YEAR FROM created_at) - 1
+            WHEN EXTRACT(MONTH FROM issue_date) >= 4 
+            THEN EXTRACT(YEAR FROM issue_date)
+            ELSE EXTRACT(YEAR FROM issue_date) - 1
           END
         ORDER BY financial_year DESC
       `, [startYear]);
