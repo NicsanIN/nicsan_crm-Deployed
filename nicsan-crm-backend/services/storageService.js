@@ -1364,12 +1364,16 @@ async savePolicy(policyData) {
       // month format: '2024-01' (YYYY-MM)
       // Validate month format and construct date
       const monthDate = `${month}-01`;
-      whereConditions.push(`DATE_TRUNC('month', created_at) = $${paramIndex}::date`);
+      // Filter by issue_date (policy date) for leaderboard performance tracking
+      // Only include policies with valid issue_date
+      whereConditions.push(`DATE_TRUNC('month', issue_date) = $${paramIndex}::date AND issue_date IS NOT NULL`);
       params.push(monthDate);
       paramIndex++;
     } else if (fromDate && toDate) {
       // Date range filtering (for week, month, YTD)
-      whereConditions.push(`created_at >= $${paramIndex} AND created_at <= $${paramIndex + 1}`);
+      // Filter by issue_date (policy date) not created_at (when entered)
+      // Only include policies with valid issue_date
+      whereConditions.push(`issue_date >= $${paramIndex}::date AND issue_date <= $${paramIndex + 1}::date AND issue_date IS NOT NULL`);
       params.push(fromDate, toDate);
       paramIndex += 2;
     }

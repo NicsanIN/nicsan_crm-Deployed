@@ -39,6 +39,14 @@ function PageLeaderboard() {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [selectedPeriod, setSelectedPeriod] = useState<'week' | 'month' | 'ytd' | null>(null);
 
+  // Function to format date as YYYY-MM-DD without timezone conversion
+  const formatLocalDate = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   // Function to get date range based on selected period
   const getDateRange = (period: 'week' | 'month' | 'ytd' | null): { month?: string; fromDate?: string; toDate?: string } | null => {
     if (period === null) {
@@ -47,47 +55,49 @@ function PageLeaderboard() {
     
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    today.setHours(23, 59, 59, 999); // End of today
     
     switch (period) {
       case 'week':
-        // Current week: Sunday to today
+        // Current week: Sunday to Saturday (full week)
         const weekStart = new Date(today);
         const dayOfWeek = weekStart.getDay(); // 0 = Sunday, 6 = Saturday
         weekStart.setDate(weekStart.getDate() - dayOfWeek); // Go back to Sunday
-        weekStart.setHours(0, 0, 0, 0);
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekEnd.getDate() + 6); // Go forward to Saturday
         return {
-          fromDate: weekStart.toISOString().split('T')[0],
-          toDate: today.toISOString().split('T')[0]
+          fromDate: formatLocalDate(weekStart),
+          toDate: formatLocalDate(weekEnd)
         };
         
       case 'month':
-        // Current month: 1st of month to today
+        // Current month: 1st of month to last day of month (full month)
         const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-        monthStart.setHours(0, 0, 0, 0);
+        const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0); // Last day of current month
         return {
-          fromDate: monthStart.toISOString().split('T')[0],
-          toDate: today.toISOString().split('T')[0]
+          fromDate: formatLocalDate(monthStart),
+          toDate: formatLocalDate(monthEnd)
         };
         
       case 'ytd':
-        // Financial Year to Date: April 1st of current financial year to today
+        // Financial Year: April 1st to March 31st (full financial year)
         // Financial year in India: April 1 to March 31
         const currentMonth = today.getMonth(); // 0 = January, 3 = April
         let financialYearStart: Date;
+        let financialYearEnd: Date;
         
         if (currentMonth >= 3) {
           // If we're in April (3) or later, financial year started this calendar year
           financialYearStart = new Date(today.getFullYear(), 3, 1); // April 1st (month 3 = April)
+          financialYearEnd = new Date(today.getFullYear() + 1, 2, 31); // March 31st of next year
         } else {
           // If we're in Jan, Feb, or March, financial year started last calendar year
           financialYearStart = new Date(today.getFullYear() - 1, 3, 1); // April 1st of previous year
+          financialYearEnd = new Date(today.getFullYear(), 2, 31); // March 31st of current year
         }
         
-        financialYearStart.setHours(0, 0, 0, 0);
         return {
-          fromDate: financialYearStart.toISOString().split('T')[0],
-          toDate: today.toISOString().split('T')[0]
+          fromDate: formatLocalDate(financialYearStart),
+          toDate: formatLocalDate(financialYearEnd)
         };
         
       default:
@@ -145,25 +155,55 @@ function PageLeaderboard() {
   };
 
   const downloadRolloverCSV = async () => {
-    // Get current month (YYYY-MM format)
-    const currentMonth = new Date().toISOString().slice(0, 7); // '2024-01'
+    // Use the same date range as the selected filter period
+    const dateRange = getDateRange(selectedPeriod);
     
-    // Fetch month-specific data
-    let monthReps = reps;
+    // Fetch data based on selected filter period
+    let filteredReps = reps;
     try {
-      const response = await DualStorageService.getSalesReps(currentMonth);
+      let response;
+      if (dateRange === null) {
+        // No filter - get all data
+        response = await DualStorageService.getSalesReps();
+      } else if (dateRange.month) {
+        // Month-specific filter
+        response = await DualStorageService.getSalesReps(dateRange.month);
+      } else {
+        // Date range filter (week, month, YTD)
+        response = await DualStorageService.getSalesReps(
+          dateRange.month,
+          dateRange.fromDate,
+          dateRange.toDate
+        );
+      }
+      
       if (response.success && Array.isArray(response.data)) {
-        monthReps = response.data;
+        filteredReps = response.data;
       }
     } catch (error) {
-      console.error('Failed to load month-specific data, using current data:', error);
+      console.error('Failed to load filtered data, using current data:', error);
+    }
+    
+    // Generate filename based on selected period
+    let filename = 'rep-leaderboard-rollover';
+    if (selectedPeriod === 'week') {
+      const weekRange = getDateRange('week');
+      filename = `rep-leaderboard-rollover-week-${weekRange?.fromDate}-to-${weekRange?.toDate}`;
+    } else if (selectedPeriod === 'month') {
+      const monthRange = getDateRange('month');
+      filename = `rep-leaderboard-rollover-month-${monthRange?.fromDate}-to-${monthRange?.toDate}`;
+    } else if (selectedPeriod === 'ytd') {
+      const ytdRange = getDateRange('ytd');
+      filename = `rep-leaderboard-rollover-ytd-${ytdRange?.fromDate}-to-${ytdRange?.toDate}`;
+    } else {
+      filename = `rep-leaderboard-rollover-all-time`;
     }
     
     const headers = ['Telecaller', 'Leads Assigned', 'Converted', 'Total OD'];
     
     const csvContent = [
       headers.join(','),
-      ...monthReps
+      ...filteredReps
         .filter(rep => (rep.rollover_policies || 0) > 0)
         .sort((a, b) => (b.rollover_total_od || 0) - (a.rollover_total_od || 0))
         .map(rep => {
@@ -180,31 +220,61 @@ function PageLeaderboard() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `rep-leaderboard-rollover-${currentMonth}.csv`;
+    a.download = `${filename}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
 
   const downloadRenewalCSV = async () => {
-    // Get current month (YYYY-MM format)
-    const currentMonth = new Date().toISOString().slice(0, 7); // '2024-01'
+    // Use the same date range as the selected filter period
+    const dateRange = getDateRange(selectedPeriod);
     
-    // Fetch month-specific data
-    let monthReps = reps;
+    // Fetch data based on selected filter period
+    let filteredReps = reps;
     try {
-      const response = await DualStorageService.getSalesReps(currentMonth);
+      let response;
+      if (dateRange === null) {
+        // No filter - get all data
+        response = await DualStorageService.getSalesReps();
+      } else if (dateRange.month) {
+        // Month-specific filter
+        response = await DualStorageService.getSalesReps(dateRange.month);
+      } else {
+        // Date range filter (week, month, YTD)
+        response = await DualStorageService.getSalesReps(
+          dateRange.month,
+          dateRange.fromDate,
+          dateRange.toDate
+        );
+      }
+      
       if (response.success && Array.isArray(response.data)) {
-        monthReps = response.data;
+        filteredReps = response.data;
       }
     } catch (error) {
-      console.error('Failed to load month-specific data, using current data:', error);
+      console.error('Failed to load filtered data, using current data:', error);
+    }
+    
+    // Generate filename based on selected period
+    let filename = 'rep-leaderboard-renewal';
+    if (selectedPeriod === 'week') {
+      const weekRange = getDateRange('week');
+      filename = `rep-leaderboard-renewal-week-${weekRange?.fromDate}-to-${weekRange?.toDate}`;
+    } else if (selectedPeriod === 'month') {
+      const monthRange = getDateRange('month');
+      filename = `rep-leaderboard-renewal-month-${monthRange?.fromDate}-to-${monthRange?.toDate}`;
+    } else if (selectedPeriod === 'ytd') {
+      const ytdRange = getDateRange('ytd');
+      filename = `rep-leaderboard-renewal-ytd-${ytdRange?.fromDate}-to-${ytdRange?.toDate}`;
+    } else {
+      filename = `rep-leaderboard-renewal-all-time`;
     }
     
     const headers = ['Telecaller', 'Leads Assigned', 'Converted', 'Total OD'];
     
     const csvContent = [
       headers.join(','),
-      ...monthReps
+      ...filteredReps
         .filter(rep => (rep.renewal_policies || 0) > 0)
         .sort((a, b) => (b.renewal_total_od || 0) - (a.renewal_total_od || 0))
         .map(rep => {
@@ -221,7 +291,7 @@ function PageLeaderboard() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `rep-leaderboard-renewal-${currentMonth}.csv`;
+    a.download = `${filename}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
