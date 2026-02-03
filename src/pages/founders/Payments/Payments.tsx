@@ -395,7 +395,7 @@ function PagePayments() {
                       <th className="py-2 px-2 font-medium">Amount</th>
                       <th className="py-2 px-2 font-medium">Customer Cheque</th>
                       <th className="py-2 px-2 font-medium">Our Cheque</th>
-                      <th className="py-2 px-2 font-medium">Issue Date</th>
+                      <th className="py-2 px-2 font-medium">Start Date</th>
                       <th className="py-2 px-2 font-medium">Policy No</th>
                       <th className="py-2 px-2 font-medium text-center">Status</th>
                     </tr>

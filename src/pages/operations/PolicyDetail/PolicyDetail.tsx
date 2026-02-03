@@ -509,7 +509,7 @@ function PagePolicyDetail() {
                   <span className="font-medium">{isHealthInsurance ? 'Health Insurance' : (policy.product_type || 'Private Car')}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Issue Date:</span>
+                  <span>Start Date:</span>
                   <span className="font-medium">{policy.issue_date || '2025-08-10'}</span>
                 </div>
                 <div className="flex justify-between">

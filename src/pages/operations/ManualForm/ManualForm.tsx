@@ -410,12 +410,12 @@ function PageManualForm() {
           
         case 'issueDate':
           if (!value) {
-            errors.push('Issue Date is required');
+            errors.push('Start Date is required');
           } else {
             const issueDate = new Date(value);
             const today = new Date();
             if (isNaN(issueDate.getTime()) || issueDate > today) {
-              errors.push('Issue Date must be a valid date not in the future');
+              errors.push('Start Date must be a valid date not in the future');
             }
           }
           break;
@@ -427,7 +427,7 @@ function PageManualForm() {
             const expiryDate = new Date(value);
             const issueDate = form.issueDate ? new Date(form.issueDate) : new Date();
             if (isNaN(expiryDate.getTime()) || expiryDate <= issueDate) {
-              errors.push('Expiry Date must be after Issue Date');
+              errors.push('Expiry Date must be after Start Date');
             }
           }
           break;
@@ -1311,7 +1311,7 @@ function PageManualForm() {
 
               {/* Health Insurance Premium Fields */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-                <LabeledInput label="Issue Date" type="date" value={form.issueDate} onChange={v=>set('issueDate', v)}/>
+                <LabeledInput label="Start Date" type="date" value={form.issueDate} onChange={v=>set('issueDate', v)}/>
                 <LabeledInput label="Expiry Date" type="date" value={form.expiryDate} onChange={v=>set('expiryDate', v)}/>
                 <LabeledInput label="Sum Insured (₹)" value={form.idv} onChange={v=>set('idv', v)} placeholder="e.g., 500000"/>
                 <LabeledInput label="Premium Amount (₹)" required value={form.totalPremium} onChange={onTotalChange}/>
@@ -1344,7 +1344,7 @@ function PageManualForm() {
             <>
               {/* Dates & Values */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                <LabeledInput label="Issue Date" type="date" value={form.issueDate} onChange={v=>set('issueDate', v)}/>
+                <LabeledInput label="Start Date" type="date" value={form.issueDate} onChange={v=>set('issueDate', v)}/>
                 <LabeledInput label="Expiry Date" type="date" value={form.expiryDate} onChange={v=>set('expiryDate', v)}/>
                 <LabeledInput label="IDV (₹)" value={form.idv} onChange={v=>set('idv', v)}/>
                 <LabeledInput label="NCB (%)" value={form.ncb} onChange={v=>set('ncb', v)}/>
