@@ -850,7 +850,7 @@ function PageReview() {
                 onChange={(value) => updatePdfData('manufacturing_year', value)}
               />
               <LabeledInput 
-                label="Issue Date" 
+                label="Start Date" 
                 type="date"
                 value={editableData.pdfData.issue_date || pdfData.issue_date}
                 onChange={(value) => updatePdfData('issue_date', value)}
@@ -1051,7 +1051,7 @@ function PageReview() {
               {!(editableData.pdfData.issue_date || pdfData.issue_date) && (
                 <div className="flex items-center gap-2 text-sm text-amber-700 bg-amber-50 p-2 rounded-lg">
                   <AlertTriangle className="w-4 h-4 text-amber-600"/> 
-                  <span>Issue Date missing. Please add manually.</span>
+                  <span>Start Date missing. Please add manually.</span>
                 </div>
               )}
               {!(editableData.pdfData.expiry_date || pdfData.expiry_date) && (

@@ -87,7 +87,7 @@ function PageExplorer() {
   const downloadCSV = () => {
     const baseHeaders = ['Telecaller', 'Make', 'Model', 'Insurer'];
     const policyHeaders = showPolicyDetails ? ['Policy Number', 'Customer Name', 'Vehicle Number', 'Phone Number'] : [];
-    const remainingHeaders = ['Issue Date', 'Expiry Date', 'Type of Business', 'Branch', '# Policies', 'GWP', 'Total Premium', 'Total OD', 'Avg Cashback %', 'Cashback (₹)', 'Net (₹)'];
+    const remainingHeaders = ['Start Date', 'Expiry Date', 'Type of Business', 'Branch', '# Policies', 'GWP', 'Total Premium', 'Total OD', 'Avg Cashback %', 'Cashback (₹)', 'Net (₹)'];
     const headers = [...baseHeaders, ...policyHeaders, ...remainingHeaders];
     
     const csvContent = [
@@ -362,11 +362,11 @@ function PageExplorer() {
               {/* Date Filters Row */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-600">Issue From Date</label>
+                  <label className="text-sm font-medium text-gray-600">Start From Date</label>
                   <input type="date" value={fromDate} onChange={e=>setFromDate(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"/>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-600">Issue To Date</label>
+                  <label className="text-sm font-medium text-gray-600">Start To Date</label>
                   <input type="date" value={toDate} onChange={e=>setToDate(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"/>
                 </div>
                 <div className="space-y-2">
@@ -399,7 +399,7 @@ function PageExplorer() {
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-zinc-500">
-                <th className="py-2 px-2">Telecaller</th><th className="px-2">Make</th><th className="px-2">Model</th><th className="px-2">Insurer</th>{showPolicyDetails && <th className="px-2">Policy Number</th>}{showPolicyDetails && <th className="px-2">Customer Name</th>}{showPolicyDetails && <th className="px-2">Vehicle Number</th>}{showPolicyDetails && <th className="px-2">Phone Number</th>}<th className="px-2">Issue Date</th><th className="px-2">Expiry Date</th><th className="px-2">Type of Business</th><th className="px-2">Branch</th><th className="px-2"># Policies</th><th className="px-2">GWP</th><th className="px-2">Total Premium</th><th className="px-2">Total OD</th><th className="px-2">Avg Cashback %</th><th className="px-2">Cashback (₹)</th><th className="px-2">Net (₹)</th>
+                <th className="py-2 px-2">Telecaller</th><th className="px-2">Make</th><th className="px-2">Model</th><th className="px-2">Insurer</th>{showPolicyDetails && <th className="px-2">Policy Number</th>}{showPolicyDetails && <th className="px-2">Customer Name</th>}{showPolicyDetails && <th className="px-2">Vehicle Number</th>}{showPolicyDetails && <th className="px-2">Phone Number</th>}<th className="px-2">Start Date</th><th className="px-2">Expiry Date</th><th className="px-2">Type of Business</th><th className="px-2">Branch</th><th className="px-2"># Policies</th><th className="px-2">GWP</th><th className="px-2">Total Premium</th><th className="px-2">Total OD</th><th className="px-2">Avg Cashback %</th><th className="px-2">Cashback (₹)</th><th className="px-2">Net (₹)</th>
               </tr>
             </thead>
             <tbody>
