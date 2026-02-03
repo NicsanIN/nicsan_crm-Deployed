@@ -851,12 +851,12 @@ function PageManualForm() {
           
         case 'issueDate':
           if (!value) {
-            errors.push('Issue Date is required');
+            errors.push('Start Date is required');
           } else {
             const issueDate = new Date(value);
             const today = new Date();
             if (isNaN(issueDate.getTime()) || issueDate > today) {
-              errors.push('Issue Date must be a valid date not in the future');
+              errors.push('Start Date must be a valid date not in the future');
             }
           }
           break;
@@ -868,7 +868,7 @@ function PageManualForm() {
             const expiryDate = new Date(value);
             const issueDate = form.issueDate ? new Date(form.issueDate) : new Date();
             if (isNaN(expiryDate.getTime()) || expiryDate <= issueDate) {
-              errors.push('Expiry Date must be after Issue Date');
+              errors.push('Expiry Date must be after Start Date');
             }
           }
           break;

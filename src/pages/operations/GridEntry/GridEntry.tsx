@@ -261,7 +261,7 @@ function PageManualGrid() {
       if (row.issueDate) {
         const issueDate = new Date(row.issueDate);
         if (isNaN(issueDate.getTime())) {
-          errors.push('Issue Date must be a valid date');
+          errors.push('Start Date must be a valid date');
         }
       }
       
@@ -269,7 +269,7 @@ function PageManualGrid() {
         const expiryDate = new Date(row.expiryDate);
         const issueDate = row.issueDate ? new Date(row.issueDate) : new Date();
         if (isNaN(expiryDate.getTime()) || expiryDate <= issueDate) {
-          errors.push('Expiry Date must be after Issue Date');
+          errors.push('Expiry Date must be after Start Date');
         }
       }
       
@@ -885,7 +885,7 @@ function PageManualGrid() {
                   <th className="py-2 px-1">Model</th>
                   <th className="py-2 px-1">CC</th>
                   <th className="py-2 px-1">MFG Year</th>
-                  <th className="py-2 px-1">Issue Date</th>
+                  <th className="py-2 px-1">Start Date</th>
                   <th className="py-2 px-1">Expiry Date</th>
                   <th className="py-2 px-1">IDV (₹)</th>
                   <th className="py-2 px-1">NCB (%)</th>
