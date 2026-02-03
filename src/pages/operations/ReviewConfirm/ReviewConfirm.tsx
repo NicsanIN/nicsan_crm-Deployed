@@ -1354,7 +1354,7 @@ function PageReview() {
                 onChange={(value) => updatePdfData('manufacturing_year', value)}
               />
               <LabeledDateInput 
-                label="Issue Date" 
+                label="Start Date" 
                 value={editableData.pdfData.issue_date || pdfData.issue_date}
                 onChange={(value) => updatePdfData('issue_date', value)}
                 required={true}
