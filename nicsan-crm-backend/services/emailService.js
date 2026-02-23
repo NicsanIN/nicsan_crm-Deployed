@@ -295,7 +295,7 @@ function generateEmailContent(policyData) {
           
           <h3>📞 Contact Information</h3>
           <ul>
-            <li><strong>Customer Support:</strong> +91-9916131639</li>
+            <li><strong>Customer Support:</strong> +91-9035568421</li>
             <li><strong>Email:</strong> care@nicsanimf.com</li>
             <li><strong>Website:</strong> www.nicsanin.com</li>
           </ul>
@@ -361,7 +361,7 @@ You can find your policy pdf down below.
 Keep this policy handy—you'll need it if you're ever asked while driving. In case of any claims or queries, please contact our customer support team.
       
 CONTACT INFORMATION:
-- Customer Support: +91-9916131639
+- Customer Support: +91-9035568421
 - Email: care@nicsanimf.com
 - Website: www.nicsanin.com
       
