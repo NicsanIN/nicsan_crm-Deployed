@@ -593,7 +593,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 For support and questions:
 
 - **Email**: support@nicsanin.com
-- **Phone**: +91-9916131639
+- **Phone**: +91-9035568421
 - **Website**: https://www.nicsanin.com
 
 ## 🙏 Acknowledgments
