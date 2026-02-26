@@ -27,14 +27,22 @@ async savePolicy(policyData) {
       // Import enhanced financial validation
       const { validatePremium, validateIDV, validateCashback, validateBrokerage, validatePercentage } = require('../utils/financialValidation');
       
-      // Validate vehicle number format before saving
+      // Validate vehicle number format before saving (allow "NEW" only when Mfg. Year is current calendar year)
       if (policyData.vehicle_number) {
         const cleanVehicleNumber = policyData.vehicle_number.replace(/\s/g, '');
-        const traditionalPattern = /^[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}$/;
-        const bhSeriesPattern = /^[0-9]{2}BH[0-9]{4}[A-Z]{1,2}$/;
-        
-        if (!traditionalPattern.test(cleanVehicleNumber) && !bhSeriesPattern.test(cleanVehicleNumber)) {
-          throw new Error(`Invalid vehicle number format: ${policyData.vehicle_number}. Expected format: KA01AB1234, KA 51 MM 1214, or 23 BH 7699 J`);
+        const isNewVehicle = cleanVehicleNumber.toUpperCase() === 'NEW';
+        if (isNewVehicle) {
+          const currentYear = new Date().getFullYear();
+          const mfgYear = policyData.manufacturing_year != null ? parseInt(String(policyData.manufacturing_year), 10) : NaN;
+          if (isNaN(mfgYear) || mfgYear !== currentYear) {
+            throw new Error(`Registration number "NEW" is only allowed when Mfg. Year matches the current calendar year (${currentYear}). Please enter the actual registration number or set Mfg. Year to ${currentYear}.`);
+          }
+        } else {
+          const traditionalPattern = /^[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}$/;
+          const bhSeriesPattern = /^[0-9]{2}BH[0-9]{4}[A-Z]{1,2}$/;
+          if (!traditionalPattern.test(cleanVehicleNumber) && !bhSeriesPattern.test(cleanVehicleNumber)) {
+            throw new Error(`Invalid vehicle number format: ${policyData.vehicle_number}. Expected format: KA01AB1234, KA 51 MM 1214, 23 BH 7699 J, or NEW for new vehicle (when Mfg. Year is current year)`);
+          }
         }
       }
       
@@ -480,24 +488,25 @@ async savePolicy(policyData) {
       
       // OpenAI returns structured JSON directly, so we just need to validate and format
       
-      // Validate and normalize vehicle number format
+      // Validate and normalize vehicle number format (preserve "NEW" when extracted for new vehicles)
       let normalizedVehicleNumber = openaiResult.vehicle_number;
       if (normalizedVehicleNumber) {
-        // Remove spaces and validate format
         const cleanVehicleNumber = normalizedVehicleNumber.replace(/\s/g, '');
-        const traditionalPattern = /^[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}$/;
-        const bhSeriesPattern = /^[0-9]{2}BH[0-9]{4}[A-Z]{1,2}$/;
-        
-        if (!traditionalPattern.test(cleanVehicleNumber) && !bhSeriesPattern.test(cleanVehicleNumber)) {
-          console.warn(`⚠️ Invalid vehicle number format from OpenAI: ${normalizedVehicleNumber}`);
-          // Generate a valid format
-          normalizedVehicleNumber = `KA ${Math.floor(Math.random() * 90) + 10} ${String.fromCharCode(65 + Math.floor(Math.random() * 26))}${String.fromCharCode(65 + Math.floor(Math.random() * 26))} ${Math.floor(Math.random() * 9000) + 1000}`;
+        const isNewVehicle = cleanVehicleNumber.toUpperCase() === 'NEW';
+        if (!isNewVehicle) {
+          const traditionalPattern = /^[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}$/;
+          const bhSeriesPattern = /^[0-9]{2}BH[0-9]{4}[A-Z]{1,2}$/;
+          if (!traditionalPattern.test(cleanVehicleNumber) && !bhSeriesPattern.test(cleanVehicleNumber)) {
+            console.warn(`⚠️ Invalid vehicle number format from OpenAI: ${normalizedVehicleNumber}`);
+            normalizedVehicleNumber = `KA ${Math.floor(Math.random() * 90) + 10} ${String.fromCharCode(65 + Math.floor(Math.random() * 26))}${String.fromCharCode(65 + Math.floor(Math.random() * 26))} ${Math.floor(Math.random() * 9000) + 1000}`;
+          }
         }
+        // else: keep "NEW" as-is
       }
-      
+      const randomVehicleFallback = `KA ${Math.floor(Math.random() * 90) + 10} ${String.fromCharCode(65 + Math.floor(Math.random() * 26))}${String.fromCharCode(65 + Math.floor(Math.random() * 26))} ${Math.floor(Math.random() * 9000) + 1000}`;
       const extractedData = {
         policy_number: openaiResult.policy_number || `TA-${Math.floor(Math.random() * 10000)}`,
-        vehicle_number: normalizedVehicleNumber || `KA ${Math.floor(Math.random() * 90) + 10} ${String.fromCharCode(65 + Math.floor(Math.random() * 26))}${String.fromCharCode(65 + Math.floor(Math.random() * 26))} ${Math.floor(Math.random() * 9000) + 1000}`,
+        vehicle_number: normalizedVehicleNumber || randomVehicleFallback,
         insurer: openaiResult.insurer || 'Tata AIG',
         product_type: openaiResult.product_type || 'Private Car',
         vehicle_type: openaiResult.vehicle_type || 'Private Car',
