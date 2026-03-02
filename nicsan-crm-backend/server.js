@@ -81,6 +81,7 @@ app.use('/api/password', require('./routes/password'));
 app.use('/api/users', require('./routes/users'));
 app.use('/api/costs', require('./routes/costs'));
 app.use('/api/reports', require('./routes/reports'));
+app.use('/api/tasks', require('./routes/tasks'));
 
 // Initialize WebSocket Service (handles Socket.IO internally)
 const wsService = require('./services/websocketService');
@@ -93,6 +94,10 @@ dailyReportScheduler.start();
 // Initialize Weekly Rollover Report Scheduler
 const weeklyRolloverReportScheduler = require('./jobs/weeklyRolloverReport');
 weeklyRolloverReportScheduler.start();
+
+// Initialize SLA Breach Cron (marks overdue tasks as SLA_BREACHED; admin reassigns manually)
+const slaBreachCron = require('./jobs/slaBreachCron');
+slaBreachCron.start();
 
 // Middleware already configured above
 

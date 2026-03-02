@@ -24,7 +24,7 @@ export interface LoginResponse {
     id: string;
     email: string;
     name: string;
-    role: 'ops' | 'founder';
+    role: 'ops' | 'founder' | 'telecaller';
   };
 }
 
@@ -80,6 +80,21 @@ export interface DashboardMetrics {
   total_uploads: number;
 }
 
+/** Decode JWT payload (Base64URL); returns null on failure. */
+function decodeJwtPayload(token: string): { exp?: number } | null {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const pad = base64.length % 4;
+    const padded = pad ? base64 + '==='.slice(0, 4 - pad) : base64;
+    const json = atob(padded);
+    return JSON.parse(json) as { exp?: number };
+  } catch {
+    return null;
+  }
+}
+
 // Utility function for API calls
 export async function apiCall<T>(
   endpoint: string,
@@ -91,21 +106,26 @@ export async function apiCall<T>(
     // Check if token is expired or about to expire
     if (token) {
       try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        const currentTime = Date.now() / 1000;
-        
-        // If token is already expired, remove it and don't try to refresh
-        if (payload.exp && payload.exp < currentTime) {
-          if (ENABLE_DEBUG) console.log('⚠️ Token expired, removing from storage');
+        const payload = decodeJwtPayload(token);
+        if (!payload) {
+          if (ENABLE_DEBUG) console.log('⚠️ Token validation failed, removing invalid token');
           authUtils.removeToken();
           token = null;
-        }
-        // If token expires in next 5 minutes, try to refresh (but only for non-login endpoints)
-        else if (payload.exp && (payload.exp - currentTime) < 300 && !endpoint.includes('/login')) {
-          if (ENABLE_DEBUG) console.log('🔄 Token expiring soon, attempting refresh...');
-          const refreshResult = await authUtils.refreshToken();
-          if (refreshResult.success) {
-            token = refreshResult.data.token;
+        } else {
+          const currentTime = Date.now() / 1000;
+          // If token is already expired, remove it and don't try to refresh
+          if (payload.exp && payload.exp < currentTime) {
+            if (ENABLE_DEBUG) console.log('⚠️ Token expired, removing from storage');
+            authUtils.removeToken();
+            token = null;
+          }
+          // If token expires in next 5 minutes, try to refresh (but only for non-login endpoints)
+          else if (payload.exp && (payload.exp - currentTime) < 300 && !endpoint.includes('/login')) {
+            if (ENABLE_DEBUG) console.log('🔄 Token expiring soon, attempting refresh...');
+            const refreshResult = await authUtils.refreshToken();
+            if (refreshResult.success) {
+              token = refreshResult.data.token;
+            }
           }
         }
       } catch (error) {
@@ -521,9 +541,12 @@ export const authUtils = {
 
       // Check if token is expired
       try {
-        const payload = JSON.parse(atob(currentToken.split('.')[1]));
+        const payload = decodeJwtPayload(currentToken);
+        if (!payload) {
+          this.removeToken();
+          return { success: false, error: 'Invalid token format, please re-login' };
+        }
         const currentTime = Date.now() / 1000;
-        
         if (payload.exp && payload.exp < currentTime) {
           // Token is expired, force re-authentication
           this.removeToken();
@@ -557,8 +580,6 @@ export const authUtils = {
     // Clear any other user-related data
     localStorage.removeItem('nicsan_crm_policies');
     localStorage.removeItem('nicsan_crm_dashboard');
-    
-    window.location.href = '/';
   },
 };
 

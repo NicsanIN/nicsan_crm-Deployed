@@ -17,17 +17,26 @@ interface SettingsContextType {
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
 
-export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [settings, setSettings] = useState<Settings>({
-    brokeragePercent: '15',
-    repDailyCost: '2000',
-    expectedConversion: '25',
-    premiumGrowth: '10'
-  });
-  const [isLoading, setIsLoading] = useState(true);
+const defaultSettings: Settings = {
+  brokeragePercent: '15',
+  repDailyCost: '2000',
+  expectedConversion: '25',
+  premiumGrowth: '10'
+};
+
+interface SettingsProviderProps {
+  children: ReactNode;
+  /** Only founders can access /api/settings. For telecaller/ops, use defaults and skip the API call to avoid 403. */
+  userRole?: 'founder' | 'ops' | 'telecaller';
+}
+
+export const SettingsProvider: React.FC<SettingsProviderProps> = ({ children, userRole = 'ops' }) => {
+  const [settings, setSettings] = useState<Settings>(defaultSettings);
+  const [isLoading, setIsLoading] = useState(userRole === 'founder');
   const [error, setError] = useState<string | null>(null);
 
   const refreshSettings = async () => {
+    if (userRole !== 'founder') return; // /api/settings requires founder role
     try {
       setIsLoading(true);
       setError(null);
@@ -45,8 +54,14 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
   };
 
   useEffect(() => {
-    refreshSettings();
-  }, []);
+    if (userRole === 'founder') {
+      refreshSettings();
+    } else {
+      setSettings(defaultSettings);
+      setIsLoading(false);
+      setError(null);
+    }
+  }, [userRole]);
 
   return (
     <SettingsContext.Provider value={{

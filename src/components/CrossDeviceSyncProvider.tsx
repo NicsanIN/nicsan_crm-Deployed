@@ -88,6 +88,10 @@ export const CrossDeviceSyncProvider: React.FC<CrossDeviceSyncProviderProps> = (
     if (isAuthenticated && user) {
       // Set user ID for WebSocket service
       wsService.setUserId(user.id.toString());
+      // Set role so sync skips ops-only APIs for telecallers (avoids 403 errors)
+      syncService.setUserRole(user.role || '');
+    } else {
+      syncService.setUserRole('');
     }
   }, [isAuthenticated, user]);
 

@@ -4,24 +4,26 @@ export interface User {
   id: number;
   name: string;
   email: string;
-  role: 'ops' | 'founder';
+  role: 'ops' | 'founder' | 'telecaller';
   is_active: boolean;
   created_at: string;
   updated_at: string;
   last_login?: string;
+  /** Executive status (AVAILABLE, BUSY, BREAK, OFFLINE) - ops users only */
+  status?: string;
 }
 
 export interface CreateUserRequest {
   name: string;
   email: string;
   password: string;
-  role: 'ops' | 'founder';
+  role: 'ops' | 'founder' | 'telecaller';
 }
 
 export interface UpdateUserRequest {
   name?: string;
   email?: string;
-  role?: 'ops' | 'founder';
+  role?: 'ops' | 'founder' | 'telecaller';
   is_active?: boolean;
 }
 

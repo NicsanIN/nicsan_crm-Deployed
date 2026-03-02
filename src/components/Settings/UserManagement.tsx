@@ -16,7 +16,7 @@ const UserManagement: React.FC = () => {
     name: '',
     email: '',
     password: '',
-    role: 'ops' as 'ops' | 'founder'
+    role: 'ops' as 'ops' | 'founder' | 'telecaller'
   });
   const [editPassword, setEditPassword] = useState('');
   const [showPasswordField, setShowPasswordField] = useState(false);
@@ -319,11 +319,12 @@ const UserManagement: React.FC = () => {
               <label className="text-xs font-medium text-gray-700">Role</label>
               <select
                 value={formData.role}
-                onChange={(e) => setFormData(prev => ({ ...prev, role: e.target.value as 'ops' | 'founder' }))}
+                onChange={(e) => setFormData(prev => ({ ...prev, role: e.target.value as 'ops' | 'founder' | 'telecaller' }))}
                 className="w-full border-2 border-gray-300 rounded-lg px-2 py-1.5 text-xs focus:ring-2 focus:ring-purple-500 focus:border-purple-500 focus:outline-none transition-colors"
               >
                 <option value="ops">Operations</option>
                 <option value="founder">Founder</option>
+                <option value="telecaller">Telecaller</option>
               </select>
             </div>
           </div>
@@ -381,9 +382,11 @@ const UserManagement: React.FC = () => {
                       <span className={`px-1.5 py-0.5 rounded-full text-xs font-medium ${
                         user.role === 'founder' 
                           ? 'bg-purple-100 text-purple-700' 
+                          : user.role === 'telecaller'
+                          ? 'bg-amber-100 text-amber-700'
                           : 'bg-blue-100 text-blue-700'
                       }`}>
-                        {user.role === 'founder' ? 'Founder' : 'Operations'}
+                        {user.role === 'founder' ? 'Founder' : user.role === 'telecaller' ? 'Telecaller' : 'Operations'}
                       </span>
                       <span className={`px-1.5 py-0.5 rounded-full text-xs font-medium ${
                         user.is_active 

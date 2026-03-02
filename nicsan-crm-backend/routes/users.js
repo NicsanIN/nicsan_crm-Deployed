@@ -48,10 +48,10 @@ router.post('/', authenticateToken, requireRole(['founder']), async (req, res) =
       });
     }
 
-    if (!['ops', 'founder'].includes(role)) {
+    if (!['ops', 'founder', 'telecaller'].includes(role)) {
       return res.status(400).json({
         success: false,
-        error: 'Role must be either "ops" or "founder"'
+        error: 'Role must be "ops", "founder", or "telecaller"'
       });
     }
 
@@ -119,10 +119,10 @@ router.put('/:id', authenticateToken, requireRole(['founder']), async (req, res)
     }
 
     // Validate role if provided
-    if (role && !['ops', 'founder'].includes(role)) {
+    if (role && !['ops', 'founder', 'telecaller'].includes(role)) {
       return res.status(400).json({
         success: false,
-        error: 'Role must be either "ops" or "founder"'
+        error: 'Role must be "ops", "founder", or "telecaller"'
       });
     }
 

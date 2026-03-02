@@ -1,7 +1,6 @@
 import React, { useMemo, useState, useEffect } from "react";
-import { Upload, FileText, CheckCircle2, Table2, Settings, LayoutDashboard, Users, BarChart3, LogOut, SlidersHorizontal, TrendingUp, RefreshCw, CreditCard, DollarSign } from "lucide-react";
-import { authUtils } from './services/api';
-import DualStorageService from './services/dualStorageService';
+import { Upload, FileText, CheckCircle2, Table2, Settings, LayoutDashboard, Users, BarChart3, LogOut, SlidersHorizontal, TrendingUp, RefreshCw, CreditCard, DollarSign, Inbox, ClipboardList } from "lucide-react";
+import { useAuth } from './contexts/AuthContext';
 import HorizontalLogo from './assets/images/HorizontalLogo.svg';
 import CrossDeviceSyncDemo from './components/CrossDeviceSyncDemo';
 import PageExplorer from './pages/founders/SalesExplorer/PageExplorer';
@@ -19,9 +18,14 @@ import PagePolicyDetail from './pages/operations/PolicyDetail/PolicyDetail';
 import PageManualForm from './pages/operations/ManualForm/ManualForm';
 import PageUpload from './pages/operations/PDFUpload/PDFUpload';
 import PageOperationsSettings from './pages/operations/Settings/Settings';
+import PageTaskInbox from './pages/operations/TaskInbox/TaskInbox';
+import PageTaskEngineDashboard from './pages/founders/TaskEngineDashboard/TaskEngineDashboard';
+import PageTelecallerCreateRequest from './pages/telecaller/CreateRequest';
+import PageTelecallerMyRequests from './pages/telecaller/MyRequests';
 import { SettingsProvider } from './contexts/SettingsContext';
 
-// Extend jsPDF type to include autoTable
+// Extend jsPDF type to include autoTable (from jspdf-autotable)
+// @ts-expect-error - augmentation when jspdf types may not be resolved
 declare module 'jspdf' {
   interface jsPDF {
     autoTable: (options: any) => jsPDF;
@@ -32,63 +36,27 @@ declare module 'jspdf' {
 const ENABLE_DEBUG = import.meta.env.VITE_ENABLE_DEBUG_LOGGING === 'true';
 // const ENABLE_MOCK_DATA = import.meta.env.VITE_ENABLE_MOCK_DATA === 'true';
 // ---------- AUTH ----------
-function LoginPage({ onLogin }: { onLogin: (user: { name: string; email: string; role: "ops" | "founder" }) => void }) {
+function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const { login } = useAuth();
 
   const handleLogin = async () => {
     if (!email || !password) {
       setError("Please enter both email and password");
       return;
     }
-
     setIsLoading(true);
     setError("");
-
     try {
-      // Use smart API service with mock fallback
-      const response = await DualStorageService.login({ email, password });
-      
-      
-      if (response.success && response.data) {
-        const { token, user: userData } = response.data;
-        
-        
-        if (!token) {
-          setError('No token received from server');
-          return;
-        }
-        
-        // Store token and user data
-        
-        try {
-          // Try authUtils first
-          authUtils.setToken(token);
-        } catch (error) {
-          console.error('≡ƒöì authUtils.setToken failed:', error);
-        }
-        
-        try {
-          // Also store directly to verify
-          localStorage.setItem('authToken', token);
-        } catch (error) {
-          console.error('≡ƒöì Direct localStorage storage failed:', error);
-        }
-        
-        // Call onLogin with real user data
-        onLogin({ 
-          name: userData?.name || email.split('@')[0] || 'User', 
-          email: userData?.email || email, 
-          role: userData?.role || 'ops' 
-        });
-      } else {
-        setError(response.error || 'Login failed');
+      const success = await login({ email, password });
+      if (!success) {
+        setError('Login failed');
       }
-    } catch (error) {
-      setError(error instanceof Error ? error.message : 'Login failed');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Login failed');
     } finally {
       setIsLoading(false);
     }
@@ -150,31 +118,34 @@ function LoginPage({ onLogin }: { onLogin: (user: { name: string; email: string;
 }
 
 // ---------- LAYOUT ----------
-function TopTabs({ tab, setTab, user, onLogout }: { tab: "ops" | "founder"; setTab: (t: "ops" | "founder") => void; user: {name:string; role:"ops"|"founder"}; onLogout: ()=>void }) {
+function TopTabs({ tab, setTab, user, onLogout }: { tab: "ops" | "founder"; setTab: (t: "ops" | "founder") => void; user: {name:string; role:"ops"|"founder"|"telecaller"}; onLogout: ()=>void }) {
   return (
     <div className="w-full border-b border-zinc-200 bg-white sticky top-0 z-40">
-      <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-3">
-        <div className="flex items-center gap-3">
-          <img 
-            src={HorizontalLogo} 
-            alt="Nicsan CRM" 
-            className="h-[20.3843px] w-auto"
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 py-2 sm:py-3 flex items-center justify-between gap-2 flex-wrap min-w-0">
+        <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0 min-w-0">
+          <img
+            src={HorizontalLogo}
+            alt="Nicsan CRM"
+            className="h-5 sm:h-[20.3843px] w-auto flex-shrink-0"
           />
-          <span className="text-[28px] font-clash font-bold text-zinc-900 leading-[20.3843px] mt-0.5">CRM</span>
+          <span className="text-xl sm:text-[28px] font-clash font-bold text-zinc-900 leading-tight truncate">CRM</span>
         </div>
-        <div className="ml-auto flex items-center gap-3">
-          {user.role === 'founder' ? (
-            <div className="rounded-xl bg-zinc-100 p-1 flex gap-2">
-              <button onClick={() => setTab("ops")} className={`px-4 py-2 rounded-lg text-sm transition-colors ${tab === "ops" ? "bg-white shadow-sm text-zinc-900" : "text-zinc-600 hover:text-zinc-900"}`}>Operations</button>
-              <button onClick={() => setTab("founder")} className={`px-4 py-2 rounded-lg text-sm transition-colors ${tab === "founder" ? "bg-white shadow-sm text-zinc-900" : "text-zinc-600 hover:text-zinc-900"}`}>Founder</button>
+        <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0 min-w-0">
+          {user.role === 'telecaller' ? null : user.role === 'founder' ? (
+            <div className="rounded-xl bg-zinc-100 p-1 flex gap-1 sm:gap-2">
+              <button onClick={() => setTab("ops")} className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm transition-colors whitespace-nowrap ${tab === "ops" ? "bg-white shadow-sm text-zinc-900" : "text-zinc-600 hover:text-zinc-900"}`}>Operations</button>
+              <button onClick={() => setTab("founder")} className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm transition-colors whitespace-nowrap ${tab === "founder" ? "bg-white shadow-sm text-zinc-900" : "text-zinc-600 hover:text-zinc-900"}`}>Founder</button>
             </div>
           ) : (
             <div className="rounded-xl bg-zinc-100 p-1">
-              <div className="px-4 py-2 rounded-lg text-sm bg-white shadow-sm text-zinc-900">Operations</div>
+              <div className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm bg-white shadow-sm text-zinc-900 whitespace-nowrap">Operations</div>
             </div>
           )}
-          <button onClick={onLogout} className="px-3 py-2 rounded-lg border border-zinc-300 hover:bg-zinc-50 transition-colors flex items-center gap-2 text-zinc-700">
-            <LogOut className="w-4 h-4"/> Logout
+          {user.role === 'telecaller' && (
+            <span className="px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs sm:text-sm bg-amber-100 text-amber-800 whitespace-nowrap">Telecaller</span>
+          )}
+          <button onClick={onLogout} className="px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg border border-zinc-300 hover:bg-zinc-50 transition-colors flex items-center gap-1.5 sm:gap-2 text-zinc-700 text-xs sm:text-sm flex-shrink-0">
+            <LogOut className="w-3 h-3 sm:w-4 sm:h-4"/> <span className="whitespace-nowrap">Logout</span>
           </button>
         </div>
       </div>
@@ -186,7 +157,7 @@ function Shell({ sidebar, children }: { sidebar: React.ReactNode; children: Reac
   return (
     <div className="max-w-7xl mx-auto w-full px-4 py-6 grid grid-cols-12 gap-6">
       <aside className="col-span-12 lg:col-span-3 space-y-3">{sidebar}</aside>
-      <main className="col-span-12 lg:col-span-9 space-y-6">{children}</main>
+      <main className="col-span-12 lg:col-span-9 space-y-6 min-w-0">{children}</main>
     </div>
   )
 }
@@ -195,6 +166,7 @@ function Shell({ sidebar, children }: { sidebar: React.ReactNode; children: Reac
 // ---------- OPS ----------
 function OpsSidebar({ page, setPage }: { page: string; setPage: (p: string) => void }) {
   const items = [
+    { id: "task-inbox", label: "Task Inbox", icon: Inbox },
     { id: "upload", label: "PDF Upload", icon: Upload },
     { id: "review", label: "Review & Confirm", icon: FileText },
     { id: "manual-form", label: "Manual Form", icon: CheckCircle2 },
@@ -365,11 +337,30 @@ export function AutocompleteInput({
 
 
 // Optimized manual form with QuickFill and two-way cashback cal
+// ---------- TELECALLER ----------
+function TelecallerSidebar({ page, setPage }: { page: string; setPage: (p: string) => void }) {
+  const items = [
+    { id: "create-request", label: "Create Request", icon: ClipboardList },
+    { id: "my-requests", label: "My Requests", icon: FileText },
+    { id: "settings", label: "Settings", icon: Settings },
+  ];
+  return (
+    <div className="bg-white rounded-2xl border border-zinc-100 p-2 sticky top-20">
+      {items.map(({ id, label, icon: Icon }) => (
+        <button key={id} onClick={() => setPage(id)} className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm ${page === id ? "bg-zinc-900 text-white" : "hover:bg-zinc-100"}`}>
+          <Icon className="w-4 h-4" /> {label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 // ---------- FOUNDER ----------
 function FounderSidebar({ page, setPage }: { page: string; setPage: (p: string) => void }) {
   const items = [
     { id: "overview", label: "Company Overview", icon: LayoutDashboard },
     { id: "kpis", label: "KPI Dashboard", icon: TrendingUp },
+    { id: "task-dashboard", label: "Task Engine Dashboard", icon: Inbox },
     { id: "leaderboard", label: "Rep Leaderboard", icon: Users },
     { id: "explorer", label: "Sales Explorer", icon: BarChart3 },
     { id: "sources", label: "Data Sources", icon: BarChart3 },
@@ -390,66 +381,77 @@ function FounderSidebar({ page, setPage }: { page: string; setPage: (p: string) 
 }
 
 function NicsanCRMMock() {
-  const [user, setUser] = useState<{name:string; email?:string; role:"ops"|"founder"}|null>(null);
+  const { user, isAuthenticated, isLoading, logout } = useAuth();
   const [tab, setTab] = useState<"ops"|"founder">("ops");
-  const [opsPage, setOpsPage] = useState("upload");
+  const [opsPage, setOpsPage] = useState("task-inbox");
   const [founderPage, setFounderPage] = useState("overview");
-  // const [backendStatus, setBackendStatus] = useState<any>(null);
+  const [telecallerPage, setTelecallerPage] = useState("create-request");
 
-  // Check backend status on component mount
   useEffect(() => {
     const checkBackendStatus = async () => {
-      // const status = DualStorageService.getEnvironmentInfo();
-        // setBackendStatus(status);
-      
-      if (ENABLE_DEBUG) {
-      }
+      if (ENABLE_DEBUG) {}
     };
-    
     checkBackendStatus();
-    
-    // Check status every 30 seconds
     const interval = setInterval(checkBackendStatus, 30000);
     return () => clearInterval(interval);
   }, []);
 
-  if (!user) return <LoginPage onLogin={(u)=>{ setUser(u); setTab(u.role==='founder'?'founder':'ops')}}/>
+  useEffect(() => {
+    if (user?.role === 'founder') setTab('founder');
+    else if (user) setTab('ops');
+  }, [user]);
 
+  if (isLoading && !user) {
+    return <div className="min-h-screen grid place-items-center bg-zinc-50">Loading...</div>;
+  }
+  if (!isAuthenticated || !user) {
+    return <LoginPage />;
+  }
+
+  // SettingsProvider only fetches /api/settings for founders; telecaller/ops use defaults (avoids 403)
   return (
-    <div className="min-h-screen bg-zinc-50">
-      
-      <TopTabs tab={tab} setTab={setTab} user={user} onLogout={()=>setUser(null)} />
-      {tab === "ops" ? (
-        <Shell sidebar={<OpsSidebar page={opsPage} setPage={setOpsPage} />}>
-          {opsPage === "upload" && <PageUpload/>}
-          {opsPage === "review" && <PageReview/>}
-          {opsPage === "manual-form" && <PageManualForm/>}
-          {opsPage === "manual-grid" && <PageManualGrid/>}
-          {opsPage === "policy-detail" && <PagePolicyDetail/>}
-          {opsPage === "settings" && <PageOperationsSettings/>}
-          {opsPage === "sync-demo" && <CrossDeviceSyncDemo/>}
-        </Shell>
+    <SettingsProvider userRole={user.role}>
+      {user.role === 'telecaller' ? (
+        <div className="min-h-screen bg-zinc-50">
+          <TopTabs tab={tab} setTab={setTab} user={user} onLogout={logout} />
+          <Shell sidebar={<TelecallerSidebar page={telecallerPage} setPage={setTelecallerPage} />}>
+            {telecallerPage === "create-request" && <PageTelecallerCreateRequest />}
+            {telecallerPage === "my-requests" && <PageTelecallerMyRequests />}
+            {telecallerPage === "settings" && <PageOperationsSettings />}
+          </Shell>
+        </div>
       ) : (
-        <Shell sidebar={<FounderSidebar page={founderPage} setPage={setFounderPage} />}>
-          {founderPage === "overview" && <PageOverview/>}
-          {founderPage === "kpis" && <PageKPIs/>}
-          {founderPage === "leaderboard" && <PageLeaderboard/>}
-          {founderPage === "explorer" && <PageExplorer/>}
-          {founderPage === "sources" && <PageSources/>}
-          {founderPage === "payments" && <PagePayments/>}
-          {founderPage === "monthly-costs" && <PageMonthlyCosts/>}
-          {founderPage === "tests" && <PageTests/>}
-          {founderPage === "settings" && <PageFounderSettings/>}
-        </Shell>
+        <div className="min-h-screen bg-zinc-50">
+          <TopTabs tab={tab} setTab={setTab} user={user} onLogout={logout} />
+          {tab === "ops" ? (
+            <Shell sidebar={<OpsSidebar page={opsPage} setPage={setOpsPage} />}>
+              {opsPage === "task-inbox" && <PageTaskInbox />}
+              {opsPage === "upload" && <PageUpload/>}
+              {opsPage === "review" && <PageReview/>}
+              {opsPage === "manual-form" && <PageManualForm/>}
+              {opsPage === "manual-grid" && <PageManualGrid/>}
+              {opsPage === "policy-detail" && <PagePolicyDetail/>}
+              {opsPage === "settings" && <PageOperationsSettings/>}
+              {opsPage === "sync-demo" && <CrossDeviceSyncDemo/>}
+            </Shell>
+          ) : (
+            <Shell sidebar={<FounderSidebar page={founderPage} setPage={setFounderPage} />}>
+              {founderPage === "overview" && <PageOverview/>}
+              {founderPage === "kpis" && <PageKPIs/>}
+              {founderPage === "task-dashboard" && <PageTaskEngineDashboard />}
+              {founderPage === "leaderboard" && <PageLeaderboard/>}
+              {founderPage === "explorer" && <PageExplorer/>}
+              {founderPage === "sources" && <PageSources/>}
+              {founderPage === "payments" && <PagePayments/>}
+              {founderPage === "monthly-costs" && <PageMonthlyCosts/>}
+              {founderPage === "tests" && <PageTests/>}
+              {founderPage === "settings" && <PageFounderSettings/>}
+            </Shell>
+          )}
+        </div>
       )}
-    </div>
-  )
-}
-
-export default function App() {
-  return (
-    <SettingsProvider>
-      <NicsanCRMMock />
     </SettingsProvider>
   );
 }
+
+export default NicsanCRMMock;

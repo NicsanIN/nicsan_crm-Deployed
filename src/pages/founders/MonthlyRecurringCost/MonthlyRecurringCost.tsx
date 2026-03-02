@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { DollarSign, Plus, Edit, Trash2, Filter, Search, Calendar, Tag } from 'lucide-react';
+import { DollarSign, Plus, Edit, Trash2, Search, Calendar, Tag } from 'lucide-react';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useUserChange } from '../../../hooks/useUserChange';
 
@@ -36,7 +36,7 @@ const MonthlyRecurringCost: React.FC = () => {
   const { userChanged } = useUserChange();
   const [costs, setCosts] = useState<MonthlyCost[]>([]);
   const [summary, setSummary] = useState<CostSummary | null>(null);
-  const [categoryBreakdown, setCategoryBreakdown] = useState<CategoryBreakdown[]>([]);
+  const [, setCategoryBreakdown] = useState<CategoryBreakdown[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);

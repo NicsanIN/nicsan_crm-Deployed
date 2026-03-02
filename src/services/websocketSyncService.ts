@@ -24,6 +24,8 @@ class WebSocketSyncService {
   private isConnected: boolean = false;
   private messageCallbacks: ((message: SyncMessage) => void)[] = [];
   private connectionCallbacks: ((connected: boolean) => void)[] = [];
+  private taskAssignedCallbacks: ((data: { taskId: number; task: any; timestamp: number }) => void)[] = [];
+  private taskCompletedCallbacks: ((data: { taskId: number; task: any; timestamp: number }) => void)[] = [];
   private deviceId: string;
   private userId: string | null = null;
 
@@ -118,6 +120,27 @@ class WebSocketSyncService {
       this.socket.on('conflict_detected', (conflict: any) => {
         console.log('⚠️ Conflict detected:', conflict);
         this.handleConflict(conflict);
+      });
+
+      // Task Engine events (from backend taskService)
+      this.socket.on('task_assigned', (data: { taskId: number; task: any; timestamp: number }) => {
+        this.taskAssignedCallbacks.forEach((cb) => {
+          try {
+            cb(data);
+          } catch (e) {
+            console.error('task_assigned callback error:', e);
+          }
+        });
+      });
+
+      this.socket.on('task_completed', (data: { taskId: number; task: any; timestamp: number }) => {
+        this.taskCompletedCallbacks.forEach((cb) => {
+          try {
+            cb(data);
+          } catch (e) {
+            console.error('task_completed callback error:', e);
+          }
+        });
       });
 
     } catch (error) {
@@ -241,6 +264,28 @@ class WebSocketSyncService {
     const index = this.connectionCallbacks.indexOf(callback);
     if (index > -1) {
       this.connectionCallbacks.splice(index, 1);
+    }
+  }
+
+  public onTaskAssigned(callback: (data: { taskId: number; task: any; timestamp: number }) => void): void {
+    this.taskAssignedCallbacks.push(callback);
+  }
+
+  public onTaskCompleted(callback: (data: { taskId: number; task: any; timestamp: number }) => void): void {
+    this.taskCompletedCallbacks.push(callback);
+  }
+
+  public removeTaskAssignedCallback(callback: (data: { taskId: number; task: any; timestamp: number }) => void): void {
+    const index = this.taskAssignedCallbacks.indexOf(callback);
+    if (index > -1) {
+      this.taskAssignedCallbacks.splice(index, 1);
+    }
+  }
+
+  public removeTaskCompletedCallback(callback: (data: { taskId: number; task: any; timestamp: number }) => void): void {
+    const index = this.taskCompletedCallbacks.indexOf(callback);
+    if (index > -1) {
+      this.taskCompletedCallbacks.splice(index, 1);
     }
   }
 

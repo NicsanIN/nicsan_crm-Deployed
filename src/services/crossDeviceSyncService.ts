@@ -31,6 +31,7 @@ class CrossDeviceSyncService {
   private conflicts: any[] = [];
   private syncCallbacks: ((data: SyncData) => void)[] = [];
   private statusCallbacks: ((status: SyncStatus) => void)[] = [];
+  private userRole: string = '';
 
   private constructor() {
     this.deviceId = this.generateDeviceId();
@@ -112,8 +113,57 @@ class CrossDeviceSyncService {
     }
   }
 
+  /** Decode JWT payload (Base64URL); returns null on failure. */
+  private decodeJwtPayload(token: string): { role?: string } | null {
+    try {
+      const parts = token.split('.');
+      if (parts.length !== 3) return null;
+      const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+      const pad = base64.length % 4;
+      const padded = pad ? base64 + '==='.slice(0, 4 - pad) : base64;
+      const json = atob(padded);
+      return JSON.parse(json) as { role?: string };
+    } catch {
+      return null;
+    }
+  }
+
+  private getEffectiveRole(): string {
+    if (this.userRole) return this.userRole;
+    try {
+      const token = localStorage.getItem('authToken');
+      if (token) {
+        const payload = this.decodeJwtPayload(token);
+        if (payload && payload.role) return payload.role;
+      }
+    } catch (_e) {}
+    return '';
+  }
+
   private async fetchAllData(): Promise<SyncData | null> {
     try {
+      // Skip sync when user is not logged in (no token) - avoid 403 before login
+      if (!localStorage.getItem('authToken')) {
+        return {
+          policies: [],
+          healthInsurance: [],
+          uploads: [],
+          dashboard: null,
+          lastUpdated: Date.now()
+        };
+      }
+      // Telecallers don't have access to policies, uploads, dashboard - skip to avoid 403 errors
+      // Check both setUserRole and JWT (sync can run before provider sets role)
+      if (this.getEffectiveRole() === 'telecaller') {
+        return {
+          policies: [],
+          healthInsurance: [],
+          uploads: [],
+          dashboard: null,
+          lastUpdated: Date.now()
+        };
+      }
+
       // Use lightweight endpoints for background sync (no S3 enrichment)
       // Full policy data is loaded on-demand when user opens specific pages
       const [policiesResponse, healthInsuranceResponse, uploadsResponse, dashboardResponse] = await Promise.all([
@@ -137,6 +187,10 @@ class CrossDeviceSyncService {
       console.error('Failed to fetch sync data:', error);
       return null;
     }
+  }
+
+  public setUserRole(role: string): void {
+    this.userRole = role || '';
   }
 
   private saveToLocalCache(data: SyncData): void {

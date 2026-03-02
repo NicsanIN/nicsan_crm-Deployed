@@ -175,7 +175,7 @@ class AuthService {
   async getAllUsers() {
     try {
       const queryText = `
-        SELECT id, email, name, role, is_active, created_at, updated_at, last_login, phone, department
+        SELECT id, email, name, role, is_active, created_at, updated_at, last_login, phone, department, status
         FROM users 
         ORDER BY created_at DESC
       `;

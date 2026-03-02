@@ -13,3 +13,10 @@
 :root { color-scheme: light; }
 html, body, #root { height: 100%; }
 #root { margin: 0; padding: 0; max-width: none; text-align: initial; }
+
+/* Responsive dropdowns: prevent overflow on mobile */
+select {
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}

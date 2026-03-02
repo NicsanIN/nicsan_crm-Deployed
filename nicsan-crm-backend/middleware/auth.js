@@ -50,13 +50,25 @@ const requireRole = (roles) => {
 // Middleware to check if user is founder (allow ops access too)
 const requireFounder = requireRole(['founder', 'ops']);
 
+// Middleware: founder only (no ops) - for admin overrides like task reassign
+const requireFounderOnly = requireRole(['founder']);
+
 // Middleware to check if user is ops, founder, or admin
 const requireOps = requireRole(['ops', 'founder', 'admin']);
+
+// Middleware to check if user is telecaller (for task creation, my-requests)
+const requireTelecaller = requireRole(['telecaller']);
+
+// Middleware: telecaller OR admin/founder (e.g. admin can create task on behalf)
+const requireTelecallerOrAdmin = requireRole(['telecaller', 'founder', 'admin']);
 
 module.exports = {
   authenticateToken,
   requireRole,
   requireFounder,
-  requireOps
+  requireFounderOnly,
+  requireOps,
+  requireTelecaller,
+  requireTelecallerOrAdmin
 };
 
