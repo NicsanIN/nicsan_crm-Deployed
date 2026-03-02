@@ -715,10 +715,20 @@ function PageManualForm() {
               errors.push('Vehicle Number is required');
             } else {
               const cleanValue = value.replace(/\s/g, '');
-              const traditionalPattern = /^[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}$/;
-              const bhSeriesPattern = /^[0-9]{2}BH[0-9]{4}[A-Z]{1,2}$/;
-              if (!traditionalPattern.test(cleanValue) && !bhSeriesPattern.test(cleanValue)) {
-                errors.push('Vehicle Number must be in format: KA01AB1234, KA 51 MM 1214, or 23 BH 7699 J');
+              const isNewVehicle = cleanValue.toUpperCase() === 'NEW';
+              if (isNewVehicle) {
+                const currentYear = new Date().getFullYear();
+                const mfgYearRaw = form.manufacturingYear;
+                const mfgYear = mfgYearRaw != null && mfgYearRaw !== '' ? parseInt(String(mfgYearRaw), 10) : NaN;
+                if (isNaN(mfgYear) || mfgYear !== currentYear) {
+                  errors.push(`Registration "NEW" is only allowed when Mfg. Year is the current calendar year (${currentYear}). Set Mfg. Year to ${currentYear} or enter the actual registration number.`);
+                }
+              } else {
+                const traditionalPattern = /^[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}$/;
+                const bhSeriesPattern = /^[0-9]{2}BH[0-9]{4}[A-Z]{1,2}$/;
+                if (!traditionalPattern.test(cleanValue) && !bhSeriesPattern.test(cleanValue)) {
+                  errors.push('Vehicle Number must be in format: KA01AB1234, KA 51 MM 1214, 23 BH 7699 J, or NEW when Mfg. Year is current year');
+                }
               }
             }
             break;
@@ -1763,7 +1773,7 @@ function PageManualForm() {
               {/* Motor Insurance Fields */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <LabeledInput label="Policy Number" required value={form.policyNumber} onChange={v=>set('policyNumber', v)}/>
-                <LabeledInput label="Vehicle Number" required placeholder="KA01AB1234 or KA 51 MM 1214" value={form.vehicleNumber} onChange={handleVehicleNumberChange}/>
+                <LabeledInput label="Vehicle Number" required placeholder="KA01AB1234, KA 51 MM 1214, or NEW for new vehicle" value={form.vehicleNumber} onChange={handleVehicleNumberChange}/>
                 <LabeledInput label="Insurer (Company)" required placeholder="e.g., Tata AIG" value={form.insurer} onChange={v=>set('insurer', v)}/>
                 <LabeledSelect label="Vehicle Type" value={form.vehicleType} onChange={v=>set('vehicleType', v)} options={[
                   { value: "Private Car", label: "Private Car" },
