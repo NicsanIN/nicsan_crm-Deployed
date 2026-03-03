@@ -807,7 +807,7 @@ const response = await fetch(`${API_BASE_URL}/policies`, {
         console.log('🔄 BackendApiService: Uploading document...');
       }
 
-      const response = await fetch('http://localhost:3001/api/upload/document', {
+      const response = await fetch(`${API_BASE_URL}/upload/document`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
@@ -845,7 +845,7 @@ const response = await fetch(`${API_BASE_URL}/policies`, {
         console.log('🔄 BackendApiService: Getting policy documents...');
       }
 
-      const response = await fetch(`http://localhost:3001/api/upload/documents/${policyNumber}`, {
+      const response = await fetch(`${API_BASE_URL}/upload/documents/${policyNumber}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
@@ -1084,7 +1084,7 @@ const response = await fetch(`${API_BASE_URL}/policies`, {
   async saveHealthInsurance(healthData: any): Promise<BackendApiResult> {
     try {
 
-      const response = await fetch('http://localhost:3001/api/health-insurance/save', {
+      const response = await fetch(`${API_BASE_URL}/health-insurance/save`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
@@ -1414,7 +1414,7 @@ const response = await fetch(`${API_BASE_URL}/policies`, {
         console.log('🔄 BackendApiService: Getting health insurance detail...');
       }
 
-      const response = await fetch(`http://localhost:3001/api/health-insurance/${policyNumber}`, {
+      const response = await fetch(`${API_BASE_URL}/health-insurance/${policyNumber}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
@@ -1452,7 +1452,7 @@ const response = await fetch(`${API_BASE_URL}/policies`, {
         console.log('🔄 BackendApiService: Getting health insurance metrics...');
       }
 
-      const response = await fetch('http://localhost:3001/api/dashboard/health-metrics', {
+      const response = await fetch(`${API_BASE_URL}/dashboard/health-metrics`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
