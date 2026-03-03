@@ -25,7 +25,6 @@ interface CostSummary {
   total_active_amount: number;
 }
 
-
 const MonthlyRecurringCost: React.FC = () => {
   const { user } = useAuth();
   const { userChanged } = useUserChange();

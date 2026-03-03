@@ -5,6 +5,7 @@ import DualStorageService from '../../../services/dualStorageService';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useUserChange } from '../../../hooks/useUserChange';
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://staging-api.nicsanin.com/api';
 
 function PagePolicyDetail() {
     const { user } = useAuth();
@@ -168,7 +169,7 @@ function PagePolicyDetail() {
     // Download document function
     const downloadDocument = async (s3Key: string) => {
       try {
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/upload/s3-url/${encodeURIComponent(s3Key)}`, {
+        const response = await fetch(`${API_BASE_URL}/upload/s3-url/${encodeURIComponent(s3Key)}`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
           },
